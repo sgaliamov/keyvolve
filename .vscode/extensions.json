@@ -1,0 +1,13 @@
+{
+  "recommendations": [
+    "be5invis.toml",
+    "bierner.markdown-mermaid",
+    "bpruitt-goddard.mermaid-markdown-syntax-highlighting",
+    "fill-labs.dependi",
+    "gruntfuggly.todo-tree",
+    "ms-vscode.cpptools",
+    "rust-lang.rust-analyzer",
+    "vadimcn.vscode-lldb",
+    "yzhang.markdown-all-in-one"
+  ]
+}
