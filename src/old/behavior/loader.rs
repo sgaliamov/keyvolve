@@ -7,15 +7,25 @@ use std::{
     path::PathBuf,
 };
 
+/// Constructs a `Behavior` from CLI settings, returning `None` on any
+/// missing or malformed input so the caller can surface a clean error
+/// instead of panicking deep inside the GA loop.
 pub fn create(settings: &CliSettings) -> Option<Behavior> {
     let context = Context::new(settings);
+    // The keyboard JSON file describes the physical layout (efforts, blocked
+    // keys, frozen keys).  Without it there is nothing to optimise.
     let path = settings.keyboard.clone()?;
     let json = load_json(&path)?;
+    // The text corpus is what the scorer uses to evaluate layouts; loading it
+    // once here avoids repeated disk I/O during the inner GA loop.
     let words = load_words(&settings.text.clone()?)?;
     let frozen_keys = load_frozen(&json)?;
     let efforts = load_efforts(&json)?;
+    // These two penalties are user-tunable so they live in the JSON config
+    // rather than being hard-coded, making it easy to experiment.
     let switch_penalty = json["switchPenalty"].as_f64()?;
     let same_key_penalty = json["sameKeyPenalty"].as_f64()?;
+    // `blocked` is an array of integer position indices in the JSON.
     let blocked_keys: HashSet<Position> = json["blocked"]
         .as_array()?
         .into_iter()
@@ -43,17 +53,25 @@ fn parse_u8(str: &String) -> Option<Position> {
     str.parse::<Position>().ok()
 }
 
+// Effort values in the JSON use a 1–5 scale so they are easy to author.
+// Internally we rescale them to 1–`maxEffort` so the genetic algorithm
+// can work with whatever absolute weight range the user prefers.
 const MIN_VALUE: f64 = 1.;
 const MAX_VALUE: f64 = 5.;
 
+/// Linearly maps a raw JSON effort value from [1, 5] to [1, maxEffort].
+/// Keeping 1 as the floor means a "free" key never contributes zero cost,
+/// which avoids degenerate layouts that stack everything on one key.
 fn normalize_effort(value: f64, factor: f64) -> f64 {
     debug_assert!(
         value >= MIN_VALUE,
-        "Minimal allowed value is {}", MIN_VALUE
+        "Minimal allowed value is {}",
+        MIN_VALUE
     );
     debug_assert!(
         value <= 5.,
-        "Maximal allowed value is {}", MAX_VALUE
+        "Maximal allowed value is {}",
+        MAX_VALUE
     );
 
     (value - 1.) * factor + 1.
@@ -94,8 +112,10 @@ fn load_efforts(json: &Value) -> Option<Efforts> {
     let max = json["maxEffort"].as_f64()?;
     let factor = get_factor(max);
     let mut left = parse_efforts(json, 0, factor)?;
-    // the right part is symmetrical to the left so we can just add 15 to get right efforts.
-    // for a standard keyboard it will be easier to have all efforts in the json file.
+    // The right half of the keyboard mirrors the left ergonomically, so we
+    // reuse the same effort table and simply offset all position indices by
+    // 15 (the number of left-hand slots).  This halves the config authoring
+    // burden; a non-symmetric board could provide separate right-hand efforts.
     let right = parse_efforts(json, 15, factor)?;
     left.extend(right);
 

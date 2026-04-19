@@ -3,7 +3,11 @@ use crate::keyboard::{get_factor, Keys, Score};
 use itertools::Itertools;
 use std::collections::HashMap;
 
-/// lower score better because it shows less efforts and better ballance.
+/// Aggregates per-word scores across the entire corpus into a single `Score`
+/// tuple.  Lower total effort is better because it means fewer finger
+/// movements and better hand balance.  We accumulate left/right counters and
+/// effort sums separately so the balance factor can be applied once at the
+/// end rather than inside the tight per-word loop.
 pub fn calculate_score(this: &Behavior, keyboard: &Keys) -> Score {
     let (effort, left_counter, right_counter, switch, left_effort, right_effort) = this
         .words
@@ -38,6 +42,10 @@ pub fn calculate_score(this: &Behavior, keyboard: &Keys) -> Score {
             },
         );
 
+    // Apply the balance factor after accumulation so that a layout with equal
+    // left/right effort gets factor ≈ 1 (no penalty) while an unbalanced one
+    // gets factor > 1, effectively raising its score and pushing it down the
+    // ranking.
     let factor = get_factor(left_effort, right_effort);
     let effort = effort * factor;
 
@@ -51,6 +59,9 @@ pub fn calculate_score(this: &Behavior, keyboard: &Keys) -> Score {
     )
 }
 
+/// Scores a single word by iterating over consecutive character pairs
+/// (bigrams).  Effort is looked up from the pre-computed efforts table and
+/// adjusted by penalties for same-key repetition or hand switches.
 fn calculate_word_score(
     Behavior: &Behavior,
     keyboard: &HashMap<char, Position>,
@@ -58,12 +69,16 @@ fn calculate_word_score(
 ) -> Score {
     #[inline]
     fn is_left(position: Position) -> bool {
+        // Positions 0-14 are the left half; 15-29 are the right half.
         position < 15
     }
 
     let chars = word.chars().collect_vec();
     let key = keyboard[&chars[0]];
-    let first = Behavior.efforts[&key][&key]; // to count the score for the first or one letter
+    // The first character of a word has no predecessor, so we use the
+    // self-effort (key pressed in isolation) as its contribution.  This
+    // ensures single-character words still accumulate a non-zero score.
+    let first = Behavior.efforts[&key][&key];
     let (score, left, right, switch, left_effort, right_effort) = chars
         .iter()
         .tuple_windows()
@@ -77,9 +92,12 @@ fn calculate_word_score(
             let switch = a_is_left != b_is_left;
 
             if switch {
-                // key "a" is counted in a previous iteration,
-                // so whe we have the hand switch we need to count effort on the second letters,
-                // because the next hand "start" typing.
+                // When hands alternate, key `a` was already counted in the
+                // previous iteration.  We charge the self-effort of key `b`
+                // here because the new hand is starting a fresh sequence
+                // (analogous to the first-letter cost above), multiplied by
+                // the switch penalty to discourage frequent alternation on
+                // high-cost positions.
                 let effort = Behavior.efforts[&key_b][&key_b];
 
                 return (

@@ -47,6 +47,9 @@ impl IBehavior<Mutation, Keyboard> for Behavior {
         let (a_total, _, _, _, _, _) = a.score;
         let (b_total, _, _, _, _, _) = b.score;
 
+        // Secondary sort by the sorted position vector provides a stable,
+        // deterministic order when two keyboards share the same total score,
+        // preventing non-deterministic pool rankings across runs.
         fn get_sorted_position(keys: &Keys) -> Vec<&Position> {
             keys.iter()
                 .sorted_by(|(c1, _), (c2, _)| c1.cmp(c2))
@@ -61,6 +64,10 @@ impl IBehavior<Mutation, Keyboard> for Behavior {
     }
 
     fn load(&self) -> std::io::Result<Vec<Box<Keyboard>>> {
+        // Loading existing keyboards from disk lets the GA resume a previous
+        // run rather than restarting from a random population every time.
+        // Scores are re-calculated on load because the corpus or config may
+        // have changed since the file was written.
         if let Ok(file) = File::open("data/keyboards.csv") {
             let lines = io::BufReader::new(file).lines();
 

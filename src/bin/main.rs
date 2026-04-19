@@ -1,10 +1,9 @@
-mod app;
-
 use cliffa::cli;
+use keyvolve::app;
 use miette::Result;
 use tracing::Level;
 
-fn main()-> Result<()> {
+fn main() -> Result<()> {
     cli::Builder::default()
         .with_level(Level::INFO)
         .with_target(false)

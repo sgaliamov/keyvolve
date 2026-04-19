@@ -5,6 +5,9 @@ use itertools::Itertools;
 use rand::prelude::SliceRandom;
 use std::collections::HashSet;
 
+/// Creates a completely random keyboard to seed the initial population.
+/// Scoring happens here so every individual enters the pool with a valid
+/// fitness value and no extra pass is required after generation.
 pub fn generate(this: &Behavior) -> Box<Keyboard> {
     let version = get_version();
     let keys = generate_keys(&this.frozen_keys, &this.blocked_keys);
@@ -17,18 +20,26 @@ pub fn generate(this: &Behavior) -> Box<Keyboard> {
         keys.clone(),
         calculate_score(this, &keys),
         Vec::new(),
-        version, // versions match to be able cross children with parents
+        // parent_version == version for a freshly generated individual so it
+        // can be crossed with its own children without a version mismatch.
+        version,
         keys,
     )
 }
 
+/// Assigns all non-frozen letters to random non-blocked positions.
+/// Both lists are shuffled independently so the mapping is truly random
+/// and frozen keys keep their designated slots untouched.
 fn generate_keys(frozen_keys: &FrozenKeys, blocked_keys: &HashSet<Position>) -> Keys {
     let rnd = &mut rand::thread_rng();
+    // Only letters not already pinned can be freely placed.
     let mut letters = ('a'..='z')
         .filter(|x| !frozen_keys.contains_key(x))
         .collect_vec();
     letters.shuffle(rnd);
 
+    // Exclude both physically blocked slots and slots already taken by
+    // frozen keys, so we never place two characters at the same position.
     let frozen_values: HashSet<_> = frozen_keys.values().cloned().collect();
     let mut positions = (0..=29 as Position)
         .filter(|x| !blocked_keys.contains(x))
@@ -36,6 +47,8 @@ fn generate_keys(frozen_keys: &FrozenKeys, blocked_keys: &HashSet<Position>) -> 
         .collect_vec();
     positions.shuffle(rnd);
 
+    // Zip the two shuffled lists to form random char→position pairs, then
+    // merge frozen keys back so the final map is always complete.
     letters
         .into_iter()
         .zip(positions.into_iter())

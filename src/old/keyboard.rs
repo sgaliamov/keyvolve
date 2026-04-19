@@ -12,6 +12,9 @@ pub struct Mutation {
 impl IMutation for Mutation {}
 
 pub type Keys = HashMap<char, Position>;
+// (total_effort, left_keystrokes, right_keystrokes, hand_switches, left_effort_sum, right_effort_sum)
+// Stored as a plain tuple to keep Keyboard cheap to clone and compare
+// without extra allocations.
 pub type Score = (f64, u32, u32, u32, f64, f64);
 
 #[derive(Debug, Clone)]
@@ -55,6 +58,10 @@ impl Keyboard {
     }
 }
 
+// Equality is defined purely by the key→position mapping so that two
+// keyboards with different version/score metadata are still considered
+// identical if their physical layout is the same.  This lets the pool
+// deduplicate genomes without caring about lineage.
 impl PartialEq for Keyboard {
     fn eq(&self, other: &Self) -> bool {
         if self.keys.len() != other.keys.len() {
@@ -75,6 +82,9 @@ impl PartialEq for Keyboard {
 
 impl Eq for Keyboard {}
 
+// Hash must be consistent with PartialEq.  We sort by char first to
+// guarantee a deterministic order regardless of HashMap iteration order,
+// so two equal keyboards always produce the same hash.
 impl Hash for Keyboard {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         for (&c, &p) in self.keys.iter().sorted_by_key(|(&c, _)| c).into_iter() {
@@ -161,11 +171,16 @@ fn box_keyboard(keyboard: Keyboard) -> Box<Keyboard> {
 /// better the ballance lower the factor.\
 /// the ideal factor is 1 for the ideal balance (50x50).\
 /// 1 means that the factor does not affect a score.
+/// Returns a multiplier ≥ 1 that penalises unbalanced effort between hands.
+/// At perfect balance (ratio = 1) the formula gives exactly 1, leaving the
+/// raw score unchanged.  As the ratio grows the multiplier approaches 3,
+/// so badly unbalanced layouts are ranked much worse than their raw effort
+/// would suggest.  The squared denominator creates a smooth curve;
+/// increasing the exponent makes the penalty less aggressive near balance.
+/// See https://www.desmos.com/calculator to visualise the curve.
 pub fn get_factor(left_score: f64, right_score: f64) -> f64 {
     let ballance = get_balance(left_score, right_score);
 
-    // https://www.desmos.com/calculator
-    // bigger power - less strict ballance
     3. - (2. / ((ballance - 1.).powi(2) + 1.))
 }
 
