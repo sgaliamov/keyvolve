@@ -1,10 +1,11 @@
 use std::path::PathBuf;
 
+#[derive(Debug)]
 pub struct Config {
-    /// keyboard settings
+    /// keyboard json settings
     pub keyboard: Option<PathBuf>,
 
-    /// sample text
+    /// sample text file
     pub text: Option<PathBuf>,
 
     pub digraphs: Option<PathBuf>,
