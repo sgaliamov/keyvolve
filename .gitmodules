@@ -1,3 +1,6 @@
 [submodule "darwin"]
 	path = darwin
 	url = https://github.com/sgaliamov/darwin
+[submodule "cliffa"]
+	path = cliffa
+	url = https://github.com/sgaliamov/cliffa

@@ -1,0 +1,8 @@
+edition = "2024"
+use_field_init_shorthand = true
+
+# unstable:
+# unstable_features = true      # enables `imports_granularity` and `reorder_impl_items`
+# imports_granularity = "Crate" # merges usings
+# reorder_impl_items = true     # moves the associated  type declarations on top
+# where_single_line = true      # conflicts with default formatting in vscode
