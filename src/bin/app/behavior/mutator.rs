@@ -1,10 +1,10 @@
-use super::{score_calculator::calculate_score, Behaviour};
+use super::{score_calculator::calculate_score, Behavior};
 use crate::keyboard::{Keyboard, Keys, Mutation};
 use ed_balance::get_version;
 use itertools::Itertools;
 use rand::{prelude::SliceRandom, thread_rng, RngCore};
 
-pub fn mutate(this: &Behaviour, individual: &Keyboard) -> Box<Keyboard> {
+pub fn mutate(this: &Behavior, individual: &Keyboard) -> Box<Keyboard> {
     let mut rng = thread_rng();
     let mut mutations: Vec<Mutation> = Vec::with_capacity(this.context.mutations_count);
     let mut keys = individual

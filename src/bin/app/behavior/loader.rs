@@ -1,4 +1,4 @@
-use super::{Behaviour, Efforts, FrozenKeys, Position};
+use super::{Behavior, Efforts, FrozenKeys, Position};
 use ed_balance::{CliSettings, Context};
 use itertools::Itertools;
 use serde_json::{self, Value};
@@ -7,7 +7,7 @@ use std::{
     path::PathBuf,
 };
 
-pub fn create(settings: &CliSettings) -> Option<Behaviour> {
+pub fn create(settings: &CliSettings) -> Option<Behavior> {
     let context = Context::new(settings);
     let path = settings.keyboard.clone()?;
     let json = load_json(&path)?;
@@ -22,7 +22,7 @@ pub fn create(settings: &CliSettings) -> Option<Behaviour> {
         .map(|x| x.as_u64().unwrap() as Position)
         .collect();
 
-    Some(Behaviour {
+    Some(Behavior {
         context,
         words,
         frozen_keys,

@@ -1,4 +1,4 @@
-use crate::behaviour::Position;
+use crate::Behavior::Position;
 use ed_balance::{IIndividual, IMutation};
 use itertools::Itertools;
 use std::{cmp::Ordering, collections::HashMap, hash::Hash, slice::Iter};

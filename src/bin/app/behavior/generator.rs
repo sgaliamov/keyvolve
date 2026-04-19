@@ -1,11 +1,11 @@
-use super::{score_calculator::calculate_score, Behaviour, FrozenKeys, Keyboard, Position};
+use super::{score_calculator::calculate_score, Behavior, FrozenKeys, Keyboard, Position};
 use crate::keyboard::Keys;
 use ed_balance::get_version;
 use itertools::Itertools;
 use rand::prelude::SliceRandom;
 use std::collections::HashSet;
 
-pub fn generate(this: &Behaviour) -> Box<Keyboard> {
+pub fn generate(this: &Behavior) -> Box<Keyboard> {
     let version = get_version();
     let keys = generate_keys(&this.frozen_keys, &this.blocked_keys);
 

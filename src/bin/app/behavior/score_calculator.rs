@@ -1,10 +1,10 @@
-use super::{Behaviour, Position};
+use super::{Behavior, Position};
 use crate::keyboard::{get_factor, Keys, Score};
 use itertools::Itertools;
 use std::collections::HashMap;
 
 /// lower score better because it shows less efforts and better ballance.
-pub fn calculate_score(this: &Behaviour, keyboard: &Keys) -> Score {
+pub fn calculate_score(this: &Behavior, keyboard: &Keys) -> Score {
     let (effort, left_counter, right_counter, switch, left_effort, right_effort) = this
         .words
         .iter()
@@ -52,7 +52,7 @@ pub fn calculate_score(this: &Behaviour, keyboard: &Keys) -> Score {
 }
 
 fn calculate_word_score(
-    behaviour: &Behaviour,
+    Behavior: &Behavior,
     keyboard: &HashMap<char, Position>,
     word: &str,
 ) -> Score {
@@ -63,7 +63,7 @@ fn calculate_word_score(
 
     let chars = word.chars().collect_vec();
     let key = keyboard[&chars[0]];
-    let first = behaviour.efforts[&key][&key]; // to count the score for the first or one letter
+    let first = Behavior.efforts[&key][&key]; // to count the score for the first or one letter
     let (score, left, right, switch, left_effort, right_effort) = chars
         .iter()
         .tuple_windows()
@@ -80,10 +80,10 @@ fn calculate_word_score(
                 // key "a" is counted in a previous iteration,
                 // so whe we have the hand switch we need to count effort on the second letters,
                 // because the next hand "start" typing.
-                let effort = behaviour.efforts[&key_b][&key_b];
+                let effort = Behavior.efforts[&key_b][&key_b];
 
                 return (
-                    behaviour.switch_penalty * effort,
+                    Behavior.switch_penalty * effort,
                     both_left as u32,
                     both_right as u32,
                     switch as u32,
@@ -92,11 +92,11 @@ fn calculate_word_score(
                 );
             }
 
-            let effort = behaviour.efforts[&key_a][&key_b];
+            let effort = Behavior.efforts[&key_a][&key_b];
 
             if key_a == key_b {
                 return (
-                    effort * behaviour.same_key_penalty,
+                    effort * Behavior.same_key_penalty,
                     both_left as u32,
                     both_right as u32,
                     switch as u32,

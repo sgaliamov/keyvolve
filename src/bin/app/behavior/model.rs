@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 
 pub type Position = u8;
 
-pub struct Behaviour {
+pub struct Behavior {
     pub context: Context,
     pub words: Vec<String>,
 

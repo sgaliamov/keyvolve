@@ -5,7 +5,7 @@ mod mutator;
 mod recombination;
 mod score_calculator;
 
-use ed_balance::{get_version, CliSettings, Context, IBehaviour, IIndividual};
+use ed_balance::{get_version, CliSettings, Context, IBehavior, IIndividual};
 use io::BufRead;
 use itertools::Itertools;
 pub use model::*;
@@ -17,9 +17,9 @@ use std::{
 
 use crate::keyboard::{Keyboard, Keys, Mutation};
 
-impl IBehaviour<Mutation, Keyboard> for Behaviour {
+impl IBehavior<Mutation, Keyboard> for Behavior {
     fn new(settings: &CliSettings) -> Self {
-        loader::create(settings).expect("Failed to create the behaviour object.")
+        loader::create(settings).expect("Failed to create the Behavior object.")
     }
 
     fn generate(&self) -> Box<Keyboard> {
@@ -150,8 +150,8 @@ pub mod tests {
         efforts
     }
 
-    fn default_behaviour() -> Behaviour {
-        Behaviour {
+    fn default_Behavior() -> Behavior {
+        Behavior {
             context: default_context(),
             blocked_keys: HashSet::new(),
             efforts: default_efforts(),
@@ -202,7 +202,7 @@ pub mod tests {
 
     #[test]
     fn should_mutate() {
-        let behaviour = default_behaviour();
+        let Behavior = default_Behavior();
         let individual = Keyboard {
             keys: [('a', 0_u8), ('b', 1_u8), ('c', 2_u8)]
                 .iter()
@@ -215,10 +215,10 @@ pub mod tests {
             version: "version".to_string(),
         };
 
-        let actual = mutator::mutate(&behaviour, &individual);
+        let actual = mutator::mutate(&Behavior, &individual);
 
         assert_eq!(actual.keys.len(), 3);
         assert_ne!(actual.keys, individual.keys);
-        assert_eq!(actual.mutations.len(), behaviour.context.mutations_count);
+        assert_eq!(actual.mutations.len(), Behavior.context.mutations_count);
     }
 }

@@ -1,11 +1,11 @@
-use super::{score_calculator::calculate_score, Behaviour};
+use super::{score_calculator::calculate_score, Behavior};
 use crate::keyboard::{Keyboard, Keys};
 use ed_balance::get_version;
 use itertools::Itertools;
 use rand::prelude::SliceRandom;
 use std::collections::HashMap;
 
-pub fn cross(this: &Behaviour, individual: &Keyboard, partner: &Keyboard) -> Box<Keyboard> {
+pub fn cross(this: &Behavior, individual: &Keyboard, partner: &Keyboard) -> Box<Keyboard> {
     let mut keys: HashMap<_, _> = individual
         .parent
         .iter()
