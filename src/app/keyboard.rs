@@ -1,6 +1,6 @@
 use miette::{Context, IntoDiagnostic, Result};
+use rustc_hash::FxHashMap;
 use serde::Deserialize;
-use std::collections::HashMap;
 use std::path::Path;
 
 /// Represents the keyboard configuration loaded from `keyboard.json`.
@@ -8,7 +8,7 @@ use std::path::Path;
 #[serde(rename_all = "camelCase")]
 pub struct Keyboard {
     /// Keys that are frozen in place: maps character to key index.
-    pub frozen: HashMap<char, u8>,
+    pub frozen: FxHashMap<char, u8>,
 
     /// Key indices that are blocked (unavailable).
     pub blocked: Vec<u8>,
@@ -22,8 +22,8 @@ pub struct Keyboard {
     /// Effort multipliers used to scale effort values.
     pub efforts_map: Vec<f64>,
 
-    /// Effort cost matrix: efforts[from][to] = cost.
-    pub efforts: HashMap<u8, HashMap<u8, usize>>,
+    /// Key matrix: pairs[from][to] = group.
+    pub pairs: FxHashMap<u8, FxHashMap<u8, usize>>,
 }
 
 impl Keyboard {

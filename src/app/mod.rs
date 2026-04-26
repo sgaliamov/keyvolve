@@ -1,5 +1,6 @@
 mod config;
 mod keyboard;
+mod digraphs;
 
 pub use config::*;
 pub use keyboard::*;
@@ -13,7 +14,7 @@ pub fn run(config: Option<Config>, _app: AppHandle) -> Result<()> {
     trace!("Starting with config: {:#?}", cfg);
 
     let keyboard = Keyboard::load(cfg.keyboard.as_deref().unwrap_or("data/keyboard.json".as_ref()))?;
-    info!("Keyboard loaded: {} efforts entries", keyboard.efforts.len());
+    info!("Keyboard loaded: {} efforts entries", keyboard.pairs.len());
 
     Ok(())
 }

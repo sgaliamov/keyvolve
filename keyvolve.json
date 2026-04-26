@@ -1,6 +1,5 @@
 {
   "keyboard": "data/keyboard.json",
-  "digraphs": "data/digraphs.json",
   "text": "data/sample_text.txt",
   "ga": {
     "ranges": [
