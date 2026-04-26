@@ -1,9 +1,13 @@
+use darwin::Gene;
+use serde::Deserialize;
 use std::path::PathBuf;
 
-use serde::Deserialize;
+/// Key position: (row, col)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize)]
+pub struct KeyPos(pub char, pub u8);
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase", default)]
+#[serde(rename_all = "camelCase")]
 pub struct Config {
     /// keyboard json settings
     pub keyboard: Option<PathBuf>,
@@ -11,16 +15,15 @@ pub struct Config {
     /// sample text file
     pub text: Option<PathBuf>,
 
+    /// digraphs json file
     pub digraphs: Option<PathBuf>,
 
-    pub frozen_left: String,
+    /// darwin config for the genetic algorithm
+    pub ga: darwin::Config<KeyPos>,
+}
 
-    pub frozen_right: String,
-
-    pub ga: darwin::Config,
-
-    /// how much we render in at the end
-    pub results_count: u8,
-
-    pub left_count: u8,
+impl Gene for KeyPos {
+    fn to_f64(self) -> f64 {
+        ((self.0 as u16) << 8 | self.1 as u16) as f64
+    }
 }

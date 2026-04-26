@@ -15,7 +15,7 @@ rayon = "1.12.0" # Parallel iterators.
 regex = "1.12.3" # To parse dates for example.
 rustc-hash = "2.1.2"
 serde = {version = "1.0.228", features = [
-#   "derive",
+  "derive",
 #   "rc",
 ]}# Serialization and deserialization.
 serde_json = "1.0.149" # Json support.
