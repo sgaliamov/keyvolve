@@ -12,7 +12,7 @@
   "blocked": [15, 25, 26, 27],
   "switchPenalty": 5,
   "sameKeyPenalty": 1.5,
-  "maxEffort": 3,
+  "effortsMap": [1.0, 1.2, 1.4, 1.6, 1.8, 2.0],
   "efforts": {
     "0": {
       "0": 5,

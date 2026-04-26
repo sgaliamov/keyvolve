@@ -1,6 +1,9 @@
 use std::path::PathBuf;
 
-#[derive(Debug)]
+use serde::Deserialize;
+
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase", default)]
 pub struct Config {
     /// keyboard json settings
     pub keyboard: Option<PathBuf>,
