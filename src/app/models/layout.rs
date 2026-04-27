@@ -32,7 +32,6 @@ impl Layout {
     }
 }
 
-// zydpx;ralem;vbjuq;whtc_;fnosi;kg___
 fn line_to_keys(line: &str) -> Keys {
     let parts = line.split(';');
 
@@ -47,6 +46,7 @@ fn line_to_keys(line: &str) -> Keys {
 
     parts
         .skip(3)
+        .take(3)
         .flat_map(|part| part.chars().rev())
         .enumerate()
         .map(|(p, c)| (c, (p + len) as u8))
@@ -61,7 +61,7 @@ mod layout_test {
 
     #[test]
     fn test_line_to_keys_basic() {
-        let line = "zydpx;ralem;vbjuq;whtc_;fnosi;kg___";
+        let line = "zydpx;ralem;vbjuq;whtc_;fnosi;kg___;not used tail";
         let keys = line_to_keys(line);
 
         assert_eq!(keys.len(), 26);
