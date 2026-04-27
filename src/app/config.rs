@@ -1,14 +1,10 @@
 use darwin::Gene;
-use rustc_hash::FxHashMap;
 use serde::Deserialize;
 use std::path::PathBuf;
 
 /// Key position: (char, position index)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize)]
 pub struct KeyPos(pub char, pub u8);
-
-/// Type alias for digraphs map: maps first char to a map of second char to probability.
-pub type DigraphsMap = FxHashMap<char, FxHashMap<char, f64>>;
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -29,12 +25,14 @@ pub struct Config {
     pub mode: Mode,
 }
 
-#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[derive(Debug, Default,  Clone, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub enum Mode {
     /// Run the genetic algorithm to optimize the keyboard layout.
     Optimize,
 
     /// Evaluate the score of a specific layout.
+    #[default]
     Evaluate,
 }
 

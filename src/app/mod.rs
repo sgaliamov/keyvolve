@@ -1,11 +1,13 @@
 mod config;
 mod keyboard;
 mod layout;
+mod scorer;
 
 use crate::app::layout::Layout;
 use cliffa::cli::AppHandle;
 pub use config::*;
 pub use keyboard::*;
+pub use scorer::*;
 use miette::{Context, Result};
 use std::path::Path;
 use tracing::{info, trace};

@@ -38,27 +38,27 @@ impl Keyboard {
             .wrap_err("Failed to parse keyboard JSON")
     }
 
-    pub fn calculate_score(&self, letters: &Vec<char>) -> f64 {
-        if letters.len() == 0 {
-            return 0.;
-        }
+    // pub fn calculate_score(&self, letters: &Vec<char>) -> f64 {
+    //     if letters.len() == 0 {
+    //         return 0.;
+    //     }
 
-        let mut score = 0.0;
-        let mut j = 0;
+    //     let mut score = 0.0;
+    //     let mut j = 0;
 
-        // while j < letters.len() - 1 {
-        //     let mut i = j + 1;
-        //     let first = letters[j];
+    //     // while j < letters.len() - 1 {
+    //     //     let mut i = j + 1;
+    //     //     let first = letters[j];
 
-        //     while i < letters.len() {
-        //         let second = letters[i];
-        //         let value = self.
-        //         score += self.get_value(&first, &second);
-        //         i += 1;
-        //     }
-        //     j += 1;
-        // }
+    //     //     while i < letters.len() {
+    //     //         let second = letters[i];
+    //     //         let value = self.
+    //     //         score += self.get_value(&first, &second);
+    //     //         i += 1;
+    //     //     }
+    //     //     j += 1;
+    //     // }
 
-        score
-    }
+    //     score
+    // }
 }
