@@ -15,6 +15,41 @@ pub struct ScoreResult {
     pub right_effort: f64,
 }
 
+impl ScoreResult {
+    /// Serialize as a CSV row (no header).
+    pub fn to_csv(&self) -> String {
+        format!(
+            "{},{},{},{},{},{}",
+            self.effort,
+            self.left_effort,
+            self.left_count,
+            self.right_effort,
+            self.right_count,
+            self.switches,
+        )
+    }
+
+    /// CSV header matching [`to_csv`] column order.
+    pub fn csv_header() -> &'static str {
+        "effort,left_effort,left_count,right_effort,right_count,switches"
+    }
+}
+
+impl std::fmt::Display for ScoreResult {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "effort: {:.4}  left: {:.4} ({})  right: {:.4} ({})  switches: {}",
+            self.effort,
+            self.left_effort,
+            self.left_count,
+            self.right_effort,
+            self.right_count,
+            self.switches,
+        )
+    }
+}
+
 impl std::ops::Add for ScoreResult {
     type Output = Self;
 

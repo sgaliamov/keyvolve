@@ -3,7 +3,7 @@
   "keyboard": "data/keyboard.json",
   "layouts": "data/layouts.csv",
   "_text": "data/samples/0.1-29.result.txt",
-  "text": "data/samples/0.01-10272.result",
+  "text": "data/samples/0.01-10272.result.txt",
   "ga": {
     "_ranges": [
       [0, 9],

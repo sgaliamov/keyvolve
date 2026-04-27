@@ -1,5 +1,3 @@
-use std::ops::Add;
-
 use crate::app::{Keyboard, Keys, ScoreResult};
 use itertools::Itertools;
 use rustc_hash::FxHashMap;
@@ -65,6 +63,7 @@ impl LayoutEvaluator {
                 let bigram = if switching {
                     // Hand switch: charge self-effort of destination × switch penalty.
                     let effort = self.lookup(kb, kb) * self.switch_penalty;
+
                     ScoreResult {
                         effort,
                         switches: 1,
@@ -74,11 +73,13 @@ impl LayoutEvaluator {
                     }
                 } else {
                     let effort = self.lookup(ka, kb);
+
                     let effort = if ka == kb {
                         effort * self.same_key_penalty
                     } else {
                         effort
                     };
+
                     ScoreResult {
                         effort,
                         left_count: both_left as u32,
@@ -89,7 +90,7 @@ impl LayoutEvaluator {
                     }
                 };
 
-                acc.add(bigram)
+                acc + bigram
             })
     }
 
@@ -98,7 +99,7 @@ impl LayoutEvaluator {
         let mut result = words
             .iter()
             .map(|w| self.score_word(w, keys))
-            .fold(ScoreResult::default(), ScoreResult::add);
+            .fold(ScoreResult::default(), |acc, x| acc + x);
 
         result.effort *= balance_factor(result.left_effort, result.right_effort);
         result

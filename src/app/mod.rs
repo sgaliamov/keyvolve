@@ -6,12 +6,13 @@ use cliffa::cli::AppHandle;
 pub use config::*;
 pub use evaluator::*;
 use itertools::Itertools;
-pub use models::*;
 use miette::{Context, IntoDiagnostic, Result};
+pub use models::*;
+use rayon::prelude::*;
 use tracing::{info, trace};
 
 /// Entry point called by the CLI builder after argument parsing.
-pub fn run(config: Option<Config>, _app: AppHandle) -> Result<()> {
+pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
     let cfg = config.wrap_err("Missing config.")?;
     trace!("Starting with config: {:#?}", cfg);
 
@@ -32,8 +33,23 @@ pub fn run(config: Option<Config>, _app: AppHandle) -> Result<()> {
             let layouts = Layout::load(cfg.layouts.unwrap());
             info!("Loaded {} layouts", layouts.len());
 
-            layouts.iter().for_each(|layout| {
-                let layout_score = evaluator.score_corpus(&words_ref, &layout.keys);
+            let mut scored: Vec<_> = layouts
+                .par_iter()
+                .filter_map(|layout| {
+                    if app.should_finish() {
+                        return None;
+                    }
+                    Some((layout, evaluator.score_corpus(&words_ref, &layout.keys)))
+                })
+                .collect();
+
+            scored.sort_by(|a, b| {
+                b.1.effort
+                    .partial_cmp(&a.1.effort)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
+
+            scored.iter().for_each(|(layout, layout_score)| {
                 info!("Layout score: {} {:#?}", layout.name, layout_score);
             });
         }
