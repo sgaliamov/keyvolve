@@ -1,10 +1,6 @@
-use darwin::Gene;
+use crate::app::models::KeyPos;
 use serde::Deserialize;
 use std::path::PathBuf;
-
-/// Key position: (char, position index)
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize)]
-pub struct KeyPos(pub char, pub u8);
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -25,7 +21,7 @@ pub struct Config {
     pub mode: Mode,
 }
 
-#[derive(Debug, Default,  Clone, Deserialize, PartialEq)]
+#[derive(Debug, Default, Clone, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub enum Mode {
     /// Run the genetic algorithm to optimize the keyboard layout.
@@ -36,8 +32,4 @@ pub enum Mode {
     Evaluate,
 }
 
-impl Gene for KeyPos {
-    fn to_f64(self) -> f64 {
-        ((self.0 as u16) << 8 | self.1 as u16) as f64
-    }
-}
+

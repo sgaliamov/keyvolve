@@ -1,14 +1,12 @@
 mod config;
 mod evaluator;
-mod keyboard;
-mod layout;
+mod models;
 
-use crate::app::layout::Layout;
 use cliffa::cli::AppHandle;
 pub use config::*;
 pub use evaluator::*;
 use itertools::Itertools;
-pub use keyboard::*;
+pub use models::*;
 use miette::{Context, IntoDiagnostic, Result};
 use tracing::{info, trace};
 
