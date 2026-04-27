@@ -4,8 +4,8 @@
   "blocked": [15, 25, 26, 27],
   "switchPenalty": 5,
   "sameKeyPenalty": 1.5,
-  "effortsMap": [1.0, 1.2, 1.4, 1.6, 1.8, 2.0],
-  "efforts": {
+  "efforts": [1.0, 1.2, 1.4, 1.6, 1.8, 2.0],
+  "pairs": {
     "0": {
       "0": 5,
       "1": 1,

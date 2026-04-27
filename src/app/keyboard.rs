@@ -20,7 +20,7 @@ pub struct Keyboard {
     pub same_key_penalty: f64,
 
     /// Effort multipliers used to scale effort values.
-    pub efforts_map: Vec<f64>,
+    pub efforts: Vec<f64>,
 
     /// Key matrix: pairs[from][to] = group.
     pub pairs: FxHashMap<u8, FxHashMap<u8, usize>>,
@@ -36,5 +36,29 @@ impl Keyboard {
         serde_json::from_str(&data)
             .into_diagnostic()
             .wrap_err("Failed to parse keyboard JSON")
+    }
+
+    pub fn calculate_score(&self, letters: &Vec<char>) -> f64 {
+        if letters.len() == 0 {
+            return 0.;
+        }
+
+        let mut score = 0.0;
+        let mut j = 0;
+
+        // while j < letters.len() - 1 {
+        //     let mut i = j + 1;
+        //     let first = letters[j];
+
+        //     while i < letters.len() {
+        //         let second = letters[i];
+        //         let value = self.
+        //         score += self.get_value(&first, &second);
+        //         i += 1;
+        //     }
+        //     j += 1;
+        // }
+
+        score
     }
 }

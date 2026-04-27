@@ -16,11 +16,26 @@ pub struct Config {
     /// keyboard json settings
     pub keyboard: Option<PathBuf>,
 
+    /// layouts csv file
+    pub layouts: Option<PathBuf>,
+
     /// sample text file
     pub text: Option<PathBuf>,
 
     /// darwin config for the genetic algorithm
     pub ga: darwin::Config<KeyPos>,
+
+    /// mode of operation: optimize or evaluate
+    pub mode: Mode,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+pub enum Mode {
+    /// Run the genetic algorithm to optimize the keyboard layout.
+    Optimize,
+
+    /// Evaluate the score of a specific layout.
+    Evaluate,
 }
 
 impl Gene for KeyPos {
