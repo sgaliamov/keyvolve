@@ -49,8 +49,8 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
                     .unwrap_or(std::cmp::Ordering::Equal)
             });
 
-            scored.iter().for_each(|(layout, layout_score)| {
-                info!("Layout score: {} {:#?}", layout.name, layout_score);
+            scored.iter().take(10).for_each(|(layout, layout_score)| {
+                info!("{} {}", layout.name, layout_score);
             });
         }
         _ => unimplemented!("Only evaluation mode is implemented currently."),
