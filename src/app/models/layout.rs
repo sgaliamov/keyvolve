@@ -72,4 +72,15 @@ mod layout_test {
         assert_eq!(keys[&'w'], 19);
         assert_eq!(keys[&'g'], 28);
     }
+
+    #[test]
+    fn test_name() {
+        let line = "zydpx;ralem;vbjuq;whtc_;fnosi;kg___;not used tail";
+        let layouts = Layout::load(line);
+        let layout = layouts.first().unwrap();
+
+        assert_eq!(layout.name, "zydpx;ralem;vbjuq;whtc_;fnosi;kg___");
+
+
+    }
 }
