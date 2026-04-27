@@ -39,7 +39,7 @@ impl std::fmt::Display for ScoreResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "effort: {:.4}  left: {:.4} ({})  right: {:.4} ({})  switches: {}",
+            "effort: {:.4} | left: {:.4} ({}) | right: {:.4} ({}) | switches: {}",
             self.effort,
             self.left_effort,
             self.left_count,
