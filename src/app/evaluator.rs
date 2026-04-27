@@ -66,21 +66,22 @@ impl LayoutEvaluator {
             return ScoreResult::default();
         }
 
-        let first_key = match keys.get(&chars[0]) {
-            Some(&k) => k,
-            None => return ScoreResult::default(),
-        };
+        let first_key = *keys.get(&chars[0]).expect("key not found in layout");
+
         // First character: self-effort as baseline, no predecessor.
         let first_effort = self.lookup(first_key, first_key);
-        let seed = ScoreResult { effort: first_effort, ..Default::default() };
+        let seed = ScoreResult {
+            effort: first_effort,
+            ..Default::default()
+        };
 
         chars
             .iter()
             .tuple_windows()
-            .filter_map(|(a, b)| {
-                let ka = *keys.get(a)?;
-                let kb = *keys.get(b)?;
-                Some((ka, kb))
+            .map(|(a, b)| {
+                let ka = *keys.get(a).expect("key not found in layout");
+                let kb = *keys.get(b).expect("key not found in layout");
+                (ka, kb)
             })
             .fold(seed, |acc, (ka, kb)| {
                 let a_left = ka < 15;
@@ -101,7 +102,11 @@ impl LayoutEvaluator {
                     }
                 } else {
                     let effort = self.lookup(ka, kb);
-                    let effort = if ka == kb { effort * self.same_key_penalty } else { effort };
+                    let effort = if ka == kb {
+                        effort * self.same_key_penalty
+                    } else {
+                        effort
+                    };
                     ScoreResult {
                         effort,
                         left_count: both_left as u32,
@@ -130,13 +135,11 @@ impl LayoutEvaluator {
     /// Look up bigram effort, mirroring right-half keys (15–29) to left (0–14).
     #[inline]
     fn lookup(&self, from: u8, to: u8) -> f64 {
-        let from = from % 15;
-        let to = to % 15;
-        self.pairs.get(&(from, to)).copied().unwrap_or(0.)
+        *self.pairs.get(&(from, to)).unwrap()
     }
 }
 
-/// Multiplier ≥ 1 penalising imbalanced effort. At 50/50 → 1.0, approaches 3 at extremes.
+/// Multiplier ≥ 1 penalizing imbalanced effort. At 50/50 → 1.0, approaches 3 at extremes.
 fn balance_factor(left: f64, right: f64) -> f64 {
     if left == 0. || right == 0. {
         return 1.;
@@ -146,5 +149,9 @@ fn balance_factor(left: f64, right: f64) -> f64 {
 }
 
 fn balance_ratio(left: f64, right: f64) -> f64 {
-    if left > right { left / right } else { right / left }
+    if left > right {
+        left / right
+    } else {
+        right / left
+    }
 }

@@ -2,9 +2,10 @@
   "mode": "evaluate",
   "keyboard": "data/keyboard.json",
   "layouts": "data/layouts.csv",
-  "text": "data/sample_text.txt",
+  "_text": "data/samples/0.1-29.result.txt",
+  "text": "data/samples/0.01-10272.result",
   "ga": {
-  "_ranges": [
+    "_ranges": [
       [0, 9],
       [10, 19],
       [20, 29],

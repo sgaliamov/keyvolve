@@ -10,6 +10,7 @@ pub type Keys = FxHashMap<char, u8>;
 
 pub struct Layout {
     pub keys: Keys,
+    pub name: String,
 }
 
 impl Layout {
@@ -25,7 +26,7 @@ impl Layout {
                 let line = x.unwrap();
                 let keys = line_to_keys(&line);
 
-                Layout { keys }
+                Layout { keys, name: line }
             })
             .collect_vec()
     }
