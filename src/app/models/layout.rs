@@ -14,6 +14,13 @@ pub struct Layout {
 }
 
 impl Layout {
+    // Constructor: Create Layout from line
+    pub fn new(line: &str) -> Self {
+        let keys = line_to_keys(line);
+        let name = line.split(';').take(6).join(";");
+        Layout { keys, name }
+    }
+
     pub fn load(path: impl AsRef<Path>) -> Vec<Layout> {
         let path = path.as_ref();
         let Ok(file) = File::open(path) else {
@@ -22,12 +29,7 @@ impl Layout {
 
         io::BufReader::new(file)
             .lines()
-            .map(|x| {
-                let line = x.unwrap();
-                let keys = line_to_keys(&line);
-
-                Layout { keys, name: line }
-            })
+            .map(|x| Layout::new(&x.unwrap()))
             .collect_vec()
     }
 }
@@ -76,11 +78,8 @@ mod layout_test {
     #[test]
     fn test_name() {
         let line = "zydpx;ralem;vbjuq;whtc_;fnosi;kg___;not used tail";
-        let layouts = Layout::load(line);
-        let layout = layouts.first().unwrap();
+        let layout = Layout::new(line);
 
         assert_eq!(layout.name, "zydpx;ralem;vbjuq;whtc_;fnosi;kg___");
-
-
     }
 }
