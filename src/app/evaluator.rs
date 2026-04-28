@@ -6,7 +6,11 @@ use rustc_hash::FxHashMap;
 pub struct LayoutEvaluator {
     /// Flat bigram effort map: (from_key, to_key) → effort value.
     pairs: FxHashMap<(u8, u8), f64>,
+
+    /// Multiplier applied to hand-switching bigrams, ≥ 1.
     switch_penalty: f64,
+
+    /// Multiplier applied to same-key bigrams.
     same_key_penalty: f64,
 }
 
@@ -38,10 +42,12 @@ impl LayoutEvaluator {
 
         let first_key = *keys.get(&chars[0]).expect("key not found in layout");
 
-        // First character: self-effort as baseline, no predecessor.
+        // First character: self-effort as baseline, count the first key press.
         let first_effort = self.lookup(first_key, first_key);
         let seed = ScoreResult {
             effort: first_effort,
+            left_count: if first_key < 15 { 1 } else { 0 },
+            right_count: if first_key >= 15 { 1 } else { 0 },
             ..Default::default()
         };
 
@@ -67,9 +73,10 @@ impl LayoutEvaluator {
                     ScoreResult {
                         effort,
                         switches: 1,
+                        left_count: b_left as u32,
+                        right_count: (!b_left) as u32,
                         left_effort: if both_left { effort } else { 0. },
                         right_effort: if both_right { effort } else { 0. },
-                        ..Default::default()
                     }
                 } else {
                     let effort = self.lookup(ka, kb);
@@ -82,8 +89,8 @@ impl LayoutEvaluator {
 
                     ScoreResult {
                         effort,
-                        left_count: both_left as u32,
-                        right_count: both_right as u32,
+                        left_count: b_left as u32,
+                        right_count: (!b_left) as u32,
                         left_effort: if both_left { effort } else { 0. },
                         right_effort: if both_right { effort } else { 0. },
                         ..Default::default()
