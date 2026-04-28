@@ -9,9 +9,6 @@ pub struct LayoutEvaluator {
 
     /// Multiplier applied to hand-switching bigrams, ≥ 1.
     switch_penalty: f64,
-
-    /// Multiplier applied to same-key bigrams.
-    same_key_penalty: f64,
 }
 
 impl LayoutEvaluator {
@@ -29,7 +26,6 @@ impl LayoutEvaluator {
         LayoutEvaluator {
             pairs,
             switch_penalty: keyboard.switch_penalty,
-            same_key_penalty: keyboard.same_key_penalty,
         }
     }
 
@@ -81,12 +77,6 @@ impl LayoutEvaluator {
                 } else {
                     let effort = self.lookup(ka, kb);
 
-                    let effort = if ka == kb {
-                        effort * self.same_key_penalty
-                    } else {
-                        effort
-                    };
-
                     ScoreResult {
                         effort,
                         left_count: b_left as u32,
@@ -133,5 +123,115 @@ fn balance_ratio(left: f64, right: f64) -> f64 {
         left / right
     } else {
         right / left
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Build minimal keyboard for evaluator tests.
+    fn test_keyboard() -> Keyboard {
+        Keyboard {
+            frozen: FxHashMap::default(),
+            blocked: vec![],
+            switch_penalty: 1.5,
+            efforts: vec![1.0, 2.0, 4.0],
+            pairs: FxHashMap::from_iter([
+                (
+                    0,
+                    FxHashMap::from_iter([(0, 1), (1, 2), (15, 3)]),
+                ),
+                (
+                    1,
+                    FxHashMap::from_iter([(1, 1), (0, 2)]),
+                ),
+                (
+                    15,
+                    FxHashMap::from_iter([(15, 1)]),
+                ),
+            ]),
+        }
+    }
+
+    /// Build tiny layout for evaluator tests.
+    fn test_keys() -> Keys {
+        FxHashMap::from_iter([('a', 0), ('b', 1), ('c', 15)])
+    }
+
+    /// Compare floats without drama.
+    fn assert_close(actual: f64, expected: f64) {
+        assert!((actual - expected).abs() < 1e-9, "expected {expected}, got {actual}");
+    }
+
+    #[test]
+    fn score_word_returns_default_for_empty_word() {
+        let evaluator = LayoutEvaluator::new(&test_keyboard());
+
+        let score = evaluator.score_word("", &test_keys());
+
+        assert_close(score.effort, 0.0);
+        assert_eq!(score.left_count, 0);
+        assert_eq!(score.right_count, 0);
+        assert_eq!(score.switches, 0);
+        assert_close(score.left_effort, 0.0);
+        assert_close(score.right_effort, 0.0);
+    }
+
+    #[test]
+    fn score_word_counts_same_hand_bigrams() {
+        let evaluator = LayoutEvaluator::new(&test_keyboard());
+
+        let score = evaluator.score_word("ab", &test_keys());
+
+        assert_close(score.effort, 3.0);
+        assert_eq!(score.left_count, 2);
+        assert_eq!(score.right_count, 0);
+        assert_eq!(score.switches, 0);
+        assert_close(score.left_effort, 2.0);
+        assert_close(score.right_effort, 0.0);
+    }
+
+    #[test]
+    fn score_word_scores_same_key_from_pair_table() {
+        let evaluator = LayoutEvaluator::new(&test_keyboard());
+
+        let score = evaluator.score_word("aa", &test_keys());
+
+        assert_close(score.effort, 3.0);
+        assert_eq!(score.left_count, 2);
+        assert_eq!(score.right_count, 0);
+        assert_eq!(score.switches, 0);
+        assert_close(score.left_effort, 2.0);
+        assert_close(score.right_effort, 0.0);
+    }
+
+    #[test]
+    fn score_word_applies_switch_penalty() {
+        let evaluator = LayoutEvaluator::new(&test_keyboard());
+
+        let score = evaluator.score_word("ac", &test_keys());
+
+        assert_close(score.effort, 7.0);
+        assert_eq!(score.left_count, 1);
+        assert_eq!(score.right_count, 1);
+        assert_eq!(score.switches, 1);
+        assert_close(score.left_effort, 0.0);
+        assert_close(score.right_effort, 6.0);
+    }
+
+    #[test]
+    fn score_corpus_applies_balance_factor_after_aggregation() {
+        let evaluator = LayoutEvaluator::new(&test_keyboard());
+        let keys = test_keys();
+
+        let score = evaluator.score_corpus(&["ab", "ac"], &keys);
+
+        assert_eq!(score.left_count, 3);
+        assert_eq!(score.right_count, 1);
+        assert_eq!(score.switches, 1);
+        assert_close(score.left_effort, 2.0);
+        assert_close(score.right_effort, 6.0);
+        assert_close(score.effort, 26.0);
     }
 }

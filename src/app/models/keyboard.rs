@@ -16,9 +16,6 @@ pub struct Keyboard {
     /// Penalty applied when switching hands between consecutive keystrokes.
     pub switch_penalty: f64,
 
-    /// Penalty applied when the same key is pressed consecutively.
-    pub same_key_penalty: f64,
-
     /// Effort multipliers used to scale effort values.
     pub efforts: Vec<f64>,
 
@@ -80,7 +77,6 @@ mod tests {
             frozen: FxHashMap::default(),
             blocked: vec![],
             switch_penalty: 0.0,
-            same_key_penalty: 0.0,
             efforts: vec![1.0],
             pairs: FxHashMap::from_iter([(0u8, FxHashMap::from_iter([(5u8, 1usize)]))]),
         };
