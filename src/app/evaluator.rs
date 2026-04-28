@@ -68,15 +68,15 @@ impl LayoutEvaluator {
 
                 let bigram = if switching {
                     // Hand switch: charge self-effort of destination × switch penalty.
-                    let effort = self.lookup(kb, kb) * self.switch_penalty;
+                    let effort = self.lookup(ka, kb) * self.switch_penalty;
 
                     ScoreResult {
                         effort,
                         switches: 1,
                         left_count: b_left as u32,
                         right_count: (!b_left) as u32,
-                        left_effort: if both_left { effort } else { 0. },
-                        right_effort: if both_right { effort } else { 0. },
+                        left_effort: if b_left { effort } else { 0. },
+                        right_effort: if !b_left { effort } else { 0. },
                     }
                 } else {
                     let effort = self.lookup(ka, kb);
