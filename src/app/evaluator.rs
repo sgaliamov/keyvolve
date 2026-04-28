@@ -7,7 +7,7 @@ pub struct LayoutEvaluator {
     /// Flat bigram effort map: (from_key, to_key) → effort value.
     pairs: FxHashMap<(u8, u8), f64>,
 
-    /// Multiplier applied to hand-switching bigrams, ≥ 1.
+    /// Switch multiplier; `1.0` means no penalty, `1.5` means +50%.
     switch_penalty: f64,
 }
 
@@ -67,8 +67,7 @@ impl LayoutEvaluator {
                     // previous iteration.  We charge the self-effort of key `b`
                     // here because the new hand is starting a fresh sequence
                     // (analogous to the first-letter cost above), multiplied by
-                    // the switch penalty to discourage frequent alternation on
-                    // high-cost positions.
+                    // `switch_penalty` so `1.0` means no extra cost.
                     let effort = self.lookup(kb, kb) * self.switch_penalty;
 
                     ScoreResult {
@@ -218,6 +217,28 @@ mod tests {
         assert_eq!(score.switches, 1);
         assert_close(score.left_effort, 0.0);
         assert_close(score.right_effort, 1.5);
+    }
+
+    #[test]
+    fn score_word_zero_switch_multiplier_zeroes_switch_effort() {
+        let keyboard = Keyboard::new(
+            json!({
+                "switchPenalty": 0.0,
+                "efforts": [1.0, 2.0, 4.0],
+                "pairs": {
+                    "0": {"0": 1, "1": 2},
+                    "1": {"1": 1, "0": 2}
+                }
+            })
+            .to_string(),
+        );
+        let evaluator = LayoutEvaluator::new(&keyboard);
+
+        let score = evaluator.score_word("ac", &test_keys());
+
+        assert_close(score.effort, 1.0);
+        assert_eq!(score.switches, 1);
+        assert_close(score.right_effort, 0.0);
     }
 
     #[test]
