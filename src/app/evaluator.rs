@@ -134,39 +134,21 @@ fn balance_ratio(left: f64, right: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
 
-    /// Mirror left-hand key index to matching right-hand index.
-    fn mirror_key(i: u8) -> u8 {
-        (i / 5) * 5 + (4 - i % 5) + 15
-    }
-
-    /// Expand left-hand pair groups like production keyboard loading.
-    fn expand_test_pairs(pairs: &mut FxHashMap<u8, FxHashMap<u8, usize>>) {
-        let left = pairs
-            .iter()
-            .flat_map(|(from, targets)| targets.iter().map(move |(to, group)| (*from, *to, *group)))
-            .collect_vec();
-
-        for (from, to, group) in left {
-            pairs.entry(mirror_key(from)).or_default().entry(mirror_key(to)).or_insert(group);
-        }
-    }
-
-    /// Build minimal keyboard for evaluator tests.
+    /// Build minimal keyboard for evaluator tests using production JSON parsing.
     fn test_keyboard() -> Keyboard {
-        let mut keyboard = Keyboard {
-            frozen: FxHashMap::default(),
-            blocked: vec![],
-            switch_penalty: 1.5,
-            efforts: vec![1.0, 2.0, 4.0],
-            pairs: FxHashMap::from_iter([
-                (0, FxHashMap::from_iter([(0, 1), (1, 2)])),
-                (1, FxHashMap::from_iter([(1, 1), (0, 2)])),
-            ]),
-        };
-
-        expand_test_pairs(&mut keyboard.pairs);
-        keyboard
+        Keyboard::new(
+            json!({
+                "switchPenalty": 1.5,
+                "efforts": [1.0, 2.0, 4.0],
+                "pairs": {
+                    "0": {"0": 1, "1": 2},
+                    "1": {"1": 1, "0": 2}
+                }
+            })
+            .to_string(),
+        )
     }
 
     /// Build tiny layout for evaluator tests.

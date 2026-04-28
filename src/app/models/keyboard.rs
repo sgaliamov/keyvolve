@@ -8,12 +8,15 @@ use std::path::Path;
 #[serde(rename_all = "camelCase")]
 pub struct Keyboard {
     /// Keys that are frozen in place: maps character to key index.
+    #[serde(default)]
     pub frozen: FxHashMap<char, u8>,
 
     /// Key indices that are blocked (unavailable).
+    #[serde(default)]
     pub blocked: Vec<u8>,
 
-    /// Penalty applied when switching hands between consecutive keystrokes.
+    /// Extra penalty applied on hand switches; `0.0` means no penalty.
+    #[serde(default)]
     pub switch_penalty: f64,
 
     /// Effort multipliers used to scale effort values.
@@ -22,6 +25,18 @@ pub struct Keyboard {
     /// Key matrix: pairs[from][to] = group.
     /// Pairs are defined for the left hand only; the right hand is inferred by symmetry.
     pub pairs: FxHashMap<u8, FxHashMap<u8, usize>>,
+}
+
+impl Default for Keyboard {
+    fn default() -> Self {
+        Self {
+            frozen: FxHashMap::default(),
+            blocked: Vec::new(),
+            switch_penalty: 0.0,
+            efforts: Vec::new(),
+            pairs: FxHashMap::default(),
+        }
+    }
 }
 
 impl Keyboard {
