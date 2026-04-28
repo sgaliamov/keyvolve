@@ -63,8 +63,13 @@ impl LayoutEvaluator {
                 let both_right = !a_left && !b_left;
 
                 let bigram = if switching {
-                    // Hand switch: charge self-effort of destination × switch penalty.
-                    let effort = self.lookup(ka, kb) * self.switch_penalty;
+                    // When hands alternate, key `a` was already counted in the
+                    // previous iteration.  We charge the self-effort of key `b`
+                    // here because the new hand is starting a fresh sequence
+                    // (analogous to the first-letter cost above), multiplied by
+                    // the switch penalty to discourage frequent alternation on
+                    // high-cost positions.
+                    let effort = self.lookup(kb, kb) * self.switch_penalty;
 
                     ScoreResult {
                         effort,
@@ -130,38 +135,51 @@ fn balance_ratio(left: f64, right: f64) -> f64 {
 mod tests {
     use super::*;
 
+    /// Mirror left-hand key index to matching right-hand index.
+    fn mirror_key(i: u8) -> u8 {
+        (i / 5) * 5 + (4 - i % 5) + 15
+    }
+
+    /// Expand left-hand pair groups like production keyboard loading.
+    fn expand_test_pairs(pairs: &mut FxHashMap<u8, FxHashMap<u8, usize>>) {
+        let left = pairs
+            .iter()
+            .flat_map(|(from, targets)| targets.iter().map(move |(to, group)| (*from, *to, *group)))
+            .collect_vec();
+
+        for (from, to, group) in left {
+            pairs.entry(mirror_key(from)).or_default().entry(mirror_key(to)).or_insert(group);
+        }
+    }
+
     /// Build minimal keyboard for evaluator tests.
     fn test_keyboard() -> Keyboard {
-        Keyboard {
+        let mut keyboard = Keyboard {
             frozen: FxHashMap::default(),
             blocked: vec![],
             switch_penalty: 1.5,
             efforts: vec![1.0, 2.0, 4.0],
             pairs: FxHashMap::from_iter([
-                (
-                    0,
-                    FxHashMap::from_iter([(0, 1), (1, 2), (15, 3)]),
-                ),
-                (
-                    1,
-                    FxHashMap::from_iter([(1, 1), (0, 2)]),
-                ),
-                (
-                    15,
-                    FxHashMap::from_iter([(15, 1)]),
-                ),
+                (0, FxHashMap::from_iter([(0, 1), (1, 2)])),
+                (1, FxHashMap::from_iter([(1, 1), (0, 2)])),
             ]),
-        }
+        };
+
+        expand_test_pairs(&mut keyboard.pairs);
+        keyboard
     }
 
     /// Build tiny layout for evaluator tests.
     fn test_keys() -> Keys {
-        FxHashMap::from_iter([('a', 0), ('b', 1), ('c', 15)])
+        FxHashMap::from_iter([('a', 0), ('b', 1), ('c', 19)])
     }
 
     /// Compare floats without drama.
     fn assert_close(actual: f64, expected: f64) {
-        assert!((actual - expected).abs() < 1e-9, "expected {expected}, got {actual}");
+        assert!(
+            (actual - expected).abs() < 1e-9,
+            "expected {expected}, got {actual}"
+        );
     }
 
     #[test]
@@ -198,11 +216,11 @@ mod tests {
 
         let score = evaluator.score_word("aa", &test_keys());
 
-        assert_close(score.effort, 3.0);
+        assert_close(score.effort, 2.0);
         assert_eq!(score.left_count, 2);
         assert_eq!(score.right_count, 0);
         assert_eq!(score.switches, 0);
-        assert_close(score.left_effort, 2.0);
+        assert_close(score.left_effort, 1.0);
         assert_close(score.right_effort, 0.0);
     }
 
@@ -212,12 +230,12 @@ mod tests {
 
         let score = evaluator.score_word("ac", &test_keys());
 
-        assert_close(score.effort, 7.0);
+        assert_close(score.effort, 2.5);
         assert_eq!(score.left_count, 1);
         assert_eq!(score.right_count, 1);
         assert_eq!(score.switches, 1);
         assert_close(score.left_effort, 0.0);
-        assert_close(score.right_effort, 6.0);
+        assert_close(score.right_effort, 1.5);
     }
 
     #[test]
@@ -231,7 +249,7 @@ mod tests {
         assert_eq!(score.right_count, 1);
         assert_eq!(score.switches, 1);
         assert_close(score.left_effort, 2.0);
-        assert_close(score.right_effort, 6.0);
-        assert_close(score.effort, 26.0);
+        assert_close(score.right_effort, 1.5);
+        assert_close(score.effort, 6.6);
     }
 }
