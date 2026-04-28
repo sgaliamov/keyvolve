@@ -32,7 +32,7 @@ impl Default for Keyboard {
         Self {
             frozen: FxHashMap::default(),
             blocked: Vec::new(),
-            switch_penalty: 0.0,
+            switch_penalty: 1.0,
             efforts: Vec::new(),
             pairs: FxHashMap::default(),
         }

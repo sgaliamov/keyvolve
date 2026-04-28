@@ -115,19 +115,19 @@ impl LayoutEvaluator {
 
 /// Multiplier ≥ 1 penalizing imbalanced effort. At 50/50 → 1.0, approaches 3 at extremes.
 fn balance_factor(left: f64, right: f64) -> f64 {
+    fn effort_balance_ratio(left: f64, right: f64) -> f64 {
+        if left > right {
+            left / right
+        } else {
+            right / left
+        }
+    }
+
     if left == 0. || right == 0. {
         return 1.;
     }
-    let ratio = balance_ratio(left, right);
+    let ratio = effort_balance_ratio(left, right);
     3. - (2. / ((ratio - 1.).powi(2) + 1.))
-}
-
-fn balance_ratio(left: f64, right: f64) -> f64 {
-    if left > right {
-        left / right
-    } else {
-        right / left
-    }
 }
 
 #[cfg(test)]
