@@ -32,7 +32,7 @@ impl Layout {
             .map_while(Result::ok)
             .filter(|line| !line.trim().is_empty())
             .filter(|line| !is_header(line))
-            .map(|line| Layout::new(&line))
+            .map(|line| Layout::new(line.trim()))
             .collect_vec()
     }
 }
