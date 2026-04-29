@@ -1,0 +1,37 @@
+{
+  "configurations": [
+    {
+      "name": "Debug (MSVC)",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "preLaunchTask": "cargo: build debug",
+      "program": "${workspaceFolder}/target/debug/${workspaceFolderBasename}",
+      "args": [],
+      "environment": [
+        {
+          "name": "RAYON_NUM_THREADS",
+          "value": "1"
+        },
+        {
+          "name": "RUST_BACKTRACE",
+          "value": "full"
+        }
+      ],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Debug (LLDB)",
+      "type": "lldb",
+      "request": "launch",
+      "preLaunchTask": "cargo: build debug",
+      "program": "${workspaceFolder}/target/debug/${workspaceFolderBasename}",
+      "args": [],
+      "env": {
+        "RAYON_NUM_THREADS": "1",
+        "RUST_BACKTRACE": "full"
+      },
+      "cwd": "${workspaceFolder}"
+    }
+  ],
+  "version": "0.2.0"
+}

@@ -1,0 +1,27 @@
+[build]
+rustc-wrapper = "sccache" # makes builds significantly faster
+
+[target.'cfg(target_os = "windows")']
+linker = "lld-link" # as mold is not supported on windows, use lld as a fallback to build faster
+rustflags = ["-C", "target-cpu=native"]
+
+[target.'cfg(target_os = "linux")']
+linker = "clang"
+rustflags = [
+  "-C",
+  "link-arg=-fuse-ld=mold",
+  "-C",
+  "target-cpu=native",
+]
+
+[future-incompat-report]
+frequency = "never" # to disable warnings like this: "the following packages contain code that will be rejected by a future version of Rust"
+
+[profile.release]
+codegen-units = 1 # To not miss some potential optimizations. Default: 16.
+lto = "fat" # Aggressive Link-Time Optimization. Default: false.
+panic = "abort" # Disable helpful backtrace but simplify the machine code. Default: "unwind".
+strip = true # Strip symbols from the binary. Default: "none".
+
+[profile.dev]
+debug = "full" # full to see all variable values in the debugger. Default: 2.

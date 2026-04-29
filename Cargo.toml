@@ -1,6 +1,29 @@
 [package]
+edition = "2024"
 name = "keyvolve"
 version = "0.1.0"
-edition = "2024"
 
 [dependencies]
+cliffa = {path = "cliffa"}
+darwin = {path = "darwin"}
+itertools = "0.14.0" # Itertools library.
+miette = {version = "7.6.0", features = [
+  "fancy",
+]}# Uniformed errors and fancy output.
+rand = "0.10.1" # Randomness.
+rayon = "1.12.0" # Parallel iterators.
+regex = "1.12.3" # To parse dates for example.
+rustc-hash = "2.1.2"
+serde = {version = "1.0.228", features = [
+  "derive",
+#   "rc",
+]}# Serialization and deserialization.
+serde_json = "1.0.149" # Json support.
+thiserror = "2.0.18" # Errors.
+tracing = "0.1.44" # Logging library.
+
+[dev-dependencies]
+spectral = "0.6.0" # Fluent assertions.
+
+[workspace]
+members = ["cliffa", "darwin"]
