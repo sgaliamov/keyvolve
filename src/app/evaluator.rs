@@ -121,7 +121,7 @@ fn balance_factor(left: f64, right: f64) -> f64 {
     }
 
     let ratio = ratio(left, right);
-    2. - (2. / ((ratio - 1.).powi(2) + 1.))
+    2. - (1. / ((ratio - 1.).powi(2) + 1.))
 }
 
 #[cfg(test)]
@@ -130,7 +130,7 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn score_word_returns_default_for_empty_word() {
+    fn score_word_returns_zero_score_for_empty_input() {
         let evaluator = LayoutEvaluator::new(&test_keyboard());
 
         let score = evaluator.score_word("", &test_keys());
@@ -144,7 +144,7 @@ mod tests {
     }
 
     #[test]
-    fn score_word_counts_same_hand_bigrams() {
+    fn score_word_adds_pair_effort_to_same_hand() {
         let evaluator = LayoutEvaluator::new(&test_keyboard());
 
         let score = evaluator.score_word("ab", &test_keys());
@@ -158,7 +158,7 @@ mod tests {
     }
 
     #[test]
-    fn score_word_scores_same_key_from_pair_table() {
+    fn score_word_uses_pair_table_for_repeated_key() {
         let evaluator = LayoutEvaluator::new(&test_keyboard());
 
         let score = evaluator.score_word("aa", &test_keys());
@@ -172,7 +172,7 @@ mod tests {
     }
 
     #[test]
-    fn score_word_applies_switch_penalty() {
+    fn score_word_charges_self_effort_on_hand_switch() {
         let evaluator = LayoutEvaluator::new(&test_keyboard());
 
         let score = evaluator.score_word("ac", &test_keys());
@@ -186,7 +186,7 @@ mod tests {
     }
 
     #[test]
-    fn score_word_zero_switch_multiplier_zeroes_switch_effort() {
+    fn score_word_zero_switch_penalty_removes_switch_cost() {
         let keyboard = Keyboard::new(
             json!({
                 "switchPenalty": 0.0,
@@ -208,7 +208,7 @@ mod tests {
     }
 
     #[test]
-    fn score_corpus_applies_balance_factor_after_aggregation() {
+    fn score_corpus_applies_balance_penalty_to_aggregated_effort() {
         let evaluator = LayoutEvaluator::new(&test_keyboard());
         let keys = test_keys();
 
@@ -219,7 +219,31 @@ mod tests {
         assert_eq!(score.switches, 1);
         assert_close(score.left_effort, 4.0);
         assert_close(score.right_effort, 1.5);
-        assert_close(score.effort, 8.8); // (4.0 + 1.5) * balance_factor(3, 1) ≈ 5.5 * 1.6
+        assert_close(score.effort, 9.9); // (4.0 + 1.5) * balance_factor(3, 1) = 5.5 * 1.8
+    }
+
+    #[test]
+    fn balance_factor_returns_one_for_zero_hand_usage() {
+        assert_close(balance_factor(0.0, 3.0), 1.0);
+        assert_close(balance_factor(3.0, 0.0), 1.0);
+        assert_close(balance_factor(0.0, 0.0), 1.0);
+    }
+
+    #[test]
+    fn balance_factor_returns_one_for_even_usage() {
+        assert_close(balance_factor(1.0, 1.0), 1.0);
+        assert_close(balance_factor(5.0, 5.0), 1.0);
+    }
+
+    #[test]
+    fn balance_factor_is_symmetric_between_hands() {
+        assert_close(balance_factor(3.0, 1.0), balance_factor(1.0, 3.0));
+    }
+
+    #[test]
+    fn balance_factor_grows_with_hand_imbalance() {
+        assert!(balance_factor(3.0, 2.0) < balance_factor(3.0, 1.0));
+        assert!(balance_factor(3.0, 1.0) < balance_factor(10.0, 1.0));
     }
 
     /// Build minimal keyboard for evaluator tests using production JSON parsing.
