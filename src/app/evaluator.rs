@@ -37,15 +37,16 @@ impl LayoutEvaluator {
         }
 
         let first_key = *keys.get(&chars[0]).expect("key not found in layout");
+        let first_left = first_key < 15;
 
         // First character: self-effort as baseline, count the first key press.
         let effort = self.lookup(first_key, first_key);
         let seed = ScoreResult {
             effort,
-            left_count: if first_key < 15 { 1 } else { 0 },
-            right_count: if first_key >= 15 { 1 } else { 0 },
-            // left_effort: if both_left { effort } else { 0. },
-            // right_effort: if both_right { effort } else { 0. },
+            left_count: first_left as u32,
+            right_count: (!first_left) as u32,
+            left_effort: if first_left { effort } else { 0. },
+            right_effort: if !first_left { effort } else { 0. },
             ..Default::default()
         };
 
@@ -60,35 +61,26 @@ impl LayoutEvaluator {
             .fold(seed, |acc, (ka, kb)| {
                 let a_left = ka < 15;
                 let b_left = kb < 15;
-                let switching = a_left != b_left;
 
-                let bigram = if switching {
+                let (effort, switches) = if a_left == b_left {
+                    (self.lookup(ka, kb), 0)
+                } else {
                     // When hands alternate, key `a` was already counted in the
                     // previous iteration.  We charge the self-effort of key `b`
                     // here because the new hand is starting a fresh sequence
                     // (analogous to the first-letter cost above), multiplied by
                     // `switch_penalty` so `1.0` means no extra cost.
-                    let effort = self.lookup(kb, kb) * self.switch_penalty;
+                    (self.lookup(kb, kb) * self.switch_penalty, 1)
+                };
 
-                    ScoreResult {
-                        effort,
-                        switches: 1,
-                        left_count: (!a_left) as u32,
-                        right_count: a_left as u32,
-                        left_effort: if !a_left { effort } else { 0. },
-                        right_effort: if a_left { effort } else { 0. },
-                    }
-                } else {
-                    let effort = self.lookup(ka, kb);
-
-                    ScoreResult {
-                        effort,
-                        left_count: a_left as u32,
-                        right_count: (!a_left) as u32,
-                        left_effort: if a_left { effort } else { 0. },
-                        right_effort: if !a_left { effort } else { 0. },
-                        ..Default::default()
-                    }
+                // count efforts on the "to" key, since "from" was already counted in the previous iteration
+                let bigram = ScoreResult {
+                    effort,
+                    switches,
+                    left_count: b_left as u32,
+                    right_count: (!b_left) as u32,
+                    left_effort: if b_left { effort } else { 0. },
+                    right_effort: if !b_left { effort } else { 0. },
                 };
 
                 acc + bigram
