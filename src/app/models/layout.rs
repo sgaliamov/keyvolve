@@ -29,9 +29,17 @@ impl Layout {
 
         io::BufReader::new(file)
             .lines()
-            .map(|x| Layout::new(&x.unwrap()))
+            .map_while(Result::ok)
+            .filter(|line| !line.trim().is_empty())
+            .filter(|line| !is_header(line))
+            .map(|line| Layout::new(&line))
             .collect_vec()
     }
+}
+
+/// Detect persisted CSV header row.
+fn is_header(line: &str) -> bool {
+    line.starts_with("layout_1;layout_2;layout_3;layout_4;layout_5;layout_6;")
 }
 
 fn line_to_keys(line: &str) -> Keys {

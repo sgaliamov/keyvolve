@@ -9,6 +9,7 @@ use itertools::Itertools;
 use miette::{Context, IntoDiagnostic, Result};
 pub use models::*;
 use rayon::prelude::*;
+use std::io::Write;
 use tracing::{info, trace};
 
 /// Entry point called by the CLI builder after argument parsing.
@@ -30,7 +31,8 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
         Mode::Evaluate => {
             let evaluator = LayoutEvaluator::new(&keyboard);
 
-            let layouts = Layout::load(cfg.layouts.unwrap());
+            let layouts_path = cfg.layouts.unwrap();
+            let layouts = Layout::load(&layouts_path);
             info!("Loaded {} layouts", layouts.len());
 
             let mut scored: Vec<_> = layouts
@@ -45,13 +47,27 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
 
             scored.sort_by(|a, b| {
                 b.1.effort
-                    .partial_cmp(&a.1.effort)
+                    .partial_cmp(&a.1.fitness)
                     .unwrap_or(std::cmp::Ordering::Equal)
             });
 
             scored.iter().take(10).for_each(|(layout, layout_score)| {
                 info!("{} {}", layout.name, layout_score);
             });
+
+            let mut file = std::fs::File::create(&layouts_path)
+                .into_diagnostic()
+                .wrap_err("Failed to open layouts file for writing")?;
+
+            writeln!(file, "layout_1;layout_2;layout_3;layout_4;layout_5;layout_6;{}", ScoreResult::csv_header())
+                .into_diagnostic()
+                .wrap_err("Failed to write evaluated layouts header")?;
+
+            for (layout, layout_score) in scored {
+                writeln!(file, "{};{}", layout.name, layout_score.to_csv())
+                    .into_diagnostic()
+                    .wrap_err("Failed to write evaluated layouts")?;
+            }
         }
         _ => unimplemented!("Only evaluation mode is implemented currently."),
     }

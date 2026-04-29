@@ -79,7 +79,7 @@ impl ScoreResult {
 
     /// CSV header matching [`to_csv`] column order.
     pub fn csv_header() -> &'static str {
-        "effort,fitness,left_effort,left_effort_ratio,left_count,left_count_ratio,right_effort,right_effort_ratio,right_count,right_count_ratio,switches,switch_ratio"
+        "fitness,effort,left_effort,left_effort_ratio,left_count,left_count_ratio,right_effort,right_effort_ratio,right_count,right_count_ratio,switches,switch_ratio"
     }
 }
 
