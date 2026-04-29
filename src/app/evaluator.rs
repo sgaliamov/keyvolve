@@ -117,7 +117,7 @@ fn balance_factor(left: f64, right: f64) -> f64 {
     }
 
     if left == 0. || right == 0. {
-        return 1.;
+        return 2.;
     }
 
     let ratio = ratio(left, right);
@@ -223,10 +223,10 @@ mod tests {
     }
 
     #[test]
-    fn balance_factor_returns_one_for_zero_hand_usage() {
-        assert_close(balance_factor(0.0, 3.0), 1.0);
-        assert_close(balance_factor(3.0, 0.0), 1.0);
-        assert_close(balance_factor(0.0, 0.0), 1.0);
+    fn balance_factor_returns_two_for_zero_hand_usage() {
+        assert_close(balance_factor(0.0, 3.0), 2.0);
+        assert_close(balance_factor(3.0, 0.0), 2.0);
+        assert_close(balance_factor(0.0, 0.0), 2.0);
     }
 
     #[test]
