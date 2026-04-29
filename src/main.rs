@@ -1,5 +1,4 @@
 use cliffa::cli;
-use keyvolve::app;
 use miette::Result;
 use tracing::Level;
 
