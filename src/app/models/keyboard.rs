@@ -15,13 +15,17 @@ pub struct Keyboard {
     #[serde(default)]
     pub blocked: Vec<u8>,
 
-    /// Extra penalty applied on hand switches; `0.0` means no penalty.
-    #[serde(default)]
+    /// Extra penalty applied on hand switches; `1.0` means no penalty.
+    #[serde(default = "default_penalty")]
     pub switch_penalty: f64,
 
     /// Max multiplier applied for extreme hand imbalance.
     #[serde(default = "default_balance_penalty")]
     pub balance_penalty: f64,
+
+    /// Switch-rate coefficient `k` used for corpus-level alternation penalty.
+    #[serde(default = "default_penalty")]
+    pub switch_rate_penalty: f64,
 
     /// Effort multipliers used to scale effort values.
     pub efforts: Vec<f64>,
@@ -38,10 +42,16 @@ impl Default for Keyboard {
             blocked: Vec::new(),
             switch_penalty: 1.0,
             balance_penalty: default_balance_penalty(),
+            switch_rate_penalty: 1.0,
             efforts: Vec::new(),
             pairs: FxHashMap::default(),
         }
     }
+}
+
+/// Default max imbalance multiplier.
+fn default_penalty() -> f64 {
+    1.0
 }
 
 /// Default max imbalance multiplier.
@@ -96,12 +106,28 @@ mod tests {
     use super::*;
 
     #[test]
+    fn deserialize_defaults_switch_penalties_to_one() {
+        let kb = Keyboard::new(
+            r#"{
+                "efforts": [1.0],
+                "pairs": {"0": {"5": 1}}
+            }"#
+            .to_string(),
+        );
+
+        assert_eq!(kb.switch_penalty, 1.0);
+        assert_eq!(kb.switch_rate_penalty, 1.0);
+        assert_eq!(kb.balance_penalty, 2.0);
+    }
+
+    #[test]
     fn expand_pairs_mirrors_left_to_right() {
         let kb = Keyboard {
             frozen: FxHashMap::default(),
             blocked: vec![],
             switch_penalty: 0.0,
             balance_penalty: 2.0,
+            switch_rate_penalty: 0.0,
             efforts: vec![1.0],
             pairs: FxHashMap::from_iter([(0u8, FxHashMap::from_iter([(5u8, 1usize)]))]),
         }

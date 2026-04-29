@@ -12,6 +12,9 @@ pub struct LayoutEvaluator {
 
     /// Max multiplier for extreme hand imbalance.
     balance_penalty: f64,
+
+    /// Coefficient `k` for corpus-level switch-rate penalty.
+    switch_rate_penalty: f64,
 }
 
 impl LayoutEvaluator {
@@ -30,6 +33,7 @@ impl LayoutEvaluator {
             pairs,
             switch_penalty: keyboard.switch_penalty,
             balance_penalty: keyboard.balance_penalty,
+            switch_rate_penalty: keyboard.switch_rate_penalty,
         }
     }
 
@@ -104,6 +108,11 @@ impl LayoutEvaluator {
             result.right_count.into(),
             self.balance_penalty,
         );
+        result.effort *= switch_factor(
+            result.switches,
+            result.left_count + result.right_count,
+            self.switch_rate_penalty,
+        );
         result
     }
 
@@ -130,6 +139,15 @@ fn balance_factor(left: f64, right: f64, max: f64) -> f64 {
 
     let ratio = ratio(left, right);
     max - ((max - 1.) / ((ratio - 1.).powi(2) + 1.))
+}
+
+/// Multiplier ≥ 1 penalizing high hand-switch rate. At zero switches → 1.0.
+fn switch_factor(switches: u32, presses: u32, k: f64) -> f64 {
+    if presses <= 1 {
+        return 1.0;
+    }
+
+    1.0 + k * (switches as f64 / (presses - 1) as f64)
 }
 
 #[cfg(test)]
@@ -199,6 +217,7 @@ mod tests {
             json!({
                 "switchPenalty": 0.0,
                 "balancePenalty": 2.0,
+                "switchRatePenalty": 0.0,
                 "efforts": [1.0, 2.0],
                 "pairs": {
                     "0": {"0": 1, "1": 2},
@@ -262,12 +281,47 @@ mod tests {
         assert!(balance_factor(3.0, 1.0, 2.0) < balance_factor(3.0, 1.0, 3.0));
     }
 
+    #[test]
+    fn switch_factor_returns_one_without_transitions() {
+        assert_close(switch_factor(0, 0, 0.5), 1.0);
+        assert_close(switch_factor(0, 1, 0.5), 1.0);
+    }
+
+    #[test]
+    fn switch_factor_scales_with_switch_rate() {
+        assert_close(switch_factor(0, 3, 0.5), 1.0);
+        assert_close(switch_factor(1, 3, 0.5), 1.25);
+        assert_close(switch_factor(2, 3, 0.5), 1.5);
+    }
+
+    #[test]
+    fn score_corpus_applies_configured_switch_rate_penalty() {
+        let evaluator = LayoutEvaluator::new(&Keyboard::new(
+            json!({
+                "switchPenalty": 1.5,
+                "balancePenalty": 2.0,
+                "switchRatePenalty": 0.5,
+                "efforts": [1.0, 2.0, 3.0, 5.0],
+                "pairs": {
+                    "0": {"0": 1, "1": 2},
+                    "1": {"1": 3, "0": 4}
+                }
+            })
+            .to_string(),
+        ));
+
+        let score = evaluator.score_corpus(&["ab", "ac"], &test_keys());
+
+        assert_close(score.effort, 11.55);
+    }
+
     /// Build minimal keyboard for evaluator tests using production JSON parsing.
     fn test_keyboard() -> Keyboard {
         Keyboard::new(
             json!({
                 "switchPenalty": 1.5,
                 "balancePenalty": 2.0,
+                "switchRatePenalty": 0.0,
                 "efforts": [1.0, 2.0, 3.0, 5.0],
                 "pairs": {
                     "0": {"0": 1, "1": 2},
