@@ -39,11 +39,13 @@ impl LayoutEvaluator {
         let first_key = *keys.get(&chars[0]).expect("key not found in layout");
 
         // First character: self-effort as baseline, count the first key press.
-        let first_effort = self.lookup(first_key, first_key);
+        let effort = self.lookup(first_key, first_key);
         let seed = ScoreResult {
-            effort: first_effort,
+            effort,
             left_count: if first_key < 15 { 1 } else { 0 },
             right_count: if first_key >= 15 { 1 } else { 0 },
+            // left_effort: if both_left { effort } else { 0. },
+            // right_effort: if both_right { effort } else { 0. },
             ..Default::default()
         };
 
@@ -59,8 +61,6 @@ impl LayoutEvaluator {
                 let a_left = ka < 15;
                 let b_left = kb < 15;
                 let switching = a_left != b_left;
-                let both_left = a_left && b_left;
-                let both_right = !a_left && !b_left;
 
                 let bigram = if switching {
                     // When hands alternate, key `a` was already counted in the
@@ -73,20 +73,20 @@ impl LayoutEvaluator {
                     ScoreResult {
                         effort,
                         switches: 1,
-                        left_count: b_left as u32,
-                        right_count: (!b_left) as u32,
-                        left_effort: if b_left { effort } else { 0. },
-                        right_effort: if !b_left { effort } else { 0. },
+                        left_count: (!a_left) as u32,
+                        right_count: a_left as u32,
+                        left_effort: if !a_left { effort } else { 0. },
+                        right_effort: if a_left { effort } else { 0. },
                     }
                 } else {
                     let effort = self.lookup(ka, kb);
 
                     ScoreResult {
                         effort,
-                        left_count: b_left as u32,
-                        right_count: (!b_left) as u32,
-                        left_effort: if both_left { effort } else { 0. },
-                        right_effort: if both_right { effort } else { 0. },
+                        left_count: a_left as u32,
+                        right_count: (!a_left) as u32,
+                        left_effort: if a_left { effort } else { 0. },
+                        right_effort: if !a_left { effort } else { 0. },
                         ..Default::default()
                     }
                 };
@@ -102,7 +102,8 @@ impl LayoutEvaluator {
             .map(|w| self.score_word(w, keys))
             .fold(ScoreResult::default(), |acc, x| acc + x);
 
-        result.effort *= balance_factor(result.left_effort, result.right_effort);
+        // balance_factor is based on the actual usage of keys
+        result.effort *= balance_factor(result.left_count.into(), result.right_count.into());
         result
     }
 
@@ -115,7 +116,7 @@ impl LayoutEvaluator {
 
 /// Multiplier ≥ 1 penalizing imbalanced effort. At 50/50 → 1.0, approaches 3 at extremes.
 fn balance_factor(left: f64, right: f64) -> f64 {
-    fn effort_balance_ratio(left: f64, right: f64) -> f64 {
+    fn ratio(left: f64, right: f64) -> f64 {
         if left > right {
             left / right
         } else {
@@ -126,7 +127,8 @@ fn balance_factor(left: f64, right: f64) -> f64 {
     if left == 0. || right == 0. {
         return 1.;
     }
-    let ratio = effort_balance_ratio(left, right);
+
+    let ratio = ratio(left, right);
     3. - (2. / ((ratio - 1.).powi(2) + 1.))
 }
 

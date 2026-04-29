@@ -3,14 +3,19 @@
 pub struct ScoreResult {
     /// Total weighted effort, with balance factor applied at corpus level.
     pub effort: f64,
+
     /// Number of consecutive same-hand bigrams on the left.
     pub left_count: u32,
+
     /// Number of consecutive same-hand bigrams on the right.
     pub right_count: u32,
+
     /// Number of hand switches.
     pub switches: u32,
+
     /// Effort accumulated on the left hand.
     pub left_effort: f64,
+
     /// Effort accumulated on the right hand.
     pub right_effort: f64,
 }
@@ -18,12 +23,18 @@ pub struct ScoreResult {
 impl ScoreResult {
     /// Left share of same-hand counts.
     pub fn left_count_ratio(&self) -> f64 {
-        ratio(self.left_count as f64, (self.left_count + self.right_count) as f64)
+        ratio(
+            self.left_count as f64,
+            (self.left_count + self.right_count) as f64,
+        )
     }
 
     /// Right share of same-hand counts.
     pub fn right_count_ratio(&self) -> f64 {
-        ratio(self.right_count as f64, (self.left_count + self.right_count) as f64)
+        ratio(
+            self.right_count as f64,
+            (self.left_count + self.right_count) as f64,
+        )
     }
 
     /// Left share of same-hand effort.
@@ -78,11 +89,7 @@ impl std::fmt::Display for ScoreResult {
 
 /// Safe ratio helper.
 fn ratio(value: f64, total: f64) -> f64 {
-    if total == 0.0 {
-        0.0
-    } else {
-        value / total
-    }
+    if total == 0.0 { 0.0 } else { value / total }
 }
 
 impl std::ops::Add for ScoreResult {
