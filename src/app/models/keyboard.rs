@@ -16,7 +16,7 @@ pub struct Keyboard {
     pub blocked: Vec<u8>,
 
     /// Multiplier applied to per-switch self-effort; `1.0` means no penalty.
-    #[serde(default = "default_penalty")]
+    #[serde(default = "default_switch_effort_penalty")]
     pub switch_effort_penalty: f64,
 
     /// Max multiplier applied for extreme hand imbalance.
@@ -24,7 +24,7 @@ pub struct Keyboard {
     pub balance_penalty: f64,
 
     /// Coefficient `k` used for corpus-level alternation-rate penalty.
-    #[serde(default = "default_penalty")]
+    #[serde(default = "default_alternation_penalty")]
     pub alternation_penalty: f64,
 
     /// Effort multipliers used to scale effort values.
@@ -40,18 +40,23 @@ impl Default for Keyboard {
         Self {
             frozen: FxHashMap::default(),
             blocked: Vec::new(),
-            switch_effort_penalty: default_penalty(),
+            switch_effort_penalty: default_switch_effort_penalty(),
             balance_penalty: default_balance_penalty(),
-            alternation_penalty: default_penalty(),
+            alternation_penalty: default_alternation_penalty(),
             efforts: Vec::new(),
             pairs: FxHashMap::default(),
         }
     }
 }
 
-/// Default max imbalance multiplier.
-fn default_penalty() -> f64 {
-    1.0
+/// Default switch-effort penalty multiplier.
+fn default_switch_effort_penalty() -> f64 {
+    1.5
+}
+
+/// Default alternation penalty coefficient.
+fn default_alternation_penalty() -> f64 {
+    0.25
 }
 
 /// Default max imbalance multiplier.
