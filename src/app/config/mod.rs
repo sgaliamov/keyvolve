@@ -31,5 +31,3 @@ pub enum Mode {
     #[default]
     Evaluate,
 }
-
-
