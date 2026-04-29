@@ -1,13 +1,10 @@
-mod config;
-mod evaluator;
-mod models;
-
+use crate::{
+    Config, LayoutEvaluator, Mode,
+    models::{Keyboard, Layout, ScoreResult},
+};
 use cliffa::cli::AppHandle;
-pub use config::*;
-pub use evaluator::*;
 use itertools::Itertools;
 use miette::{Context, IntoDiagnostic, Result};
-pub use models::*;
 use rayon::prelude::*;
 use std::io::Write;
 use tracing::{info, trace};
@@ -59,9 +56,13 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
                 .into_diagnostic()
                 .wrap_err("Failed to open layouts file for writing")?;
 
-            writeln!(file, "layout_1;layout_2;layout_3;layout_4;layout_5;layout_6;{}", ScoreResult::csv_header())
-                .into_diagnostic()
-                .wrap_err("Failed to write evaluated layouts header")?;
+            writeln!(
+                file,
+                "layout_1;layout_2;layout_3;layout_4;layout_5;layout_6;{}",
+                ScoreResult::csv_header()
+            )
+            .into_diagnostic()
+            .wrap_err("Failed to write evaluated layouts header")?;
 
             for (layout, layout_score) in scored {
                 writeln!(file, "{};{}", layout.name, layout_score.to_csv())

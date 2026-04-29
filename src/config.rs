@@ -1,4 +1,4 @@
-use crate::app::models::KeyPos;
+use crate::models::KeyPos;
 use serde::Deserialize;
 use std::path::PathBuf;
 

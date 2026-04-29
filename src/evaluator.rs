@@ -1,4 +1,4 @@
-use crate::app::{Keyboard, Keys, ScoreResult};
+use crate::models::{Keyboard, Keys, ScoreResult};
 use itertools::Itertools;
 use rustc_hash::FxHashMap;
 
