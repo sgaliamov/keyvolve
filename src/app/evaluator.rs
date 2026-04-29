@@ -129,34 +129,6 @@ mod tests {
     use super::*;
     use serde_json::json;
 
-    /// Build minimal keyboard for evaluator tests using production JSON parsing.
-    fn test_keyboard() -> Keyboard {
-        Keyboard::new(
-            json!({
-                "switchPenalty": 1.5,
-                "efforts": [1.0, 2.0, 4.0],
-                "pairs": {
-                    "0": {"0": 1, "1": 2},
-                    "1": {"1": 1, "0": 2}
-                }
-            })
-            .to_string(),
-        )
-    }
-
-    /// Build tiny layout for evaluator tests.
-    fn test_keys() -> Keys {
-        FxHashMap::from_iter([('a', 0), ('b', 1), ('c', 19)])
-    }
-
-    /// Compare floats without drama.
-    fn assert_close(actual: f64, expected: f64) {
-        assert!(
-            (actual - expected).abs() < 1e-9,
-            "expected {expected}, got {actual}"
-        );
-    }
-
     #[test]
     fn score_word_returns_default_for_empty_word() {
         let evaluator = LayoutEvaluator::new(&test_keyboard());
@@ -177,10 +149,10 @@ mod tests {
 
         let score = evaluator.score_word("ab", &test_keys());
 
-        assert_close(score.effort, 3.0);
         assert_eq!(score.left_count, 2);
         assert_eq!(score.right_count, 0);
         assert_eq!(score.switches, 0);
+        assert_close(score.effort, 3.0);
         assert_close(score.left_effort, 2.0);
         assert_close(score.right_effort, 0.0);
     }
@@ -248,5 +220,33 @@ mod tests {
         assert_close(score.left_effort, 2.0);
         assert_close(score.right_effort, 1.5);
         assert_close(score.effort, 6.6);
+    }
+
+    /// Build minimal keyboard for evaluator tests using production JSON parsing.
+    fn test_keyboard() -> Keyboard {
+        Keyboard::new(
+            json!({
+                "switchPenalty": 1.5,
+                "efforts": [1.0, 2.0, 3.0, 5.0],
+                "pairs": {
+                    "0": {"0": 1, "1": 2},
+                    "1": {"1": 3, "0": 4}
+                }
+            })
+            .to_string(),
+        )
+    }
+
+    /// Build tiny layout for evaluator tests.
+    fn test_keys() -> Keys {
+        FxHashMap::from_iter([('a', 0), ('b', 1), ('c', 19)])
+    }
+
+    /// Compare floats without drama.
+    fn assert_close(actual: f64, expected: f64) {
+        assert!(
+            (actual - expected).abs() < 1e-9,
+            "expected {expected}, got {actual}"
+        );
     }
 }
