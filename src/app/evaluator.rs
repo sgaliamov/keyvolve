@@ -106,7 +106,7 @@ impl LayoutEvaluator {
     }
 }
 
-/// Multiplier ≥ 1 penalizing imbalanced effort. At 50/50 → 1.0, approaches 3 at extremes.
+/// Multiplier ≥ 1 penalizing imbalanced effort. At 50/50 → 1.0, approaches 2 at extremes.
 fn balance_factor(left: f64, right: f64) -> f64 {
     fn ratio(left: f64, right: f64) -> f64 {
         if left > right {
@@ -121,7 +121,7 @@ fn balance_factor(left: f64, right: f64) -> f64 {
     }
 
     let ratio = ratio(left, right);
-    3. - (2. / ((ratio - 1.).powi(2) + 1.))
+    2. - (2. / ((ratio - 1.).powi(2) + 1.))
 }
 
 #[cfg(test)]
@@ -153,7 +153,7 @@ mod tests {
         assert_eq!(score.right_count, 0);
         assert_eq!(score.switches, 0);
         assert_close(score.effort, 3.0);
-        assert_close(score.left_effort, 2.0);
+        assert_close(score.left_effort, 3.0);
         assert_close(score.right_effort, 0.0);
     }
 
@@ -163,11 +163,11 @@ mod tests {
 
         let score = evaluator.score_word("aa", &test_keys());
 
-        assert_close(score.effort, 2.0);
         assert_eq!(score.left_count, 2);
         assert_eq!(score.right_count, 0);
         assert_eq!(score.switches, 0);
-        assert_close(score.left_effort, 1.0);
+        assert_close(score.effort, 2.0);
+        assert_close(score.left_effort, 2.0);
         assert_close(score.right_effort, 0.0);
     }
 
@@ -177,11 +177,11 @@ mod tests {
 
         let score = evaluator.score_word("ac", &test_keys());
 
-        assert_close(score.effort, 2.5);
         assert_eq!(score.left_count, 1);
         assert_eq!(score.right_count, 1);
         assert_eq!(score.switches, 1);
-        assert_close(score.left_effort, 0.0);
+        assert_close(score.effort, 2.5);
+        assert_close(score.left_effort, 1.0);
         assert_close(score.right_effort, 1.5);
     }
 
@@ -190,7 +190,7 @@ mod tests {
         let keyboard = Keyboard::new(
             json!({
                 "switchPenalty": 0.0,
-                "efforts": [1.0, 2.0, 4.0],
+                "efforts": [1.0, 2.0],
                 "pairs": {
                     "0": {"0": 1, "1": 2},
                     "1": {"1": 1, "0": 2}
@@ -217,9 +217,9 @@ mod tests {
         assert_eq!(score.left_count, 3);
         assert_eq!(score.right_count, 1);
         assert_eq!(score.switches, 1);
-        assert_close(score.left_effort, 2.0);
+        assert_close(score.left_effort, 4.0);
         assert_close(score.right_effort, 1.5);
-        assert_close(score.effort, 6.6);
+        assert_close(score.effort, 8.8); // (4.0 + 1.5) * balance_factor(3, 1) ≈ 5.5 * 1.6
     }
 
     /// Build minimal keyboard for evaluator tests using production JSON parsing.
