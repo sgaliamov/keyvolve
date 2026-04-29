@@ -43,8 +43,8 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
                 .collect();
 
             scored.sort_by(|a, b| {
-                b.1.fitness
-                    .partial_cmp(&a.1.fitness)
+                a.1.fitness
+                    .partial_cmp(&b.1.fitness)
                     .unwrap_or(std::cmp::Ordering::Equal)
             });
 
