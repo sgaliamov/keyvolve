@@ -15,17 +15,17 @@ pub struct Keyboard {
     #[serde(default)]
     pub blocked: Vec<u8>,
 
-    /// Extra penalty applied on hand switches; `1.0` means no penalty.
+    /// Multiplier applied to per-switch self-effort; `1.0` means no penalty.
     #[serde(default = "default_penalty")]
-    pub switch_penalty: f64,
+    pub switch_effort_penalty: f64,
 
     /// Max multiplier applied for extreme hand imbalance.
     #[serde(default = "default_balance_penalty")]
     pub balance_penalty: f64,
 
-    /// Switch-rate coefficient `k` used for corpus-level alternation penalty.
+    /// Coefficient `k` used for corpus-level alternation-rate penalty.
     #[serde(default = "default_penalty")]
-    pub switch_rate_penalty: f64,
+    pub alternation_penalty: f64,
 
     /// Effort multipliers used to scale effort values.
     pub efforts: Vec<f64>,
@@ -40,9 +40,9 @@ impl Default for Keyboard {
         Self {
             frozen: FxHashMap::default(),
             blocked: Vec::new(),
-            switch_penalty: 1.0,
+            switch_effort_penalty: 1.0,
             balance_penalty: default_balance_penalty(),
-            switch_rate_penalty: 1.0,
+            alternation_penalty: 1.0,
             efforts: Vec::new(),
             pairs: FxHashMap::default(),
         }
@@ -115,8 +115,8 @@ mod tests {
             .to_string(),
         );
 
-        assert_eq!(kb.switch_penalty, 1.0);
-        assert_eq!(kb.switch_rate_penalty, 1.0);
+        assert_eq!(kb.switch_effort_penalty, 1.0);
+        assert_eq!(kb.alternation_penalty, 1.0);
         assert_eq!(kb.balance_penalty, 2.0);
     }
 
@@ -125,9 +125,9 @@ mod tests {
         let kb = Keyboard {
             frozen: FxHashMap::default(),
             blocked: vec![],
-            switch_penalty: 0.0,
+            switch_effort_penalty: 0.0,
             balance_penalty: 2.0,
-            switch_rate_penalty: 0.0,
+            alternation_penalty: 0.0,
             efforts: vec![1.0],
             pairs: FxHashMap::from_iter([(0u8, FxHashMap::from_iter([(5u8, 1usize)]))]),
         }

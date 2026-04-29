@@ -7,14 +7,14 @@ pub struct LayoutEvaluator {
     /// Flat bigram effort map: (from_key, to_key) → effort value.
     pairs: FxHashMap<(u8, u8), f64>,
 
-    /// Switch multiplier; `1.0` means no penalty, `1.5` means +50%.
-    switch_penalty: f64,
+    /// Per-switch effort multiplier; `1.0` means no penalty, `1.5` means +50%.
+    switch_effort_penalty: f64,
 
     /// Max multiplier for extreme hand imbalance.
     balance_penalty: f64,
 
-    /// Coefficient `k` for corpus-level switch-rate penalty.
-    switch_rate_penalty: f64,
+    /// Coefficient `k` for corpus-level alternation-rate penalty.
+    alternation_penalty: f64,
 }
 
 impl LayoutEvaluator {
@@ -31,9 +31,9 @@ impl LayoutEvaluator {
 
         LayoutEvaluator {
             pairs,
-            switch_penalty: keyboard.switch_penalty,
+            switch_effort_penalty: keyboard.switch_effort_penalty,
             balance_penalty: keyboard.balance_penalty,
-            switch_rate_penalty: keyboard.switch_rate_penalty,
+            alternation_penalty: keyboard.alternation_penalty,
         }
     }
 
@@ -77,8 +77,8 @@ impl LayoutEvaluator {
                     // previous iteration.  We charge the self-effort of key `b`
                     // here because the new hand is starting a fresh sequence
                     // (analogous to the first-letter cost above), multiplied by
-                    // `switch_penalty` so `1.0` means no extra cost.
-                    (self.lookup(kb, kb) * self.switch_penalty, 1)
+                    // `switch_effort_penalty` so `1.0` means no extra cost.
+                    (self.lookup(kb, kb) * self.switch_effort_penalty, 1)
                 };
 
                 // count efforts on the "to" key, since "from" was already counted in the previous iteration
@@ -111,7 +111,7 @@ impl LayoutEvaluator {
         result.effort *= switch_factor(
             result.switches,
             result.left_count + result.right_count,
-            self.switch_rate_penalty,
+            self.alternation_penalty,
         );
         result
     }
@@ -212,12 +212,12 @@ mod tests {
     }
 
     #[test]
-    fn score_word_zero_switch_penalty_removes_switch_cost() {
+    fn score_word_zero_switch_effort_penalty_removes_switch_cost() {
         let keyboard = Keyboard::new(
             json!({
-                "switchPenalty": 0.0,
+                "switchEffortPenalty": 0.0,
                 "balancePenalty": 2.0,
-                "switchRatePenalty": 0.0,
+                "alternationPenalty": 0.0,
                 "efforts": [1.0, 2.0],
                 "pairs": {
                     "0": {"0": 1, "1": 2},
@@ -295,12 +295,12 @@ mod tests {
     }
 
     #[test]
-    fn score_corpus_applies_configured_switch_rate_penalty() {
+    fn score_corpus_applies_configured_alternation_penalty() {
         let evaluator = LayoutEvaluator::new(&Keyboard::new(
             json!({
-                "switchPenalty": 1.5,
+                "switchEffortPenalty": 1.5,
                 "balancePenalty": 2.0,
-                "switchRatePenalty": 0.5,
+                "alternationPenalty": 0.5,
                 "efforts": [1.0, 2.0, 3.0, 5.0],
                 "pairs": {
                     "0": {"0": 1, "1": 2},
@@ -319,9 +319,9 @@ mod tests {
     fn test_keyboard() -> Keyboard {
         Keyboard::new(
             json!({
-                "switchPenalty": 1.5,
+                "switchEffortPenalty": 1.5,
                 "balancePenalty": 2.0,
-                "switchRatePenalty": 0.0,
+                "alternationPenalty": 0.0,
                 "efforts": [1.0, 2.0, 3.0, 5.0],
                 "pairs": {
                     "0": {"0": 1, "1": 2},
