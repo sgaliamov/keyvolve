@@ -19,6 +19,10 @@ pub struct Keyboard {
     #[serde(default)]
     pub switch_penalty: f64,
 
+    /// Max multiplier applied for extreme hand imbalance.
+    #[serde(default = "default_balance_penalty")]
+    pub balance_penalty: f64,
+
     /// Effort multipliers used to scale effort values.
     pub efforts: Vec<f64>,
 
@@ -33,10 +37,16 @@ impl Default for Keyboard {
             frozen: FxHashMap::default(),
             blocked: Vec::new(),
             switch_penalty: 1.0,
+            balance_penalty: default_balance_penalty(),
             efforts: Vec::new(),
             pairs: FxHashMap::default(),
         }
     }
+}
+
+/// Default max imbalance multiplier.
+fn default_balance_penalty() -> f64 {
+    2.0
 }
 
 impl Keyboard {
@@ -91,6 +101,7 @@ mod tests {
             frozen: FxHashMap::default(),
             blocked: vec![],
             switch_penalty: 0.0,
+            balance_penalty: 2.0,
             efforts: vec![1.0],
             pairs: FxHashMap::from_iter([(0u8, FxHashMap::from_iter([(5u8, 1usize)]))]),
         }

@@ -9,6 +9,9 @@ pub struct LayoutEvaluator {
 
     /// Switch multiplier; `1.0` means no penalty, `1.5` means +50%.
     switch_penalty: f64,
+
+    /// Max multiplier for extreme hand imbalance.
+    balance_penalty: f64,
 }
 
 impl LayoutEvaluator {
@@ -26,6 +29,7 @@ impl LayoutEvaluator {
         LayoutEvaluator {
             pairs,
             switch_penalty: keyboard.switch_penalty,
+            balance_penalty: keyboard.balance_penalty,
         }
     }
 
@@ -95,7 +99,11 @@ impl LayoutEvaluator {
             .fold(ScoreResult::default(), |acc, x| acc + x);
 
         // balance_factor is based on the actual usage of keys
-        result.effort *= balance_factor(result.left_count.into(), result.right_count.into());
+        result.effort *= balance_factor(
+            result.left_count.into(),
+            result.right_count.into(),
+            self.balance_penalty,
+        );
         result
     }
 
@@ -106,8 +114,8 @@ impl LayoutEvaluator {
     }
 }
 
-/// Multiplier ≥ 1 penalizing imbalanced effort. At 50/50 → 1.0, approaches 2 at extremes.
-fn balance_factor(left: f64, right: f64) -> f64 {
+/// Multiplier ≥ 1 penalizing imbalanced effort. At 50/50 → 1.0, approaches `max` at extremes.
+fn balance_factor(left: f64, right: f64, max: f64) -> f64 {
     fn ratio(left: f64, right: f64) -> f64 {
         if left > right {
             left / right
@@ -117,11 +125,11 @@ fn balance_factor(left: f64, right: f64) -> f64 {
     }
 
     if left == 0. || right == 0. {
-        return 2.;
+        return max;
     }
 
     let ratio = ratio(left, right);
-    2. - (1. / ((ratio - 1.).powi(2) + 1.))
+    max - ((max - 1.) / ((ratio - 1.).powi(2) + 1.))
 }
 
 #[cfg(test)]
@@ -190,6 +198,7 @@ mod tests {
         let keyboard = Keyboard::new(
             json!({
                 "switchPenalty": 0.0,
+                "balancePenalty": 2.0,
                 "efforts": [1.0, 2.0],
                 "pairs": {
                     "0": {"0": 1, "1": 2},
@@ -224,26 +233,33 @@ mod tests {
 
     #[test]
     fn balance_factor_returns_two_for_zero_hand_usage() {
-        assert_close(balance_factor(0.0, 3.0), 2.0);
-        assert_close(balance_factor(3.0, 0.0), 2.0);
-        assert_close(balance_factor(0.0, 0.0), 2.0);
+        assert_close(balance_factor(0.0, 3.0, 2.0), 2.0);
+        assert_close(balance_factor(3.0, 0.0, 2.0), 2.0);
+        assert_close(balance_factor(0.0, 0.0, 2.0), 2.0);
     }
 
     #[test]
     fn balance_factor_returns_one_for_even_usage() {
-        assert_close(balance_factor(1.0, 1.0), 1.0);
-        assert_close(balance_factor(5.0, 5.0), 1.0);
+        assert_close(balance_factor(1.0, 1.0, 2.0), 1.0);
+        assert_close(balance_factor(5.0, 5.0, 2.0), 1.0);
     }
 
     #[test]
     fn balance_factor_is_symmetric_between_hands() {
-        assert_close(balance_factor(3.0, 1.0), balance_factor(1.0, 3.0));
+        assert_close(balance_factor(3.0, 1.0, 2.0), balance_factor(1.0, 3.0, 2.0));
     }
 
     #[test]
     fn balance_factor_grows_with_hand_imbalance() {
-        assert!(balance_factor(3.0, 2.0) < balance_factor(3.0, 1.0));
-        assert!(balance_factor(3.0, 1.0) < balance_factor(10.0, 1.0));
+        assert!(balance_factor(3.0, 2.0, 2.0) < balance_factor(3.0, 1.0, 2.0));
+        assert!(balance_factor(3.0, 1.0, 2.0) < balance_factor(10.0, 1.0, 2.0));
+    }
+
+    #[test]
+    fn balance_factor_respects_configured_max_penalty() {
+        assert_close(balance_factor(1.0, 1.0, 3.0), 1.0);
+        assert_close(balance_factor(0.0, 1.0, 3.0), 3.0);
+        assert!(balance_factor(3.0, 1.0, 2.0) < balance_factor(3.0, 1.0, 3.0));
     }
 
     /// Build minimal keyboard for evaluator tests using production JSON parsing.
@@ -251,6 +267,7 @@ mod tests {
         Keyboard::new(
             json!({
                 "switchPenalty": 1.5,
+                "balancePenalty": 2.0,
                 "efforts": [1.0, 2.0, 3.0, 5.0],
                 "pairs": {
                     "0": {"0": 1, "1": 2},
