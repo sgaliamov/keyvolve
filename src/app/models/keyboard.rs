@@ -40,9 +40,9 @@ impl Default for Keyboard {
         Self {
             frozen: FxHashMap::default(),
             blocked: Vec::new(),
-            switch_effort_penalty: 1.0,
+            switch_effort_penalty: default_penalty(),
             balance_penalty: default_balance_penalty(),
-            alternation_penalty: 1.0,
+            alternation_penalty: default_penalty(),
             efforts: Vec::new(),
             pairs: FxHashMap::default(),
         }

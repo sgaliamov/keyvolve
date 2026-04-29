@@ -84,6 +84,7 @@ impl LayoutEvaluator {
                 // count efforts on the "to" key, since "from" was already counted in the previous iteration
                 let bigram = ScoreResult {
                     effort,
+                    fitness: 0.0,
                     switches,
                     left_count: b_left as u32,
                     right_count: (!b_left) as u32,
@@ -103,12 +104,13 @@ impl LayoutEvaluator {
             .fold(ScoreResult::default(), |acc, x| acc + x);
 
         // balance_factor is based on the actual usage of keys
-        result.effort *= balance_factor(
+        result.fitness = result.effort;
+        result.fitness *= balance_factor(
             result.left_count.into(),
             result.right_count.into(),
             self.balance_penalty,
         );
-        result.effort *= switch_factor(
+        result.fitness *= switch_factor(
             result.switches,
             result.left_count + result.right_count,
             self.alternation_penalty,
@@ -162,6 +164,7 @@ mod tests {
         let score = evaluator.score_word("", &test_keys());
 
         assert_close(score.effort, 0.0);
+        assert_close(score.fitness, 0.0);
         assert_eq!(score.left_count, 0);
         assert_eq!(score.right_count, 0);
         assert_eq!(score.switches, 0);
@@ -179,6 +182,7 @@ mod tests {
         assert_eq!(score.right_count, 0);
         assert_eq!(score.switches, 0);
         assert_close(score.effort, 3.0);
+        assert_close(score.fitness, 0.0);
         assert_close(score.left_effort, 3.0);
         assert_close(score.right_effort, 0.0);
     }
@@ -193,6 +197,7 @@ mod tests {
         assert_eq!(score.right_count, 0);
         assert_eq!(score.switches, 0);
         assert_close(score.effort, 2.0);
+        assert_close(score.fitness, 0.0);
         assert_close(score.left_effort, 2.0);
         assert_close(score.right_effort, 0.0);
     }
@@ -207,6 +212,7 @@ mod tests {
         assert_eq!(score.right_count, 1);
         assert_eq!(score.switches, 1);
         assert_close(score.effort, 2.5);
+        assert_close(score.fitness, 0.0);
         assert_close(score.left_effort, 1.0);
         assert_close(score.right_effort, 1.5);
     }
@@ -231,6 +237,7 @@ mod tests {
         let score = evaluator.score_word("ac", &test_keys());
 
         assert_close(score.effort, 1.0);
+    assert_close(score.fitness, 0.0);
         assert_eq!(score.switches, 1);
         assert_close(score.right_effort, 0.0);
     }
@@ -247,7 +254,8 @@ mod tests {
         assert_eq!(score.switches, 1);
         assert_close(score.left_effort, 4.0);
         assert_close(score.right_effort, 1.5);
-        assert_close(score.effort, 9.9); // (4.0 + 1.5) * balance_factor(3, 1) = 5.5 * 1.8
+        assert_close(score.effort, 5.5);
+        assert_close(score.fitness, 9.9); // 5.5 * balance_factor(3, 1)
     }
 
     #[test]

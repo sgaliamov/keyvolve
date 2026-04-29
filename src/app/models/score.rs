@@ -1,8 +1,11 @@
 /// Full breakdown of a scoring pass over a word or corpus.
 #[derive(Debug, Clone, Default)]
 pub struct ScoreResult {
-    /// Total weighted effort, with balance factor applied at corpus level.
+    /// Total raw effort before corpus-level penalties.
     pub effort: f64,
+
+    /// Total effort after corpus-level penalties.
+    pub fitness: f64,
 
     /// Number of consecutive same-hand bigrams on the left.
     pub left_count: u32,
@@ -50,8 +53,9 @@ impl ScoreResult {
     /// Serialize as a CSV row (no header).
     pub fn to_csv(&self) -> String {
         format!(
-            "{},{},{},{},{},{},{},{},{},{}",
+            "{},{},{},{},{},{},{},{},{},{},{}",
             self.effort,
+            self.fitness,
             self.left_effort,
             self.left_effort_ratio(),
             self.left_count,
@@ -66,7 +70,7 @@ impl ScoreResult {
 
     /// CSV header matching [`to_csv`] column order.
     pub fn csv_header() -> &'static str {
-        "effort,left_effort,left_effort_ratio,left_count,left_count_ratio,right_effort,right_effort_ratio,right_count,right_count_ratio,switches"
+        "effort,fitness,left_effort,left_effort_ratio,left_count,left_count_ratio,right_effort,right_effort_ratio,right_count,right_count_ratio,switches"
     }
 }
 
@@ -74,8 +78,9 @@ impl std::fmt::Display for ScoreResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "effort: {:.2} | left: {:.2} ({}, {:.1}%) | right: {:.2} ({}, {:.1}%) | switches: {}",
+            "effort: {:.2} | fitness: {:.2} | left: {:.2} ({}, {:.1}%) | right: {:.2} ({}, {:.1}%) | switches: {}",
             self.effort,
+            self.fitness,
             self.left_effort,
             self.left_count,
             self.left_effort_ratio() * 100.0,
@@ -98,6 +103,7 @@ impl std::ops::Add for ScoreResult {
     fn add(self, other: ScoreResult) -> Self {
         ScoreResult {
             effort: self.effort + other.effort,
+            fitness: self.fitness + other.fitness,
             left_count: self.left_count + other.left_count,
             right_count: self.right_count + other.right_count,
             switches: self.switches + other.switches,
