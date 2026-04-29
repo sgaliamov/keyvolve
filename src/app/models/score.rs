@@ -50,27 +50,36 @@ impl ScoreResult {
         ratio(self.right_effort, self.left_effort + self.right_effort)
     }
 
+    /// Share of hand switches among all bigram transitions.
+    pub fn switch_ratio(&self) -> f64 {
+        ratio(
+            self.switches as f64,
+            self.left_count as f64 + self.right_count as f64,
+        )
+    }
+
     /// Serialize as a CSV row (no header).
     pub fn to_csv(&self) -> String {
         format!(
-            "{},{},{},{},{},{},{},{},{},{},{}",
-            self.effort,
+            "{:.2},{:.2},{:.2},{:.2}%,{},{:.2}%,{:.2},{:.2}%,{},{:.2}%,{},{:.2}%",
             self.fitness,
+            self.effort,
             self.left_effort,
-            self.left_effort_ratio(),
+            self.left_effort_ratio() * 100.0,
             self.left_count,
-            self.left_count_ratio(),
+            self.left_count_ratio() * 100.0,
             self.right_effort,
-            self.right_effort_ratio(),
+            self.right_effort_ratio() * 100.0,
             self.right_count,
-            self.right_count_ratio(),
+            self.right_count_ratio() * 100.0,
             self.switches,
+            self.switch_ratio() * 100.0
         )
     }
 
     /// CSV header matching [`to_csv`] column order.
     pub fn csv_header() -> &'static str {
-        "effort,fitness,left_effort,left_effort_ratio,left_count,left_count_ratio,right_effort,right_effort_ratio,right_count,right_count_ratio,switches"
+        "effort,fitness,left_effort,left_effort_ratio,left_count,left_count_ratio,right_effort,right_effort_ratio,right_count,right_count_ratio,switches,switch_ratio"
     }
 }
 
@@ -78,9 +87,9 @@ impl std::fmt::Display for ScoreResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "effort: {:.2} | fitness: {:.2} | left: {:.2} ({}, {:.1}%) | right: {:.2} ({}, {:.1}%) | switches: {}",
-            self.effort,
+            "fitness: {:.2} | effort: {:.2} | left: {:.2} ({}, {:.1}%) | right: {:.2} ({}, {:.1}%) | switches: {} ({:.1}%)",
             self.fitness,
+            self.effort,
             self.left_effort,
             self.left_count,
             self.left_effort_ratio() * 100.0,
@@ -88,6 +97,7 @@ impl std::fmt::Display for ScoreResult {
             self.right_count,
             self.right_effort_ratio() * 100.0,
             self.switches,
+            self.switch_ratio() * 100.0,
         )
     }
 }

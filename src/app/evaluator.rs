@@ -237,7 +237,7 @@ mod tests {
         let score = evaluator.score_word("ac", &test_keys());
 
         assert_close(score.effort, 1.0);
-    assert_close(score.fitness, 0.0);
+        assert_close(score.fitness, 0.0);
         assert_eq!(score.switches, 1);
         assert_close(score.right_effort, 0.0);
     }
