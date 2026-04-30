@@ -1,4 +1,4 @@
-use darwin::Gene;
+use darwin::{Gene, Genome};
 use serde::Deserialize;
 
 /// Key position: (char, position index)
@@ -10,3 +10,5 @@ impl Gene for KeyPos {
         ((self.0 as u16) << 8 | self.1 as u16) as f64
     }
 }
+
+pub type KeysGenome = Genome<KeyPos>;

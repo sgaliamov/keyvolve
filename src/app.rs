@@ -1,6 +1,6 @@
 use crate::{
     Config, LayoutEvaluator, Mode,
-    models::{KeyPos, Keyboard, Layout, ScoreResult},
+    models::{KeyPos, Keyboard, KeysGenome, Layout, ScoreResult},
 };
 use cliffa::cli::AppHandle;
 use darwin::{GeneticAlgorithm, Genome, Individual};
@@ -43,6 +43,7 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
     Ok(())
 }
 
+
 fn optimize(
     evaluator: &LayoutEvaluator,
     words: Vec<&str>,
@@ -50,30 +51,32 @@ fn optimize(
     config: darwin::Config<crate::models::KeyPos>,
     app: AppHandle,
 ) -> Result<()> {
-    let generator = |ctx| -> Genome<KeyPos> { todo!() };
+    let generator_fn = |_| -> KeysGenome { todo!() };
 
-    let mutator = |ind, ctx| -> Option<Genome<KeyPos>> { todo!() };
+    let mutator = |ind, ctx| -> Option<KeysGenome> { todo!() };
 
-    let crossover = |dad, mom, ctx| -> Vec<Genome<KeyPos>> { todo!() };
+    let crossover = |dad, mom, ctx| -> Vec<KeysGenome> { todo!() };
 
-    let evaluator_fn = |ind: &Individual<_, Layout>, ctx| -> (f64, Option<Layout>) {
-        let layout = ind.state.unwrap();
+    let evaluator_fn = |ind: &Individual<_, _>, ctx| -> (f64, Option<ScoreResult>) {
+        let layout = Layout::from_keys(&ind.genome);
         let score = evaluator.score_corpus(&words, &layout.keys);
-        (-score.fitness, Some(layout))
+        (-score.fitness, Some(score))
     };
 
     let callback = |ctx| todo!();
 
     let mut ga = GeneticAlgorithm::new(
         &config,
-        generator,
+        generator_fn,
         mutator,
         crossover,
         evaluator_fn,
         callback,
     );
 
-    todo!()
+    // ga.run();
+
+    Ok(())
 }
 
 fn evaluate(
@@ -98,7 +101,7 @@ fn evaluate(
             .unwrap_or(std::cmp::Ordering::Equal)
     });
     scored.iter().take(10).for_each(|(layout, layout_score)| {
-        info!("{} {}", layout.name, layout_score);
+        info!("{} {}", layout.name() , layout_score);
     });
     let mut file = std::fs::File::create(&layouts_path)
         .into_diagnostic()
@@ -111,7 +114,7 @@ fn evaluate(
     .into_diagnostic()
     .wrap_err("Failed to write evaluated layouts header")?;
     Ok(for (layout, layout_score) in scored {
-        writeln!(file, "{};{}", layout.name, layout_score.to_csv())
+        writeln!(file, "{};{}", layout.name(), layout_score.to_csv())
             .into_diagnostic()
             .wrap_err("Failed to write evaluated layouts")?;
     })
