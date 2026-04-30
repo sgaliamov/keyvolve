@@ -1,3 +1,4 @@
+use crate::models::KeyPos;
 use itertools::Itertools;
 use rustc_hash::FxHashMap;
 use std::{
@@ -19,6 +20,14 @@ impl Layout {
         let keys = line_to_keys(line);
         let name = line.split(';').take(6).join(";");
         Layout { keys, name }
+    }
+
+    pub fn from_keys(keys: &[KeyPos]) -> Self {
+        let keys = keys.iter().map(|kp| (kp.0, kp.1)).collect();
+        Layout {
+            keys,
+            name: "custom".to_string(),
+        }
     }
 
     pub fn load(path: impl AsRef<Path>) -> Vec<Layout> {

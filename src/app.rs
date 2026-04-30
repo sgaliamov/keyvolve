@@ -1,8 +1,9 @@
 use crate::{
     Config, LayoutEvaluator, Mode,
-    models::{Keyboard, Layout, ScoreResult},
+    models::{KeyPos, Keyboard, Layout, ScoreResult},
 };
 use cliffa::cli::AppHandle;
+use darwin::{GeneticAlgorithm, Genome, Individual};
 use itertools::Itertools;
 use miette::{Context, IntoDiagnostic, Result};
 use rayon::prelude::*;
@@ -26,13 +27,15 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
     let layouts = Layout::load(&layouts_path);
     info!("Loaded {} layouts", layouts.len());
 
+    let keyboard = Keyboard::load(cfg.keyboard.unwrap())?;
+    let evaluator = LayoutEvaluator::new(&keyboard);
+
     match cfg.mode {
         Mode::Evaluate => {
-            let keyboard = Keyboard::load(cfg.keyboard.unwrap())?;
-            evaluate(keyboard, words_ref, &layouts, &layouts_path, app)?;
+            evaluate(evaluator, words_ref, &layouts, &layouts_path, app)?;
         }
         Mode::Optimize => {
-            optimize(words_ref, &layouts, cfg.ga, app)?;
+            optimize(&evaluator, words_ref, &layouts, cfg.ga, app)?;
         }
         _ => unimplemented!("Only evaluation and optimization modes are implemented currently."),
     }
@@ -41,23 +44,45 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
 }
 
 fn optimize(
+    evaluator: &LayoutEvaluator,
     words: Vec<&str>,
     layouts: &[Layout],
-    ga: darwin::Config<crate::models::KeyPos>,
+    config: darwin::Config<crate::models::KeyPos>,
     app: AppHandle,
 ) -> Result<()> {
+    let generator = |ctx| -> Genome<KeyPos> { todo!() };
+
+    let mutator = |ind, ctx| -> Option<Genome<KeyPos>> { todo!() };
+
+    let crossover = |dad, mom, ctx| -> Vec<Genome<KeyPos>> { todo!() };
+
+    let evaluator_fn = |ind: &Individual<_, Layout>, ctx| -> (f64, Option<Layout>) {
+        let layout = ind.state.unwrap();
+        let score = evaluator.score_corpus(&words, &layout.keys);
+        (-score.fitness, Some(layout))
+    };
+
+    let callback = |ctx| todo!();
+
+    let mut ga = GeneticAlgorithm::new(
+        &config,
+        generator,
+        mutator,
+        crossover,
+        evaluator_fn,
+        callback,
+    );
+
     todo!()
 }
 
 fn evaluate(
-    keyboard: Keyboard,
+    evaluator: LayoutEvaluator,
     words: Vec<&str>,
     layouts: &Vec<Layout>,
     layouts_path: impl AsRef<std::path::Path>,
     app: AppHandle,
 ) -> Result<()> {
-    let evaluator = LayoutEvaluator::new(&keyboard);
-
     let mut scored: Vec<_> = layouts
         .par_iter()
         .filter_map(|layout| {
