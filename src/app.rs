@@ -80,7 +80,7 @@ fn evaluate(
         .wrap_err("Failed to open layouts file for writing")?;
     writeln!(
         file,
-        "layout_1;layout_2;layout_3;layout_4;layout_5;layout_6;{}",
+        "keys_1;keys_2;keys_3;keys_4;keys_5;keys_6;{}",
         ScoreResult::csv_header()
     )
     .into_diagnostic()

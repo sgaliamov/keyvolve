@@ -39,7 +39,7 @@ impl Layout {
 
 /// Detect persisted CSV header row.
 fn is_header(line: &str) -> bool {
-    line.starts_with("layout_1;layout_2;layout_3;layout_4;layout_5;layout_6;")
+    line.starts_with("keys_1;keys_2;keys_3;keys_4;keys_5;keys_6;")
 }
 
 fn line_to_keys(line: &str) -> Keys {
