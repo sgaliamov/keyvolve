@@ -11,23 +11,24 @@ pub type Keys = FxHashMap<char, u8>;
 
 pub struct Layout {
     pub keys: Keys,
-    pub name: String,
 }
 
 impl Layout {
     // Constructor: Create Layout from line
     pub fn new(line: &str) -> Self {
         let keys = line_to_keys(line);
-        let name = line.split(';').take(6).join(";");
-        Layout { keys, name }
+        Layout { keys }
     }
 
     pub fn from_keys(keys: &[KeyPos]) -> Self {
         let keys = keys.iter().map(|kp| (kp.0, kp.1)).collect();
-        Layout {
-            keys,
-            name: "custom".to_string(),
-        }
+        Layout { keys }
+    }
+
+    pub fn name(&self) -> String {
+        let mut keyed: Vec<(char, u8)> = self.keys.iter().map(|(&ch, &pos)| (ch, pos)).collect();
+        keyed.sort_unstable_by_key(|&(_, pos)| pos);
+        keyed.into_iter().map(|(ch, _)| ch).collect()
     }
 
     pub fn load(path: impl AsRef<Path>) -> Vec<Layout> {
@@ -97,6 +98,21 @@ mod layout_test {
         let line = "zydpx;ralem;vbjuq;whtc_;fnosi;kg___;not used tail";
         let layout = Layout::new(line);
 
-        assert_eq!(layout.name, "zydpx;ralem;vbjuq;whtc_;fnosi;kg___");
+        assert_eq!(layout.name(), "zydpx;ralem;vbjuq;whtc_;fnosi;kg___");
+    }
+
+    #[test]
+    fn test_chars_by_position() {
+        let line = "zydpx;ralem;vbjuq;whtc_;fnosi;kg___;not used tail";
+        let keys = line_to_keys(line);
+        let chars = chars_by_position(&keys);
+
+        assert_eq!(chars.len(), 26);
+        assert_eq!(chars[0], 'z');
+        assert_eq!(chars[4], 'x');
+        assert_eq!(chars[14], 'q');
+        assert_eq!(chars[16], 'c');
+        assert_eq!(chars[19], 'w');
+        assert_eq!(chars[28], 'g');
     }
 }
