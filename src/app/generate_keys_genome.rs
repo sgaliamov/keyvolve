@@ -1,10 +1,6 @@
-use crate::{
-    LayoutEvaluator,
-    models::{KeyPos, KeysGenome, ScoreResult},
-};
-use darwin::Context as GaContext;
+use crate::models::{KeysGenome, GaContext};
 
 /// Generate a genome for optimization.
-pub fn generate_keys_genome(_: &GaContext<'_, KeyPos, LayoutEvaluator, ScoreResult>) -> KeysGenome {
+pub fn generate_keys_genome(_: &GaContext) -> KeysGenome {
     todo!()
 }

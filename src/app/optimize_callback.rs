@@ -1,8 +1,7 @@
-use crate::{LayoutEvaluator, models::{KeyPos, ScoreResult}};
-use darwin::Context as GaContext;
+use crate::models::GaContext;
 
 /// Progress callback for optimize mode.
-pub fn optimize_callback(ctx: &GaContext<'_, KeyPos, LayoutEvaluator, ScoreResult>) {
+pub fn optimize_callback(ctx: &GaContext) {
     let _ = ctx;
     todo!()
 }

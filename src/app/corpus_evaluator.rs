@@ -1,17 +1,16 @@
-use crate::{LayoutEvaluator, models::{KeyPos, Layout, ScoreResult}};
-use darwin::{Context as GaContext, Individual};
+use crate::models::{Layout, ScoreResult, KeysIndividual, GaContext};
 
 type CorpusEvalResult = (f64, Option<ScoreResult>);
 
 /// Build the corpus evaluator closure used by optimize mode.
 pub fn corpus_evaluator(
     words: Vec<String>,
-) -> impl Fn(&Individual<KeyPos, ScoreResult>, &GaContext<'_, KeyPos, LayoutEvaluator, ScoreResult>) -> CorpusEvalResult
+) -> impl Fn(&KeysIndividual, &GaContext) -> CorpusEvalResult
        + Send
        + Sync {
     move |
-        ind: &Individual<KeyPos, ScoreResult>,
-        ctx: &GaContext<'_, KeyPos, LayoutEvaluator, ScoreResult>,
+        ind: &KeysIndividual,
+        ctx: &GaContext,
     | {
         let layout = Layout::from_keys(&ind.genome);
         let words = words.iter().map(String::as_str).collect::<Vec<_>>();
