@@ -10,14 +10,13 @@ pub fn optimize(
     app: AppHandle,
 ) -> Result<()> {
     let _ = (layouts, app);
-    let corpus_evaluator = super::corpus_evaluator();
 
     let mut ga = GeneticAlgorithm::new(
         &config,
         super::generate_keys_genome,
         super::mutate_keys_genome,
         super::crossover_keys_genomes,
-        corpus_evaluator,
+        super::corpus_evaluator,
         super::optimize_callback,
     );
 
