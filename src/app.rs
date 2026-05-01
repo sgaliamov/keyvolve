@@ -1,9 +1,9 @@
 use crate::{
     Config, LayoutEvaluator, Mode,
-    models::{Keyboard, KeysGenome, Layout, ScoreResult},
+    models::{KeyPos, Keyboard, KeysGenome, Layout, ScoreResult},
 };
 use cliffa::cli::AppHandle;
-use darwin::{Context, GeneticAlgorithm, Individual};
+use darwin::{Context as GaContext, Evaluator, GeneticAlgorithm, Individual};
 use itertools::Itertools;
 use miette::{Context, IntoDiagnostic, Result};
 use rayon::prelude::*;
@@ -49,39 +49,71 @@ fn optimize(
     config: darwin::Config<crate::models::KeyPos>,
     app: AppHandle,
 ) -> Result<()> {
-    let generator_fn = |_| -> KeysGenome { todo!() };
-
-    let mutator = |ind, ctx| -> Option<KeysGenome> { todo!() };
-
-    let crossover = |dad, mom, ctx| -> Vec<KeysGenome> { todo!() };
-
-    let evaluator_fn = |ind: &Individual<_, _>,
-                        ctx: &darwin::Context<'_, KeyPos, LayoutEvaluator, ScoreResult>|
-     -> (f64, Option<ScoreResult>) {
-        let layout = Layout::from_keys(&ind.genome);
-        let score = ctx.state.unwrap().score_corpus(&words, &layout.keys);
-        (-score.fitness, Some(score))
-    };
-
-    let callback = |ctx: &Context<'_, crate::models::KeyPos, LayoutEvaluator, ScoreResult>| {
-        let _ = ctx;
-        todo!()
-    };
+    let evaluator_fn = CorpusEvaluator { words: &words };
 
     let mut ga = GeneticAlgorithm::new(
         &config,
-        generator_fn,
-        mutator,
-        crossover,
+        generate_keys_genome,
+        mutate_keys_genome,
+        crossover_keys_genomes,
         evaluator_fn,
-        callback,
+        optimize_callback,
     );
 
-    ga.set_state(evaluator);
+    GeneticAlgorithm::set_state(&mut ga, evaluator);
 
     // ga.run();
 
     Ok(())
+}
+
+/// Generate a genome for optimization.
+fn generate_keys_genome(_: &GaContext<'_, KeyPos, LayoutEvaluator, ScoreResult>) -> KeysGenome {
+    todo!()
+}
+
+/// Mutate a candidate genome.
+fn mutate_keys_genome(
+    _: &Individual<KeyPos, ScoreResult>,
+    _: &GaContext<'_, KeyPos, LayoutEvaluator, ScoreResult>,
+) -> Option<KeysGenome> {
+    todo!()
+}
+
+/// Cross two parent genomes.
+fn crossover_keys_genomes(
+    _: &Individual<KeyPos, ScoreResult>,
+    _: &Individual<KeyPos, ScoreResult>,
+    _: &GaContext<'_, KeyPos, LayoutEvaluator, ScoreResult>,
+) -> Vec<KeysGenome> {
+    todo!()
+}
+
+/// Evaluate one individual against the corpus.
+struct CorpusEvaluator<'a> {
+    words: &'a [&'a str],
+}
+
+impl Evaluator<KeyPos, LayoutEvaluator, ScoreResult> for CorpusEvaluator<'_> {
+    fn evaluate(
+        &self,
+        ind: &Individual<KeyPos, ScoreResult>,
+        ctx: &GaContext<'_, KeyPos, LayoutEvaluator, ScoreResult>,
+    ) -> (f64, Option<ScoreResult>) {
+        let layout = Layout::from_keys(&ind.genome);
+        let score = ctx
+            .state
+            .as_ref()
+            .expect("GA evaluator state must be set before optimize run")
+            .score_corpus(self.words, &layout.keys);
+        (-score.fitness, Some(score))
+    }
+}
+
+/// Progress callback for optimize mode.
+fn optimize_callback(ctx: &GaContext<'_, KeyPos, LayoutEvaluator, ScoreResult>) {
+    let _ = ctx;
+    todo!()
 }
 
 fn evaluate(
