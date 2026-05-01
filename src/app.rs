@@ -1,9 +1,9 @@
 use crate::{
     Config, LayoutEvaluator, Mode,
-    models::{KeyPos, Keyboard, KeysGenome, Layout, ScoreResult},
+    models::{Keyboard, KeysGenome, Layout, ScoreResult},
 };
 use cliffa::cli::AppHandle;
-use darwin::{GeneticAlgorithm, Genome, Individual};
+use darwin::{Context, GeneticAlgorithm, Individual};
 use itertools::Itertools;
 use miette::{Context, IntoDiagnostic, Result};
 use rayon::prelude::*;
@@ -35,17 +35,15 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
             evaluate(evaluator, words_ref, &layouts, &layouts_path, app)?;
         }
         Mode::Optimize => {
-            optimize(&evaluator, words_ref, &layouts, cfg.ga, app)?;
+            optimize(evaluator, words_ref, &layouts, cfg.ga, app)?;
         }
-        _ => unimplemented!("Only evaluation and optimization modes are implemented currently."),
     }
 
     Ok(())
 }
 
-
 fn optimize(
-    evaluator: &LayoutEvaluator,
+    evaluator: LayoutEvaluator,
     words: Vec<&str>,
     layouts: &[Layout],
     config: darwin::Config<crate::models::KeyPos>,
@@ -57,13 +55,18 @@ fn optimize(
 
     let crossover = |dad, mom, ctx| -> Vec<KeysGenome> { todo!() };
 
-    let evaluator_fn = |ind: &Individual<_, _>, ctx| -> (f64, Option<ScoreResult>) {
+    let evaluator_fn = |ind: &Individual<_, _>,
+                        ctx: &darwin::Context<'_, KeyPos, LayoutEvaluator, ScoreResult>|
+     -> (f64, Option<ScoreResult>) {
         let layout = Layout::from_keys(&ind.genome);
-        let score = evaluator.score_corpus(&words, &layout.keys);
+        let score = ctx.state.unwrap().score_corpus(&words, &layout.keys);
         (-score.fitness, Some(score))
     };
 
-    let callback = |ctx| todo!();
+    let callback = |ctx: &Context<'_, crate::models::KeyPos, LayoutEvaluator, ScoreResult>| {
+        let _ = ctx;
+        todo!()
+    };
 
     let mut ga = GeneticAlgorithm::new(
         &config,
@@ -73,6 +76,8 @@ fn optimize(
         evaluator_fn,
         callback,
     );
+
+    ga.set_state(evaluator);
 
     // ga.run();
 
@@ -101,7 +106,7 @@ fn evaluate(
             .unwrap_or(std::cmp::Ordering::Equal)
     });
     scored.iter().take(10).for_each(|(layout, layout_score)| {
-        info!("{} {}", layout.name() , layout_score);
+        info!("{} {}", layout.name(), layout_score);
     });
     let mut file = std::fs::File::create(&layouts_path)
         .into_diagnostic()
