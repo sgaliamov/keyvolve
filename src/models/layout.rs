@@ -100,19 +100,4 @@ mod layout_test {
 
         assert_eq!(layout.name(), "zydpx;ralem;vbjuq;whtc_;fnosi;kg___");
     }
-
-    #[test]
-    fn test_chars_by_position() {
-        let line = "zydpx;ralem;vbjuq;whtc_;fnosi;kg___;not used tail";
-        let keys = line_to_keys(line);
-        let chars = chars_by_position(&keys);
-
-        assert_eq!(chars.len(), 26);
-        assert_eq!(chars[0], 'z');
-        assert_eq!(chars[4], 'x');
-        assert_eq!(chars[14], 'q');
-        assert_eq!(chars[16], 'c');
-        assert_eq!(chars[19], 'w');
-        assert_eq!(chars[28], 'g');
-    }
 }

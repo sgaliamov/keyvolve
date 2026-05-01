@@ -1,0 +1,39 @@
+use crate::{Config, LayoutEvaluator, Mode, models::{Keyboard, Layout}};
+use cliffa::cli::AppHandle;
+use itertools::Itertools;
+use miette::{Context, IntoDiagnostic, Result};
+use tracing::{info, trace};
+
+use crate::app::{evaluate, optimize};
+
+/// Entry point called by the CLI builder after argument parsing.
+pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
+    let cfg = config.wrap_err("Missing config.")?;
+    trace!("Starting with config: {:#?}", cfg);
+
+    let words = std::fs::read_to_string(cfg.text.unwrap())
+        .into_diagnostic()
+        .wrap_err("Failed to read text file")?
+        .split_whitespace()
+        .map(|s| s.to_string())
+        .collect::<Vec<_>>();
+    let words_ref = words.iter().map(|s| s.as_str()).collect_vec();
+
+    let layouts_path = cfg.layouts.wrap_err("Missing layouts path in config")?;
+    let layouts = Layout::load(&layouts_path);
+    info!("Loaded {} layouts", layouts.len());
+
+    let keyboard = Keyboard::load(cfg.keyboard.unwrap())?;
+    let evaluator = LayoutEvaluator::new(&keyboard);
+
+    match cfg.mode {
+        Mode::Evaluate => {
+            evaluate(evaluator, words_ref, &layouts, &layouts_path, app)?;
+        }
+        Mode::Optimize => {
+            optimize(evaluator, words_ref, &layouts, cfg.ga, app)?;
+        }
+    }
+
+    Ok(())
+}
