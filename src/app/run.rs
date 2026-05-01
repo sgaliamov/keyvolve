@@ -22,14 +22,14 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
     info!("Loaded {} layouts", layouts.len());
 
     let keyboard = Keyboard::load(cfg.keyboard.unwrap())?;
-    let evaluator = LayoutEvaluator::new(&keyboard);
+    let evaluator = LayoutEvaluator::new(&keyboard, words);
 
     match cfg.mode {
         Mode::Evaluate => {
-            evaluate(evaluator, &words, &layouts, &layouts_path, app)?;
+            evaluate(evaluator, &layouts, &layouts_path, app)?;
         }
         Mode::Optimize => {
-            optimize(evaluator, words, &layouts, cfg.ga, app)?;
+            optimize(evaluator, &layouts, cfg.ga, app)?;
         }
     }
 

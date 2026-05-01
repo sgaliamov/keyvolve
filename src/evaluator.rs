@@ -15,11 +15,14 @@ pub struct LayoutEvaluator {
 
     /// Coefficient `k` for corpus-level alternation-rate penalty.
     alternation_penalty: f64,
+
+    /// Corpus words to evaluate.
+    words: Vec<String>,
 }
 
 impl LayoutEvaluator {
-    /// Build from keyboard config. Groups are 1-based → `efforts[group - 1]`.
-    pub fn new(keyboard: &Keyboard) -> Self {
+    /// Build from keyboard config and corpus. Groups are 1-based → `efforts[group - 1]`.
+    pub fn new(keyboard: &Keyboard, words: Vec<String>) -> Self {
         let mut pairs = FxHashMap::default();
 
         for (from, targets) in &keyboard.pairs {
@@ -34,6 +37,7 @@ impl LayoutEvaluator {
             switch_effort_penalty: keyboard.switch_effort_penalty,
             balance_penalty: keyboard.balance_penalty,
             alternation_penalty: keyboard.alternation_penalty,
+            words,
         }
     }
 
@@ -96,9 +100,9 @@ impl LayoutEvaluator {
             })
     }
 
-    /// Score an entire corpus, applying a hand-balance factor to total effort.
-    pub fn score_corpus(&self, words: &[&str], keys: &Keys) -> ScoreResult {
-        let mut result = words
+    /// Score the corpus, applying a hand-balance factor to total effort.
+    pub fn score_corpus(&self, keys: &Keys) -> ScoreResult {
+        let mut result = self.words
             .iter()
             .map(|w| self.score_word(w, keys))
             .fold(ScoreResult::default(), |acc, x| acc + x);
@@ -159,7 +163,7 @@ mod tests {
 
     #[test]
     fn score_word_returns_zero_score_for_empty_input() {
-        let evaluator = LayoutEvaluator::new(&test_keyboard());
+        let evaluator = LayoutEvaluator::new(&test_keyboard(), vec![]);
 
         let score = evaluator.score_word("", &test_keys());
 
@@ -174,7 +178,7 @@ mod tests {
 
     #[test]
     fn score_word_adds_pair_effort_to_same_hand() {
-        let evaluator = LayoutEvaluator::new(&test_keyboard());
+        let evaluator = LayoutEvaluator::new(&test_keyboard(), vec![]);
 
         let score = evaluator.score_word("ab", &test_keys());
 
@@ -189,7 +193,7 @@ mod tests {
 
     #[test]
     fn score_word_uses_pair_table_for_repeated_key() {
-        let evaluator = LayoutEvaluator::new(&test_keyboard());
+        let evaluator = LayoutEvaluator::new(&test_keyboard(), vec![]);
 
         let score = evaluator.score_word("aa", &test_keys());
 
@@ -204,7 +208,7 @@ mod tests {
 
     #[test]
     fn score_word_charges_self_effort_on_hand_switch() {
-        let evaluator = LayoutEvaluator::new(&test_keyboard());
+        let evaluator = LayoutEvaluator::new(&test_keyboard(), vec![]);
 
         let score = evaluator.score_word("ac", &test_keys());
 
@@ -232,7 +236,7 @@ mod tests {
             })
             .to_string(),
         );
-        let evaluator = LayoutEvaluator::new(&keyboard);
+        let evaluator = LayoutEvaluator::new(&keyboard, vec![]);
 
         let score = evaluator.score_word("ac", &test_keys());
 
@@ -244,10 +248,10 @@ mod tests {
 
     #[test]
     fn score_corpus_applies_balance_penalty_to_aggregated_effort() {
-        let evaluator = LayoutEvaluator::new(&test_keyboard());
+        let evaluator = LayoutEvaluator::new(&test_keyboard(), vec!["ab".to_string(), "ac".to_string()]);
         let keys = test_keys();
 
-        let score = evaluator.score_corpus(&["ab", "ac"], &keys);
+        let score = evaluator.score_corpus(&keys);
 
         assert_eq!(score.left_count, 3);
         assert_eq!(score.right_count, 1);
@@ -316,9 +320,9 @@ mod tests {
                 }
             })
             .to_string(),
-        ));
+        ), vec!["ab".to_string(), "ac".to_string()]);
 
-        let score = evaluator.score_corpus(&["ab", "ac"], &test_keys());
+        let score = evaluator.score_corpus(&test_keys());
 
         assert_close(score.effort, 11.55);
     }

@@ -5,13 +5,12 @@ use miette::Result;
 
 pub fn optimize(
     evaluator: LayoutEvaluator,
-    words: Vec<String>,
     layouts: &[Layout],
     config: darwin::Config<KeyPos>,
     app: AppHandle,
 ) -> Result<()> {
     let _ = (layouts, app);
-    let corpus_evaluator = super::corpus_evaluator(words);
+    let corpus_evaluator = super::corpus_evaluator();
 
     let mut ga = GeneticAlgorithm::new(
         &config,

@@ -8,19 +8,17 @@ use tracing::info;
 /// Evaluate the layouts and write results to a file.
 pub fn evaluate(
     evaluator: LayoutEvaluator,
-    words: &[String],
     layouts: &Vec<Layout>,
     layouts_path: impl AsRef<std::path::Path>,
     app: AppHandle,
 ) -> Result<()> {
-    let words = words.iter().map(String::as_str).collect::<Vec<_>>();
     let mut scored: Vec<_> = layouts
         .par_iter()
         .filter_map(|layout| {
             if app.should_finish() {
                 return None;
             }
-            Some((layout, evaluator.score_corpus(&words, &layout.keys)))
+            Some((layout, evaluator.score_corpus(&layout.keys)))
         })
         .collect();
     scored.sort_by(|a, b| {
