@@ -13,5 +13,6 @@ pub fn corpus_evaluator(
         .as_ref()
         .expect("GA evaluator state must be set before optimize run")
         .score_corpus(&layout.keys);
-    (-score.fitness, Some(score))
+
+    (score.fitness, Some(score))
 }

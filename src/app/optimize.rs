@@ -22,7 +22,7 @@ pub fn optimize(
 
     GeneticAlgorithm::set_state(&mut ga, evaluator);
 
-    // ga.run();
+    ga.run();
 
     Ok(())
 }

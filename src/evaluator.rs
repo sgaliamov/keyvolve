@@ -42,7 +42,7 @@ impl LayoutEvaluator {
     }
 
     /// Score a single word against a layout.
-    pub fn score_word(&self, word: &str, keys: &Keys) -> ScoreResult {
+    fn score_word(&self, word: &str, keys: &Keys) -> ScoreResult {
         let chars = word.chars().collect_vec();
         if chars.is_empty() {
             return ScoreResult::default();
@@ -108,7 +108,7 @@ impl LayoutEvaluator {
             .fold(ScoreResult::default(), |acc, x| acc + x);
 
         // balance_factor is based on the actual usage of keys
-        result.fitness = result.effort;
+        result.fitness = -result.effort;
         result.fitness *= balance_factor(
             result.left_count.into(),
             result.right_count.into(),
