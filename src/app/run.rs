@@ -1,6 +1,5 @@
 use crate::{Config, LayoutEvaluator, Mode, models::{Keyboard, Layout}};
 use cliffa::cli::AppHandle;
-use itertools::Itertools;
 use miette::{Context, IntoDiagnostic, Result};
 use tracing::{info, trace};
 
@@ -17,7 +16,6 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
         .split_whitespace()
         .map(|s| s.to_string())
         .collect::<Vec<_>>();
-    let words_ref = words.iter().map(|s| s.as_str()).collect_vec();
 
     let layouts_path = cfg.layouts.wrap_err("Missing layouts path in config")?;
     let layouts = Layout::load(&layouts_path);
@@ -28,10 +26,10 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
 
     match cfg.mode {
         Mode::Evaluate => {
-            evaluate(evaluator, words_ref, &layouts, &layouts_path, app)?;
+            evaluate(evaluator, &words, &layouts, &layouts_path, app)?;
         }
         Mode::Optimize => {
-            optimize(evaluator, words_ref, &layouts, cfg.ga, app)?;
+            optimize(evaluator, words, &layouts, cfg.ga, app)?;
         }
     }
 

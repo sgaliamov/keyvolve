@@ -1,20 +1,17 @@
-use crate::{
-    LayoutEvaluator,
-    models::{KeyPos, Layout},
-};
+use crate::{LayoutEvaluator, models::{KeyPos, Layout}};
 use cliffa::cli::AppHandle;
 use darwin::GeneticAlgorithm;
 use miette::Result;
 
 pub fn optimize(
     evaluator: LayoutEvaluator,
-    words: Vec<&str>,
+    words: Vec<String>,
     layouts: &[Layout],
     config: darwin::Config<KeyPos>,
     app: AppHandle,
 ) -> Result<()> {
     let _ = (layouts, app);
-    let corpus_evaluator = super::CorpusEvaluator { words: &words };
+    let corpus_evaluator = super::corpus_evaluator(words);
 
     let mut ga = GeneticAlgorithm::new(
         &config,
@@ -31,3 +28,4 @@ pub fn optimize(
 
     Ok(())
 }
+
