@@ -102,7 +102,8 @@ impl LayoutEvaluator {
 
     /// Score the corpus, applying a hand-balance factor to total effort.
     pub fn score_corpus(&self, keys: &Keys) -> ScoreResult {
-        let mut result = self.words
+        let mut result = self
+            .words
             .iter()
             .map(|w| self.score_word(w, keys))
             .fold(ScoreResult::default(), |acc, x| acc + x);
@@ -248,7 +249,8 @@ mod tests {
 
     #[test]
     fn score_corpus_applies_balance_penalty_to_aggregated_effort() {
-        let evaluator = LayoutEvaluator::new(&test_keyboard(), vec!["ab".to_string(), "ac".to_string()]);
+        let evaluator =
+            LayoutEvaluator::new(&test_keyboard(), vec!["ab".to_string(), "ac".to_string()]);
         let keys = test_keys();
 
         let score = evaluator.score_corpus(&keys);
@@ -308,19 +310,22 @@ mod tests {
 
     #[test]
     fn score_corpus_applies_configured_alternation_penalty() {
-        let evaluator = LayoutEvaluator::new(&Keyboard::new(
-            json!({
-                "switchEffortPenalty": 1.5,
-                "balancePenalty": 2.0,
-                "alternationPenalty": 0.5,
-                "efforts": [1.0, 2.0, 3.0, 5.0],
-                "pairs": {
-                    "0": {"0": 1, "1": 2},
-                    "1": {"1": 3, "0": 4}
-                }
-            })
-            .to_string(),
-        ), vec!["ab".to_string(), "ac".to_string()]);
+        let evaluator = LayoutEvaluator::new(
+            &Keyboard::new(
+                json!({
+                    "switchEffortPenalty": 1.5,
+                    "balancePenalty": 2.0,
+                    "alternationPenalty": 0.5,
+                    "efforts": [1.0, 2.0, 3.0, 5.0],
+                    "pairs": {
+                        "0": {"0": 1, "1": 2},
+                        "1": {"1": 3, "0": 4}
+                    }
+                })
+                .to_string(),
+            ),
+            vec!["ab".to_string(), "ac".to_string()],
+        );
 
         let score = evaluator.score_corpus(&test_keys());
 

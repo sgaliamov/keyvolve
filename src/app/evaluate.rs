@@ -1,4 +1,7 @@
-use crate::{LayoutEvaluator, models::{Layout, ScoreResult}};
+use crate::{
+    LayoutEvaluator,
+    models::{Layout, ScoreResult},
+};
 use cliffa::cli::AppHandle;
 use miette::{Context, IntoDiagnostic, Result};
 use rayon::prelude::*;

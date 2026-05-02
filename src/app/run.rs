@@ -1,4 +1,7 @@
-use crate::{Config, LayoutEvaluator, Mode, models::{Keyboard, Layout}};
+use crate::{
+    Config, LayoutEvaluator, Mode,
+    models::{Keyboard, Layout},
+};
 use cliffa::cli::AppHandle;
 use miette::{Context, IntoDiagnostic, Result};
 use tracing::{info, trace};
