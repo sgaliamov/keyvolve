@@ -1,6 +1,6 @@
 use crate::{LayoutEvaluator, models::{KeyPos, Layout}};
 use cliffa::cli::AppHandle;
-use darwin::GeneticAlgorithm;
+use darwin::{GeneticAlgorithm, NoopCrossover};
 use miette::Result;
 
 pub fn optimize(
@@ -15,7 +15,7 @@ pub fn optimize(
         &config,
         super::generate_keys_genome,
         super::mutate_keys_genome,
-        super::crossover_keys_genomes,
+        NoopCrossover,
         super::corpus_evaluator,
         super::optimize_callback,
     );
