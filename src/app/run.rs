@@ -32,7 +32,7 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
             evaluate(evaluator, &layouts, &layouts_path, app)?;
         }
         Mode::Optimize => {
-            optimize(evaluator, &layouts, cfg.ga, app)?;
+            optimize(evaluator, cfg.ga, app)?;
         }
     }
 

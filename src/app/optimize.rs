@@ -8,12 +8,9 @@ use miette::Result;
 
 pub fn optimize(
     evaluator: LayoutEvaluator,
-    layouts: &[Layout],
     config: darwin::Config<KeyPos>,
     app: AppHandle,
 ) -> Result<()> {
-    let _ = (layouts, app);
-
     let mut ga = GeneticAlgorithm::new(
         &config,
         super::generate_keys_genome,
