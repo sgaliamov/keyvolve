@@ -3,6 +3,8 @@ use cliffa::cli::AppHandle;
 use darwin::{GeneticAlgorithm, NoopCrossover};
 use miette::Result;
 
+use super::{callback, corpus_evaluator, generate, mutate};
+
 pub fn optimize(
     evaluator: LayoutEvaluator,
     config: darwin::Config<KeyPos>,
@@ -10,11 +12,11 @@ pub fn optimize(
 ) -> Result<()> {
     let mut ga = GeneticAlgorithm::new(
         &config,
-        super::generate,
-        super::mutate,
+        generate,
+        mutate,
         NoopCrossover,
-        super::corpus_evaluator,
-        super::callback,
+        corpus_evaluator,
+        callback,
     );
 
     GeneticAlgorithm::set_state(&mut ga, (evaluator, app));
