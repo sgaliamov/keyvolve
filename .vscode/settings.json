@@ -1,10 +1,14 @@
 {
-    "cSpell.words": [
-        "bigram",
-        "bigrams",
-        "cliffa",
-        "darwin",
-        "keyvolve",
-        "miette"
-    ]
+  "cSpell.words": [
+    "bigram",
+    "bigrams",
+    "cliffa",
+    "darwin",
+    "keyvolve",
+    "miette"
+  ],
+  "chat.tools.terminal.autoApprove": {
+    ".\\scripts\\test.ps1": true,
+    ".\\scripts\\lint.ps1": true
+  }
 }

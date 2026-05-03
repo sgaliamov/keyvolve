@@ -1,6 +1,7 @@
 use itertools::Itertools;
 use rustc_hash::FxHashMap;
 use std::{
+    fmt,
     fs::File,
     io::{self, BufRead},
     path::Path,
@@ -10,15 +11,23 @@ pub type Keys = FxHashMap<char, u8>;
 
 pub struct Layout {
     pub keys: Keys,
-    pub name: String,
 }
 
 impl Layout {
     // Constructor: Create Layout from line
     pub fn new(line: &str) -> Self {
         let keys = line_to_keys(line);
-        let name = line.split(';').take(6).join(";");
-        Layout { keys, name }
+        Layout { keys }
+    }
+
+    pub fn from_keys(keys: &[char]) -> Self {
+        let keys = keys
+            .iter()
+            .enumerate()
+            .filter(|(_, c)| c.is_alphabetic())
+            .map(|(i, &c)| (c, i as u8))
+            .collect();
+        Layout { keys }
     }
 
     pub fn load(path: impl AsRef<Path>) -> Vec<Layout> {
@@ -37,12 +46,31 @@ impl Layout {
     }
 }
 
-/// Detect persisted CSV header row.
-fn is_header(line: &str) -> bool {
-    line.starts_with("layout_1;layout_2;layout_3;layout_4;layout_5;layout_6;")
+impl fmt::Display for Layout {
+    /// Reconstruct semicolon-separated layout string (positions 0–14 left; 15–29 right, stored inner→outer per group).
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut slots = ['_'; 30];
+        for (&ch, &pos) in &self.keys {
+            slots[pos as usize] = ch;
+        }
+        let left = slots[..15]
+            .chunks(5)
+            .map(|c| c.iter().collect::<String>())
+            .join(";");
+        let right = slots[15..]
+            .chunks(5)
+            .map(|c| c.iter().collect::<String>())
+            .join(";");
+        write!(f, "{left};{right}")
+    }
 }
 
-fn line_to_keys(line: &str) -> Keys {
+/// Detect persisted CSV header row.
+fn is_header(line: &str) -> bool {
+    line.starts_with("keys_1;keys_2;keys_3;keys_4;keys_5;keys_6;")
+}
+
+pub fn line_to_keys(line: &str) -> Keys {
     let parts = line.split(';');
 
     let left = parts
@@ -57,11 +85,11 @@ fn line_to_keys(line: &str) -> Keys {
     parts
         .skip(3)
         .take(3)
-        .flat_map(|part| part.chars().rev())
+        .flat_map(|part| part.chars())
         .enumerate()
         .map(|(p, c)| (c, (p + len) as u8))
         .merge(left)
-        .filter(|(c, _)| c != &'_')
+        .filter(|(c, _)| c.is_alphabetic())
         .collect()
 }
 
@@ -78,9 +106,9 @@ mod layout_test {
         assert_eq!(keys[&'z'], 0);
         assert_eq!(keys[&'x'], 4);
         assert_eq!(keys[&'q'], 14);
-        assert_eq!(keys[&'c'], 16);
-        assert_eq!(keys[&'w'], 19);
-        assert_eq!(keys[&'g'], 28);
+        assert_eq!(keys[&'w'], 15);
+        assert_eq!(keys[&'c'], 18);
+        assert_eq!(keys[&'g'], 26);
     }
 
     #[test]
@@ -88,6 +116,6 @@ mod layout_test {
         let line = "zydpx;ralem;vbjuq;whtc_;fnosi;kg___;not used tail";
         let layout = Layout::new(line);
 
-        assert_eq!(layout.name, "zydpx;ralem;vbjuq;whtc_;fnosi;kg___");
+        assert_eq!(layout.to_string(), "zydpx;ralem;vbjuq;whtc_;fnosi;kg___");
     }
 }

@@ -7,14 +7,13 @@ use std::path::Path;
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Keyboard {
-    /// Keys that are frozen in place: maps character to key index.
-    #[serde(default)]
-    pub frozen: FxHashMap<char, u8>,
+    // /// Keys that are frozen in place: maps character to key index.
+    // #[serde(default)]
+    // pub frozen: FxHashMap<char, u8>,
 
-    /// Key indices that are blocked (unavailable).
-    #[serde(default)]
-    pub blocked: Vec<u8>,
-
+    // /// Key indices that are blocked (unavailable).
+    // #[serde(default)]
+    // pub blocked: Vec<u8>,
     /// Multiplier applied to per-switch self-effort; `1.0` means no penalty.
     #[serde(default = "default_switch_effort_penalty")]
     pub switch_effort_penalty: f64,
@@ -38,8 +37,8 @@ pub struct Keyboard {
 impl Default for Keyboard {
     fn default() -> Self {
         Self {
-            frozen: FxHashMap::default(),
-            blocked: Vec::new(),
+            // frozen: FxHashMap::default(),
+            // blocked: Vec::new(),
             switch_effort_penalty: default_switch_effort_penalty(),
             balance_penalty: default_balance_penalty(),
             alternation_penalty: default_alternation_penalty(),
@@ -83,8 +82,18 @@ impl Keyboard {
         Ok(keyboard)
     }
 
-    /// Mirror left-hand pairs (0–14) to the right hand (15–29) by symmetry.
-    /// Mirror formula (5 keys/row, 3 rows): `mirror(i) = (i/5)*5 + (4 - i%5) + 15`.
+    /// Mirror left-hand pairs (0–14) to the right hand (15–29) by column symmetry.
+    ///
+    /// Key index layout (5 keys/row, 3 rows, 2 hands):
+    /// ```text
+    /// Left:   0  1  2  3  4      Right:  15 16 17 18 19
+    ///         5  6  7  8  9              20 21 22 23 24
+    ///        10 11 12 13 14              25 26 27 28 29
+    /// ```
+    /// Left hand: col 0 = pinky, col 4 = index.
+    /// Right hand: col 0 (15) = index, col 4 (19) = pinky.
+    /// Columns are mirrored: left-col-k ↔ right-col-(4-k).
+    /// Mirror formula: `mirror(i) = (i/5)*5 + (4 - i%5) + 15`.
     fn expand_pairs(mut self) -> Self {
         let mirror = |i: u8| -> u8 { (i / 5) * 5 + (4 - i % 5) + 15 };
 
@@ -120,16 +129,16 @@ mod tests {
             .to_string(),
         );
 
-        assert_eq!(kb.switch_effort_penalty, 1.0);
-        assert_eq!(kb.alternation_penalty, 1.0);
+        assert_eq!(kb.switch_effort_penalty, 1.5);
+        assert_eq!(kb.alternation_penalty, 0.25);
         assert_eq!(kb.balance_penalty, 2.0);
     }
 
     #[test]
     fn expand_pairs_mirrors_left_to_right() {
         let kb = Keyboard {
-            frozen: FxHashMap::default(),
-            blocked: vec![],
+            // frozen: FxHashMap::default(),
+            // blocked: vec![],
             switch_effort_penalty: 0.0,
             balance_penalty: 2.0,
             alternation_penalty: 0.0,
