@@ -47,7 +47,7 @@ impl Layout {
 }
 
 impl fmt::Display for Layout {
-    /// Reconstruct semicolon-separated layout string (positions 0-14 left, 15-29 right reversed).
+    /// Reconstruct semicolon-separated layout string (positions 0–14 left; 15–29 right, stored inner→outer per group).
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut slots = ['_'; 30];
         for (&ch, &pos) in &self.keys {
@@ -65,21 +65,12 @@ impl fmt::Display for Layout {
     }
 }
 
-/// Parse semicolon-separated layout string into a 30-slot genome; non-alpha → '`'.
-pub fn parse_seed(s: &str) -> Vec<char> {
-    s.split(';')
-        .flat_map(|part| part.chars())
-        .map(|c| if c.is_alphabetic() { c } else { '`' })
-        .take(30)
-        .collect()
-}
-
 /// Detect persisted CSV header row.
 fn is_header(line: &str) -> bool {
     line.starts_with("keys_1;keys_2;keys_3;keys_4;keys_5;keys_6;")
 }
 
-fn line_to_keys(line: &str) -> Keys {
+pub fn line_to_keys(line: &str) -> Keys {
     let parts = line.split(';');
 
     let left = parts
@@ -115,8 +106,8 @@ mod layout_test {
         assert_eq!(keys[&'z'], 0);
         assert_eq!(keys[&'x'], 4);
         assert_eq!(keys[&'q'], 14);
-        assert_eq!(keys[&'c'], 16);
         assert_eq!(keys[&'w'], 19);
+        assert_eq!(keys[&'c'], 16);
         assert_eq!(keys[&'g'], 28);
     }
 

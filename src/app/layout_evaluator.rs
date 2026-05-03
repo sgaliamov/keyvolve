@@ -125,7 +125,7 @@ impl LayoutEvaluator {
         result
     }
 
-    /// Look up bigram effort, mirroring right-half keys (15–29) to left (0–14).
+    /// Look up precomputed bigram effort. Right-hand pairs were expanded at init by `Keyboard::expand_pairs`.
     #[inline]
     fn lookup(&self, from: u8, to: u8) -> f64 {
         *self.pairs.get(&(from, to)).unwrap()

@@ -82,8 +82,18 @@ impl Keyboard {
         Ok(keyboard)
     }
 
-    /// Mirror left-hand pairs (0–14) to the right hand (15–29) by symmetry.
-    /// Mirror formula (5 keys/row, 3 rows): `mirror(i) = (i/5)*5 + (4 - i%5) + 15`.
+    /// Mirror left-hand pairs (0–14) to the right hand (15–29) by column symmetry.
+    ///
+    /// Key index layout (5 keys/row, 3 rows, 2 hands):
+    /// ```text
+    /// Left:   0  1  2  3  4      Right:  15 16 17 18 19
+    ///         5  6  7  8  9              20 21 22 23 24
+    ///        10 11 12 13 14              25 26 27 28 29
+    /// ```
+    /// Left hand: col 0 = pinky, col 4 = index.
+    /// Right hand: col 0 (15) = index, col 4 (19) = pinky.
+    /// Columns are mirrored: left-col-k ↔ right-col-(4-k).
+    /// Mirror formula: `mirror(i) = (i/5)*5 + (4 - i%5) + 15`.
     fn expand_pairs(mut self) -> Self {
         let mirror = |i: u8| -> u8 { (i / 5) * 5 + (4 - i % 5) + 15 };
 

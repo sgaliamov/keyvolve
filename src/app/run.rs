@@ -1,8 +1,9 @@
 use crate::app::evaluate;
+use crate::models::line_to_keys;
 use crate::{
     Config, Mode,
     app::{LayoutEvaluator, optimize},
-    models::{Keyboard, Layout, parse_seed},
+    models::{Keyboard, Layout},
 };
 use cliffa::cli::AppHandle;
 use miette::{Context, IntoDiagnostic, Result};
@@ -39,4 +40,14 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Parse semicolon-separated layout string into a 30-slot genome; non-alpha → '`'.
+pub fn parse_seed(s: &str) -> Vec<char> {
+    let keys = line_to_keys(s);
+    let mut slots = vec!['`'; 30];
+    for (c, pos) in keys {
+        slots[pos as usize] = c;
+    }
+    slots
 }
