@@ -120,8 +120,8 @@ mod tests {
             .to_string(),
         );
 
-        assert_eq!(kb.switch_effort_penalty, 1.0);
-        assert_eq!(kb.alternation_penalty, 1.0);
+        assert_eq!(kb.switch_effort_penalty, 1.5);
+        assert_eq!(kb.alternation_penalty, 0.25);
         assert_eq!(kb.balance_penalty, 2.0);
     }
 

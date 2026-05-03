@@ -261,7 +261,7 @@ mod tests {
         assert_close(score.left_effort, 4.0);
         assert_close(score.right_effort, 1.5);
         assert_close(score.effort, 5.5);
-        assert_close(score.fitness, 9.9); // 5.5 * balance_factor(3, 1)
+        assert_close(score.fitness, -9.9); // -5.5 * balance_factor(3, 1)
     }
 
     #[test]
@@ -329,7 +329,7 @@ mod tests {
 
         let score = evaluator.score_corpus(&test_keys());
 
-        assert_close(score.effort, 11.55);
+        assert_close(score.fitness, -11.55);
     }
 
     /// Build minimal keyboard for evaluator tests using production JSON parsing.

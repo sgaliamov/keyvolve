@@ -33,3 +33,5 @@ All `PhantomData` → one field: `__: PhantomData<(B, Q)>,`.
 Keep `mod.rs` for declarations/reexports mainly.
 Prefer `pub use crate::...` over `use super::...`, and reexport submodules as `pub use module::*;`.
 Avoid `pub(xxx)` unless necessary.
+
+After edits run `./scripts/lint.ps1` and `./scripts/test.ps1`.
