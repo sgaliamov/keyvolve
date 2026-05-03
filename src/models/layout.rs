@@ -23,7 +23,7 @@ impl Layout {
         let keys = keys
             .iter()
             .enumerate()
-            .filter(|(_, c)| **c != '`')
+            .filter(|(_, c)| c.is_alphabetic())
             .map(|(i, &c)| (c, i as u8))
             .collect();
         Layout { keys }
@@ -31,7 +31,7 @@ impl Layout {
 
     pub fn name(&self) -> String {
         // Reconstruct semicolon-separated layout string (positions 0-14 left, 15-29 right reversed).
-        let mut slots = ['`'; 30];
+        let mut slots = ['_'; 30];
         for (&ch, &pos) in &self.keys {
             slots[pos as usize] = ch;
         }
@@ -88,7 +88,7 @@ fn line_to_keys(line: &str) -> Keys {
         .enumerate()
         .map(|(p, c)| (c, (p + len) as u8))
         .merge(left)
-        .filter(|(c, _)| c != &'`')
+        .filter(|(c, _)| c.is_alphabetic())
         .collect()
 }
 
@@ -98,7 +98,7 @@ mod layout_test {
 
     #[test]
     fn test_line_to_keys_basic() {
-        let line = "zydpx;ralem;vbjuq;whtc`;fnosi;kg```;not used tail";
+        let line = "zydpx;ralem;vbjuq;whtc_;fnosi;kg___;not used tail";
         let keys = line_to_keys(line);
 
         assert_eq!(keys.len(), 26);
@@ -112,9 +112,9 @@ mod layout_test {
 
     #[test]
     fn test_name() {
-        let line = "zydpx;ralem;vbjuq;whtc`;fnosi;kg```;not used tail";
+        let line = "zydpx;ralem;vbjuq;whtc_;fnosi;kg___;not used tail";
         let layout = Layout::new(line);
 
-        assert_eq!(layout.name(), "zydpx;ralem;vbjuq;whtc`;fnosi;kg```");
+        assert_eq!(layout.name(), "zydpx;ralem;vbjuq;whtc_;fnosi;kg___");
     }
 }
