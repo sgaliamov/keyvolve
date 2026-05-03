@@ -1,4 +1,5 @@
 use crate::app::LayoutEvaluator;
+use crate::models::Layout;
 use cliffa::cli::AppHandle;
 use darwin::{GeneticAlgorithm, NoopCrossover};
 use miette::Result;
@@ -21,7 +22,13 @@ pub fn optimize(
 
     GeneticAlgorithm::set_state(&mut ga, (evaluator, app));
 
-    ga.run();
+    let pools = ga.run();
+
+    println!("\n--- top 10 ---");
+    for (rank, (genome, fitness)) in pools.best_n(10).into_iter().enumerate() {
+        let name = Layout::from_keys(genome).name();
+        println!("{:>2}.  fit {:.4}  {}", rank + 1, fitness, name);
+    }
 
     Ok(())
 }
