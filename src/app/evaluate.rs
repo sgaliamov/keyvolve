@@ -1,5 +1,5 @@
 use crate::{
-    LayoutEvaluator,
+    app::LayoutEvaluator,
     models::{Layout, ScoreResult},
 };
 use cliffa::cli::AppHandle;

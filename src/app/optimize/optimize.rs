@@ -1,4 +1,4 @@
-use crate::{LayoutEvaluator, models::KeyPos};
+use crate::{app::LayoutEvaluator, models::KeyPos};
 use cliffa::cli::AppHandle;
 use darwin::{GeneticAlgorithm, NoopCrossover};
 use miette::Result;

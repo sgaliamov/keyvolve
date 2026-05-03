@@ -1,7 +1,9 @@
 mod evaluate;
-mod ga;
+mod layout_evaluator;
+mod optimize;
 mod run;
 
 pub use evaluate::*;
-pub use ga::*;
+pub use layout_evaluator::*;
+pub use optimize::*;
 pub use run::*;

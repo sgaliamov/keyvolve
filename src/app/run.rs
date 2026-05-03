@@ -1,5 +1,6 @@
 use crate::{
-    Config, LayoutEvaluator, Mode,
+    Config, Mode,
+    app::LayoutEvaluator,
     models::{Keyboard, Layout},
 };
 use cliffa::cli::AppHandle;

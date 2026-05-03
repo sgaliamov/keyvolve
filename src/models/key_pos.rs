@@ -1,7 +1,7 @@
 use darwin::{Gene, Genome};
 use serde::Deserialize;
 
-use crate::models::ScoreResult;
+use crate::{app::LayoutEvaluator, models::ScoreResult};
 
 /// Key position: (char, position index)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize)]
@@ -20,4 +20,4 @@ pub type KeysIndividual = darwin::Individual<KeyPos, ScoreResult>;
 
 /// GA context for layout optimization.
 pub type GaContext<'a> =
-    darwin::Context<'a, KeyPos, (crate::LayoutEvaluator, cliffa::cli::AppHandle), ScoreResult>;
+    darwin::Context<'a, KeyPos, (LayoutEvaluator, cliffa::cli::AppHandle), ScoreResult>;
