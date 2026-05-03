@@ -1,4 +1,4 @@
-use crate::{app::LayoutEvaluator, models::KeyPos};
+use crate::app::LayoutEvaluator;
 use cliffa::cli::AppHandle;
 use darwin::{GeneticAlgorithm, NoopCrossover};
 use miette::Result;
@@ -7,7 +7,7 @@ use super::{callback, corpus_evaluator, generate, mutate};
 
 pub fn optimize(
     evaluator: LayoutEvaluator,
-    config: darwin::Config<KeyPos>,
+    config: darwin::Config<char>,
     app: AppHandle,
 ) -> Result<()> {
     let mut ga = GeneticAlgorithm::new(

@@ -1,4 +1,3 @@
-use crate::models::KeyPos;
 use itertools::Itertools;
 use rustc_hash::FxHashMap;
 use std::{
@@ -20,8 +19,13 @@ impl Layout {
         Layout { keys }
     }
 
-    pub fn from_keys(keys: &[KeyPos]) -> Self {
-        let keys = keys.iter().map(|kp| (kp.0, kp.1)).collect();
+    pub fn from_keys(keys: &[char]) -> Self {
+        let keys = keys
+            .iter()
+            .enumerate()
+            .filter(|(_, c)| **c != '_')
+            .map(|(i, &c)| (c, i as u8))
+            .collect();
         Layout { keys }
     }
 

@@ -1,4 +1,3 @@
-use crate::models::KeyPos;
 use serde::Deserialize;
 use std::path::PathBuf;
 
@@ -15,7 +14,7 @@ pub struct Config {
     pub text: Option<PathBuf>,
 
     /// darwin config for the genetic algorithm
-    pub ga: darwin::Config<KeyPos>,
+    pub ga: darwin::Config<char>,
 
     /// mode of operation: optimize or evaluate
     pub mode: Mode,
