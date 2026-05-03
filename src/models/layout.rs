@@ -26,9 +26,22 @@ impl Layout {
     }
 
     pub fn name(&self) -> String {
-        let mut keyed: Vec<(char, u8)> = self.keys.iter().map(|(&ch, &pos)| (ch, pos)).collect();
-        keyed.sort_unstable_by_key(|&(_, pos)| pos);
-        keyed.into_iter().map(|(ch, _)| ch).collect()
+        // Reconstruct semicolon-separated layout string (positions 0-14 left, 15-29 right reversed).
+        let mut slots = ['_'; 30];
+        for (&ch, &pos) in &self.keys {
+            slots[pos as usize] = ch;
+        }
+        let left = slots[..15]
+            .chunks(5)
+            .map(|c| c.iter().collect::<String>())
+            .join(";");
+
+        let right = slots[15..]
+            .chunks(5)
+            .map(|c| c.iter().rev().collect::<String>())
+            .join(";");
+
+        format!("{left};{right}")
     }
 
     pub fn load(path: impl AsRef<Path>) -> Vec<Layout> {

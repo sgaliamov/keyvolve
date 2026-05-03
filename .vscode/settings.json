@@ -6,5 +6,8 @@
         "darwin",
         "keyvolve",
         "miette"
-    ]
+    ],
+    "chat.tools.terminal.autoApprove": {
+        ".\\scripts\\lint.ps1": true
+    }
 }
