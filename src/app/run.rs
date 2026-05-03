@@ -32,6 +32,7 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
         }
         Mode::Optimize => {
             let mut ga = cfg.ga;
+            ga.ranges = vec![vec![('`', 'z'); 30]];
             ga.seed = cfg.seed.iter().map(|s| parse_seed(s)).collect();
             optimize(evaluator, ga, app)?;
         }
