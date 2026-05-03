@@ -3,7 +3,7 @@ use itertools::Itertools;
 use rand::seq::SliceRandom;
 
 /// Generate a genome for optimization.
-pub fn generate_keys_genome(_: &GaContext) -> KeysGenome {
+pub fn generate(_: &GaContext) -> KeysGenome {
     let mut chars: Vec<char> = ('a'..='z').collect();
     chars.shuffle(&mut rand::rng());
     chars

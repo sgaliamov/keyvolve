@@ -10,11 +10,11 @@ pub fn optimize(
 ) -> Result<()> {
     let mut ga = GeneticAlgorithm::new(
         &config,
-        super::generate_keys_genome,
-        super::mutate_keys_genome,
+        super::generate,
+        super::mutate,
         NoopCrossover,
         super::corpus_evaluator,
-        super::optimize_callback,
+        super::callback,
     );
 
     GeneticAlgorithm::set_state(&mut ga, (evaluator, app));

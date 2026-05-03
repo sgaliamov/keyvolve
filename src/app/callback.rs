@@ -1,7 +1,7 @@
 use crate::models::{GaContext, Layout};
 
 /// Progress callback for optimize mode. Returns `false` to stop early.
-pub fn optimize_callback(ctx: &GaContext) -> bool {
+pub fn callback(ctx: &GaContext) -> bool {
     let Some((genome, fitness)) = ctx.pools.best() else {
         return true;
     };

@@ -1,11 +1,11 @@
 mod app;
 mod config;
-mod evaluator;
+mod layout_evaluator;
 mod models;
 
 use cliffa::cli;
 pub use config::*;
-pub use evaluator::*;
+pub use layout_evaluator::*;
 use miette::Result;
 use tracing::Level;
 

@@ -1,15 +1,15 @@
 mod corpus_evaluator;
 mod evaluate;
-mod generate_keys_genome;
-mod mutate_keys_genome;
+mod generate;
+mod mutate;
 mod optimize;
-mod optimize_callback;
+mod callback;
 mod run;
 
 pub(super) use corpus_evaluator::*;
 pub(super) use evaluate::*;
-pub(super) use generate_keys_genome::*;
-pub(super) use mutate_keys_genome::*;
+pub(super) use generate::*;
+pub(super) use mutate::*;
 pub(super) use optimize::*;
-pub(super) use optimize_callback::*;
+pub(super) use callback::*;
 pub use run::*;
