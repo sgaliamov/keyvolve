@@ -1,7 +1,6 @@
 use crate::{app::LayoutEvaluator, models::ScoreResult};
 
-// todo: move to the optimization module
-/// Genome: 30 chars occupying physical keyboard slots by index; `_` = empty slot.
+/// Genome: 30 chars occupying physical keyboard slots by index; `` ` `` = empty slot.
 pub type KeysGenome = Vec<char>;
 
 /// Individual in the GA population.

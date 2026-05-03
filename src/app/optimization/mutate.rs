@@ -1,4 +1,4 @@
-use crate::models::{GaContext, KeysGenome, KeysIndividual};
+use crate::app::{GaContext, KeysGenome, KeysIndividual};
 
 /// Mutate a candidate genome by swapping two random keys.
 pub fn mutate(ind: &KeysIndividual, _: &GaContext) -> Option<KeysGenome> {

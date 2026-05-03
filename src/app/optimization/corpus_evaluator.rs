@@ -1,4 +1,5 @@
-use crate::models::{GaContext, KeysIndividual, Layout, ScoreResult};
+use crate::app::{GaContext, KeysIndividual};
+use crate::models::{Layout, ScoreResult};
 
 type CorpusEvalResult = (f64, Option<ScoreResult>);
 

@@ -8,6 +8,7 @@
     "miette"
   ],
   "chat.tools.terminal.autoApprove": {
-    ".\\scripts\\*.ps1": true
+    ".\\scripts\\test.ps1": true,
+    ".\\scripts\\lint.ps1": true
   }
 }

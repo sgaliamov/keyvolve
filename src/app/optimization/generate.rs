@@ -1,4 +1,4 @@
-use crate::models::{GaContext, KeysGenome};
+use crate::app::{GaContext, KeysGenome};
 use rand::seq::SliceRandom;
 
 /// Generate a genome for optimization.
