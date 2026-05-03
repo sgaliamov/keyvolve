@@ -1,13 +1,13 @@
 use crate::{
     Config, Mode,
-    app::LayoutEvaluator,
+    app::{LayoutEvaluator, optimize},
     models::{Keyboard, Layout},
 };
 use cliffa::cli::AppHandle;
 use miette::{Context, IntoDiagnostic, Result};
 use tracing::{info, trace};
 
-use crate::app::{evaluate, optimize};
+use crate::app::{evaluate};
 
 /// Entry point called by the CLI builder after argument parsing.
 pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
@@ -21,15 +21,14 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
         .map(|s| s.to_string())
         .collect::<Vec<_>>();
 
-    let layouts_path = cfg.layouts.wrap_err("Missing layouts path in config")?;
-    let layouts = Layout::load(&layouts_path);
-    info!("Loaded {} layouts", layouts.len());
-
     let keyboard = Keyboard::load(cfg.keyboard.unwrap())?;
     let evaluator = LayoutEvaluator::new(&keyboard, words);
 
     match cfg.mode {
         Mode::Evaluate => {
+            let layouts_path = cfg.layouts.wrap_err("Missing layouts path in config")?;
+            let layouts = Layout::load(&layouts_path);
+            info!("Loaded {} layouts", layouts.len());
             evaluate(evaluator, &layouts, &layouts_path, app)?;
         }
         Mode::Optimize => {
