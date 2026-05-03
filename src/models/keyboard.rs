@@ -14,7 +14,6 @@ pub struct Keyboard {
     // /// Key indices that are blocked (unavailable).
     // #[serde(default)]
     // pub blocked: Vec<u8>,
-
     /// Multiplier applied to per-switch self-effort; `1.0` means no penalty.
     #[serde(default = "default_switch_effort_penalty")]
     pub switch_effort_penalty: f64,
@@ -128,8 +127,8 @@ mod tests {
     #[test]
     fn expand_pairs_mirrors_left_to_right() {
         let kb = Keyboard {
-            frozen: FxHashMap::default(),
-            blocked: vec![],
+            // frozen: FxHashMap::default(),
+            // blocked: vec![],
             switch_effort_penalty: 0.0,
             balance_penalty: 2.0,
             alternation_penalty: 0.0,

@@ -1,3 +1,4 @@
+use crate::app::evaluate;
 use crate::{
     Config, Mode,
     app::{LayoutEvaluator, optimize},
@@ -6,8 +7,6 @@ use crate::{
 use cliffa::cli::AppHandle;
 use miette::{Context, IntoDiagnostic, Result};
 use tracing::{info, trace};
-
-use crate::app::{evaluate};
 
 /// Entry point called by the CLI builder after argument parsing.
 pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
