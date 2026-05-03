@@ -1,5 +1,6 @@
 {
-  "mode": "evaluate",
+  "_mode": "evaluate",
+  "mode": "optimize",
   "keyboard": "data/keyboard.json",
   "layouts": "data/layouts.csv",
   "text": "data/samples/0.1-29.result.txt",
