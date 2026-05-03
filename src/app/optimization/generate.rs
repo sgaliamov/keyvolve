@@ -1,4 +1,4 @@
-use crate::app::{GaContext, KeysGenome};
+use crate::app::{EMPTY_SLOT, GaContext, KeysGenome};
 use rand::seq::SliceRandom;
 
 /// Generate a genome for optimization.
@@ -8,7 +8,7 @@ pub fn generate(_: &GaContext) -> KeysGenome {
 
 /// Core: 26 letters + 4 empty slots shuffled into 30 physical key positions.
 fn shuffled_keys() -> KeysGenome {
-    let mut genome: Vec<char> = ('a'..='z').chain(['`', '`', '`', '`']).collect();
+    let mut genome: Vec<char> = ('a'..='z').chain([EMPTY_SLOT; 4]).collect();
     genome.shuffle(&mut rand::rng());
     genome
 }
@@ -21,7 +21,11 @@ mod tests {
     fn generate_has_all_26_chars() {
         let genome = shuffled_keys();
         assert_eq!(genome.len(), 30);
-        let mut chars: Vec<char> = genome.iter().copied().filter(|&c| c != '`').collect();
+        let mut chars: Vec<char> = genome
+            .iter()
+            .copied()
+            .filter(|&c| c != EMPTY_SLOT)
+            .collect();
         chars.sort_unstable();
         assert_eq!(chars, ('a'..='z').collect::<Vec<_>>());
     }
@@ -29,7 +33,7 @@ mod tests {
     #[test]
     fn generate_has_four_empty_slots() {
         let genome = shuffled_keys();
-        assert_eq!(genome.iter().filter(|&&c| c == '`').count(), 4);
+        assert_eq!(genome.iter().filter(|&&c| c == EMPTY_SLOT).count(), 4);
     }
 
     #[test]

@@ -2,7 +2,7 @@ use crate::app::evaluate;
 use crate::models::line_to_keys;
 use crate::{
     Config, Mode,
-    app::{LayoutEvaluator, optimize},
+    app::{EMPTY_SLOT, LayoutEvaluator, optimize},
     models::{Keyboard, Layout},
 };
 use cliffa::cli::AppHandle;
@@ -33,7 +33,7 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
         }
         Mode::Optimize => {
             let mut ga = cfg.ga;
-            ga.ranges = vec![vec![('`', 'z'); 30]];
+            ga.ranges = vec![vec![(EMPTY_SLOT, 'z'); 30]];
             ga.seed = cfg.seed.iter().map(|s| parse_seed(s)).collect();
             optimize(evaluator, ga, app)?;
         }
@@ -42,10 +42,10 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
     Ok(())
 }
 
-/// Parse semicolon-separated layout string into a 30-slot genome; non-alpha → '`'.
+/// Parse semicolon-separated layout string into a 30-slot genome; non-alpha → EMPTY_SLOT.
 pub fn parse_seed(s: &str) -> Vec<char> {
     let keys = line_to_keys(s);
-    let mut slots = vec!['`'; 30];
+    let mut slots = vec![EMPTY_SLOT; 30];
     for (c, pos) in keys {
         slots[pos as usize] = c;
     }
