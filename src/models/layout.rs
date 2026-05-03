@@ -59,7 +59,7 @@ impl fmt::Display for Layout {
             .join(";");
         let right = slots[15..]
             .chunks(5)
-            .map(|c| c.iter().rev().collect::<String>())
+            .map(|c| c.iter().collect::<String>())
             .join(";");
         write!(f, "{left};{right}")
     }
@@ -85,7 +85,7 @@ pub fn line_to_keys(line: &str) -> Keys {
     parts
         .skip(3)
         .take(3)
-        .flat_map(|part| part.chars().rev())
+        .flat_map(|part| part.chars())
         .enumerate()
         .map(|(p, c)| (c, (p + len) as u8))
         .merge(left)
@@ -106,9 +106,9 @@ mod layout_test {
         assert_eq!(keys[&'z'], 0);
         assert_eq!(keys[&'x'], 4);
         assert_eq!(keys[&'q'], 14);
-        assert_eq!(keys[&'w'], 19);
-        assert_eq!(keys[&'c'], 16);
-        assert_eq!(keys[&'g'], 28);
+        assert_eq!(keys[&'w'], 15);
+        assert_eq!(keys[&'c'], 18);
+        assert_eq!(keys[&'g'], 26);
     }
 
     #[test]
