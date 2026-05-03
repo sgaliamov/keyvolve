@@ -65,6 +65,15 @@ impl fmt::Display for Layout {
     }
 }
 
+/// Parse semicolon-separated layout string into a 30-slot genome; non-alpha → '`'.
+pub fn parse_seed(s: &str) -> Vec<char> {
+    s.split(';')
+        .flat_map(|part| part.chars())
+        .map(|c| if c.is_alphabetic() { c } else { '`' })
+        .take(30)
+        .collect()
+}
+
 /// Detect persisted CSV header row.
 fn is_header(line: &str) -> bool {
     line.starts_with("keys_1;keys_2;keys_3;keys_4;keys_5;keys_6;")

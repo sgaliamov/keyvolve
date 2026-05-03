@@ -16,6 +16,10 @@ pub struct Config {
     /// darwin config for the genetic algorithm
     pub ga: darwin::Config<char>,
 
+    /// seed layouts in semicolon format, e.g. "jpdmq;eaurv;xyblz;khoc_;gnsit;wf___"
+    #[serde(default)]
+    pub seed: Vec<String>,
+
     /// mode of operation: optimize or evaluate
     pub mode: Mode,
 }

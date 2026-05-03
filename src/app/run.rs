@@ -2,7 +2,7 @@ use crate::app::evaluate;
 use crate::{
     Config, Mode,
     app::{LayoutEvaluator, optimize},
-    models::{Keyboard, Layout},
+    models::{Keyboard, Layout, parse_seed},
 };
 use cliffa::cli::AppHandle;
 use miette::{Context, IntoDiagnostic, Result};
@@ -31,7 +31,9 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
             evaluate(evaluator, &layouts, &layouts_path, app)?;
         }
         Mode::Optimize => {
-            optimize(evaluator, cfg.ga, app)?;
+            let mut ga = cfg.ga;
+            ga.seed = cfg.seed.iter().map(|s| parse_seed(s)).collect();
+            optimize(evaluator, ga, app)?;
         }
     }
 
