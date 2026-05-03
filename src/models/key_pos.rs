@@ -19,4 +19,5 @@ pub type KeysGenome = Genome<KeyPos>;
 pub type KeysIndividual = darwin::Individual<KeyPos, ScoreResult>;
 
 /// GA context for layout optimization.
-pub type GaContext<'a> = darwin::Context<'a, KeyPos, crate::LayoutEvaluator, ScoreResult>;
+pub type GaContext<'a> =
+    darwin::Context<'a, KeyPos, (crate::LayoutEvaluator, cliffa::cli::AppHandle), ScoreResult>;

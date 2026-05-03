@@ -9,6 +9,7 @@ pub fn corpus_evaluator(ind: &KeysIndividual, ctx: &GaContext) -> CorpusEvalResu
         .state
         .as_ref()
         .expect("GA evaluator state must be set before optimize run")
+        .0
         .score_corpus(&layout.keys);
 
     (score.fitness, Some(score))

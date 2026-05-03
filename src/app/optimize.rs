@@ -20,7 +20,7 @@ pub fn optimize(
         super::optimize_callback,
     );
 
-    GeneticAlgorithm::set_state(&mut ga, evaluator);
+    GeneticAlgorithm::set_state(&mut ga, (evaluator, app));
 
     ga.run();
 
