@@ -30,7 +30,7 @@ pub fn evaluate(
             .unwrap_or(std::cmp::Ordering::Equal)
     });
     scored.iter().take(10).for_each(|(layout, layout_score)| {
-        info!("{} {}", layout.name(), layout_score);
+        info!("{} {}", layout, layout_score);
     });
     let mut file = std::fs::File::create(&layouts_path)
         .into_diagnostic()
@@ -44,7 +44,7 @@ pub fn evaluate(
     .wrap_err("Failed to write evaluated layouts header")?;
 
     for (layout, layout_score) in scored {
-        writeln!(file, "{};{}", layout.name(), layout_score.to_csv())
+        writeln!(file, "{};{}", layout, layout_score.to_csv())
             .into_diagnostic()
             .wrap_err("Failed to write evaluated layouts")?;
     }

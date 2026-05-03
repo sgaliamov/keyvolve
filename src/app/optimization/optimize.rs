@@ -26,7 +26,7 @@ pub fn optimize(
 
     println!("\n--- top 10 ---");
     for (rank, (genome, fitness)) in pools.best_n(10).into_iter().enumerate() {
-        let name = Layout::from_keys(genome).name();
+        let name = Layout::from_keys(genome).to_string();
         println!("{:>2}.  fit {:.4}  {}", rank + 1, fitness, name);
     }
 

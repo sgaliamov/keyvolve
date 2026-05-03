@@ -1,6 +1,7 @@
 use itertools::Itertools;
 use rustc_hash::FxHashMap;
 use std::{
+    fmt,
     fs::File,
     io::{self, BufRead},
     path::Path,
@@ -29,25 +30,6 @@ impl Layout {
         Layout { keys }
     }
 
-    pub fn name(&self) -> String {
-        // Reconstruct semicolon-separated layout string (positions 0-14 left, 15-29 right reversed).
-        let mut slots = ['_'; 30];
-        for (&ch, &pos) in &self.keys {
-            slots[pos as usize] = ch;
-        }
-        let left = slots[..15]
-            .chunks(5)
-            .map(|c| c.iter().collect::<String>())
-            .join(";");
-
-        let right = slots[15..]
-            .chunks(5)
-            .map(|c| c.iter().rev().collect::<String>())
-            .join(";");
-
-        format!("{left};{right}")
-    }
-
     pub fn load(path: impl AsRef<Path>) -> Vec<Layout> {
         let path = path.as_ref();
         let Ok(file) = File::open(path) else {
@@ -61,6 +43,25 @@ impl Layout {
             .filter(|line| !is_header(line))
             .map(|line| Layout::new(line.trim()))
             .collect_vec()
+    }
+}
+
+impl fmt::Display for Layout {
+    /// Reconstruct semicolon-separated layout string (positions 0-14 left, 15-29 right reversed).
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut slots = ['_'; 30];
+        for (&ch, &pos) in &self.keys {
+            slots[pos as usize] = ch;
+        }
+        let left = slots[..15]
+            .chunks(5)
+            .map(|c| c.iter().collect::<String>())
+            .join(";");
+        let right = slots[15..]
+            .chunks(5)
+            .map(|c| c.iter().rev().collect::<String>())
+            .join(";");
+        write!(f, "{left};{right}")
     }
 }
 
@@ -115,6 +116,6 @@ mod layout_test {
         let line = "zydpx;ralem;vbjuq;whtc_;fnosi;kg___;not used tail";
         let layout = Layout::new(line);
 
-        assert_eq!(layout.name(), "zydpx;ralem;vbjuq;whtc_;fnosi;kg___");
+        assert_eq!(layout.to_string(), "zydpx;ralem;vbjuq;whtc_;fnosi;kg___");
     }
 }
