@@ -1,9 +1,19 @@
 {
-  "mode": "evaluate",
-  "_mode": "optimize",
+  "_mode": "evaluate",
+  "mode": "optimize",
   "keyboard": "data/keyboard.json",
   "layouts": "data/layouts.csv",
-  "text": "data/samples/0.1-29.result.txt",
+  "text": "data/samples/0.01-1830.result.txt",
+  "__text": "data/samples/0.1-29.result.txt",
   "_text": "data/samples/0.01-10272.result.txt",
-  "ga": {}
+  "seed": [
+    "jpamz;edurv;qyblx;kcsh_;gnoit;wf___",
+    "qwsf_;uared;zxcvb;kgnyj;lotim;ph___",
+    "_hdx_;usety;jbvrq;_mlp_;wioac;zngfk",
+    "_hck_;wsety;_vxrq;jgnd_;foaim;blpuz"
+  ],
+  "ga": {
+    "mutationRatio": 0.5,
+    "populationSize": 256
+  }
 }

@@ -12,6 +12,6 @@ pub fn callback(ctx: &GaContext) -> bool {
     };
 
     let name = Layout::from_keys(genome).to_string();
-    println!("gen {:>6}  fit {:.4}  {}", ctx.generation, fitness, name);
+    println!("{:>6}: {} | fit {:.4}", ctx.generation, name, fitness);
     true
 }
