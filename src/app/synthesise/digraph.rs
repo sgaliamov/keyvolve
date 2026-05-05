@@ -52,14 +52,23 @@ pub fn filter_and_scale(
     scaled
 }
 
-/// Write scaled digraph pairs to CSV: `pair,count` (count = scaled edge frequency).
+/// Write scaled digraph pairs to CSV: `pair,count,%` (count = scaled edge frequency).
 pub fn write_scaled_csv(scaled: &[([char; 2], usize)], path: &Path) -> Result<()> {
     let mut out = fs::File::create(path)
         .into_diagnostic()
         .wrap_err("Failed to create CSV file")?;
-    writeln!(out, "pair,count").into_diagnostic()?;
+
+    writeln!(out, "pair,count,%").into_diagnostic()?;
+
+    let total: usize = scaled.iter().map(|(_, n)| n).sum();
+
     for ([a, b], count) in scaled {
-        writeln!(out, "{}{},{}", a, b, count).into_diagnostic()?;
+        let pct = if total > 0 {
+            *count as f64 / total as f64 * 100.0
+        } else {
+            0.0
+        };
+        writeln!(out, "{}{},{},{:.4}", a, b, count, pct).into_diagnostic()?;
     }
     Ok(())
 }
@@ -69,23 +78,29 @@ pub fn read_scaled_csv(path: &Path) -> Result<Vec<([char; 2], usize)>> {
     let content = fs::read_to_string(path)
         .into_diagnostic()
         .wrap_err("Failed to read CSV file")?;
+
     let mut result = Vec::new();
 
     for line in content.lines().skip(1) {
         let parts: Vec<&str> = line.split(',').collect();
-        if parts.len() != 2 {
+
+        if parts.len() != 3 {
             continue;
         }
+
         let pair_str = parts[0];
+
         let count: usize = parts[1]
             .parse()
             .into_diagnostic()
             .wrap_err(format!("Failed to parse count in line: {}", line))?;
+
         if pair_str.len() == 2 {
             let chars: Vec<char> = pair_str.chars().collect();
             result.push(([chars[0], chars[1]], count));
         }
     }
+
     Ok(result)
 }
 
