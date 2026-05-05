@@ -1,13 +1,12 @@
 pub mod config;
-pub mod graph;
+mod graph;
 mod count;
-mod io;
 
 pub use config::*;
 use graph::build_corpus;
-use io::{filter_and_scale, read_counts, read_scaled_csv, write_scaled_csv, write_corpus};
-use miette::{Context, Result};
-use std::path::Path;
+use count::{filter_and_scale, read_counts, read_scaled_csv, write_scaled_csv};
+use miette::{Context, IntoDiagnostic, Result};
+use std::{io::Write, path::Path};
 
 /// Run the full synthesise pipeline.
 pub fn run(input: &Path, cfg: SynthesiseConfig) -> Result<()> {
@@ -36,5 +35,20 @@ pub fn run(input: &Path, cfg: SynthesiseConfig) -> Result<()> {
         words = words.len(),
         "Synthesise complete"
     );
+    Ok(())
+}
+
+/// Write space-separated fake words to a text file.
+fn write_corpus(words: &[String], path: &Path) -> Result<()> {
+    let mut out = std::fs::File::create(path)
+        .into_diagnostic()
+        .wrap_err("Failed to create corpus output file")?;
+    for (i, word) in words.iter().enumerate() {
+        if i > 0 {
+            out.write_all(b" ").into_diagnostic()?;
+        }
+        out.write_all(word.as_bytes()).into_diagnostic()?;
+    }
+    out.write_all(b"\n").into_diagnostic()?;
     Ok(())
 }
