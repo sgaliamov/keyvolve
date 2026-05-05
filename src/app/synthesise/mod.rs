@@ -1,7 +1,7 @@
-mod count;
 pub mod config;
+mod count;
 
-pub use config::SynthesiseConfig;
+pub use config::*;
 use count::count_digraphs;
 use miette::{Context, IntoDiagnostic, Result};
 use rustc_hash::FxHashMap;
@@ -15,18 +15,23 @@ pub fn run(input: &Path, cfg: SynthesiseConfig) -> Result<()> {
         .output
         .as_deref()
         .wrap_err("Synthesise mode requires `synthesise.output` path")?;
+    let csv_path = output.with_extension("csv");
 
-    let counts = read_counts(input)?;
-    let total_raw: u64 = counts.values().sum();
+    let scaled = if csv_path.exists() {
+        tracing::info!(csv = %csv_path.display(), "Using cached digraph CSV");
+        read_scaled_csv(&csv_path)?
+    } else {
+        let counts = read_counts(input)?;
+        let scaled = filter_and_scale(&counts, cfg.min_freq, cfg.target);
+        write_scaled_csv(&scaled, &csv_path)?;
+        scaled
+    };
 
-    write_csv(&counts, total_raw, &output.with_extension("csv"))?;
-
-    let scaled = filter_and_scale(&counts, total_raw, cfg.min_freq, cfg.target);
     let words = build_corpus(&scaled);
     write_corpus(&words, &output.with_extension("txt"))?;
 
     tracing::info!(
-        csv = %output.with_extension("csv").display(),
+        csv = %csv_path.display(),
         corpus = %output.with_extension("txt").display(),
         words = words.len(),
         "Synthesise complete"
@@ -46,10 +51,10 @@ fn read_counts(input: &Path) -> Result<FxHashMap<[char; 2], u64>> {
 /// Rounding error is redistributed to the top pairs.
 fn filter_and_scale(
     counts: &FxHashMap<[char; 2], u64>,
-    total_raw: u64,
     min_freq: f64,
     target: usize,
 ) -> Vec<([char; 2], usize)> {
+    let total_raw: u64 = counts.values().sum();
     let threshold = total_raw as f64 * min_freq;
     let mut filtered: Vec<([char; 2], u64)> = counts
         .iter()
@@ -82,18 +87,40 @@ fn filter_and_scale(
     scaled
 }
 
-/// Write `pair,count,frequency` CSV sorted by frequency desc.
-fn write_csv(counts: &FxHashMap<[char; 2], u64>, total: u64, path: &Path) -> Result<()> {
-    let mut pairs: Vec<_> = counts.iter().collect();
-    pairs.sort_by_key(|(_, c)| std::cmp::Reverse(**c));
+/// Write scaled digraph pairs to CSV: `pair,count` (count = scaled edge frequency).
+fn write_scaled_csv(scaled: &[([char; 2], usize)], path: &Path) -> Result<()> {
     let mut out = fs::File::create(path)
         .into_diagnostic()
         .wrap_err("Failed to create CSV file")?;
-    writeln!(out, "pair,count,frequency").into_diagnostic()?;
-    for ([a, b], c) in &pairs {
-        writeln!(out, "{}{},{},{:.6}", a, b, c, **c as f64 / total as f64).into_diagnostic()?;
+    writeln!(out, "pair,count").into_diagnostic()?;
+    for ([a, b], count) in scaled {
+        writeln!(out, "{}{},{}", a, b, count).into_diagnostic()?;
     }
     Ok(())
+}
+
+/// Read scaled digraph pairs from CSV back into memory.
+fn read_scaled_csv(path: &Path) -> Result<Vec<([char; 2], usize)>> {
+    let content = fs::read_to_string(path)
+        .into_diagnostic()
+        .wrap_err("Failed to read CSV file")?;
+    let mut result = Vec::new();
+    for line in content.lines().skip(1) {
+        let parts: Vec<&str> = line.split(',').collect();
+        if parts.len() != 2 {
+            continue;
+        }
+        let pair_str = parts[0];
+        let count: usize = parts[1]
+            .parse()
+            .into_diagnostic()
+            .wrap_err(format!("Failed to parse count in line: {}", line))?;
+        if pair_str.len() == 2 {
+            let chars: Vec<char> = pair_str.chars().collect();
+            result.push(([chars[0], chars[1]], count));
+        }
+    }
+    Ok(result)
 }
 
 /// Write space-separated fake words to a text file.
