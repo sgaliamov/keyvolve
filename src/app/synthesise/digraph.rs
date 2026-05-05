@@ -9,7 +9,7 @@ pub fn read_counts(input: &Path) -> Result<FxHashMap<[char; 2], u64>> {
     let file = fs::File::open(input)
         .into_diagnostic()
         .wrap_err("Failed to open input text file")?;
-    Ok(count_digraphs(BufReader::new(file)))
+    Ok(count(BufReader::new(file)))
 }
 
 /// Filter by min relative frequency, then scale counts to `target` total edges.
@@ -112,7 +112,7 @@ fn pct_precision(min_freq: f64) -> usize {
 }
 
 /// Count all `a-z` digraph pairs from a buffered reader, skipping cross-whitespace pairs.
-fn count_digraphs(reader: impl BufRead) -> FxHashMap<[char; 2], u64> {
+pub fn count(reader: impl BufRead) -> FxHashMap<[char; 2], u64> {
     let mut counts: FxHashMap<[char; 2], u64> = FxHashMap::default();
     let mut prev: Option<char> = None;
 
@@ -146,7 +146,7 @@ mod tests {
     #[test]
     fn digraphs_counts_pairs_and_breaks_on_whitespace() {
         // basic pairs, case folding, space as separator, ab ≠ ba
-        let counts = count_digraphs(Cursor::new("ab BC ba ba aa"));
+        let counts = count(Cursor::new("ab BC ba ba aa"));
         assert_eq!(counts[&['a', 'b']], 1);
         assert_eq!(counts[&['b', 'c']], 1);
         assert_eq!(counts[&['b', 'a']], 2);
@@ -158,17 +158,17 @@ mod tests {
     #[test]
     fn digraphs_boundary_and_punctuation_break_chain() {
         // line boundary
-        let counts = count_digraphs(Cursor::new("ab\nbc"));
+        let counts = count(Cursor::new("ab\nbc"));
         assert_eq!(counts[&['a', 'b']], 1);
         assert_eq!(counts[&['b', 'c']], 1);
         assert!(!counts.contains_key(&['b', 'b']));
 
         // punctuation
-        let counts = count_digraphs(Cursor::new("a.b"));
+        let counts = count(Cursor::new("a.b"));
         assert!(counts.is_empty());
 
         // empty
-        assert!(count_digraphs(Cursor::new("")).is_empty());
+        assert!(count(Cursor::new("")).is_empty());
     }
 
     // --- filter_and_scale ---
