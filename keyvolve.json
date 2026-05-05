@@ -5,7 +5,7 @@
   "layouts": "data/layouts.csv",
   "__text": "data/samples/0.1-29.result.txt",
   "_text": "data/samples/0.01-1830.result.txt",
-  "text": "data/samples/0.01-10272.result.txt",
+  "text": "data/synthesised.txt",
   "seed": [
     "jpamz;edurv;qyblx;kcsh_;gnoit;wf___",
     "qwsf_;uared;zxcvb;kgnyj;lotim;ph___",
