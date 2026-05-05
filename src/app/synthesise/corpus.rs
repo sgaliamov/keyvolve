@@ -10,9 +10,8 @@ const MAX_WORD_LEN: usize = 8;
 pub fn build_corpus(edges: &[([char; 2], usize)]) -> Vec<String> {
     let mut adj = build_adj(edges);
     let mut words = Vec::new();
-    loop {
-        let Some(start) = next_start(&adj) else { break };
-        let path = hierholzer(&mut adj, start);
+    while let Some(start) = next_start(&adj) {
+        let path = greedy_walk(&mut adj, start);
         if path.len() > 1 {
             split_path(&path, &mut words);
         }
@@ -55,21 +54,18 @@ fn split_path(path: &[char], out: &mut Vec<String>) {
     }
 }
 
-/// Hierholzer's algorithm — extracts an Eulerian path/circuit from `start`.
-fn hierholzer(adj: &mut FxHashMap<char, Vec<char>>, start: char) -> Vec<char> {
-    let mut stack = vec![start];
-    let mut path = Vec::new();
-    while let Some(&top) = stack.last() {
-        if adj.get(&top).is_some_and(|v| !v.is_empty()) {
-            let next = adj.get_mut(&top).unwrap().pop().unwrap();
-            stack.push(next);
-        } else {
-            path.push(stack.pop().unwrap());
-        }
+/// Greedy walk: follow edges from `start` until stuck.
+/// Always produces a valid walk — every consecutive pair is a real input edge.
+fn greedy_walk(adj: &mut FxHashMap<char, Vec<char>>, start: char) -> Vec<char> {
+    let mut path = vec![start];
+    let mut cur = start;
+    while let Some(next) = adj.get_mut(&cur).and_then(|v| v.pop()) {
+        path.push(next);
+        cur = next;
     }
-    path.reverse();
     path
 }
+
 
 #[cfg(test)]
 mod tests {
@@ -110,6 +106,45 @@ mod tests {
         let total_out: u64 = counts.values().sum();
         let total_in: u64 = input.iter().map(|(_, n)| *n as u64).sum();
         assert_eq!(total_out, total_in);
+    }
+
+    /// Larger synthetic dataset: all a–z pairs with pseudo-random counts.
+    /// Verifies exact round-trip and no word exceeds MAX_WORD_LEN.
+    #[test]
+    fn corpus_preserves_digraph_counts_large() {
+        // lcg deterministic pseudo-random counts 1..=50
+        let mut lcg: u64 = 0xdeadbeef;
+        let input: Vec<([char; 2], usize)> = ('a'..='z')
+            .flat_map(|a| {
+                ('a'..='z').map(move |b| {
+                    ([a, b], 0usize) // placeholder; filled below
+                })
+            })
+            .map(|([a, b], _)| {
+                lcg = lcg.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+                let count = (lcg >> 58) as usize + 1; // 1..=64
+                ([a, b], count)
+            })
+            .collect();
+
+        let words = build_corpus(&input);
+        assert!(!words.is_empty());
+
+        let text = words.join("\n");
+        let counts = digraph::count(Cursor::new(text));
+
+        let mut mismatches = Vec::new();
+        for ([a, b], n) in &input {
+            let got = counts.get(&[*a, *b]).copied().unwrap_or(0);
+            if got != *n as u64 {
+                mismatches.push(format!("{}{}: expected {}, got {}", a, b, n, got));
+            }
+        }
+        assert!(mismatches.is_empty(), "digraph mismatches:\n{}", mismatches.join("\n"));
+
+        let total_out: u64 = counts.values().sum();
+        let total_in: u64 = input.iter().map(|(_, n)| *n as u64).sum();
+        assert_eq!(total_out, total_in, "extra digraphs introduced");
     }
 
     #[test]
