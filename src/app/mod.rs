@@ -2,6 +2,7 @@ mod evaluate;
 mod layout_evaluator;
 mod optimization;
 mod run;
+pub mod synthesise;
 
 pub use evaluate::*;
 pub use layout_evaluator::*;

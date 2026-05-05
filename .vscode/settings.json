@@ -5,7 +5,8 @@
     "cliffa",
     "darwin",
     "keyvolve",
-    "miette"
+    "miette",
+    "synthesise"
   ],
   "chat.tools.terminal.autoApprove": {
     ".\\scripts\\test.ps1": true,

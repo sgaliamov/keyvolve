@@ -1,4 +1,4 @@
-use crate::app::evaluate;
+use crate::app::{evaluate, synthesise};
 use crate::models::line_to_keys;
 use crate::{
     Config, Mode,
@@ -13,6 +13,12 @@ use tracing::{info, trace};
 pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
     let cfg = config.wrap_err("Missing config.")?;
     trace!("Starting with config: {:#?}", cfg);
+
+    if cfg.mode == Mode::Synthesise {
+        let input = cfg.text.wrap_err("Synthesise mode requires `text` path")?;
+        let output = cfg.output.wrap_err("Synthesise mode requires `output` path")?;
+        return synthesise::run(&input, &output, cfg.target);
+    }
 
     let words = std::fs::read_to_string(cfg.text.unwrap())
         .into_diagnostic()
@@ -37,6 +43,7 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
             ga.seed = cfg.seed.iter().map(|s| parse_seed(s)).collect();
             optimize(evaluator, ga, app)?;
         }
+        Mode::Synthesise => unreachable!(),
     }
 
     Ok(())

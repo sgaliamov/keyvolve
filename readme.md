@@ -1,5 +1,4 @@
 ## Todo
 
-- [ ] Load config and sample text from files.
-- [ ] Review efforts.
-- [ ] Calculator for digraphs.
+- synthetic data generation
+- define the efforts
