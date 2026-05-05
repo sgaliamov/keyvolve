@@ -52,7 +52,7 @@ pub fn filter_and_scale(
     scaled
 }
 
-/// Write scaled digraph pairs to CSV: `pair,count,%,raw` (count = scaled edge frequency, raw = original corpus count).
+/// Write scaled digraph pairs to CSV: `pair,count,%,raw,raw%` (count = scaled edge frequency, raw = original corpus count).
 /// Percentage precision is derived from `min_freq` so the smallest value is always readable.
 pub fn write_digraphs(
     scaled: &[([char; 2], usize)],
@@ -64,9 +64,10 @@ pub fn write_digraphs(
         .into_diagnostic()
         .wrap_err("Failed to create CSV file")?;
 
-    writeln!(out, "pair,count,%,raw").into_diagnostic()?;
+    writeln!(out, "pair,count,%,raw,raw%").into_diagnostic()?;
 
     let total: usize = scaled.iter().map(|(_, n)| n).sum();
+    let raw_total: u64 = counts.values().sum();
     let precision = if min_freq > 0.0 {
         (-min_freq.log10()).ceil().max(2.0) as usize
     } else {
@@ -80,14 +81,20 @@ pub fn write_digraphs(
             0.0
         };
         let raw = counts.get(&[a, b]).copied().unwrap_or(0);
+        let raw_pct = if raw_total > 0 {
+            raw as f64 / raw_total as f64 * 100.0
+        } else {
+            0.0
+        };
         writeln!(
             out,
-            "{}{},{},{:.prec$},{}",
+            "{}{},{},{:.prec$},{},{:.prec$}",
             a,
             b,
             count,
             pct,
             raw,
+            raw_pct,
             prec = precision
         )
         .into_diagnostic()?;
