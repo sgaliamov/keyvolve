@@ -9,7 +9,7 @@ use miette::{Context, IntoDiagnostic, Result};
 use std::{io::Write, path::Path};
 
 /// Run the full synthesise pipeline.
-pub fn run(input: &Path, cfg: SynthesiseConfig) -> Result<()> {
+pub fn synthesise(input: &Path, cfg: SynthesiseConfig) -> Result<()> {
     let output = cfg
         .output
         .as_deref()

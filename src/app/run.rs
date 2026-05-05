@@ -14,35 +14,38 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
     let cfg = config.wrap_err("Missing config.")?;
     trace!("Starting with config: {:#?}", cfg);
 
-    if cfg.mode == Mode::Synthesise {
-        let input = cfg.text.wrap_err("Synthesise mode requires `text` path")?;
-        return synthesise::run(&input, cfg.synthesise);
-    }
-
-    let words = std::fs::read_to_string(cfg.text.unwrap())
-        .into_diagnostic()
-        .wrap_err("Failed to read text file")?
-        .split_whitespace()
-        .map(|s| s.to_string())
-        .collect::<Vec<_>>();
-
-    let keyboard = Keyboard::load(cfg.keyboard.unwrap())?;
-    let evaluator = LayoutEvaluator::new(&keyboard, words);
-
     match cfg.mode {
-        Mode::Evaluate => {
-            let layouts_path = cfg.layouts.wrap_err("Missing layouts path in config")?;
-            let layouts = Layout::load(&layouts_path);
-            info!("Loaded {} layouts", layouts.len());
-            evaluate(evaluator, &layouts, &layouts_path, app)?;
+        Mode::Synthesise => {
+            let input = cfg.text.wrap_err("Synthesise mode requires `text` path")?;
+            synthesise::synthesise(&input, cfg.synthesise)?;
         }
-        Mode::Optimize => {
-            let mut ga = cfg.ga;
-            ga.ranges = vec![vec![(EMPTY_SLOT, 'z'); 30]];
-            ga.seed = cfg.seed.iter().map(|s| parse_seed(s)).collect();
-            optimize(evaluator, ga, app)?;
+        mode => {
+            let words = std::fs::read_to_string(cfg.text.unwrap())
+                .into_diagnostic()
+                .wrap_err("Failed to read text file")?
+                .split_whitespace()
+                .map(|s| s.to_string())
+                .collect::<Vec<_>>();
+
+            let keyboard = Keyboard::load(cfg.keyboard.unwrap())?;
+            let evaluator = LayoutEvaluator::new(&keyboard, words);
+
+            match mode {
+                Mode::Evaluate => {
+                    let layouts_path = cfg.layouts.wrap_err("Missing layouts path in config")?;
+                    let layouts = Layout::load(&layouts_path);
+                    info!("Loaded {} layouts", layouts.len());
+                    evaluate(evaluator, &layouts, &layouts_path, app)?;
+                }
+                Mode::Optimize => {
+                    let mut ga = cfg.ga;
+                    ga.ranges = vec![vec![(EMPTY_SLOT, 'z'); 30]];
+                    ga.seed = cfg.seed.iter().map(|s| parse_seed(s)).collect();
+                    optimize(evaluator, ga, app)?;
+                }
+                Mode::Synthesise => unreachable!(),
+            }
         }
-        Mode::Synthesise => unreachable!(),
     }
 
     Ok(())
