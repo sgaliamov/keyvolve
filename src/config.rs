@@ -1,5 +1,6 @@
 use serde::Deserialize;
 use std::path::PathBuf;
+use crate::app::synthesise::SynthesiseConfig;
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -23,16 +24,9 @@ pub struct Config {
     /// mode of operation: optimize, evaluate, or synthesise
     pub mode: Mode,
 
-    /// output path for synthesise mode (csv + corpus txt)
-    pub output: Option<PathBuf>,
-
-    /// target total digraph edge count for synthesised corpus (default: 100_000)
-    #[serde(default = "default_target")]
-    pub target: usize,
-}
-
-fn default_target() -> usize {
-    100_000
+    /// settings for `Mode::Synthesise`
+    #[serde(default)]
+    pub synthesise: SynthesiseConfig,
 }
 
 #[derive(Debug, Default, Clone, Deserialize, PartialEq)]

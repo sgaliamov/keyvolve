@@ -16,8 +16,7 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
 
     if cfg.mode == Mode::Synthesise {
         let input = cfg.text.wrap_err("Synthesise mode requires `text` path")?;
-        let output = cfg.output.wrap_err("Synthesise mode requires `output` path")?;
-        return synthesise::run(&input, &output, cfg.target);
+        return synthesise::run(&input, cfg.synthesise);
     }
 
     let words = std::fs::read_to_string(cfg.text.unwrap())

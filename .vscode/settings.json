@@ -6,7 +6,8 @@
     "darwin",
     "keyvolve",
     "miette",
-    "synthesise"
+    "synthesise",
+    "synthesised"
   ],
   "chat.tools.terminal.autoApprove": {
     ".\\scripts\\test.ps1": true,
