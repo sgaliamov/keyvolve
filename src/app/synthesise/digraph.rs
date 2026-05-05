@@ -68,11 +68,7 @@ pub fn write_digraphs(
 
     let total: usize = scaled.iter().map(|(_, n)| n).sum();
     let raw_total: u64 = counts.values().sum();
-    let precision = if min_freq > 0.0 {
-        (-min_freq.log10()).ceil().max(2.0) as usize
-    } else {
-        4
-    };
+    let precision = pct_precision(min_freq);
 
     for &([a, b], count) in scaled {
         let pct = if total > 0 {
@@ -103,36 +99,17 @@ pub fn write_digraphs(
     Ok(())
 }
 
-// /// Read scaled digraph pairs from CSV back into memory.
-// pub fn read_scaled_csv(path: &Path) -> Result<Vec<([char; 2], usize)>> {
-//     let content = fs::read_to_string(path)
-//         .into_diagnostic()
-//         .wrap_err("Failed to read CSV file")?;
-
-//     let mut result = Vec::new();
-
-//     for line in content.lines().skip(1) {
-//         let parts: Vec<&str> = line.split(',').collect();
-
-//         if parts.len() != 3 {
-//             continue;
-//         }
-
-//         let pair_str = parts[0];
-
-//         let count: usize = parts[1]
-//             .parse()
-//             .into_diagnostic()
-//             .wrap_err(format!("Failed to parse count in line: {}", line))?;
-
-//         if pair_str.len() == 2 {
-//             let chars: Vec<char> = pair_str.chars().collect();
-//             result.push(([chars[0], chars[1]], count));
-//         }
-//     }
-
-//     Ok(result)
-// }
+/// Decimal places needed to display a percentage whose smallest meaningful value is `min_freq * 100`.
+/// E.g. min_freq=0.001 → smallest pct=0.1% → 1 significant decimal → 1 decimal place.
+fn pct_precision(min_freq: f64) -> usize {
+    if min_freq <= 0.0 || min_freq >= 1.0 || !min_freq.is_finite() {
+        return 2;
+    }
+    // min_freq * 100 is the smallest percentage value that will appear.
+    // We want enough decimals to show one significant digit of that value.
+    let smallest_pct = min_freq * 100.0;
+    ((-smallest_pct.log10()).ceil() + 1.0).max(2.0) as usize
+}
 
 /// Count all `a-z` digraph pairs from a buffered reader, skipping cross-whitespace pairs.
 fn count_digraphs(reader: impl BufRead) -> FxHashMap<[char; 2], u64> {
@@ -220,6 +197,34 @@ mod tests {
 
         // empty input → empty output
         assert!(filter_and_scale(&FxHashMap::default(), 0.0, 100).is_empty());
+    }
+
+    // --- pct_precision ---
+
+    #[test]
+    fn pct_precision_common_values() {
+        // min_freq=0.1  → smallest pct=10%   → 2 decimals (10.00)
+        assert_eq!(pct_precision(0.1), 2);
+        // min_freq=0.05 → smallest pct=5%    → 2 decimals (5.00)
+        assert_eq!(pct_precision(0.05), 2);
+        // min_freq=0.01 → smallest pct=1%    → 2 decimals (1.00)
+        assert_eq!(pct_precision(0.01), 2);
+        // min_freq=0.001 → smallest pct=0.1% → 2 decimals (0.10)
+        assert_eq!(pct_precision(0.001), 2);
+        // min_freq=0.0001 → smallest pct=0.01% → 3 decimals (0.010)
+        assert_eq!(pct_precision(0.0001), 3);
+        // min_freq=0.00001 → smallest pct=0.001% → 4 decimals (0.0010)
+        assert_eq!(pct_precision(0.00001), 4);
+    }
+
+    #[test]
+    fn pct_precision_edge_cases() {
+        assert_eq!(pct_precision(0.0), 2); // zero → default
+        assert_eq!(pct_precision(1.0), 2); // 100% → default
+        assert_eq!(pct_precision(2.0), 2); // >1 → default
+        assert_eq!(pct_precision(f64::NAN), 2);
+        assert_eq!(pct_precision(f64::INFINITY), 2);
+        assert_eq!(pct_precision(-0.01), 2); // negative → default
     }
 
     // --- Helpers ---
