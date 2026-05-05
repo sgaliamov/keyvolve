@@ -4,7 +4,7 @@ mod digraph;
 
 pub use config::*;
 use corpus::build_corpus;
-use digraph::{filter_and_scale, read_counts, read_scaled_csv, write_scaled_csv};
+use digraph::{filter_and_scale, read_counts, write_scaled_csv};
 use miette::{Context, IntoDiagnostic, Result};
 use std::{io::Write, path::Path};
 
@@ -16,15 +16,9 @@ pub fn synthesise(input: &Path, cfg: SynthesiseConfig) -> Result<()> {
         .wrap_err("Synthesise mode requires `synthesise.output` path")?;
     let csv_path = output.with_extension("csv");
 
-    let scaled = if csv_path.exists() {
-        tracing::info!(csv = %csv_path.display(), "Using cached digraph CSV");
-        read_scaled_csv(&csv_path)?
-    } else {
-        let counts = read_counts(input)?;
-        let scaled = filter_and_scale(&counts, cfg.min_frequency, cfg.target);
-        write_scaled_csv(&scaled, cfg.min_frequency, &csv_path)?;
-        scaled
-    };
+    let counts = read_counts(input)?;
+    let scaled = filter_and_scale(&counts, cfg.min_frequency, cfg.target);
+    write_scaled_csv(&scaled, cfg.min_frequency, &csv_path)?;
 
     let words = build_corpus(&scaled);
     write_corpus(&words, &output.with_extension("txt"))?;
