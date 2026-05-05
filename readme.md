@@ -1,4 +1,4 @@
 ## Todo
 
-- synthetic data generation
+- find samples of text
 - define the efforts
