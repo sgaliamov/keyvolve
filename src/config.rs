@@ -1,6 +1,6 @@
+use crate::app::synthesise::SynthesiseConfig;
 use serde::Deserialize;
 use std::path::PathBuf;
-use crate::app::synthesise::SynthesiseConfig;
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]

@@ -1,10 +1,10 @@
 pub mod config;
-mod graph;
-mod count;
+mod corpus;
+mod digraph;
 
 pub use config::*;
-use graph::build_corpus;
-use count::{filter_and_scale, read_counts, read_scaled_csv, write_scaled_csv};
+use corpus::build_corpus;
+use digraph::{filter_and_scale, read_counts, read_scaled_csv, write_scaled_csv};
 use miette::{Context, IntoDiagnostic, Result};
 use std::{io::Write, path::Path};
 
