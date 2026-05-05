@@ -14,7 +14,7 @@ pub struct SynthesiseConfig {
 
     /// minimum accepted relative frequency (pairs below this are dropped)
     #[serde(default = "default_min_freq")]
-    pub min_freq: f64,
+    pub min_frequency: f64,
 }
 
 fn default_target() -> usize {
@@ -40,7 +40,7 @@ impl Default for SynthesiseConfig {
         Self {
             output: None,
             target: Self::default_target(),
-            min_freq: Self::default_min_freq(),
+            min_frequency: Self::default_min_freq(),
         }
     }
 }

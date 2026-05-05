@@ -21,7 +21,7 @@ pub fn synthesise(input: &Path, cfg: SynthesiseConfig) -> Result<()> {
         read_scaled_csv(&csv_path)?
     } else {
         let counts = read_counts(input)?;
-        let scaled = filter_and_scale(&counts, cfg.min_freq, cfg.target);
+        let scaled = filter_and_scale(&counts, cfg.min_frequency, cfg.target);
         write_scaled_csv(&scaled, &csv_path)?;
         scaled
     };
