@@ -22,7 +22,7 @@ pub fn synthesise(input: &Path, cfg: SynthesiseConfig) -> Result<()> {
     } else {
         let counts = read_counts(input)?;
         let scaled = filter_and_scale(&counts, cfg.min_frequency, cfg.target);
-        write_scaled_csv(&scaled, &csv_path)?;
+        write_scaled_csv(&scaled, cfg.min_frequency, &csv_path)?;
         scaled
     };
 

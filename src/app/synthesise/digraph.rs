@@ -53,7 +53,8 @@ pub fn filter_and_scale(
 }
 
 /// Write scaled digraph pairs to CSV: `pair,count,%` (count = scaled edge frequency).
-pub fn write_scaled_csv(scaled: &[([char; 2], usize)], path: &Path) -> Result<()> {
+/// Percentage precision is derived from `min_freq` so the smallest value is always readable.
+pub fn write_scaled_csv(scaled: &[([char; 2], usize)], min_freq: f64, path: &Path) -> Result<()> {
     let mut out = fs::File::create(path)
         .into_diagnostic()
         .wrap_err("Failed to create CSV file")?;
@@ -61,6 +62,11 @@ pub fn write_scaled_csv(scaled: &[([char; 2], usize)], path: &Path) -> Result<()
     writeln!(out, "pair,count,%").into_diagnostic()?;
 
     let total: usize = scaled.iter().map(|(_, n)| n).sum();
+    let precision = if min_freq > 0.0 {
+        (-min_freq.log10()).ceil().max(2.0) as usize
+    } else {
+        4
+    };
 
     for ([a, b], count) in scaled {
         let pct = if total > 0 {
@@ -68,7 +74,7 @@ pub fn write_scaled_csv(scaled: &[([char; 2], usize)], path: &Path) -> Result<()
         } else {
             0.0
         };
-        writeln!(out, "{}{},{},{:.4}", a, b, count, pct).into_diagnostic()?;
+        writeln!(out, "{}{},{},{:.prec$}", a, b, count, pct, prec = precision).into_diagnostic()?;
     }
     Ok(())
 }
@@ -139,13 +145,11 @@ mod tests {
     #[test]
     fn digraphs_counts_pairs_and_breaks_on_whitespace() {
         // basic pairs, case folding, space as separator, ab ≠ ba
-        let counts = count_digraphs(Cursor::new("ab BC ba ba"));
+        let counts = count_digraphs(Cursor::new("ab BC ba ba aa"));
         assert_eq!(counts[&['a', 'b']], 1);
         assert_eq!(counts[&['b', 'c']], 1);
         assert_eq!(counts[&['b', 'a']], 2);
-        // ab and ba are distinct keys (order matters)
-        assert_eq!(counts.get(&['a', 'b']), Some(&1u64));
-        assert_eq!(counts.get(&['b', 'a']), Some(&2u64));
+        assert_eq!(counts[&['a', 'a']], 1);
         // space breaks chain → no repeated cross-space pair
         assert!(!counts.contains_key(&['b', 'b']));
     }
