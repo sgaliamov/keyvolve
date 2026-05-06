@@ -3,7 +3,7 @@
   "mode": "synthesise",
   "keyboard": "data/keyboard.json",
   "layouts": "data/layouts.csv",
-  "text": "C:/Users/Admin/projects/keyvolve/data/samples/wikipedia-filtered.txt",
+  "text": "C:/Users/Admin/projects/keyvolve/data/samples/news-discuss.txt",
   "seed": [
     "jpamz;edurv;qyblx;kcsh_;gnoit;wf___",
     "qwsf_;uared;zxcvb;kgnyj;lotim;ph___",
