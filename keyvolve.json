@@ -12,8 +12,8 @@
   ],
   "synthesise": {
     "output": "data/synthesised",
-    "minFrequency": 0.000001,
-    "target": 100000
+    "minFrequency": 0.00001,
+    "target": 50000
   },
   "ga": {
     "mutationRatio": 0.5,

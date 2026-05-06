@@ -121,23 +121,49 @@ pub fn count_corpus_letters(words: &[String]) -> FxHashMap<char, u64> {
     counts
 }
 
-/// Write letter frequency CSV: `letter,count,%`.
-pub fn write_letter_freq(counts: &FxHashMap<char, u64>, path: &Path) -> Result<()> {
-    let mut sorted: Vec<(char, u64)> = counts.iter().map(|(&c, &n)| (c, n)).collect();
-    sorted.sort_unstable_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
-    let total: u64 = sorted.iter().map(|(_, n)| n).sum();
+/// Write combined letter frequency CSV: `letter,orig_count,orig_%,synth_count,synth_%`.
+/// Rows sorted by original frequency descending; all 26 letters always emitted.
+pub fn write_letter_freq_combined(
+    orig: &FxHashMap<char, u64>,
+    synth: &FxHashMap<char, u64>,
+    path: &Path,
+) -> Result<()> {
+    let orig_total: u64 = orig.values().sum();
+    let synth_total: u64 = synth.values().sum();
+
+    let mut letters: Vec<char> = (b'a'..=b'z').map(|b| b as char).collect();
+    letters.sort_unstable_by(|a, b| {
+        orig.get(b)
+            .unwrap_or(&0)
+            .cmp(orig.get(a).unwrap_or(&0))
+            .then(a.cmp(b))
+    });
+
+    let pct = |n: u64, total: u64| -> f64 {
+        if total > 0 {
+            n as f64 / total as f64 * 100.0
+        } else {
+            0.0
+        }
+    };
 
     let mut out = fs::File::create(path)
         .into_diagnostic()
         .wrap_err("Failed to create letter frequency CSV")?;
-    writeln!(out, "letter,count,%").into_diagnostic()?;
-    for (ch, count) in &sorted {
-        let pct = if total > 0 {
-            *count as f64 / total as f64 * 100.0
-        } else {
-            0.0
-        };
-        writeln!(out, "{},{},{:.2}", ch, count, pct).into_diagnostic()?;
+    writeln!(out, "letter,orig_count,orig_%,synth_count,synth_%").into_diagnostic()?;
+    for ch in &letters {
+        let oc = orig.get(ch).copied().unwrap_or(0);
+        let sc = synth.get(ch).copied().unwrap_or(0);
+        writeln!(
+            out,
+            "{},{},{:.2},{},{:.2}",
+            ch,
+            oc,
+            pct(oc, orig_total),
+            sc,
+            pct(sc, synth_total)
+        )
+        .into_diagnostic()?;
     }
     Ok(())
 }
