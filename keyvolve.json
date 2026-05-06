@@ -3,11 +3,10 @@
   "mode": "synthesise",
   "keyboard": "data/keyboard.json",
   "layouts": "data/layouts.csv",
-  "text": "C:/Users/Admin/projects/keyvolve/data/samples/undoc.2000.fr.txt",
+  "text": "C:/Users/Admin/projects/keyvolve/data/samples/wikipedia-filtered.txt",
   "seed": [
     "jpamz;edurv;qyblx;kcsh_;gnoit;wf___",
     "qwsf_;uared;zxcvb;kgnyj;lotim;ph___",
-    "_hdx_;usety;jbvrq;_mlp_;wioac;zngfk",
     "_hck_;wsety;_vxrq;jgnd_;foaim;blpuz"
   ],
   "synthesise": {
