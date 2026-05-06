@@ -5,7 +5,10 @@ mod digraph;
 
 pub use config::*;
 use corpus::build_corpus;
-use digraph::{filter_and_scale, read_counts, write_bigrams};
+use digraph::{
+    count_corpus_letters, filter_and_scale, read_counts, read_letter_counts, write_bigrams,
+    write_letter_freq,
+};
 use miette::{Context, IntoDiagnostic, Result};
 use std::{io::Write, path::Path};
 
@@ -42,9 +45,24 @@ pub fn synthesise(input: &Path, cfg: SynthesiseConfig) -> Result<()> {
     let corpus_path = output.with_extension("txt");
     write_corpus(&words, &corpus_path)?;
 
+    // Letter frequencies: original input vs synthesised corpus.
+    let freq_dir = output.parent().unwrap_or(output);
+    let orig_freq_path = freq_dir.join(format!("{src_stem}.letters.csv"));
+    let synth_freq_path = freq_dir.join(format!("{src_stem}.synth_letters.csv"));
+
+    let orig_letters = read_letter_counts(input)?;
+    write_letter_freq(&orig_letters, &orig_freq_path)?;
+    tracing::debug!(csv = %orig_freq_path.display(), "Original letter frequencies written");
+
+    let synth_letters = count_corpus_letters(&words);
+    write_letter_freq(&synth_letters, &synth_freq_path)?;
+    tracing::debug!(csv = %synth_freq_path.display(), "Synthesised letter frequencies written");
+
     tracing::info!(
         csv = %bigrams_path.display(),
         corpus = %corpus_path.display(),
+        orig_freq = %orig_freq_path.display(),
+        synth_freq = %synth_freq_path.display(),
         words = words.len(),
         "Synthesise complete"
     );

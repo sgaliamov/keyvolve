@@ -26,6 +26,19 @@ pub fn count_bigrams(reader: impl BufRead) -> FxHashMap<[char; 2], u64> {
     counts
 }
 
+/// Count `a-z` letter frequencies from a buffered reader.
+pub fn count_letters(reader: impl BufRead) -> FxHashMap<char, u64> {
+    let mut counts: FxHashMap<char, u64> = FxHashMap::default();
+    for line in reader.lines().map_while(Result::ok) {
+        for ch in line.chars() {
+            if ch.is_ascii_alphabetic() {
+                *counts.entry(ch.to_ascii_lowercase()).or_insert(0) += 1;
+            }
+        }
+    }
+    counts
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

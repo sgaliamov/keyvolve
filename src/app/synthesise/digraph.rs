@@ -1,4 +1,4 @@
-use super::counter::count_bigrams;
+use super::counter::{count_bigrams, count_letters};
 use miette::{Context, IntoDiagnostic, Result};
 use rustc_hash::FxHashMap;
 use std::fs;
@@ -97,6 +97,48 @@ pub fn write_bigrams(
         .into_diagnostic()?;
     }
 
+    Ok(())
+}
+
+/// Count `a-z` letter frequencies from an input file.
+pub fn read_letter_counts(input: &Path) -> Result<FxHashMap<char, u64>> {
+    let file = fs::File::open(input)
+        .into_diagnostic()
+        .wrap_err("Failed to open file for letter frequency counting")?;
+    Ok(count_letters(BufReader::new(file)))
+}
+
+/// Count `a-z` letter frequencies from corpus word list.
+pub fn count_corpus_letters(words: &[String]) -> FxHashMap<char, u64> {
+    let mut counts: FxHashMap<char, u64> = FxHashMap::default();
+    for w in words {
+        for ch in w.chars() {
+            if ch.is_ascii_alphabetic() {
+                *counts.entry(ch.to_ascii_lowercase()).or_insert(0) += 1;
+            }
+        }
+    }
+    counts
+}
+
+/// Write letter frequency CSV: `letter,count,%`.
+pub fn write_letter_freq(counts: &FxHashMap<char, u64>, path: &Path) -> Result<()> {
+    let mut sorted: Vec<(char, u64)> = counts.iter().map(|(&c, &n)| (c, n)).collect();
+    sorted.sort_unstable_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
+    let total: u64 = sorted.iter().map(|(_, n)| n).sum();
+
+    let mut out = fs::File::create(path)
+        .into_diagnostic()
+        .wrap_err("Failed to create letter frequency CSV")?;
+    writeln!(out, "letter,count,%").into_diagnostic()?;
+    for (ch, count) in &sorted {
+        let pct = if total > 0 {
+            *count as f64 / total as f64 * 100.0
+        } else {
+            0.0
+        };
+        writeln!(out, "{},{},{:.2}", ch, count, pct).into_diagnostic()?;
+    }
     Ok(())
 }
 
