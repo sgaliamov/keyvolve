@@ -66,7 +66,6 @@ fn greedy_walk(adj: &mut FxHashMap<char, Vec<char>>, start: char) -> Vec<char> {
     path
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -121,7 +120,9 @@ mod tests {
                 })
             })
             .map(|([a, b], _)| {
-                lcg = lcg.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+                lcg = lcg
+                    .wrapping_mul(6364136223846793005)
+                    .wrapping_add(1442695040888963407);
                 let count = (lcg >> 58) as usize + 1; // 1..=64
                 ([a, b], count)
             })
@@ -140,7 +141,11 @@ mod tests {
                 mismatches.push(format!("{}{}: expected {}, got {}", a, b, n, got));
             }
         }
-        assert!(mismatches.is_empty(), "digraph mismatches:\n{}", mismatches.join("\n"));
+        assert!(
+            mismatches.is_empty(),
+            "digraph mismatches:\n{}",
+            mismatches.join("\n")
+        );
 
         let total_out: u64 = counts.values().sum();
         let total_in: u64 = input.iter().map(|(_, n)| *n as u64).sum();

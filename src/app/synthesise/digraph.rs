@@ -26,7 +26,7 @@ pub fn filter_and_scale(
         .filter(|(_, c)| **c as f64 >= threshold)
         .map(|(&pair, &c)| (pair, c))
         .collect();
-    filtered.sort_by_key(|&(_, c)| std::cmp::Reverse(c));
+    filtered.sort_unstable_by(|&(a, ca), &(b, cb)| cb.cmp(&ca).then(a.cmp(&b)));
 
     let filtered_total: u64 = filtered.iter().map(|(_, c)| c).sum();
     let mut scaled: Vec<([char; 2], usize)> = filtered

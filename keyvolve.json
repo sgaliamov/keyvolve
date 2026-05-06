@@ -3,7 +3,7 @@
   "mode": "synthesise",
   "keyboard": "data/keyboard.json",
   "layouts": "data/layouts.csv",
-  "text": "data/synthesised.txt",
+  "text": "C:/Users/Admin/projects/keyvolve/data/raw/europarl-v8.en",
   "seed": [
     "jpamz;edurv;qyblx;kcsh_;gnoit;wf___",
     "qwsf_;uared;zxcvb;kgnyj;lotim;ph___",
@@ -12,8 +12,8 @@
   ],
   "synthesise": {
     "output": "data/synthesised",
-    "minFrequency": 0.00001,
-    "target": 30000
+    "minFrequency": 0.000001,
+    "target": 100000
   },
   "ga": {
     "mutationRatio": 0.5,

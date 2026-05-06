@@ -14,7 +14,9 @@ pub fn synthesise(input: &Path, cfg: SynthesiseConfig) -> Result<()> {
         .output
         .as_deref()
         .wrap_err("Synthesise mode requires `synthesise.output` path")?;
-    let csv_path = output.with_extension("csv");
+    let src_stem = input.file_stem().unwrap_or_default().to_string_lossy();
+    let csv_name = format!("synthesise.{src_stem}.csv");
+    let csv_path = output.parent().unwrap_or(output).join(csv_name);
 
     tracing::info!(input = %input.display(), "Reading digraph counts");
     let counts = read_counts(input)?;
