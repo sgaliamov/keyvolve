@@ -1,8 +1,9 @@
 {
-  "_mode": "merge",
+  "@mode": "merge",
   "merge": { "input": "data/samples", "output": "data/samples/merged.txt" },
 
-  "__mode": "evaluate",
+  "!mode": "evaluate",
+  "mode": "optimize",
   "keyboard": "data/keyboard.json",
   "layouts": "data/layouts.csv",
   "text": "data/samples/merged.txt",
@@ -16,7 +17,7 @@
     "_hck_;wsety;_vxrq;jgnd_;foaim;blpuz"
   ],
 
-  "mode": "synthesise",
+  "~mode": "synthesise",
   "synthesise": {
     "output": "data/synthesised",
     "minFrequency": 0.00001,
