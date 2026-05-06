@@ -27,7 +27,7 @@ Pattern matching, immutable state, functional/fluent style where readable.
 Idiomatic Rust. Meaningful names; short (`x`, `i`) in simple closures or repetitive cases.
 Remove unnecessary code. Minimalistic. Every method/type gets short comment.
 Don't remove existing comments unless they are wrong or misleading.
-Sort methods by importance, helpers goes at the bottom.
+Sort methods by importance, helpers and private methods go at the bottom.
 All `PhantomData` → one field: `__: PhantomData<(B, Q)>,`.
 `Copy` types → pass by value.
 Keep `mod.rs` for declarations/reexports mainly.

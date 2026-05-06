@@ -1,3 +1,5 @@
+use crate::app::merge::MergeConfig;
+use crate::app::synthesise::SynthesiseConfig;
 use serde::Deserialize;
 use std::path::PathBuf;
 
@@ -20,8 +22,16 @@ pub struct Config {
     #[serde(default)]
     pub seed: Vec<String>,
 
-    /// mode of operation: optimize or evaluate
+    /// mode of operation: optimize, evaluate, or synthesise
     pub mode: Mode,
+
+    /// settings for `Mode::Synthesise`
+    #[serde(default)]
+    pub synthesise: SynthesiseConfig,
+
+    /// settings for `Mode::Merge`
+    #[serde(default)]
+    pub merge: MergeConfig,
 }
 
 #[derive(Debug, Default, Clone, Deserialize, PartialEq)]
@@ -33,4 +43,10 @@ pub enum Mode {
     /// Evaluate the score of a specific layout.
     #[default]
     Evaluate,
+
+    /// Build a digraph frequency CSV and synthesise a compact fake-word corpus.
+    Synthesise,
+
+    /// Merge all `.txt` files in a folder into one cleaned file.
+    Merge,
 }

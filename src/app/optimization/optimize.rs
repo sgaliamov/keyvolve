@@ -12,7 +12,7 @@ pub fn optimize(
     app: AppHandle,
 ) -> Result<()> {
     let mut ga = GeneticAlgorithm::new(
-        &config,
+        config,
         generate,
         mutate,
         NoopCrossover,

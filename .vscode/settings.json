@@ -1,11 +1,16 @@
 {
   "cSpell.words": [
+    "ascii",
     "bigram",
     "bigrams",
     "cliffa",
     "darwin",
+    "eulerian",
+    "hierholzer",
     "keyvolve",
-    "miette"
+    "miette",
+    "synthesise",
+    "synthesised"
   ],
   "chat.tools.terminal.autoApprove": {
     ".\\scripts\\test.ps1": true,
