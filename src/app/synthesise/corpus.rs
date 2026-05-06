@@ -65,8 +65,7 @@ fn greedy_walk(adj: &mut FxHashMap<char, Vec<char>>, start: char) -> Vec<char> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::app::synthesise::config::SynthesiseConfig;
-    use crate::app::synthesise::counter::count_bigrams;
+    use crate::app::synthesise::*;
     use std::io::Cursor;
 
     fn edges(pairs: &[([char; 2], usize)]) -> Vec<([char; 2], usize)> {
@@ -82,9 +81,9 @@ mod tests {
             (['c', 'a'], 2),
             (['b', 'd'], 1),
         ]);
-        let words = build_corpus(&input, SynthesiseConfig::default_max_word_len());
+        let words = build_corpus(&input, default_max_word_len());
         let text = words.join("\n");
-        let counts = count_bigrams(Cursor::new(text));
+        let counts = counter::count_bigrams(Cursor::new(text));
 
         for ([a, b], n) in &input {
             assert_eq!(
@@ -124,11 +123,11 @@ mod tests {
             })
             .collect();
 
-        let words = build_corpus(&input, SynthesiseConfig::default_max_word_len());
+        let words = build_corpus(&input, default_max_word_len());
         assert!(!words.is_empty());
 
         let text = words.join("\n");
-        let counts = count_bigrams(Cursor::new(text));
+        let counts = counter::count_bigrams(Cursor::new(text));
 
         let mut mismatches = Vec::new();
         for ([a, b], n) in &input {
@@ -153,7 +152,7 @@ mod tests {
         let input: Vec<([char; 2], usize)> = ('a'..='e')
             .flat_map(|a| ('a'..='e').map(move |b| ([a, b], 5)))
             .collect();
-        let max = SynthesiseConfig::default_max_word_len();
+        let max = default_max_word_len();
         let words = build_corpus(&input, max);
         for w in &words {
             assert!(w.len() <= max, "word too long: {}", w);

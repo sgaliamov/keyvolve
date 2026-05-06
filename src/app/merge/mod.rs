@@ -1,7 +1,6 @@
 pub mod config;
 
 pub use config::*;
-
 use miette::{Context, IntoDiagnostic, Result};
 use rayon::prelude::*;
 use std::{

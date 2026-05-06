@@ -21,39 +21,25 @@ pub struct SynthesiseConfig {
     pub max_word_len: usize,
 }
 
-fn default_target() -> usize {
+pub(super) fn default_target() -> usize {
     100_000
 }
 
-fn default_min_freq() -> f64 {
+pub(super) fn default_min_freq() -> f64 {
     0.001
 }
 
-fn default_max_word_len() -> usize {
+pub(super) fn default_max_word_len() -> usize {
     10
-}
-
-impl SynthesiseConfig {
-    pub fn default_target() -> usize {
-        100_000
-    }
-
-    pub fn default_min_freq() -> f64 {
-        0.001
-    }
-
-    pub fn default_max_word_len() -> usize {
-        10
-    }
 }
 
 impl Default for SynthesiseConfig {
     fn default() -> Self {
         Self {
             output: None,
-            target: Self::default_target(),
-            min_frequency: Self::default_min_freq(),
-            max_word_len: Self::default_max_word_len(),
+            target: default_target(),
+            min_frequency: default_min_freq(),
+            max_word_len: default_max_word_len(),
         }
     }
 }
