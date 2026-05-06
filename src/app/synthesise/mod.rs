@@ -19,11 +19,11 @@ pub fn synthesise(input: &Path, cfg: SynthesiseConfig) -> Result<()> {
         .as_deref()
         .wrap_err("Synthesise mode requires `synthesise.output` path")?;
     let src_stem = input.file_stem().unwrap_or_default().to_string_lossy();
-    let bigrams_name = format!("{src_stem}.csv");
+    let bigrams_name = format!("{src_stem}.bigrams.csv");
     let bigrams_path = output
         .parent()
         .unwrap_or(output)
-        .join("bigrams")
+        .join("stats")
         .join(bigrams_name);
 
     tracing::info!(input = %input.display(), "Reading digraph counts");
@@ -47,7 +47,9 @@ pub fn synthesise(input: &Path, cfg: SynthesiseConfig) -> Result<()> {
 
     // Letter frequencies: original vs synthesised in one CSV.
     let freq_dir = output.parent().unwrap_or(output);
-    let letter_freq_path = freq_dir.join(format!("{src_stem}.letters.csv"));
+    let letter_freq_path = freq_dir
+        .join("stats")
+        .join(format!("{src_stem}.letters.csv"));
 
     let orig_letters = read_letter_counts(input)?;
     let synth_letters = count_corpus_letters(&words);
