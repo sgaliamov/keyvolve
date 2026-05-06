@@ -3,7 +3,7 @@
   "mode": "synthesise",
   "keyboard": "data/keyboard.json",
   "layouts": "data/layouts.csv",
-  "text": "C:/Users/Admin/projects/keyvolve/data/samples/13.txt",
+  "text": "C:/Users/Admin/projects/keyvolve/data/samples/linux_input.txt",
   "seed": [
     "jpamz;edurv;qyblx;kcsh_;gnoit;wf___",
     "qwsf_;uared;zxcvb;kgnyj;lotim;ph___",

@@ -1,10 +1,11 @@
 pub mod config;
 mod corpus;
+mod counter;
 mod digraph;
 
 pub use config::*;
 use corpus::build_corpus;
-use digraph::{filter_and_scale, read_counts, write_stats};
+use digraph::{filter_and_scale, read_counts, write_bigrams};
 use miette::{Context, IntoDiagnostic, Result};
 use std::{io::Write, path::Path};
 
@@ -15,12 +16,12 @@ pub fn synthesise(input: &Path, cfg: SynthesiseConfig) -> Result<()> {
         .as_deref()
         .wrap_err("Synthesise mode requires `synthesise.output` path")?;
     let src_stem = input.file_stem().unwrap_or_default().to_string_lossy();
-    let csv_name = format!("synthesise.{src_stem}.csv");
-    let csv_path = output
+    let bigrams_name = format!("{src_stem}.csv");
+    let bigrams_path = output
         .parent()
         .unwrap_or(output)
         .join("bigrams")
-        .join(csv_name);
+        .join(bigrams_name);
 
     tracing::info!(input = %input.display(), "Reading digraph counts");
     let counts = read_counts(input)?;
@@ -33,8 +34,8 @@ pub fn synthesise(input: &Path, cfg: SynthesiseConfig) -> Result<()> {
         target = cfg.target,
         "Digraphs filtered and scaled"
     );
-    write_stats(&scaled, &counts, cfg.min_frequency, &csv_path)?;
-    tracing::debug!(csv = %csv_path.display(), "CSV written");
+    write_bigrams(&scaled, &counts, cfg.min_frequency, &bigrams_path)?;
+    tracing::debug!(csv = %bigrams_path.display(), "CSV written");
 
     tracing::info!("Building corpus");
     let words = build_corpus(&scaled);
@@ -42,7 +43,7 @@ pub fn synthesise(input: &Path, cfg: SynthesiseConfig) -> Result<()> {
     write_corpus(&words, &corpus_path)?;
 
     tracing::info!(
-        csv = %csv_path.display(),
+        csv = %bigrams_path.display(),
         corpus = %corpus_path.display(),
         words = words.len(),
         "Synthesise complete"

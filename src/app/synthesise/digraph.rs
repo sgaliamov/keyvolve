@@ -1,7 +1,8 @@
+use super::counter::count_bigrams;
 use miette::{Context, IntoDiagnostic, Result};
 use rustc_hash::FxHashMap;
 use std::fs;
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufReader, Write};
 use std::path::Path;
 
 /// Open input file and count all `a-z` digraph pairs.
@@ -9,7 +10,7 @@ pub fn read_counts(input: &Path) -> Result<FxHashMap<[char; 2], u64>> {
     let file = fs::File::open(input)
         .into_diagnostic()
         .wrap_err("Failed to open input text file")?;
-    Ok(count(BufReader::new(file)))
+    Ok(count_bigrams(BufReader::new(file)))
 }
 
 /// Filter by min relative frequency, then scale counts to `target` total edges.
@@ -52,9 +53,9 @@ pub fn filter_and_scale(
     scaled
 }
 
-/// Write scaled digraph pairs to CSV: `pair,count,%,raw,raw%` (count = scaled edge frequency, raw = original corpus count).
+/// Write scaled bigram pairs to CSV: `pair,count,%,raw,raw%` (count = scaled edge frequency, raw = original corpus count).
 /// Percentage precision is derived from `min_freq` so the smallest value is always readable.
-pub fn write_stats(
+pub fn write_bigrams(
     scaled: &[([char; 2], usize)],
     counts: &FxHashMap<[char; 2], u64>,
     min_freq: f64,
@@ -111,65 +112,9 @@ fn pct_precision(min_freq: f64) -> usize {
     ((-smallest_pct.log10()).ceil() + 1.0).max(2.0) as usize
 }
 
-/// Count all `a-z` digraph pairs from a buffered reader, skipping cross-whitespace pairs.
-pub fn count(reader: impl BufRead) -> FxHashMap<[char; 2], u64> {
-    let mut counts: FxHashMap<[char; 2], u64> = FxHashMap::default();
-    let mut prev: Option<char> = None;
-
-    for line in reader.lines().map_while(Result::ok) {
-        for ch in line.chars() {
-            if ch.is_ascii_alphabetic() {
-                let lc = ch.to_ascii_lowercase();
-                if let Some(p) = prev {
-                    *counts.entry([p, lc]).or_insert(0) += 1;
-                }
-                prev = Some(lc);
-            } else {
-                // Whitespace or punctuation — break digraph chain.
-                prev = None;
-            }
-        }
-        // Line boundary = word boundary.
-        prev = None;
-    }
-
-    counts
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Cursor;
-
-    // --- count_digraphs ---
-
-    #[test]
-    fn digraphs_counts_pairs_and_breaks_on_whitespace() {
-        // basic pairs, case folding, space as separator, ab ≠ ba
-        let counts = count(Cursor::new("ab BC ba ba aa"));
-        assert_eq!(counts[&['a', 'b']], 1);
-        assert_eq!(counts[&['b', 'c']], 1);
-        assert_eq!(counts[&['b', 'a']], 2);
-        assert_eq!(counts[&['a', 'a']], 1);
-        // space breaks chain → no repeated cross-space pair
-        assert!(!counts.contains_key(&['b', 'b']));
-    }
-
-    #[test]
-    fn digraphs_boundary_and_punctuation_break_chain() {
-        // line boundary
-        let counts = count(Cursor::new("ab\nbc"));
-        assert_eq!(counts[&['a', 'b']], 1);
-        assert_eq!(counts[&['b', 'c']], 1);
-        assert!(!counts.contains_key(&['b', 'b']));
-
-        // punctuation
-        let counts = count(Cursor::new("a.b"));
-        assert!(counts.is_empty());
-
-        // empty
-        assert!(count(Cursor::new("")).is_empty());
-    }
 
     // --- filter_and_scale ---
 

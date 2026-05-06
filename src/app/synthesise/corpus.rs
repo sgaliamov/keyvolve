@@ -69,7 +69,7 @@ fn greedy_walk(adj: &mut FxHashMap<char, Vec<char>>, start: char) -> Vec<char> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::app::synthesise::digraph;
+    use crate::app::synthesise::counter::count_bigrams;
     use std::io::Cursor;
 
     fn edges(pairs: &[([char; 2], usize)]) -> Vec<([char; 2], usize)> {
@@ -88,7 +88,7 @@ mod tests {
         let words = build_corpus(&input);
         // Join words with newlines so digraph::count resets between words (same as spaces).
         let text = words.join("\n");
-        let counts = digraph::count(Cursor::new(text));
+        let counts = count_bigrams(Cursor::new(text));
 
         for ([a, b], n) in &input {
             assert_eq!(
@@ -132,7 +132,7 @@ mod tests {
         assert!(!words.is_empty());
 
         let text = words.join("\n");
-        let counts = digraph::count(Cursor::new(text));
+        let counts = count_bigrams(Cursor::new(text));
 
         let mut mismatches = Vec::new();
         for ([a, b], n) in &input {
