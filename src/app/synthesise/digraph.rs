@@ -54,7 +54,7 @@ pub fn filter_and_scale(
 
 /// Write scaled digraph pairs to CSV: `pair,count,%,raw,raw%` (count = scaled edge frequency, raw = original corpus count).
 /// Percentage precision is derived from `min_freq` so the smallest value is always readable.
-pub fn write_digraphs(
+pub fn write_stats(
     scaled: &[([char; 2], usize)],
     counts: &FxHashMap<[char; 2], u64>,
     min_freq: f64,

@@ -4,7 +4,7 @@ mod digraph;
 
 pub use config::*;
 use corpus::build_corpus;
-use digraph::{filter_and_scale, read_counts, write_digraphs};
+use digraph::{filter_and_scale, read_counts, write_stats};
 use miette::{Context, IntoDiagnostic, Result};
 use std::{io::Write, path::Path};
 
@@ -33,7 +33,7 @@ pub fn synthesise(input: &Path, cfg: SynthesiseConfig) -> Result<()> {
         target = cfg.target,
         "Digraphs filtered and scaled"
     );
-    write_digraphs(&scaled, &counts, cfg.min_frequency, &csv_path)?;
+    write_stats(&scaled, &counts, cfg.min_frequency, &csv_path)?;
     tracing::debug!(csv = %csv_path.display(), "CSV written");
 
     tracing::info!("Building corpus");
