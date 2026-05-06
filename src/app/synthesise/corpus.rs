@@ -1,19 +1,15 @@
 use rustc_hash::FxHashMap;
 
-/// Max characters per output word. Boundary char is shared with next word
-/// so all digraphs are preserved across splits.
-const MAX_WORD_LEN: usize = 8;
-
-/// Build short fake words from scaled digraph edges via Eulerian path decomposition.
+/// Build short fake words from digraph edges via Eulerian path decomposition.
 /// Every input edge appears as exactly one consecutive char-pair in the output;
 /// no extra edges are introduced.
-pub fn build_corpus(edges: &[([char; 2], usize)]) -> Vec<String> {
+pub fn build_corpus(edges: &[([char; 2], usize)], max_word_len: usize) -> Vec<String> {
     let mut adj = build_adj(edges);
     let mut words = Vec::new();
     while let Some(start) = next_start(&adj) {
         let path = greedy_walk(&mut adj, start);
         if path.len() > 1 {
-            split_path(&path, &mut words);
+            split_path(&path, max_word_len, &mut words);
         }
     }
     words
@@ -42,13 +38,13 @@ fn next_start(adj: &FxHashMap<char, Vec<char>>) -> Option<char> {
     candidates.into_iter().next()
 }
 
-/// Split a path into words of at most MAX_WORD_LEN chars.
+/// Split a path into words of at most `max_word_len` chars.
 /// The last char of each word is reused as the first char of the next,
 /// so every consecutive pair in the original path appears in exactly one word.
-fn split_path(path: &[char], out: &mut Vec<String>) {
+fn split_path(path: &[char], max_word_len: usize, out: &mut Vec<String>) {
     let mut i = 0;
     while i + 1 < path.len() {
-        let end = (i + MAX_WORD_LEN).min(path.len());
+        let end = (i + max_word_len).min(path.len());
         out.push(path[i..end].iter().collect());
         i = end - 1;
     }
@@ -69,6 +65,7 @@ fn greedy_walk(adj: &mut FxHashMap<char, Vec<char>>, start: char) -> Vec<char> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::app::synthesise::config::SynthesiseConfig;
     use crate::app::synthesise::counter::count_bigrams;
     use std::io::Cursor;
 
@@ -85,8 +82,7 @@ mod tests {
             (['c', 'a'], 2),
             (['b', 'd'], 1),
         ]);
-        let words = build_corpus(&input);
-        // Join words with newlines so digraph::count resets between words (same as spaces).
+        let words = build_corpus(&input, SynthesiseConfig::default_max_word_len());
         let text = words.join("\n");
         let counts = count_bigrams(Cursor::new(text));
 
@@ -128,7 +124,7 @@ mod tests {
             })
             .collect();
 
-        let words = build_corpus(&input);
+        let words = build_corpus(&input, SynthesiseConfig::default_max_word_len());
         assert!(!words.is_empty());
 
         let text = words.join("\n");
@@ -157,9 +153,10 @@ mod tests {
         let input: Vec<([char; 2], usize)> = ('a'..='e')
             .flat_map(|a| ('a'..='e').map(move |b| ([a, b], 5)))
             .collect();
-        let words = build_corpus(&input);
+        let max = SynthesiseConfig::default_max_word_len();
+        let words = build_corpus(&input, max);
         for w in &words {
-            assert!(w.len() <= MAX_WORD_LEN, "word too long: {}", w);
+            assert!(w.len() <= max, "word too long: {}", w);
         }
     }
 }

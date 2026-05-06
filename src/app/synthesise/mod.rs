@@ -41,7 +41,7 @@ pub fn synthesise(input: &Path, cfg: SynthesiseConfig) -> Result<()> {
     tracing::debug!(csv = %bigrams_path.display(), "CSV written");
 
     tracing::info!("Building corpus");
-    let words = build_corpus(&scaled);
+    let words = build_corpus(&scaled, cfg.max_word_len);
     let corpus_path = output.with_extension("txt");
     write_corpus(&words, &corpus_path)?;
 
