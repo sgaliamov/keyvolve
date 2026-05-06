@@ -1,4 +1,4 @@
-use crate::app::{evaluate, synthesise};
+use crate::app::{evaluate, merge, synthesise};
 use crate::models::line_to_keys;
 use crate::{
     Config, Mode,
@@ -15,6 +15,9 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
     trace!("Starting with config: {:#?}", cfg);
 
     match cfg.mode {
+        Mode::Merge => {
+            merge::merge(cfg.merge)?;
+        }
         Mode::Synthesise => {
             let input = cfg.text.wrap_err("Synthesise mode requires `text` path")?;
             synthesise::synthesise(&input, cfg.synthesise)?;
@@ -43,7 +46,7 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
                     ga.seed = cfg.seed.iter().map(|s| parse_seed(s)).collect();
                     optimize(evaluator, ga, app)?;
                 }
-                Mode::Synthesise => unreachable!(),
+                Mode::Synthesise | Mode::Merge => unreachable!(),
             }
         }
     }

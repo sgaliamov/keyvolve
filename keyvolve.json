@@ -1,6 +1,6 @@
 {
   "_mode": "evaluate",
-  "mode": "synthesise",
+  "mode": "merge",
   "keyboard": "data/keyboard.json",
   "layouts": "data/layouts.csv",
   "text": "C:/Users/Admin/projects/keyvolve/data/samples/news-discuss.txt",
@@ -9,6 +9,7 @@
     "qwsf_;uared;zxcvb;kgnyj;lotim;ph___",
     "_hck_;wsety;_vxrq;jgnd_;foaim;blpuz"
   ],
+  "merge": { "input": "data/samples", "output": "data/samples/merged.txt" },
   "synthesise": {
     "output": "data/synthesised",
     "minFrequency": 0.00001,
