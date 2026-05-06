@@ -16,7 +16,11 @@ pub fn synthesise(input: &Path, cfg: SynthesiseConfig) -> Result<()> {
         .wrap_err("Synthesise mode requires `synthesise.output` path")?;
     let src_stem = input.file_stem().unwrap_or_default().to_string_lossy();
     let csv_name = format!("synthesise.{src_stem}.csv");
-    let csv_path = output.parent().unwrap_or(output).join(csv_name);
+    let csv_path = output
+        .parent()
+        .unwrap_or(output)
+        .join("bigrams")
+        .join(csv_name);
 
     tracing::info!(input = %input.display(), "Reading digraph counts");
     let counts = read_counts(input)?;
@@ -34,11 +38,12 @@ pub fn synthesise(input: &Path, cfg: SynthesiseConfig) -> Result<()> {
 
     tracing::info!("Building corpus");
     let words = build_corpus(&scaled);
-    write_corpus(&words, &output.with_extension("txt"))?;
+    let corpus_path = output.with_extension("txt");
+    write_corpus(&words, &corpus_path)?;
 
     tracing::info!(
         csv = %csv_path.display(),
-        corpus = %output.with_extension("txt").display(),
+        corpus = %corpus_path.display(),
         words = words.len(),
         "Synthesise complete"
     );

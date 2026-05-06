@@ -3,7 +3,7 @@
   "mode": "synthesise",
   "keyboard": "data/keyboard.json",
   "layouts": "data/layouts.csv",
-  "text": "C:/Users/Admin/projects/keyvolve/data/raw/europarl-v8.en",
+  "text": "C:/Users/Admin/projects/keyvolve/data/samples/13.txt",
   "seed": [
     "jpamz;edurv;qyblx;kcsh_;gnoit;wf___",
     "qwsf_;uared;zxcvb;kgnyj;lotim;ph___",
