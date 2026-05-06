@@ -16,10 +16,21 @@ pub fn synthesise(input: &Path, cfg: SynthesiseConfig) -> Result<()> {
         .wrap_err("Synthesise mode requires `synthesise.output` path")?;
     let csv_path = output.with_extension("csv");
 
+    tracing::info!(input = %input.display(), "Reading digraph counts");
     let counts = read_counts(input)?;
-    let scaled = filter_and_scale(&counts, cfg.min_frequency, cfg.target);
-    write_digraphs(&scaled, &counts, cfg.min_frequency, &csv_path)?;
+    tracing::debug!(unique_pairs = counts.len(), "Counts loaded");
 
+    let scaled = filter_and_scale(&counts, cfg.min_frequency, cfg.target);
+    tracing::debug!(
+        pairs_kept = scaled.len(),
+        min_frequency = cfg.min_frequency,
+        target = cfg.target,
+        "Digraphs filtered and scaled"
+    );
+    write_digraphs(&scaled, &counts, cfg.min_frequency, &csv_path)?;
+    tracing::debug!(csv = %csv_path.display(), "CSV written");
+
+    tracing::info!("Building corpus");
     let words = build_corpus(&scaled);
     write_corpus(&words, &output.with_extension("txt"))?;
 
