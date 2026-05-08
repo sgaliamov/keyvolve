@@ -21,6 +21,10 @@
     "_uof_;ctinv;qwghj;_msp_;keard;zlbyx;3.6275"
   ],
 
+  "optimization": {
+    "blocked": [0, 19]
+  },
+
   "synthesise": {
     "output": "data/synthesised",
     "minFrequency": 0.00001,

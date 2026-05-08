@@ -21,13 +21,13 @@ pub struct LayoutEvaluator {
 }
 
 impl LayoutEvaluator {
-    /// Build from keyboard config and corpus. Groups are 1-based → `efforts[group - 1]`.
+    /// Build from keyboard config and corpus. Groups are 0-based → `efforts[group]`.
     pub fn new(keyboard: &Keyboard, words: Vec<String>) -> Self {
         let mut pairs = FxHashMap::default();
 
         for (from, targets) in &keyboard.pairs {
             for (to, group) in targets {
-                let effort = keyboard.efforts[group - 1];
+                let effort = keyboard.efforts[*group];
                 pairs.insert((*from, *to), effort);
             }
         }

@@ -3,7 +3,7 @@ use crate::models::Layout;
 
 /// Progress callback for optimize mode. Returns `false` to stop early.
 pub fn callback(ctx: &GaContext) -> bool {
-    if ctx.state.as_ref().unwrap().1.should_finish() {
+    if ctx.state.as_ref().unwrap().app.should_finish() {
         return false;
     }
 

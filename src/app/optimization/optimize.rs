@@ -1,16 +1,20 @@
+use crate::OptimizationConfig;
 use crate::app::LayoutEvaluator;
 use crate::models::Layout;
 use cliffa::cli::AppHandle;
 use darwin::{GeneticAlgorithm, NoopCrossover};
 use miette::Result;
 
-use super::{callback, corpus_evaluator, generate, mutate};
+use super::{OptimizerState, callback, corpus_evaluator, generate, mutate};
 
 pub fn optimize(
     evaluator: LayoutEvaluator,
     config: darwin::Config<char>,
     app: AppHandle,
+    optimization: OptimizationConfig,
 ) -> Result<()> {
+    use tracing::info;
+    info!("Initializing genetic algorithm");
     let mut ga = GeneticAlgorithm::new(
         config,
         generate,
@@ -20,14 +24,23 @@ pub fn optimize(
         callback,
     );
 
-    GeneticAlgorithm::set_state(&mut ga, (evaluator, app));
+    GeneticAlgorithm::set_state(
+        &mut ga,
+        OptimizerState {
+            evaluator,
+            app,
+            optimization,
+        },
+    );
 
+    info!("Running genetic algorithm");
     let pools = ga.run();
+    info!("Algorithm complete");
 
     println!("\n--- top 10 ---");
-    for (rank, (genome, fitness)) in pools.best_n(10).into_iter().enumerate() {
+    for (genome, fitness)  in pools.best_n(10).into_iter() {
         let name = Layout::from_keys(genome).to_string();
-        println!("{:>2}.  fit {:.4}  {}", rank + 1, fitness, name);
+        println!("{};{:.4}", name, fitness);
     }
 
     Ok(())

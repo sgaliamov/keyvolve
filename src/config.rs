@@ -1,7 +1,21 @@
 use crate::app::merge::MergeConfig;
 use crate::app::synthesise::SynthesiseConfig;
+use rustc_hash::{FxHashMap, FxHashSet};
 use serde::Deserialize;
 use std::path::PathBuf;
+
+/// Per-key constraints for optimization.
+#[derive(Debug, Clone, Default, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct OptimizationConfig {
+    /// Characters whose physical position is locked: maps char → key index (0-29).
+    #[serde(default)]
+    pub frozen: FxHashMap<char, u8>,
+
+    /// Physical key indices (0-29) that are unavailable for placement.
+    #[serde(default)]
+    pub blocked: FxHashSet<u8>,
+}
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -32,6 +46,10 @@ pub struct Config {
     /// settings for `Mode::Merge`
     #[serde(default)]
     pub merge: MergeConfig,
+
+    /// frozen/blocked key constraints for `Mode::Optimize`
+    #[serde(default)]
+    pub optimization: OptimizationConfig,
 }
 
 #[derive(Debug, Default, Clone, Deserialize, PartialEq)]

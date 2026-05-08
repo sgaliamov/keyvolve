@@ -7,13 +7,6 @@ use std::path::Path;
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Keyboard {
-    // /// Keys that are frozen in place: maps character to key index.
-    // #[serde(default)]
-    // pub frozen: FxHashMap<char, u8>,
-
-    // /// Key indices that are blocked (unavailable).
-    // #[serde(default)]
-    // pub blocked: Vec<u8>,
     /// Multiplier applied to per-switch self-effort; `1.0` means no penalty.
     #[serde(default = "default_switch_effort_penalty")]
     pub switch_effort_penalty: f64,
@@ -37,8 +30,6 @@ pub struct Keyboard {
 impl Default for Keyboard {
     fn default() -> Self {
         Self {
-            // frozen: FxHashMap::default(),
-            // blocked: Vec::new(),
             switch_effort_penalty: default_switch_effort_penalty(),
             balance_penalty: default_balance_penalty(),
             alternation_penalty: default_alternation_penalty(),
@@ -137,8 +128,6 @@ mod tests {
     #[test]
     fn expand_pairs_mirrors_left_to_right() {
         let kb = Keyboard {
-            // frozen: FxHashMap::default(),
-            // blocked: vec![],
             switch_effort_penalty: 0.0,
             balance_penalty: 2.0,
             alternation_penalty: 0.0,

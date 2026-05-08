@@ -15,6 +15,7 @@ pub fn evaluate(
     layouts_path: impl AsRef<std::path::Path>,
     app: AppHandle,
 ) -> Result<()> {
+    info!("Evaluating {} layouts", layouts.len());
     let mut scored: Vec<_> = layouts
         .par_iter()
         .filter_map(|layout| {
@@ -48,6 +49,7 @@ pub fn evaluate(
             .into_diagnostic()
             .wrap_err("Failed to write evaluated layouts")?;
     }
+    info!("Results written to {}", layouts_path.as_ref().display());
 
     Ok(())
 }

@@ -38,13 +38,13 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
                     let layouts_path = cfg.layouts.wrap_err("Missing layouts path in config")?;
                     let layouts = Layout::load(&layouts_path);
                     info!("Loaded {} layouts", layouts.len());
-                    evaluate(evaluator, &layouts, &layouts_path, app)?;
+                    evaluate(evaluator, &layouts, &layouts_path, app)?
                 }
                 Mode::Optimize => {
                     let mut ga = cfg.ga;
                     ga.ranges = vec![vec![(EMPTY_SLOT, 'z'); 30]];
                     ga.seed = cfg.seed.iter().map(|s| parse_seed(s)).collect();
-                    optimize(evaluator, ga, app)?;
+                    optimize(evaluator, ga, app, cfg.optimization)?;
                 }
                 Mode::Synthesise | Mode::Merge => unreachable!(),
             }
