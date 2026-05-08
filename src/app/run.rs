@@ -31,6 +31,7 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
                 .collect::<Vec<_>>();
 
             let keyboard = Keyboard::load(cfg.keyboard.unwrap())?;
+            let blocked = keyboard.blocked.clone();
             let evaluator = LayoutEvaluator::new(&keyboard, words);
 
             match mode {
@@ -44,7 +45,7 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
                     let mut ga = cfg.ga;
                     ga.ranges = vec![vec![(EMPTY_SLOT, 'z'); 30]];
                     ga.seed = cfg.seed.iter().map(|s| parse_seed(s)).collect();
-                    optimize(evaluator, ga, app, cfg.optimization)?;
+                    optimize(evaluator, ga, app, cfg.optimization, blocked)?;
                 }
                 Mode::Synthesise | Mode::Merge => unreachable!(),
             }

@@ -1,6 +1,6 @@
 use crate::app::merge::MergeConfig;
 use crate::app::synthesise::SynthesiseConfig;
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 use serde::Deserialize;
 use std::path::PathBuf;
 
@@ -11,10 +11,6 @@ pub struct OptimizationConfig {
     /// Characters whose physical position is locked: maps char → key index (0-29).
     #[serde(default)]
     pub frozen: FxHashMap<char, u8>,
-
-    /// Physical key indices (0-29) that are unavailable for placement.
-    #[serde(default)]
-    pub blocked: FxHashSet<u8>,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]

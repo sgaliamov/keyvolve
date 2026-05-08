@@ -18,12 +18,10 @@
     "qwsf_;uared;zxcvb;kgnyj;lotim;ph___",
     "zwth_;csiak;_byl_;_mrpx;voend;qugfj;3.6233",
     "jmofx;dnrev;qpguk;_wth_;_aisc;zlyb_;3.6331",
-    "_uof_;ctinv;qwghj;_msp_;keard;zlbyx;3.6275"
+    "_uof_;ctinv;qwghj;_msp_;keard;zlbyx;3.6275",
+    "_frg_;dnoev;jpmux;qhtw_;kaisc;zlyb_;3.6422",
+    "_mrp_;dnoev;jfgux;qhtw_;kaisc;zlyb_;3.6386"
   ],
-
-  "optimization": {
-    "blocked": [0, 19]
-  },
 
   "synthesise": {
     "output": "data/synthesised",

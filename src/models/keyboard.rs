@@ -1,5 +1,5 @@
 use miette::{Context, IntoDiagnostic, Result};
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use serde::Deserialize;
 use std::path::Path;
 
@@ -7,6 +7,10 @@ use std::path::Path;
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Keyboard {
+    /// Key indices (0-29) that are unavailable for letter placement.
+    #[serde(default)]
+    pub blocked: FxHashSet<u8>,
+
     /// Multiplier applied to per-switch self-effort; `1.0` means no penalty.
     #[serde(default = "default_switch_effort_penalty")]
     pub switch_effort_penalty: f64,
@@ -30,6 +34,7 @@ pub struct Keyboard {
 impl Default for Keyboard {
     fn default() -> Self {
         Self {
+            blocked: FxHashSet::default(),
             switch_effort_penalty: default_switch_effort_penalty(),
             balance_penalty: default_balance_penalty(),
             alternation_penalty: default_alternation_penalty(),
