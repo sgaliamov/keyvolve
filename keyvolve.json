@@ -8,15 +8,17 @@
 
   "keyboard": "data/keyboard.json",
   "layouts": "data/layouts.csv",
-  "text": "data/samples/merged.txt",
+  "text": "data/synthesised.txt",
   "ga": {
     "mutationRatio": 0.5,
     "populationSize": 256
   },
-  "seed": [
+  "-seed": [
     "jpamz;edurv;qyblx;kcsh_;gnoit;wf___",
     "qwsf_;uared;zxcvb;kgnyj;lotim;ph___",
-    "_hck_;wsety;_vxrq;jgnd_;foaim;blpuz"
+    "zwth_;csiak;_byl_;_mrpx;voend;qugfj;3.6233",
+    "jmofx;dnrev;qpguk;_wth_;_aisc;zlyb_;3.6331",
+    "_uof_;ctinv;qwghj;_msp_;keard;zlbyx;3.6275"
   ],
 
   "synthesise": {
