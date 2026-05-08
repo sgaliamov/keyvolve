@@ -4,7 +4,6 @@ use crate::models::Layout;
 use cliffa::cli::AppHandle;
 use darwin::{GeneticAlgorithm, NoopCrossover};
 use miette::Result;
-use rustc_hash::FxHashSet;
 
 use super::{OptimizerState, callback, corpus_evaluator, generate, mutate};
 
@@ -13,7 +12,6 @@ pub fn optimize(
     config: darwin::Config<char>,
     app: AppHandle,
     optimization: OptimizationConfig,
-    blocked: FxHashSet<u8>,
 ) -> Result<()> {
     use tracing::info;
     info!("Initializing genetic algorithm");
@@ -32,7 +30,6 @@ pub fn optimize(
             evaluator,
             app,
             optimization,
-            blocked,
         },
     );
 
