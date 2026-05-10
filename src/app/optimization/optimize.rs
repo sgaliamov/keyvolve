@@ -1,5 +1,5 @@
-use crate::app::OptimizationConfig;
 use crate::app::LayoutEvaluator;
+use crate::app::OptimizationConfig;
 use crate::models::Layout;
 use cliffa::cli::AppHandle;
 use darwin::{GeneticAlgorithm, NoopCrossover};

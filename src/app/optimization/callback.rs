@@ -16,16 +16,15 @@ pub fn callback(ctx: &GaContext) -> bool {
     let min_div = ctx
         .pools
         .iter()
-        .enumerate()
-        .min_by(|(_, a), (_, b)| a.diversity().partial_cmp(&b.diversity()).unwrap());
+        .min_by(|a, b| a.diversity().partial_cmp(&b.diversity()).unwrap());
 
     let div_str = match min_div {
-        Some((i, p)) => format!(" | δ[{}] {:.4}", i, p.diversity()),
+        Some(p) => format!(" | δ: {:.4}", p.diversity()),
         None => String::new(),
     };
 
     println!(
-        "{:>6}: {} | φ {:.4}{}",
+        "{:>6}: {} | φ: {:.4}{}",
         ctx.generation, name, fitness, div_str
     );
     true

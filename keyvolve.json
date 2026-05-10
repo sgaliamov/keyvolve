@@ -7,7 +7,7 @@
   "merge": { "input": "data/samples", "output": "data/samples/merged.txt" },
 
   "optimization": {
-    "blocked": [0, 4, 15, 19]
+    "-blocked": [0, 4, 15, 19]
   },
 
   "keyboard": "data/keyboard.json",
@@ -29,7 +29,6 @@
     "jmofx;dnrev;qpguk;_wth_;_aisc;zlyb_;3.6331",
     "_uof_;ctinv;qwghj;_msp_;keard;zlbyx;3.6275",
     "_mrp_;dnoev;jfgux;qhtw_;kaisc;zlyb_;3.6386",
-    "_wth_;csia_;zbylk;qgup_;xernd;jomfv;3.6396",
     "_wth_;csia_;jbylz;qgup_;xernd;komfv;3.6370",
     "_htw_;csaiz;xbylk;qfom_;vernd;_ugpj;3.6305",
     "_wth_;csiaz;kbylx;jfom_;vernd;_ugpq;3.6291",

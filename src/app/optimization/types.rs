@@ -1,5 +1,5 @@
-use crate::{app::LayoutEvaluator, models::ScoreResult};
 use crate::app::OptimizationConfig;
+use crate::{app::LayoutEvaluator, models::ScoreResult};
 use cliffa::cli::AppHandle;
 
 /// Genome: 30 chars occupying physical keyboard slots by index; `` ` `` = empty slot.

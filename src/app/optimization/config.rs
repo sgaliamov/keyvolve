@@ -29,7 +29,10 @@ where
     D: serde::Deserializer<'de>,
 {
     let raw: FxHashMap<char, Vec<u8>> = FxHashMap::deserialize(de)?;
-    Ok(raw.into_iter().map(|(ch, slots)| (ch, expand_half(&slots))).collect())
+    Ok(raw
+        .into_iter()
+        .map(|(ch, slots)| (ch, expand_half(&slots)))
+        .collect())
 }
 
 /// Per-key constraints for optimization.
@@ -54,7 +57,9 @@ impl OptimizationConfig {
     /// Check whether placing `ch` at `slot` is permitted.
     /// Letters with no `allowed` entry are unconstrained.
     pub fn is_slot_valid(&self, ch: char, slot: u8) -> bool {
-        self.allowed.get(&ch).is_none_or(|slots| slots.contains(&slot))
+        self.allowed
+            .get(&ch)
+            .is_none_or(|slots| slots.contains(&slot))
     }
 }
 

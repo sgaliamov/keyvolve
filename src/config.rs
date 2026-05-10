@@ -1,5 +1,5 @@
-use crate::app::merge::MergeConfig;
 use crate::app::OptimizationConfig;
+use crate::app::merge::MergeConfig;
 use crate::app::synthesise::SynthesiseConfig;
 use serde::Deserialize;
 use std::path::PathBuf;
@@ -55,4 +55,3 @@ pub enum Mode {
     /// Merge all `.txt` files in a folder into one cleaned file.
     Merge,
 }
-
