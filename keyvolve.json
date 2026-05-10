@@ -8,10 +8,10 @@
 
   "keyboard": "data/keyboard.json",
   "layouts": "data/layouts.csv",
-  "text": "data/synthesised.txt",
+  "text": "data/synthesised",
   "ga": {
     "mutationRatio": 0.5,
-    "populationSize": 256,
+    "populationSize": 128,
     "pools": 128
   },
   "-seed": [

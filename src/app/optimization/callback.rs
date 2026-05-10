@@ -12,6 +12,21 @@ pub fn callback(ctx: &GaContext) -> bool {
     };
 
     let name = Layout::from_keys(genome).to_string();
-    println!("{:>6}: {} | fit {:.4}", ctx.generation, name, fitness);
+
+    let min_div = ctx
+        .pools
+        .iter()
+        .enumerate()
+        .min_by(|(_, a), (_, b)| a.diversity().partial_cmp(&b.diversity()).unwrap());
+
+    let div_str = match min_div {
+        Some((i, p)) => format!(" | div pool {} {:.4}", i, p.diversity()),
+        None => String::new(),
+    };
+
+    println!(
+        "{:>6}: {} | fit {:.4}{}",
+        ctx.generation, name, fitness, div_str
+    );
     true
 }
