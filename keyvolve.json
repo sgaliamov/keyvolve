@@ -9,9 +9,9 @@
   "optimization": {
     "blocked": [0],
     "allowed": {
-      "e": [1, 2, 3, 6, 7, 8, 12, 13],
+      "e": [2, 6, 7, 8],
       "t": [1, 2, 3, 6, 7, 8, 12, 13],
-      "a": [1, 2, 3, 6, 7, 8, 12, 13],
+      "a": [2, 6, 7, 8],
       "o": [1, 2, 3, 6, 7, 8, 12, 13],
       "i": [1, 2, 3, 6, 7, 8, 12, 13],
       "n": [1, 2, 3, 6, 7, 8, 12, 13],
@@ -31,6 +31,9 @@
   },
   "": ["_wth_;csia_;zbylk;qgup_;xernd;jomfv;3.6396"],
   "-seed": [
+    "qvay_;gnsik;fupoj;_blm_;xcerd;_twhz;4.2585",
+    "zdng_;catix;qpblk;_fouj;vresm;_hwy_;4.2576",
+    "_htg_;dsrez;_pbmj;qvly_;kanic;xouwf;4.2552",
     "_frg_;dnoev;jpmux;qhtw_;kaisc;zlyb_;3.6422",
     "jpamz;edurv;qyblx;kcsh_;gnoit;wf___",
     "qwsf_;uared;zxcvb;kgnyj;lotim;ph___",

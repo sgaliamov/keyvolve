@@ -24,7 +24,7 @@ pub fn callback(ctx: &GaContext) -> bool {
     };
 
     println!(
-        "{:>6}: {} | φ: {:.4}{}",
+        "{:>3}: {} | φ: {:.4}{}",
         ctx.generation, name, fitness, div_str
     );
     true
