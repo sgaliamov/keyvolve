@@ -11,7 +11,8 @@
   "text": "data/synthesised.txt",
   "ga": {
     "mutationRatio": 0.5,
-    "populationSize": 256
+    "populationSize": 256,
+    "pools": 128
   },
   "-seed": [
     "jpamz;edurv;qyblx;kcsh_;gnoit;wf___",
@@ -22,7 +23,11 @@
     "_frg_;dnoev;jpmux;qhtw_;kaisc;zlyb_;3.6422",
     "_mrp_;dnoev;jfgux;qhtw_;kaisc;zlyb_;3.6386",
     "_wth_;csia_;zbylk;qgup_;xernd;jomfv;3.6396",
-    "_wth_;csia_;jbylz;qgup_;xernd;komfv;3.6370"
+    "_wth_;csia_;jbylz;qgup_;xernd;komfv;3.6370",
+    "_htw_;csaiz;xbylk;qfom_;vernd;_ugpj;3.6305",
+    "_wth_;csiaz;kbylx;jfom_;vernd;_ugpq;3.6291",
+    "_htw_;csaiz;xbylk;qfom_;vernd;_ugpj;3.6305",
+    "_wth_;csiaz;kbylx;jfom_;vernd;_ugpq;3.6291"
   ],
 
   "synthesise": {
