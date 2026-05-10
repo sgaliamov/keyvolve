@@ -1,4 +1,5 @@
 use crate::app::OptimizationConfig;
+use crate::app::optimization::are_roll_neighbors;
 use crate::app::{EMPTY_SLOT, GaContext, KeysGenome};
 use rand::seq::SliceRandom;
 
@@ -33,12 +34,53 @@ fn constrained_keys(opt: &OptimizationConfig) -> KeysGenome {
     letters.shuffle(&mut rand::rng());
     free.shuffle(&mut rand::rng());
 
+    // Place roll pairs together in neighbor slots first.
+    // Both chars must be free (not frozen). We try each combination of two free
+    // slots and pick the first pair that satisfies are_roll_neighbors and each
+    // char's allowed constraint.
+    let mut placed_chars: rustc_hash::FxHashSet<char> = rustc_hash::FxHashSet::default();
+    for [a, b] in &opt.rolls {
+        if placed_chars.contains(a)
+            || placed_chars.contains(b)
+            || frozen_chars.contains(a)
+            || frozen_chars.contains(b)
+        {
+            continue;
+        }
+        // Find a pair of free slots (sa, sb) that are roll-neighbors and valid for (a, b).
+        'outer: for i in 0..free.len() {
+            for j in 0..free.len() {
+                if i == j {
+                    continue;
+                }
+                let (sa, sb) = (free[i], free[j]);
+                if are_roll_neighbors(sa, sb)
+                    && opt.is_slot_valid(*a, sa)
+                    && opt.is_slot_valid(*b, sb)
+                {
+                    genome[sa as usize] = *a;
+                    genome[sb as usize] = *b;
+                    placed_chars.insert(*a);
+                    placed_chars.insert(*b);
+                    // Remove sb first (larger index if i < j, order matters for swap_remove).
+                    let (ri, rj) = if i > j { (i, j) } else { (j, i) };
+                    free.swap_remove(ri);
+                    free.swap_remove(rj);
+                    break 'outer;
+                }
+            }
+        }
+    }
+
     // Constrained letters first (has `allowed` entry), then unconstrained.
     // Ensures constrained letters get priority picking their valid slots.
     letters.sort_by_key(|c| if opt.allowed.contains_key(c) { 0u8 } else { 1 });
 
     // Assign each letter to its first valid free slot; fall back to any free slot.
     for ch in letters {
+        if placed_chars.contains(&ch) {
+            continue;
+        }
         let pos = free
             .iter()
             .position(|&s| opt.is_slot_valid(ch, s))
@@ -93,6 +135,23 @@ mod tests {
         let g = constrained_keys(&opt);
         for &b in &[5usize, 6, 7, 8] {
             assert_eq!(g[b], EMPTY_SLOT, "slot {b} should be empty");
+        }
+    }
+
+    #[test]
+    fn roll_pair_placed_as_neighbors() {
+        let opt = OptimizationConfig {
+            rolls: vec![['t', 'h']],
+            ..Default::default()
+        };
+        for _ in 0..20 {
+            let g = constrained_keys(&opt);
+            let st = g.iter().position(|&c| c == 't').unwrap() as u8;
+            let sh = g.iter().position(|&c| c == 'h').unwrap() as u8;
+            assert!(
+                are_roll_neighbors(st, sh),
+                "t at {st}, h at {sh} — not roll neighbors"
+            );
         }
     }
 

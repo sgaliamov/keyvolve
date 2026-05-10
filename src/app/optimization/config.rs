@@ -35,9 +35,51 @@ where
         .collect())
 }
 
+/// Column index within a hand (0–4).
+#[inline]
+pub fn slot_col(slot: u8) -> u8 {
+    slot % 5
+}
+
+/// Row index (0 = top, 2 = bottom).
+#[inline]
+pub fn slot_row(slot: u8) -> u8 {
+    (slot % 15) / 5
+}
+
+/// True when two slots are on the same hand, adjacent columns, and within one row of each other.
+pub fn are_roll_neighbors(a: u8, b: u8) -> bool {
+    let a_hand = a / 15;
+    let b_hand = b / 15;
+    a_hand == b_hand
+        && slot_col(a).abs_diff(slot_col(b)) == 1
+        && slot_row(a).abs_diff(slot_row(b)) <= 1
+}
+
+/// Deserialize `["th", "st"]` → `[[t,h],[s,t]]`.
+fn de_rolls<'de, D>(de: D) -> Result<Vec<[char; 2]>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let raw: Vec<String> = Vec::deserialize(de)?;
+    raw.iter()
+        .map(|s| {
+            let mut cs = s.chars();
+            let a = cs
+                .next()
+                .ok_or_else(|| serde::de::Error::custom("empty roll pair"))?;
+            let b = cs
+                .next()
+                .ok_or_else(|| serde::de::Error::custom("roll pair needs 2 chars"))?;
+            Ok([a, b])
+        })
+        .collect()
+}
+
 /// Per-key constraints for optimization.
-#[derive(Debug, Clone, Default, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+#[derive(Default)]
 pub struct OptimizationConfig {
     /// Characters whose physical position is locked: maps char → key index (0-29).
     #[serde(default)]
@@ -51,6 +93,12 @@ pub struct OptimizationConfig {
     /// `{ "a": [0,1,2], "e": [3,4] }` — letters not listed are unconstrained.
     #[serde(default, deserialize_with = "de_letter_slot_map")]
     pub allowed: FxHashMap<char, FxHashSet<u8>>,
+
+    /// Char pairs that should occupy roll-neighbor slots (same hand, adjacent column, ±1 row).
+    /// Defined as left-hand positions; right hand is symmetric. Both `[a,b]` and `[b,a]` checked.
+    /// Format: `["th", "st"]`.
+    #[serde(default, deserialize_with = "de_rolls")]
+    pub rolls: Vec<[char; 2]>,
 }
 
 impl OptimizationConfig {
@@ -108,5 +156,34 @@ mod tests {
         assert!(a_slots.contains(&19)); // mirror of 0
         assert!(a_slots.contains(&4));
         assert!(a_slots.contains(&15)); // mirror of 4
+    }
+
+    #[test]
+    fn are_roll_neighbors_adjacent_col_same_row() {
+        // slots 3 and 4: same row 0, cols 3 and 4 → neighbors
+        assert!(are_roll_neighbors(3, 4));
+        // slots 0 and 4: same row 0, cols 0 and 4 → not neighbors
+        assert!(!are_roll_neighbors(0, 4));
+    }
+
+    #[test]
+    fn are_roll_neighbors_adjacent_col_adjacent_row() {
+        // slot 3 (row 0, col 3) and slot 9 (row 1, col 4) → neighbors
+        assert!(are_roll_neighbors(3, 9));
+        // slot 3 (row 0, col 3) and slot 10 (row 2, col 0) → not neighbors (2 rows apart)
+        assert!(!are_roll_neighbors(3, 10));
+    }
+
+    #[test]
+    fn are_roll_neighbors_cross_hand_rejected() {
+        // slot 4 (left index) and slot 15 (right index) → different hands
+        assert!(!are_roll_neighbors(4, 15));
+    }
+
+    #[test]
+    fn deserialize_rolls() {
+        let json = r#"{"rolls": ["th", "st"]}"#;
+        let cfg: OptimizationConfig = serde_json::from_str(json).unwrap();
+        assert_eq!(cfg.rolls, vec![['t', 'h'], ['s', 't']]);
     }
 }
