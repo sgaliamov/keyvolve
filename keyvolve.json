@@ -19,9 +19,8 @@
     "pools": 256,
     "randomRatio": 0.25
   },
-  "seed": [
-    "_wth_;csia_;zbylk;qgup_;xernd;jomfv;3.6396",
-    "_wth_;csia_;zyblk;qgup_;xernd;jomfv;3.6388",
+  "": ["_wth_;csia_;zbylk;qgup_;xernd;jomfv;3.6396"],
+  "-seed": [
     "_frg_;dnoev;jpmux;qhtw_;kaisc;zlyb_;3.6422",
     "jpamz;edurv;qyblx;kcsh_;gnoit;wf___",
     "qwsf_;uared;zxcvb;kgnyj;lotim;ph___",
