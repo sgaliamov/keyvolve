@@ -1,98 +1,110 @@
-use crate::app::OptimizationConfig;
 use crate::app::optimization::are_roll_neighbors;
-use crate::app::{EMPTY_SLOT, GaContext, KeysGenome};
+use crate::app::{EMPTY_SLOT, GaContext, KeysGenome, OptimizationConfig};
 use rand::seq::SliceRandom;
+use rustc_hash::FxHashSet;
 
-/// Generate a genome for optimization, respecting frozen/blocked constraints.
+/// Generate a genome for optimization, respecting frozen/blocked/roll constraints.
 pub fn generate(ctx: &GaContext) -> KeysGenome {
-    let state = ctx.state.as_ref().expect("state must be set");
-    let opt = &state.optimization;
-    constrained_keys(opt)
+    constrained_keys(&ctx.state.as_ref().expect("state must be set").optimization)
 }
 
-/// Place frozen chars at fixed positions, shuffle the rest into remaining free slots.
-/// Per-letter `allowed` constraints are respected; unconstrained letters fill the rest.
+/// Build a genome placing chars into slots under three layers of constraints:
+/// 1. **Frozen** — pinned chars stay at their fixed slot.
+/// 2. **Rolls** — paired chars are co-placed into adjacent-column, ≤1-row-apart slots.
+/// 3. **Allowed** — constrained letters pick valid slots first; unconstrained fill the rest.
 fn constrained_keys(opt: &OptimizationConfig) -> KeysGenome {
-    let frozen = &opt.frozen;
-    let blocked = &opt.blocked;
     let mut genome = vec![EMPTY_SLOT; 30];
+    let mut rng = rand::rng();
 
-    // Pin frozen keys.
-    for (&ch, &idx) in frozen {
+    // ── 1. Frozen ────────────────────────────────────────────────────────────
+    for (&ch, &idx) in &opt.frozen {
         genome[idx as usize] = ch;
     }
+    let frozen_slots: FxHashSet<u8> = opt.frozen.values().copied().collect();
+    let frozen_chars: FxHashSet<char> = opt.frozen.keys().copied().collect();
 
-    let frozen_positions: rustc_hash::FxHashSet<u8> = frozen.values().copied().collect();
-    let frozen_chars: rustc_hash::FxHashSet<char> = frozen.keys().copied().collect();
-
-    // Remaining letters and positions.
+    // Shuffled pools of unplaced letters and available slots.
     let mut letters: Vec<char> = ('a'..='z').filter(|c| !frozen_chars.contains(c)).collect();
     let mut free: Vec<u8> = (0u8..30)
-        .filter(|i| !blocked.contains(i) && !frozen_positions.contains(i))
+        .filter(|s| !opt.blocked.contains(s) && !frozen_slots.contains(s))
         .collect();
+    letters.shuffle(&mut rng);
+    free.shuffle(&mut rng);
 
-    letters.shuffle(&mut rand::rng());
-    free.shuffle(&mut rand::rng());
-
-    // Place roll pairs together in neighbor slots first.
-    // Both chars must be free (not frozen). We try each combination of two free
-    // slots and pick the first pair that satisfies are_roll_neighbors and each
-    // char's allowed constraint.
-    let mut placed_chars: rustc_hash::FxHashSet<char> = rustc_hash::FxHashSet::default();
-    for [a, b] in &opt.rolls {
-        if placed_chars.contains(a)
-            || placed_chars.contains(b)
-            || frozen_chars.contains(a)
-            || frozen_chars.contains(b)
+    // ── 2. Rolls ─────────────────────────────────────────────────────────────
+    // For each pair find two free neighbor slots satisfying per-char allowed constraints.
+    let mut placed: FxHashSet<char> = FxHashSet::default();
+    for &[a, b] in &opt.rolls {
+        if [a, b]
+            .iter()
+            .any(|c| placed.contains(c) || frozen_chars.contains(c))
         {
             continue;
         }
-        // Find a pair of free slots (sa, sb) that are roll-neighbors and valid for (a, b).
-        'outer: for i in 0..free.len() {
-            for j in 0..free.len() {
-                if i == j {
-                    continue;
-                }
-                let (sa, sb) = (free[i], free[j]);
-                if are_roll_neighbors(sa, sb)
-                    && opt.is_slot_valid(*a, sa)
-                    && opt.is_slot_valid(*b, sb)
-                {
-                    genome[sa as usize] = *a;
-                    genome[sb as usize] = *b;
-                    placed_chars.insert(*a);
-                    placed_chars.insert(*b);
-                    // Remove sb first (larger index if i < j, order matters for swap_remove).
-                    let (ri, rj) = if i > j { (i, j) } else { (j, i) };
-                    free.swap_remove(ri);
-                    free.swap_remove(rj);
-                    break 'outer;
-                }
-            }
+        if let Some((i, j)) = find_neighbor_slots(&free, a, b, opt) {
+            place_pair(&mut genome, &mut free, &mut placed, i, j, a, b);
         }
     }
 
-    // Constrained letters first (has `allowed` entry), then unconstrained.
-    // Ensures constrained letters get priority picking their valid slots.
+    // ── 3. Remaining letters ─────────────────────────────────────────────────
+    // Constrained letters first so they get priority over their allowed slots.
     letters.sort_by_key(|c| if opt.allowed.contains_key(c) { 0u8 } else { 1 });
-
-    // Assign each letter to its first valid free slot; fall back to any free slot.
     for ch in letters {
-        if placed_chars.contains(&ch) {
+        if placed.contains(&ch) {
             continue;
         }
-        let pos = free
+        let idx = free
             .iter()
             .position(|&s| opt.is_slot_valid(ch, s))
-            .or(if free.is_empty() { None } else { Some(0) });
-
-        if let Some(idx) = pos {
+            .or((!free.is_empty()).then_some(0));
+        if let Some(idx) = idx {
             genome[free[idx] as usize] = ch;
             free.swap_remove(idx);
         }
     }
 
     genome
+}
+
+/// Find indices into `free` of two slots that are roll-neighbors and valid for `(a, b)`.
+fn find_neighbor_slots(
+    free: &[u8],
+    a: char,
+    b: char,
+    opt: &OptimizationConfig,
+) -> Option<(usize, usize)> {
+    for i in 0..free.len() {
+        for j in 0..free.len() {
+            if i != j
+                && are_roll_neighbors(free[i], free[j])
+                && opt.is_slot_valid(a, free[i])
+                && opt.is_slot_valid(b, free[j])
+            {
+                return Some((i, j));
+            }
+        }
+    }
+    None
+}
+
+/// Write `(a, b)` into `genome` at `free[i]`/`free[j]`, then remove both from `free`.
+fn place_pair(
+    genome: &mut [char],
+    free: &mut Vec<u8>,
+    placed: &mut FxHashSet<char>,
+    i: usize,
+    j: usize,
+    a: char,
+    b: char,
+) {
+    genome[free[i] as usize] = a;
+    genome[free[j] as usize] = b;
+    placed.insert(a);
+    placed.insert(b);
+    // Remove higher index first to keep the lower index valid.
+    let (hi, lo) = if i > j { (i, j) } else { (j, i) };
+    free.swap_remove(hi);
+    free.swap_remove(lo);
 }
 
 #[cfg(test)]
