@@ -47,12 +47,13 @@ pub fn slot_row(slot: u8) -> u8 {
     (slot % 15) / 5
 }
 
-/// True when two slots are on the same hand, adjacent columns, and within one row of each other.
+/// True when two slots are on the same hand, 1–2 columns apart, and within one row of each other.
 pub fn are_roll_neighbors(a: u8, b: u8) -> bool {
     let a_hand = a / 15;
     let b_hand = b / 15;
+    let col_dist = slot_col(a).abs_diff(slot_col(b));
     a_hand == b_hand
-        && slot_col(a).abs_diff(slot_col(b)) == 1
+        && matches!(col_dist, 1 | 2)
         && slot_row(a).abs_diff(slot_row(b)) <= 1
 }
 
@@ -160,9 +161,13 @@ mod tests {
 
     #[test]
     fn are_roll_neighbors_adjacent_col_same_row() {
-        // slots 3 and 4: same row 0, cols 3 and 4 → neighbors
+        // slots 3 and 4: same row 0, col dist 1 → neighbors
         assert!(are_roll_neighbors(3, 4));
-        // slots 0 and 4: same row 0, cols 0 and 4 → not neighbors
+        // slots 2 and 4: same row 0, col dist 2 → neighbors
+        assert!(are_roll_neighbors(2, 4));
+        // slots 4 and 4: same slot, col dist 0 → not neighbors
+        assert!(!are_roll_neighbors(4, 4));
+        // slots 0 and 4: same row 0, col dist 4 → not neighbors
         assert!(!are_roll_neighbors(0, 4));
     }
 
