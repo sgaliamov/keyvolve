@@ -1,3 +1,4 @@
+use crate::app::OptimizationConfig;
 use crate::app::{EMPTY_SLOT, GaContext, KeysGenome};
 use rand::seq::SliceRandom;
 
@@ -5,14 +6,14 @@ use rand::seq::SliceRandom;
 pub fn generate(ctx: &GaContext) -> KeysGenome {
     let state = ctx.state.as_ref().expect("state must be set");
     let opt = &state.optimization;
-    constrained_keys(&opt.frozen, &opt.blocked)
+    constrained_keys(opt)
 }
 
 /// Place frozen chars at fixed positions, shuffle the rest into remaining free slots.
-fn constrained_keys(
-    frozen: &rustc_hash::FxHashMap<char, u8>,
-    blocked: &rustc_hash::FxHashSet<u8>,
-) -> KeysGenome {
+/// Per-letter `allowed` constraints are respected; unconstrained letters fill the rest.
+fn constrained_keys(opt: &OptimizationConfig) -> KeysGenome {
+    let frozen = &opt.frozen;
+    let blocked = &opt.blocked;
     let mut genome = vec![EMPTY_SLOT; 30];
 
     // Pin frozen keys.
@@ -25,21 +26,28 @@ fn constrained_keys(
 
     // Remaining letters and positions.
     let mut letters: Vec<char> = ('a'..='z').filter(|c| !frozen_chars.contains(c)).collect();
-
-    let mut free_positions: Vec<usize> = (0u8..30)
+    let mut free: Vec<u8> = (0u8..30)
         .filter(|i| !blocked.contains(i) && !frozen_positions.contains(i))
-        .map(|i| i as usize)
         .collect();
 
     letters.shuffle(&mut rand::rng());
-    free_positions.shuffle(&mut rand::rng());
+    free.shuffle(&mut rand::rng());
 
-    // Fill free positions: letters first, then EMPTY_SLOT for the rest.
-    for (pos, ch) in free_positions
-        .iter()
-        .zip(letters.iter().copied().chain(std::iter::repeat(EMPTY_SLOT)))
-    {
-        genome[*pos] = ch;
+    // Constrained letters first (has `allowed` entry), then unconstrained.
+    // Ensures constrained letters get priority picking their valid slots.
+    letters.sort_by_key(|c| if opt.allowed.contains_key(c) { 0u8 } else { 1 });
+
+    // Assign each letter to its first valid free slot; fall back to any free slot.
+    for ch in letters {
+        let pos = free
+            .iter()
+            .position(|&s| opt.is_slot_valid(ch, s))
+            .or(if free.is_empty() { None } else { Some(0) });
+
+        if let Some(idx) = pos {
+            genome[free[idx] as usize] = ch;
+            free.swap_remove(idx);
+        }
     }
 
     genome
@@ -48,15 +56,19 @@ fn constrained_keys(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rustc_hash::{FxHashMap, FxHashSet};
+    use crate::app::OptimizationConfig;
+    use rustc_hash::FxHashSet;
 
-    fn make_frozen(pairs: &[(char, u8)]) -> FxHashMap<char, u8> {
-        pairs.iter().copied().collect()
+    fn make_frozen(pairs: &[(char, u8)]) -> OptimizationConfig {
+        OptimizationConfig {
+            frozen: pairs.iter().copied().collect(),
+            ..Default::default()
+        }
     }
 
     #[test]
     fn unconstrained_has_all_26_chars() {
-        let g = constrained_keys(&FxHashMap::default(), &FxHashSet::default());
+        let g = constrained_keys(&OptimizationConfig::default());
         assert_eq!(g.len(), 30);
         let mut chars: Vec<char> = g.iter().copied().filter(|&c| c != EMPTY_SLOT).collect();
         chars.sort_unstable();
@@ -65,8 +77,8 @@ mod tests {
 
     #[test]
     fn frozen_keys_stay_in_place() {
-        let frozen = make_frozen(&[('a', 0), ('z', 29)]);
-        let g = constrained_keys(&frozen, &FxHashSet::default());
+        let opt = make_frozen(&[('a', 0), ('z', 29)]);
+        let g = constrained_keys(&opt);
         assert_eq!(g[0], 'a');
         assert_eq!(g[29], 'z');
     }
@@ -74,9 +86,25 @@ mod tests {
     #[test]
     fn blocked_slots_are_empty() {
         let blocked: FxHashSet<u8> = [5, 6, 7, 8].iter().copied().collect();
-        let g = constrained_keys(&FxHashMap::default(), &blocked);
+        let opt = OptimizationConfig {
+            blocked,
+            ..Default::default()
+        };
+        let g = constrained_keys(&opt);
         for &b in &[5usize, 6, 7, 8] {
             assert_eq!(g[b], EMPTY_SLOT, "slot {b} should be empty");
+        }
+    }
+
+    #[test]
+    fn allowed_constraint_respected() {
+        use crate::app::optimization::expand_half;
+        let mut opt = OptimizationConfig::default();
+        opt.allowed.insert('a', expand_half(&[0])); // 'a' only allowed at 0 or 19
+        for _ in 0..20 {
+            let g = constrained_keys(&opt);
+            let pos = g.iter().position(|&c| c == 'a').unwrap();
+            assert!(pos == 0 || pos == 19, "a landed at {pos}");
         }
     }
 }
