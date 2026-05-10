@@ -44,9 +44,7 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
                     let mut ga = cfg.ga;
                     ga.ranges = vec![vec![(EMPTY_SLOT, 'z'); 30]];
                     ga.seed = cfg.seed.iter().map(|s| parse_seed(s)).collect();
-                    let mut opt = cfg.optimization;
-                    opt.blocked.extend(keyboard.blocked);
-                    optimize(evaluator, ga, app, opt)?;
+                    optimize(evaluator, ga, app, cfg.optimization)?;
                 }
                 Mode::Synthesise | Mode::Merge => unreachable!(),
             }
