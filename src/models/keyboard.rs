@@ -137,6 +137,7 @@ mod tests {
             balance_penalty: 2.0,
             alternation_penalty: 0.0,
             efforts: vec![1.0],
+            blocked: FxHashSet::default(),
             pairs: FxHashMap::from_iter([(0u8, FxHashMap::from_iter([(5u8, 1usize)]))]),
         }
         .expand_pairs();
