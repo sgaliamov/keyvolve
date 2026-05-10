@@ -12,7 +12,11 @@ pub fn mutate(ind: &KeysIndividual, ctx: &GaContext) -> Option<KeysGenome> {
         .genome
         .iter()
         .enumerate()
-        .filter(|(i, c)| **c != EMPTY_SLOT && !frozen_positions.contains(&(*i as u8)) && !blocked.contains(&(*i as u8)))
+        .filter(|(i, c)| {
+            **c != EMPTY_SLOT
+                && !frozen_positions.contains(&(*i as u8))
+                && !blocked.contains(&(*i as u8))
+        })
         .map(|(i, _)| i)
         .collect();
 

@@ -24,9 +24,7 @@ fn constrained_keys(
     let frozen_chars: rustc_hash::FxHashSet<char> = frozen.keys().copied().collect();
 
     // Remaining letters and positions.
-    let mut letters: Vec<char> = ('a'..='z')
-        .filter(|c| !frozen_chars.contains(c))
-        .collect();
+    let mut letters: Vec<char> = ('a'..='z').filter(|c| !frozen_chars.contains(c)).collect();
 
     let mut free_positions: Vec<usize> = (0u8..30)
         .filter(|i| !blocked.contains(i) && !frozen_positions.contains(i))
@@ -37,9 +35,10 @@ fn constrained_keys(
     free_positions.shuffle(&mut rand::rng());
 
     // Fill free positions: letters first, then EMPTY_SLOT for the rest.
-    for (pos, ch) in free_positions.iter().zip(
-        letters.iter().copied().chain(std::iter::repeat(EMPTY_SLOT)),
-    ) {
+    for (pos, ch) in free_positions
+        .iter()
+        .zip(letters.iter().copied().chain(std::iter::repeat(EMPTY_SLOT)))
+    {
         genome[*pos] = ch;
     }
 

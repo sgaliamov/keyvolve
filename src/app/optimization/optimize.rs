@@ -38,7 +38,7 @@ pub fn optimize(
     info!("Algorithm complete");
 
     println!("\n--- top 10 ---");
-    for (genome, fitness)  in pools.best_n(10).into_iter() {
+    for (genome, fitness) in pools.best_n(10).into_iter() {
         let name = Layout::from_keys(genome).to_string();
         println!("\"{};{:.4}\",", name, fitness);
     }

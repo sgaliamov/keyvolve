@@ -1,4 +1,4 @@
-use crate::{app::LayoutEvaluator, models::ScoreResult, OptimizationConfig};
+use crate::{OptimizationConfig, app::LayoutEvaluator, models::ScoreResult};
 use cliffa::cli::AppHandle;
 
 /// Genome: 30 chars occupying physical keyboard slots by index; `` ` `` = empty slot.
@@ -15,5 +15,4 @@ pub struct OptimizerState {
 }
 
 /// GA context for layout optimization.
-pub type GaContext<'a> =
-    darwin::Context<'a, char, OptimizerState, ScoreResult>;
+pub type GaContext<'a> = darwin::Context<'a, char, OptimizerState, ScoreResult>;
