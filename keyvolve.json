@@ -10,9 +10,10 @@
   "layouts": "data/layouts.csv",
   "text": "data/synthesised",
   "ga": {
-    "mutationRatio": 0.5,
+    "mutationRatio": 0.75,
     "populationSize": 128,
-    "pools": 128
+    "pools": 256,
+    "randomRatio": 0.25
   },
   "-seed": [
     "_frg_;dnoev;jpmux;qhtw_;kaisc;zlyb_;3.6422",
@@ -27,7 +28,11 @@
     "_htw_;csaiz;xbylk;qfom_;vernd;_ugpj;3.6305",
     "_wth_;csiaz;kbylx;jfom_;vernd;_ugpq;3.6291",
     "_htw_;csaiz;xbylk;qfom_;vernd;_ugpj;3.6305",
-    "_wth_;csiaz;kbylx;jfom_;vernd;_ugpq;3.6291"
+    "_wth_;csiaz;kbylx;jfom_;vernd;_ugpq;3.6291",
+    "_mrpx;dnoev;jfguq;_htw_;kiasc;zlby_;3.6359",
+    "_mrfx;dnoev;jpguq;_htw_;kiasc;zlby_;3.6299",
+    "quhgx;cnitk;wfvo_;_plm_;_eard;jsbyz;3.5805",
+    "quhgx;cnitk;wvfo_;_plm_;_eard;jsbyz;3.5799"
   ],
 
   "synthesise": {
