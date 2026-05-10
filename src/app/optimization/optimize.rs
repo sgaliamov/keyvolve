@@ -1,4 +1,4 @@
-use crate::OptimizationConfig;
+use crate::app::OptimizationConfig;
 use crate::app::LayoutEvaluator;
 use crate::models::Layout;
 use cliffa::cli::AppHandle;

@@ -15,7 +15,9 @@
     "pools": 256,
     "randomRatio": 0.25
   },
-  "-seed": [
+  "seed": [
+    "_wth_;csia_;zbylk;qgup_;xernd;jomfv;3.6396",
+    "_wth_;csia_;zyblk;qgup_;xernd;jomfv;3.6388",
     "_frg_;dnoev;jpmux;qhtw_;kaisc;zlyb_;3.6422",
     "jpamz;edurv;qyblx;kcsh_;gnoit;wf___",
     "qwsf_;uared;zxcvb;kgnyj;lotim;ph___",
@@ -32,7 +34,9 @@
     "_mrpx;dnoev;jfguq;_htw_;kiasc;zlby_;3.6359",
     "_mrfx;dnoev;jpguq;_htw_;kiasc;zlby_;3.6299",
     "quhgx;cnitk;wfvo_;_plm_;_eard;jsbyz;3.5805",
-    "quhgx;cnitk;wvfo_;_plm_;_eard;jsbyz;3.5799"
+    "quhgx;cnitk;wvfo_;_plm_;_eard;jsbyz;3.5799",
+    "_uof_;citng;zbwhq;xmsp_;_aerl;jdyvk;3.5718",
+    "_uof_;citng;zbwhq;xmlp_;_eard;jsyvk;3.5717"
   ],
 
   "synthesise": {
