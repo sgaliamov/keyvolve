@@ -98,6 +98,9 @@ pub struct OptimizationConfig {
     /// Format: `["th", "st"]`.
     #[serde(default, deserialize_with = "de_rolls")]
     pub rolls: Vec<[char; 2]>,
+
+    /// Output layouts csv file
+    pub output: Option<std::path::PathBuf>,
 }
 
 impl OptimizationConfig {

@@ -10,7 +10,7 @@ pub struct Config {
     /// keyboard json settings
     pub keyboard: Option<PathBuf>,
 
-    /// layouts csv file
+    /// Input layouts csv file, can be used as a seed
     pub layouts: Option<PathBuf>,
 
     /// sample text file
@@ -21,7 +21,7 @@ pub struct Config {
 
     /// seed layouts in semicolon format, e.g. "jpdmq;eaurv;xyblz;khoc_;gnsit;wf___"
     #[serde(default)]
-    pub seed: Vec<String>,
+    pub seed: Vec<String>, // todo: use input layouts
 
     /// mode of operation: optimize, evaluate, or synthesise
     pub mode: Mode,

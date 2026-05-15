@@ -3,15 +3,19 @@ use crate::app::OptimizationConfig;
 use crate::models::Layout;
 use cliffa::cli::AppHandle;
 use darwin::{GeneticAlgorithm, NoopCrossover};
+use itertools::Itertools;
+use miette::Context;
+use miette::IntoDiagnostic;
 use miette::Result;
+use std::io::Write;
 
 use super::{OptimizerState, callback, corpus_evaluator, generate, mutate};
 
 pub fn optimize(
     evaluator: LayoutEvaluator,
     config: darwin::Config<char>,
-    app: AppHandle,
     optimization: OptimizationConfig,
+    app: AppHandle,
 ) -> Result<()> {
     use tracing::info;
     info!("Initializing genetic algorithm");
@@ -23,6 +27,8 @@ pub fn optimize(
         corpus_evaluator,
         callback,
     );
+
+    let output_path = optimization.output.clone();
 
     GeneticAlgorithm::set_state(
         &mut ga,
@@ -38,20 +44,38 @@ pub fn optimize(
     let pools = ga.run();
     info!("Algorithm complete");
 
-    let mut top: Vec<(usize, &darwin::Genome<char>, f64)> = pools
-        .iter()
-        .flat_map(|pool| {
-            pool.individuals
-                .iter()
-                .map(|ind| (pool.number, &ind.genome, ind.fitness))
-        })
-        .collect();
-    top.sort_by(|a, b| b.2.total_cmp(&a.2));
-
     println!("\n--- top 10 ---");
-    for (pool, genome, fitness) in top.into_iter().take(10) {
-        let name = Layout::from_keys(genome).to_string();
-        println!("\"{name};{fitness:.4};{pool}\",");
+    let top = pools
+        .iter()
+        .flat_map(|p| {
+            p.individuals
+                .iter()
+                .sorted_unstable_by(|a, b| b.fitness.total_cmp(&a.fitness))
+                .take(1)
+        })
+        .sorted_unstable_by(|a, b| b.fitness.total_cmp(&a.fitness))
+        .take(10);
+
+    let mut file = output_path
+        .as_ref()
+        .and_then(|o| std::fs::File::create(o).ok());
+
+    for ind in top {
+        let score = ind.state.as_ref().unwrap();
+        let genome = &ind.genome;
+        let layout = Layout::from_keys(genome).to_string();
+        let line = format!("\"{}\";{}", layout, score.to_csv());
+        println!("{line}");
+
+        if let Some(ref mut file) = file {
+            writeln!(file, "{line}")
+                .into_diagnostic()
+                .wrap_err("Failed to write evaluated layouts")?;
+        }
+    }
+
+    if let Some(output) = output_path {
+        info!("Results written to {}", output.display());
     }
 
     Ok(())
