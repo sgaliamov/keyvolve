@@ -4,12 +4,12 @@ use serde::Deserialize;
 /// Mirror a left-hand slot (0–14) to its right-hand counterpart (15–29).
 /// Layout:  left 0–14, right 15–29, 5 cols/row, 3 rows.
 /// Formula: `(i / 5) * 5 + (4 - i % 5) + 15`
-pub fn mirror_slot(i: u8) -> u8 {
+fn mirror_slot(i: u8) -> u8 {
     (i / 5) * 5 + (4 - i % 5) + 15
 }
 
 /// Expand a half-position set (0–14) to both hands (adds mirrored slots 15–29).
-pub fn expand_half(slots: &[u8]) -> FxHashSet<u8> {
+fn expand_half(slots: &[u8]) -> FxHashSet<u8> {
     slots
         .iter()
         .flat_map(|&i| {
@@ -37,13 +37,13 @@ where
 
 /// Column index within a hand (0–4).
 #[inline]
-pub fn slot_col(slot: u8) -> u8 {
+fn slot_col(slot: u8) -> u8 {
     slot % 5
 }
 
 /// Row index (0 = top, 2 = bottom).
 #[inline]
-pub fn slot_row(slot: u8) -> u8 {
+fn slot_row(slot: u8) -> u8 {
     (slot % 15) / 5
 }
 
@@ -103,7 +103,7 @@ pub struct OptimizationConfig {
 impl OptimizationConfig {
     /// Check whether placing `ch` at `slot` is permitted.
     /// Letters with no `allowed` entry are unconstrained.
-    pub fn is_slot_valid(&self, ch: char, slot: u8) -> bool {
+    pub fn is_slot_allowed(&self, ch: char, slot: u8) -> bool {
         self.allowed
             .get(&ch)
             .is_none_or(|slots| slots.contains(&slot))
@@ -133,17 +133,17 @@ mod tests {
     #[test]
     fn is_slot_valid_no_constraint() {
         let cfg = OptimizationConfig::default();
-        assert!(cfg.is_slot_valid('a', 0));
-        assert!(cfg.is_slot_valid('z', 29));
+        assert!(cfg.is_slot_allowed('a', 0));
+        assert!(cfg.is_slot_allowed('z', 29));
     }
 
     #[test]
     fn is_slot_valid_allowed() {
         let mut cfg = OptimizationConfig::default();
         cfg.allowed.insert('a', expand_half(&[0]));
-        assert!(cfg.is_slot_valid('a', 0));
-        assert!(cfg.is_slot_valid('a', 19)); // mirrored
-        assert!(!cfg.is_slot_valid('a', 1));
+        assert!(cfg.is_slot_allowed('a', 0));
+        assert!(cfg.is_slot_allowed('a', 19)); // mirrored
+        assert!(!cfg.is_slot_allowed('a', 1));
     }
 
     #[test]
