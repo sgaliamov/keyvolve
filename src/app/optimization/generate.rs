@@ -45,7 +45,7 @@ fn constrained_keys(opt: &OptimizationConfig, cache: &OptimizationCache) -> Keys
         match (a_frozen, b_frozen) {
             (true, false) => {
                 let anchor = opt.frozen[&a];
-                if let Some(j) = find_neighbor_to_frozen(&free, anchor, b, opt) {
+                if let Some(j) = find_roll_neighbor(&free, anchor, b, opt) {
                     genome[free[j] as usize] = b;
                     placed.insert(b);
                     free.swap_remove(j);
@@ -53,7 +53,7 @@ fn constrained_keys(opt: &OptimizationConfig, cache: &OptimizationCache) -> Keys
             }
             (false, true) => {
                 let anchor = opt.frozen[&b];
-                if let Some(i) = find_neighbor_to_frozen(&free, anchor, a, opt) {
+                if let Some(i) = find_roll_neighbor(&free, anchor, a, opt) {
                     genome[free[i] as usize] = a;
                     placed.insert(a);
                     free.swap_remove(i);
@@ -76,7 +76,7 @@ fn constrained_keys(opt: &OptimizationConfig, cache: &OptimizationCache) -> Keys
             .copied()
             .filter(|p| !placed.contains(p) && !cache.frozen_chars.contains(p));
         if let Some(partner) = partner
-            && let Some((i, j)) = find_neighbor_slots_anchored(&free, ch, partner, opt)
+            && let Some((i, j)) = find_roll_slots(&free, ch, partner, opt)
         {
             place_pair(&mut genome, &mut free, &mut placed, i, j, ch, partner);
             continue;
@@ -102,7 +102,7 @@ fn constrained_keys(opt: &OptimizationConfig, cache: &OptimizationCache) -> Keys
         {
             continue;
         }
-        if let Some((i, j)) = find_neighbor_slots_anchored(&free, a, b, opt) {
+        if let Some((i, j)) = find_roll_slots(&free, a, b, opt) {
             place_pair(&mut genome, &mut free, &mut placed, i, j, a, b);
         }
     }
@@ -128,28 +128,19 @@ fn constrained_keys(opt: &OptimizationConfig, cache: &OptimizationCache) -> Keys
 /// Find two indices into `free` whose slots are roll-neighbors and valid for `(anchor, other)`.
 /// Iterates `anchor`'s valid slots in the outer loop — when `anchor` is unconstrained this is
 /// equivalent to an unordered search.
-fn find_neighbor_slots_anchored(
+fn find_roll_slots(
     free: &[u8],
     anchor: char,
     other: char,
     opt: &OptimizationConfig,
 ) -> Option<(usize, usize)> {
-    for i in 0..free.len() {
-        if !opt.is_slot_allowed(anchor, free[i]) {
-            continue;
-        }
-        for j in 0..free.len() {
-            if i != j && are_roll_neighbors(free[i], free[j]) && opt.is_slot_allowed(other, free[j])
-            {
-                return Some((i, j));
-            }
-        }
-    }
-    None
+    (0..free.len())
+        .filter(|&i| opt.is_slot_allowed(anchor, free[i]))
+        .find_map(|i| find_roll_neighbor(free, free[i], other, opt).map(|j| (i, j)))
 }
 
 /// Find index into `free` of a slot that is a roll-neighbor of `anchor` and valid for `ch`.
-fn find_neighbor_to_frozen(
+fn find_roll_neighbor(
     free: &[u8],
     anchor: u8,
     other: char,
