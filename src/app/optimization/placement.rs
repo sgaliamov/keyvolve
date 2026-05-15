@@ -69,17 +69,37 @@ pub fn place_letters(
 
     // ── 4. Remaining rolls ───────────────────────────────────────────────────
     for &[a, b] in &opt.rolls {
-        if placed.contains(&a)
-            || placed.contains(&b)
-            || !unplaced.contains(&a)
-            || !unplaced.contains(&b)
-            || cache.frozen_chars.contains(&a)
-            || cache.frozen_chars.contains(&b)
-        {
-            continue;
-        }
-        if let Some((i, j)) = find_roll_slots(genome, free, a, b, opt) {
-            place_pair(genome, free, &mut placed, i, j, a, b);
+        let a_placed = placed.contains(&a);
+        let b_placed = placed.contains(&b);
+        let a_unplaced = unplaced.contains(&a) && !cache.frozen_chars.contains(&a);
+        let b_unplaced = unplaced.contains(&b) && !cache.frozen_chars.contains(&b);
+
+        match (a_placed, b_placed) {
+            // Both free — place as roll pair.
+            (false, false) if a_unplaced && b_unplaced => {
+                if let Some((i, j)) = find_roll_slots(genome, free, a, b, opt) {
+                    place_pair(genome, free, &mut placed, i, j, a, b);
+                }
+            }
+            // `a` already placed (by step 3), `b` still free — anchor on `a`.
+            (true, false) if b_unplaced => {
+                let anchor = genome.iter().position(|&c| c == a).unwrap() as u8;
+                if let Some(j) = find_roll_neighbor(genome, free, anchor, b, opt) {
+                    genome[free[j] as usize] = b;
+                    placed.insert(b);
+                    free.swap_remove(j);
+                }
+            }
+            // `b` already placed (by step 3), `a` still free — anchor on `b`.
+            (false, true) if a_unplaced => {
+                let anchor = genome.iter().position(|&c| c == b).unwrap() as u8;
+                if let Some(i) = find_roll_neighbor(genome, free, anchor, a, opt) {
+                    genome[free[i] as usize] = a;
+                    placed.insert(a);
+                    free.swap_remove(i);
+                }
+            }
+            _ => {}
         }
     }
 
