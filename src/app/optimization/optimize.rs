@@ -43,17 +43,15 @@ pub fn optimize(
         .flat_map(|pool| {
             pool.individuals
                 .iter()
-                .filter(|ind| ind.fitness.is_finite())
-                .take(3)
-                .map(move |ind| (pool.number, &ind.genome, ind.fitness))
+                .map(|ind| (pool.number, &ind.genome, ind.fitness))
         })
         .collect();
     top.sort_by(|a, b| b.2.total_cmp(&a.2));
 
-    println!("\n--- top 3 per pool ---");
-    for (pool, genome, fitness) in top {
+    println!("\n--- top 10 ---");
+    for (pool, genome, fitness) in top.into_iter().take(10) {
         let name = Layout::from_keys(genome).to_string();
-        println!("pool={pool} \"{name};{fitness:.4}\"");
+        println!("\"{name};{fitness:.4};{pool}\",");
     }
 
     Ok(())
