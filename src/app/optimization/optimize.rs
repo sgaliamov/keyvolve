@@ -38,10 +38,22 @@ pub fn optimize(
     let pools = ga.run();
     info!("Algorithm complete");
 
-    println!("\n--- top 10 ---");
-    for (genome, fitness) in pools.best_n(10).into_iter() {
+    let mut top: Vec<(usize, &darwin::Genome<char>, f64)> = pools
+        .iter()
+        .flat_map(|pool| {
+            pool.individuals
+                .iter()
+                .filter(|ind| ind.fitness.is_finite())
+                .take(3)
+                .map(move |ind| (pool.number, &ind.genome, ind.fitness))
+        })
+        .collect();
+    top.sort_by(|a, b| b.2.total_cmp(&a.2));
+
+    println!("\n--- top 3 per pool ---");
+    for (pool, genome, fitness) in top {
         let name = Layout::from_keys(genome).to_string();
-        println!("\"{};{:.4}\",", name, fitness);
+        println!("pool={pool} \"{name};{fitness:.4}\"");
     }
 
     Ok(())
