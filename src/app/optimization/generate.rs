@@ -1,11 +1,12 @@
-use crate::app::optimization::are_roll_neighbors;
+use crate::app::optimization::{OptimizationCache, are_roll_neighbors};
 use crate::app::{EMPTY_SLOT, GaContext, KeysGenome, OptimizationConfig};
 use rand::seq::SliceRandom;
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashSet;
 
 /// Generate a genome for optimization, respecting frozen/blocked/roll constraints.
 pub fn generate(ctx: &GaContext) -> KeysGenome {
-    constrained_keys(&ctx.state.as_ref().expect("state must be set").optimization)
+    let state = ctx.state.as_ref().expect("state must be set");
+    constrained_keys(&state.optimization, &state.cache)
 }
 
 /// Build a genome placing chars into slots under four layers of constraints:
@@ -14,7 +15,7 @@ pub fn generate(ctx: &GaContext) -> KeysGenome {
 /// 3. **Allowed** — constrained letters placed first; if in a roll, partner co-placed as neighbor.
 /// 4. **Remaining rolls** — unconstrained pairs placed as neighbors.
 /// 5. **Free** — unconstrained letters fill remaining slots.
-fn constrained_keys(opt: &OptimizationConfig) -> KeysGenome {
+fn constrained_keys(opt: &OptimizationConfig, cache: &OptimizationCache) -> KeysGenome {
     let mut genome = vec![EMPTY_SLOT; 30];
     let mut rng = rand::rng();
 
@@ -22,24 +23,16 @@ fn constrained_keys(opt: &OptimizationConfig) -> KeysGenome {
     for (&ch, &idx) in &opt.frozen {
         genome[idx as usize] = ch;
     }
-    // todo: cache on start
-    let frozen_slots: FxHashSet<u8> = opt.frozen.values().copied().collect();
-    let frozen_chars: FxHashSet<char> = opt.frozen.keys().copied().collect();
 
     // Shuffled pools of unplaced letters and available slots.
-    let mut letters: Vec<char> = ('a'..='z').filter(|c| !frozen_chars.contains(c)).collect();
+    let mut letters: Vec<char> = ('a'..='z')
+        .filter(|c| !cache.frozen_chars.contains(c))
+        .collect();
     let mut free: Vec<u8> = (0u8..30)
-        .filter(|s| !opt.blocked.contains(s) && !frozen_slots.contains(s))
+        .filter(|s| !opt.blocked.contains(s) && !cache.frozen_slots.contains(s))
         .collect();
     letters.shuffle(&mut rng);
     free.shuffle(&mut rng);
-
-    // char → roll partner lookup
-    let roll_partner: FxHashMap<char, char> = opt
-        .rolls
-        .iter()
-        .flat_map(|&[a, b]| [(a, b), (b, a)])
-        .collect();
 
     let mut placed: FxHashSet<char> = FxHashSet::default();
 
@@ -47,8 +40,8 @@ fn constrained_keys(opt: &OptimizationConfig) -> KeysGenome {
     // For each roll pair where exactly one char is frozen, place the free partner
     // into a roll-neighbor slot relative to the frozen anchor.
     for &[a, b] in &opt.rolls {
-        let a_frozen = frozen_chars.contains(&a);
-        let b_frozen = frozen_chars.contains(&b);
+        let a_frozen = cache.frozen_chars.contains(&a);
+        let b_frozen = cache.frozen_chars.contains(&b);
         match (a_frozen, b_frozen) {
             (true, false) => {
                 let anchor = opt.frozen[&a];
@@ -77,10 +70,11 @@ fn constrained_keys(opt: &OptimizationConfig) -> KeysGenome {
         if placed.contains(&ch) {
             continue;
         }
-        let partner = roll_partner
+        let partner = cache
+            .roll_partner
             .get(&ch)
             .copied()
-            .filter(|p| !placed.contains(p) && !frozen_chars.contains(p));
+            .filter(|p| !placed.contains(p) && !cache.frozen_chars.contains(p));
         if let Some(partner) = partner
             && let Some((i, j)) = find_neighbor_slots_anchored(&free, ch, partner, opt)
         {
@@ -103,8 +97,8 @@ fn constrained_keys(opt: &OptimizationConfig) -> KeysGenome {
     for &[a, b] in &opt.rolls {
         if placed.contains(&a)
             || placed.contains(&b)
-            || frozen_chars.contains(&a)
-            || frozen_chars.contains(&b)
+            || cache.frozen_chars.contains(&a)
+            || cache.frozen_chars.contains(&b)
         {
             continue;
         }
@@ -191,6 +185,10 @@ mod tests {
     use crate::app::OptimizationConfig;
     use rustc_hash::FxHashSet;
 
+    fn run(opt: &OptimizationConfig) -> KeysGenome {
+        constrained_keys(opt, &opt.cache())
+    }
+
     fn make_frozen(pairs: &[(char, u8)]) -> OptimizationConfig {
         OptimizationConfig {
             frozen: pairs.iter().copied().collect(),
@@ -200,7 +198,7 @@ mod tests {
 
     #[test]
     fn unconstrained_has_all_26_chars() {
-        let g = constrained_keys(&OptimizationConfig::default());
+        let g = run(&OptimizationConfig::default());
         assert_eq!(g.len(), 30);
         let mut chars: Vec<char> = g.iter().copied().filter(|&c| c != EMPTY_SLOT).collect();
         chars.sort_unstable();
@@ -210,7 +208,7 @@ mod tests {
     #[test]
     fn frozen_keys_stay_in_place() {
         let opt = make_frozen(&[('a', 0), ('z', 29)]);
-        let g = constrained_keys(&opt);
+        let g = run(&opt);
         assert_eq!(g[0], 'a');
         assert_eq!(g[29], 'z');
     }
@@ -222,7 +220,7 @@ mod tests {
             blocked,
             ..Default::default()
         };
-        let g = constrained_keys(&opt);
+        let g = run(&opt);
         for &b in &[5usize, 6, 7, 8] {
             assert_eq!(g[b], EMPTY_SLOT, "slot {b} should be empty");
         }
@@ -235,7 +233,7 @@ mod tests {
             ..Default::default()
         };
         for _ in 0..20 {
-            let g = constrained_keys(&opt);
+            let g = run(&opt);
             let st = g.iter().position(|&c| c == 't').unwrap() as u8;
             let sh = g.iter().position(|&c| c == 'h').unwrap() as u8;
             assert!(
@@ -254,7 +252,7 @@ mod tests {
         };
         opt.frozen.insert('t', 2);
         for _ in 0..20 {
-            let g = constrained_keys(&opt);
+            let g = run(&opt);
             assert_eq!(g[2], 't', "frozen 't' must stay at slot 2");
             let sh = g.iter().position(|&c| c == 'h').unwrap() as u8;
             assert!(
@@ -273,7 +271,7 @@ mod tests {
         };
         opt.allowed.insert('t', [0u8, 19].into_iter().collect());
         for _ in 0..20 {
-            let g = constrained_keys(&opt);
+            let g = run(&opt);
             let st = g.iter().position(|&c| c == 't').unwrap() as u8;
             let sh = g.iter().position(|&c| c == 'h').unwrap() as u8;
             assert!(st == 0 || st == 19, "t landed at {st}, expected 0 or 19");
@@ -289,7 +287,7 @@ mod tests {
         let mut opt = OptimizationConfig::default();
         opt.allowed.insert('a', [0u8, 19].into_iter().collect()); // 'a' only allowed at 0 or 19
         for _ in 0..20 {
-            let g = constrained_keys(&opt);
+            let g = run(&opt);
             let pos = g.iter().position(|&c| c == 'a').unwrap();
             assert!(pos == 0 || pos == 19, "a landed at {pos}");
         }

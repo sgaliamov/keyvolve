@@ -1,4 +1,5 @@
 use crate::app::OptimizationConfig;
+use crate::app::optimization::OptimizationCache;
 use crate::{app::LayoutEvaluator, models::ScoreResult};
 use cliffa::cli::AppHandle;
 
@@ -13,6 +14,7 @@ pub struct OptimizerState {
     pub evaluator: LayoutEvaluator,
     pub app: AppHandle,
     pub optimization: OptimizationConfig,
+    pub cache: OptimizationCache,
 }
 
 /// GA context for layout optimization.

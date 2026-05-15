@@ -27,6 +27,7 @@ pub fn optimize(
     GeneticAlgorithm::set_state(
         &mut ga,
         OptimizerState {
+            cache: optimization.cache(),
             evaluator,
             app,
             optimization,

@@ -108,6 +108,26 @@ impl OptimizationConfig {
             .get(&ch)
             .is_none_or(|slots| slots.contains(&slot))
     }
+
+    /// Pre-compute derived lookups that are hot in the generator loop.
+    pub fn cache(&self) -> OptimizationCache {
+        OptimizationCache {
+            frozen_slots: self.frozen.values().copied().collect(),
+            frozen_chars: self.frozen.keys().copied().collect(),
+            roll_partner: self
+                .rolls
+                .iter()
+                .flat_map(|&[a, b]| [(a, b), (b, a)])
+                .collect(),
+        }
+    }
+}
+
+/// Pre-computed lookups derived from [`OptimizationConfig`]; build once per run via [`OptimizationConfig::cache`].
+pub struct OptimizationCache {
+    pub frozen_slots: FxHashSet<u8>,
+    pub frozen_chars: FxHashSet<char>,
+    pub roll_partner: FxHashMap<char, char>,
 }
 
 #[cfg(test)]
