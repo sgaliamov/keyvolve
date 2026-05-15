@@ -8,7 +8,7 @@ pub struct LayoutEvaluator {
     pairs: FxHashMap<(u8, u8), f64>,
 
     /// Per-switch effort multiplier; `1.0` means no penalty, `1.5` means +50%.
-    switch_effort_penalty: f64,
+    bigram_switch_penalty: f64,
 
     /// Max multiplier for extreme hand imbalance.
     balance_penalty: f64,
@@ -34,7 +34,7 @@ impl LayoutEvaluator {
 
         LayoutEvaluator {
             pairs,
-            switch_effort_penalty: keyboard.switch_effort_penalty,
+            bigram_switch_penalty: keyboard.bigram_switch_penalty,
             balance_penalty: keyboard.balance_penalty,
             alternation_penalty: keyboard.alternation_penalty,
             words,
@@ -81,8 +81,8 @@ impl LayoutEvaluator {
                     // previous iteration.  We charge the self-effort of key `b`
                     // here because the new hand is starting a fresh sequence
                     // (analogous to the first-letter cost above), multiplied by
-                    // `switch_effort_penalty` so `1.0` means no extra cost.
-                    (self.lookup(kb, kb) * self.switch_effort_penalty, 1)
+                    // `bigram_switch_penalty` so `1.0` means no extra cost.
+                    (self.lookup(kb, kb) * self.bigram_switch_penalty, 1)
                 };
 
                 // count efforts on the "to" key, since "from" was already counted in the previous iteration
@@ -225,7 +225,7 @@ mod tests {
     }
 
     #[test]
-    fn score_word_zero_switch_effort_penalty_removes_switch_cost() {
+    fn score_word_zero_bigram_switch_penalty_removes_switch_cost() {
         let keyboard = Keyboard::new(
             json!({
                 "switchEffortPenalty": 0.0,

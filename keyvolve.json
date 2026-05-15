@@ -7,7 +7,7 @@
   "merge": { "input": "data/samples", "output": "data/samples/merged.txt" },
 
   "optimization": {
-    "-blocked": [0],
+    "blocked": [4, 19],
     "allowed": {
       "e": [6, 7, 8],
       "t": [1, 2, 3, 6, 7, 8, 12, 13],
@@ -18,7 +18,7 @@
       "r": [1, 2, 3, 6, 7, 8, 12, 13],
       "s": [1, 2, 3, 6, 7, 8, 12, 13]
     },
-    "rolls": ["th", "he", "in", "er", "an", "en", "it"]
+    "rolls": ["he", "in", "er", "an", "en", "it"]
   },
 
   "keyboard": "data/keyboard.json",

@@ -8,8 +8,8 @@ use std::path::Path;
 #[serde(rename_all = "camelCase")]
 pub struct Keyboard {
     /// Multiplier applied to per-switch self-effort; `1.0` means no penalty.
-    #[serde(default = "default_switch_effort_penalty")]
-    pub switch_effort_penalty: f64,
+    #[serde(default = "default_bigram_switch_penalty")]
+    pub bigram_switch_penalty: f64,
 
     /// Max multiplier applied for extreme hand imbalance.
     #[serde(default = "default_balance_penalty")]
@@ -30,7 +30,7 @@ pub struct Keyboard {
 impl Default for Keyboard {
     fn default() -> Self {
         Self {
-            switch_effort_penalty: default_switch_effort_penalty(),
+            bigram_switch_penalty: default_bigram_switch_penalty(),
             balance_penalty: default_balance_penalty(),
             alternation_penalty: default_alternation_penalty(),
             efforts: Vec::new(),
@@ -40,7 +40,7 @@ impl Default for Keyboard {
 }
 
 /// Default switch-effort penalty multiplier.
-fn default_switch_effort_penalty() -> f64 {
+fn default_bigram_switch_penalty() -> f64 {
     1.5
 }
 
@@ -120,7 +120,7 @@ mod tests {
             .to_string(),
         );
 
-        assert_eq!(kb.switch_effort_penalty, 1.5);
+        assert_eq!(kb.bigram_switch_penalty, 1.5);
         assert_eq!(kb.alternation_penalty, 0.25);
         assert_eq!(kb.balance_penalty, 2.0);
     }
@@ -128,7 +128,7 @@ mod tests {
     #[test]
     fn expand_pairs_mirrors_left_to_right() {
         let kb = Keyboard {
-            switch_effort_penalty: 0.0,
+            bigram_switch_penalty: 0.0,
             balance_penalty: 2.0,
             alternation_penalty: 0.0,
             efforts: vec![1.0],
