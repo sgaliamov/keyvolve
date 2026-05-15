@@ -23,7 +23,7 @@ pub fn place_letters(
         match (a_frozen, b_frozen) {
             (true, false) if unplaced.contains(&b) && !placed.contains(&b) => {
                 let anchor = opt.frozen[&a];
-                if let Some(j) = find_roll_neighbor(free, anchor, b, opt) {
+                if let Some(j) = find_roll_neighbor(genome, free, anchor, b, opt) {
                     genome[free[j] as usize] = b;
                     placed.insert(b);
                     free.swap_remove(j);
@@ -31,7 +31,7 @@ pub fn place_letters(
             }
             (false, true) if unplaced.contains(&a) && !placed.contains(&a) => {
                 let anchor = opt.frozen[&b];
-                if let Some(i) = find_roll_neighbor(free, anchor, a, opt) {
+                if let Some(i) = find_roll_neighbor(genome, free, anchor, a, opt) {
                     genome[free[i] as usize] = a;
                     placed.insert(a);
                     free.swap_remove(i);
@@ -50,14 +50,15 @@ pub fn place_letters(
             unplaced.contains(p) && !placed.contains(p) && !cache.frozen_chars.contains(p)
         });
         if let Some(partner) = partner
-            && let Some((i, j)) = find_roll_slots(free, ch, partner, opt)
+            && let Some((i, j)) = find_roll_slots(genome, free, ch, partner, opt)
         {
             place_pair(genome, free, &mut placed, i, j, ch, partner);
             continue;
         }
         let idx = free
             .iter()
-            .position(|&s| opt.is_slot_allowed(ch, s))
+            .position(|&s| opt.is_slot_allowed(ch, s) && is_contiguous_slot(genome, s))
+            .or_else(|| free.iter().position(|&s| opt.is_slot_allowed(ch, s)))
             .or((!free.is_empty()).then_some(0));
         if let Some(idx) = idx {
             genome[free[idx] as usize] = ch;
@@ -77,7 +78,7 @@ pub fn place_letters(
         {
             continue;
         }
-        if let Some((i, j)) = find_roll_slots(free, a, b, opt) {
+        if let Some((i, j)) = find_roll_slots(genome, free, a, b, opt) {
             place_pair(genome, free, &mut placed, i, j, a, b);
         }
     }
@@ -89,7 +90,8 @@ pub fn place_letters(
         }
         let idx = free
             .iter()
-            .position(|&s| opt.is_slot_allowed(ch, s))
+            .position(|&s| opt.is_slot_allowed(ch, s) && is_contiguous_slot(genome, s))
+            .or_else(|| free.iter().position(|&s| opt.is_slot_allowed(ch, s)))
             .or((!free.is_empty()).then_some(0));
         if let Some(idx) = idx {
             genome[free[idx] as usize] = ch;
@@ -151,27 +153,57 @@ pub fn unplace_units(
     freed
 }
 
+/// True when placing a letter at `slot` keeps letters in its row-hand segment contiguous.
+/// Letters within the 5-slot row must form a single unbroken block; empties only at edges.
+pub fn is_contiguous_slot(genome: &[char], slot: u8) -> bool {
+    let hand = slot / 15;
+    let row = (slot % 15) / 5;
+    let col = slot % 5;
+    let row_start = hand * 15 + row * 5;
+    let mut min_col = u8::MAX;
+    let mut max_col = 0u8;
+    let mut any = false;
+    for c in 0..5u8 {
+        let s = row_start + c;
+        if s != slot && genome[s as usize] != EMPTY_SLOT {
+            if !any || c < min_col {
+                min_col = c;
+            }
+            if !any || c > max_col {
+                max_col = c;
+            }
+            any = true;
+        }
+    }
+    !any || (col >= min_col.saturating_sub(1) && col <= max_col + 1)
+}
+
 /// Find two indices into `free` whose slots are roll-neighbors and valid for `(anchor, other)`.
 pub fn find_roll_slots(
+    genome: &[char],
     free: &[u8],
     anchor: char,
     other: char,
     opt: &OptimizationConfig,
 ) -> Option<(usize, usize)> {
     (0..free.len())
-        .filter(|&i| opt.is_slot_allowed(anchor, free[i]))
-        .find_map(|i| find_roll_neighbor(free, free[i], other, opt).map(|j| (i, j)))
+        .filter(|&i| opt.is_slot_allowed(anchor, free[i]) && is_contiguous_slot(genome, free[i]))
+        .find_map(|i| find_roll_neighbor(genome, free, free[i], other, opt).map(|j| (i, j)))
 }
 
 /// Find index into `free` of a slot that is a roll-neighbor of `anchor` and valid for `ch`.
 pub fn find_roll_neighbor(
+    genome: &[char],
     free: &[u8],
     anchor: u8,
     other: char,
     opt: &OptimizationConfig,
 ) -> Option<usize> {
-    free.iter()
-        .position(|&s| are_roll_neighbors(anchor, s) && opt.is_slot_allowed(other, s))
+    free.iter().position(|&s| {
+        are_roll_neighbors(anchor, s)
+            && opt.is_slot_allowed(other, s)
+            && is_contiguous_slot(genome, s)
+    })
 }
 
 /// Write `(a, b)` into `genome` at `free[i]`/`free[j]`, remove both from `free`.
@@ -192,4 +224,80 @@ pub fn place_pair(
     let (hi, lo) = if i > j { (i, j) } else { (j, i) };
     free.swap_remove(hi);
     free.swap_remove(lo);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::app::EMPTY_SLOT;
+
+    /// Build a 30-char genome from a 30-char string; '_' → EMPTY_SLOT.
+    fn genome(s: &str) -> Vec<char> {
+        assert_eq!(s.len(), 30);
+        s.chars().map(|c| if c == '_' { EMPTY_SLOT } else { c }).collect()
+    }
+
+    // Row 0 of left hand = slots 0..5.
+    // Placing at slot `s` in that row: genome has all others in the row at their positions.
+
+    #[test]
+    fn empty_row_allows_any_slot() {
+        let g = genome("_____xxxxxxxxxxxxxxxxxxxxxxxxx");
+        for s in 0u8..5 {
+            assert!(is_contiguous_slot(&g, s), "empty row should allow slot {s}");
+        }
+    }
+
+    #[test]
+    fn single_letter_allows_neighbors_only() {
+        // 'a' at col 2 (slot 2); slot 1 and 3 are the only valid neighbors.
+        let g = genome("__a__xxxxxxxxxxxxxxxxxxxxxxxxx");
+        assert!(!is_contiguous_slot(&g, 0), "col 0 is not adjacent to col 2");
+        assert!(is_contiguous_slot(&g, 1));
+        assert!(is_contiguous_slot(&g, 3));
+        assert!(!is_contiguous_slot(&g, 4), "col 4 is not adjacent to col 2");
+    }
+
+    #[test]
+    fn block_of_three_extends_at_edges_only() {
+        // 'a','b','c' at cols 1,2,3 (slots 1,2,3); valid new placements: col 0 or col 4.
+        let g = genome("_abc_xxxxxxxxxxxxxxxxxxxxxxxxx");
+        assert!(is_contiguous_slot(&g, 0));
+        assert!(is_contiguous_slot(&g, 4));
+    }
+
+    #[test]
+    fn full_row_no_empty_slots_trivially_true() {
+        // No free slots in the row, but is_contiguous_slot returns true regardless
+        // (the slot itself is either occupied or out of scope — caller picks free slots).
+        let g = genome("abcdexxxxxxxxxxxxxxxxxxxxxxxxx");
+        for s in 0u8..5 {
+            // col range is [0,4]; col is within [min-1, max+1] = [-1,5] → always true
+            assert!(is_contiguous_slot(&g, s));
+        }
+    }
+
+    #[test]
+    fn gap_would_be_created_is_rejected() {
+        // 'a' at col 0, 'b' at col 2; col 4 would leave gap (col 3 empty between 2 and 4).
+        let g = genome("a_b__xxxxxxxxxxxxxxxxxxxxxxxxx");
+        assert!(!is_contiguous_slot(&g, 4));
+        assert!(is_contiguous_slot(&g, 1), "filling the gap is allowed");
+        assert!(is_contiguous_slot(&g, 3), "extending right edge is allowed");
+    }
+
+    #[test]
+    fn right_hand_row_independent() {
+        // Right hand row 0 = slots 15..20. Place 'z' at slot 17 (col 2).
+        let mut g = genome("______________________________");
+        g[17] = 'z';
+        // Left hand row 0 is all empty → all left slots allowed.
+        assert!(is_contiguous_slot(&g, 0));
+        assert!(is_contiguous_slot(&g, 4));
+        // Right hand: col 1 and 3 adjacent to col 2 → allowed; col 0 and 4 → not.
+        assert!(is_contiguous_slot(&g, 16));
+        assert!(is_contiguous_slot(&g, 18));
+        assert!(!is_contiguous_slot(&g, 15));
+        assert!(!is_contiguous_slot(&g, 19));
+    }
 }
