@@ -108,7 +108,7 @@ fn constrained_keys(opt: &OptimizationConfig) -> KeysGenome {
         {
             continue;
         }
-        if let Some((i, j)) = find_neighbor_slots(&free, a, b, opt) {
+        if let Some((i, j)) = find_neighbor_slots_anchored(&free, a, b, opt) {
             place_pair(&mut genome, &mut free, &mut placed, i, j, a, b);
         }
     }
@@ -131,29 +131,9 @@ fn constrained_keys(opt: &OptimizationConfig) -> KeysGenome {
     genome
 }
 
-/// Find indices into `free` of two slots that are roll-neighbors and valid for `(a, b)`.
-fn find_neighbor_slots(
-    free: &[u8],
-    a: char,
-    b: char,
-    opt: &OptimizationConfig,
-) -> Option<(usize, usize)> {
-    for i in 0..free.len() {
-        for j in 0..free.len() {
-            if i != j
-                && are_roll_neighbors(free[i], free[j])
-                && opt.is_slot_allowed(a, free[i])
-                && opt.is_slot_allowed(b, free[j])
-            {
-                return Some((i, j));
-            }
-        }
-    }
-    None
-}
-
-/// Like `find_neighbor_slots` but iterates `anchor` char's slots in the outer loop,
-/// ensuring it lands in an allowed slot before searching for a roll-neighbor for `other`.
+/// Find two indices into `free` whose slots are roll-neighbors and valid for `(anchor, other)`.
+/// Iterates `anchor`'s valid slots in the outer loop — when `anchor` is unconstrained this is
+/// equivalent to an unordered search.
 fn find_neighbor_slots_anchored(
     free: &[u8],
     anchor: char,
@@ -165,7 +145,8 @@ fn find_neighbor_slots_anchored(
             continue;
         }
         for j in 0..free.len() {
-            if i != j && are_roll_neighbors(free[i], free[j]) && opt.is_slot_allowed(other, free[j]) {
+            if i != j && are_roll_neighbors(free[i], free[j]) && opt.is_slot_allowed(other, free[j])
+            {
                 return Some((i, j));
             }
         }
@@ -177,11 +158,11 @@ fn find_neighbor_slots_anchored(
 fn find_neighbor_to_frozen(
     free: &[u8],
     anchor: u8,
-    ch: char,
+    other: char,
     opt: &OptimizationConfig,
 ) -> Option<usize> {
     free.iter()
-        .position(|&s| are_roll_neighbors(anchor, s) && opt.is_slot_allowed(ch, s))
+        .position(|&s| are_roll_neighbors(anchor, s) && opt.is_slot_allowed(other, s))
 }
 
 /// Write `(a, b)` into `genome` at `free[i]`/`free[j]`, then remove both from `free`.
