@@ -1,7 +1,6 @@
-use crate::app::optimization::{OptimizationCache, are_roll_neighbors};
+use crate::app::optimization::{OptimizationCache, place_letters};
 use crate::app::{EMPTY_SLOT, GaContext, KeysGenome, OptimizationConfig};
 use rand::seq::SliceRandom;
-use rustc_hash::FxHashSet;
 
 /// Generate a genome for optimization, respecting frozen/blocked/roll constraints.
 pub fn generate(ctx: &GaContext) -> KeysGenome {
@@ -34,146 +33,14 @@ fn constrained_keys(opt: &OptimizationConfig, cache: &OptimizationCache) -> Keys
     letters.shuffle(&mut rng);
     free.shuffle(&mut rng);
 
-    let mut placed: FxHashSet<char> = FxHashSet::default();
-
-    // ── 2. Rolls around frozen ───────────────────────────────────────────────
-    // For each roll pair where exactly one char is frozen, place the free partner
-    // into a roll-neighbor slot relative to the frozen anchor.
-    for &[a, b] in &opt.rolls {
-        let a_frozen = cache.frozen_chars.contains(&a);
-        let b_frozen = cache.frozen_chars.contains(&b);
-        match (a_frozen, b_frozen) {
-            (true, false) => {
-                let anchor = opt.frozen[&a];
-                if let Some(j) = find_roll_neighbor(&free, anchor, b, opt) {
-                    genome[free[j] as usize] = b;
-                    placed.insert(b);
-                    free.swap_remove(j);
-                }
-            }
-            (false, true) => {
-                let anchor = opt.frozen[&b];
-                if let Some(i) = find_roll_neighbor(&free, anchor, a, opt) {
-                    genome[free[i] as usize] = a;
-                    placed.insert(a);
-                    free.swap_remove(i);
-                }
-            }
-            _ => continue,
-        }
-    }
-
-    // ── 3. Allowed ───────────────────────────────────────────────────────────
-    // Place allowed-constrained chars into their valid slots first.
-    // If the char is in a roll and its partner is free, place partner as roll neighbor.
-    for &ch in letters.iter().filter(|c| opt.allowed.contains_key(c)) {
-        if placed.contains(&ch) {
-            continue;
-        }
-        let partner = cache
-            .roll_partner
-            .get(&ch)
-            .copied()
-            .filter(|p| !placed.contains(p) && !cache.frozen_chars.contains(p));
-        if let Some(partner) = partner
-            && let Some((i, j)) = find_roll_slots(&free, ch, partner, opt)
-        {
-            place_pair(&mut genome, &mut free, &mut placed, i, j, ch, partner);
-            continue;
-        }
-        // No roll partner to co-place — place ch alone.
-        let idx = free
-            .iter()
-            .position(|&s| opt.is_slot_allowed(ch, s))
-            .or((!free.is_empty()).then_some(0));
-        if let Some(idx) = idx {
-            genome[free[idx] as usize] = ch;
-            placed.insert(ch);
-            free.swap_remove(idx);
-        }
-    }
-
-    // ── 4. Remaining rolls ───────────────────────────────────────────────────
-    for &[a, b] in &opt.rolls {
-        if placed.contains(&a)
-            || placed.contains(&b)
-            || cache.frozen_chars.contains(&a)
-            || cache.frozen_chars.contains(&b)
-        {
-            continue;
-        }
-        if let Some((i, j)) = find_roll_slots(&free, a, b, opt) {
-            place_pair(&mut genome, &mut free, &mut placed, i, j, a, b);
-        }
-    }
-
-    // ── 5. Remaining letters ─────────────────────────────────────────────────
-    for ch in letters {
-        if placed.contains(&ch) {
-            continue;
-        }
-        let idx = free
-            .iter()
-            .position(|&s| opt.is_slot_allowed(ch, s))
-            .or((!free.is_empty()).then_some(0));
-        if let Some(idx) = idx {
-            genome[free[idx] as usize] = ch;
-            free.swap_remove(idx);
-        }
-    }
-
+    place_letters(&mut genome, &mut free, &letters, opt, cache);
     genome
-}
-
-/// Find two indices into `free` whose slots are roll-neighbors and valid for `(anchor, other)`.
-/// Iterates `anchor`'s valid slots in the outer loop — when `anchor` is unconstrained this is
-/// equivalent to an unordered search.
-fn find_roll_slots(
-    free: &[u8],
-    anchor: char,
-    other: char,
-    opt: &OptimizationConfig,
-) -> Option<(usize, usize)> {
-    (0..free.len())
-        .filter(|&i| opt.is_slot_allowed(anchor, free[i]))
-        .find_map(|i| find_roll_neighbor(free, free[i], other, opt).map(|j| (i, j)))
-}
-
-/// Find index into `free` of a slot that is a roll-neighbor of `anchor` and valid for `ch`.
-fn find_roll_neighbor(
-    free: &[u8],
-    anchor: u8,
-    other: char,
-    opt: &OptimizationConfig,
-) -> Option<usize> {
-    free.iter()
-        .position(|&s| are_roll_neighbors(anchor, s) && opt.is_slot_allowed(other, s))
-}
-
-/// Write `(a, b)` into `genome` at `free[i]`/`free[j]`, then remove both from `free`.
-fn place_pair(
-    genome: &mut [char],
-    free: &mut Vec<u8>,
-    placed: &mut FxHashSet<char>,
-    i: usize,
-    j: usize,
-    a: char,
-    b: char,
-) {
-    genome[free[i] as usize] = a;
-    genome[free[j] as usize] = b;
-    placed.insert(a);
-    placed.insert(b);
-    // Remove higher index first to keep the lower index valid.
-    let (hi, lo) = if i > j { (i, j) } else { (j, i) };
-    free.swap_remove(hi);
-    free.swap_remove(lo);
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::app::OptimizationConfig;
+    use crate::app::optimization::{OptimizationConfig, are_roll_neighbors};
     use rustc_hash::FxHashSet;
 
     fn run(opt: &OptimizationConfig) -> KeysGenome {

@@ -1,24 +1,32 @@
-use crate::app::{EMPTY_SLOT, GaContext, KeysGenome, KeysIndividual};
+use crate::app::optimization::{place_letters, unplace_units};
+use crate::app::{GaContext, KeysGenome, KeysIndividual};
+use rand::seq::SliceRandom;
 
-/// Mutate a candidate genome by swapping two random non-empty key positions.
-pub fn mutate(ind: &KeysIndividual, _ctx: &GaContext) -> Option<KeysGenome> {
-    // Collect all occupied indices; all swaps allowed.
-    let free: Vec<usize> = ind
-        .genome
-        .iter()
-        .enumerate()
-        .filter(|(_, c)| **c != EMPTY_SLOT)
-        .map(|(i, _)| i)
-        .collect();
+/// Mutate by unplacing N random units and re-placing under the same constraint flow as the generator.
+pub fn mutate(ind: &KeysIndividual, ctx: &GaContext) -> Option<KeysGenome> {
+    let state = ctx.state.as_ref().expect("state must be set");
+    let opt = &state.optimization;
+    let cache = &state.cache;
 
     let mut genome = ind.genome.clone();
     let mut rng = rand::rng();
-    let swaps = rand::random_range(1u8..=5);
+    let count = rand::random_range(1usize..=5);
 
-    for _ in 0..swaps {
-        let idx = rand::seq::index::sample(&mut rng, free.len(), 2);
-        genome.swap(free[idx.index(0)], free[idx.index(1)]);
+    let mut free = unplace_units(&mut genome, opt, cache, count, &mut rng);
+    if free.is_empty() {
+        return Some(genome);
     }
 
+    // Collect chars that were just unplaced, in shuffled order.
+    let mut letters: Vec<char> = genome
+        .iter()
+        .zip(ind.genome.iter())
+        .filter(|(new, old)| *new != *old)
+        .map(|(_, old)| *old)
+        .collect();
+    letters.shuffle(&mut rng);
+    free.shuffle(&mut rng);
+
+    place_letters(&mut genome, &mut free, &letters, opt, cache);
     Some(genome)
 }
