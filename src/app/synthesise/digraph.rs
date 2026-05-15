@@ -168,6 +168,63 @@ pub fn write_letter_freq_combined(
     Ok(())
 }
 
+/// Aggregate symmetric bigram pairs (AB + BA → canonical min pair), write CSV: `pair,count,%,raw,raw%`.
+/// Source is the already-scaled slice so counts stay consistent with the regular bigrams CSV.
+pub fn write_bigrams_aggregated(
+    scaled: &[([char; 2], usize)],
+    counts: &FxHashMap<[char; 2], u64>,
+    min_freq: f64,
+    path: &Path,
+) -> Result<()> {
+    // Aggregate by canonical key = lexicographically smaller of (ab, ba).
+    let mut agg: FxHashMap<[char; 2], (usize, u64)> = FxHashMap::default();
+    for &([a, b], count) in scaled {
+        let key = if [a, b] <= [b, a] { [a, b] } else { [b, a] };
+        let raw = counts.get(&[a, b]).copied().unwrap_or(0);
+        let entry = agg.entry(key).or_insert((0, 0));
+        entry.0 += count;
+        entry.1 += raw;
+    }
+
+    let total: usize = agg.values().map(|(c, _)| c).sum();
+    let raw_total: u64 = agg.values().map(|(_, r)| r).sum();
+    let precision = pct_precision(min_freq);
+
+    let mut rows: Vec<([char; 2], usize, u64)> =
+        agg.into_iter().map(|(k, (c, r))| (k, c, r)).collect();
+    rows.sort_unstable_by(|&(a, ca, _), &(b, cb, _)| cb.cmp(&ca).then(a.cmp(&b)));
+
+    let mut out = fs::File::create(path)
+        .into_diagnostic()
+        .wrap_err("Failed to create aggregated CSV file")?;
+    writeln!(out, "pair,count,%,raw,raw%").into_diagnostic()?;
+    for ([a, b], count, raw) in rows {
+        let pct = if total > 0 {
+            count as f64 / total as f64 * 100.0
+        } else {
+            0.0
+        };
+        let raw_pct = if raw_total > 0 {
+            raw as f64 / raw_total as f64 * 100.0
+        } else {
+            0.0
+        };
+        writeln!(
+            out,
+            "{}{},{},{:.prec$},{},{:.prec$}",
+            a,
+            b,
+            count,
+            pct,
+            raw,
+            raw_pct,
+            prec = precision
+        )
+        .into_diagnostic()?;
+    }
+    Ok(())
+}
+
 /// Decimal places needed to display a percentage whose smallest meaningful value is `min_freq * 100`.
 /// E.g. min_freq=0.001 → smallest pct=0.1% → 1 significant decimal → 1 decimal place.
 fn pct_precision(min_freq: f64) -> usize {

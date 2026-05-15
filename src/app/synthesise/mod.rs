@@ -7,7 +7,7 @@ pub use config::*;
 use corpus::build_corpus;
 use digraph::{
     count_corpus_letters, filter_and_scale, read_counts, read_letter_counts, write_bigrams,
-    write_letter_freq_combined,
+    write_bigrams_aggregated, write_letter_freq_combined,
 };
 use miette::{Context, IntoDiagnostic, Result};
 use std::{io::Write, path::Path};
@@ -40,6 +40,14 @@ pub fn synthesise(input: &Path, cfg: SynthesiseConfig) -> Result<()> {
     write_bigrams(&scaled, &counts, cfg.min_frequency, &bigrams_path)?;
     tracing::debug!(csv = %bigrams_path.display(), "CSV written");
 
+    let aggregated_path = output
+        .parent()
+        .unwrap_or(output)
+        .join("stats")
+        .join(format!("{src_stem}.bigrams.aggregated.csv"));
+    write_bigrams_aggregated(&scaled, &counts, cfg.min_frequency, &aggregated_path)?;
+    tracing::debug!(csv = %aggregated_path.display(), "Aggregated CSV written");
+
     tracing::info!("Building corpus");
     let words = build_corpus(&scaled, cfg.max_word_len);
     let corpus_path = output.with_extension("txt");
@@ -58,6 +66,7 @@ pub fn synthesise(input: &Path, cfg: SynthesiseConfig) -> Result<()> {
 
     tracing::info!(
         csv = %bigrams_path.display(),
+        aggregated_csv = %aggregated_path.display(),
         corpus = %corpus_path.display(),
         letter_freq = %letter_freq_path.display(),
         words = words.len(),
