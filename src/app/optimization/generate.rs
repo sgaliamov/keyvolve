@@ -20,6 +20,7 @@ fn constrained_keys(opt: &OptimizationConfig) -> KeysGenome {
     for (&ch, &idx) in &opt.frozen {
         genome[idx as usize] = ch;
     }
+    // todo: cache on start
     let frozen_slots: FxHashSet<u8> = opt.frozen.values().copied().collect();
     let frozen_chars: FxHashSet<char> = opt.frozen.keys().copied().collect();
 
@@ -33,16 +34,37 @@ fn constrained_keys(opt: &OptimizationConfig) -> KeysGenome {
 
     // ── 2. Rolls ─────────────────────────────────────────────────────────────
     // For each pair find two free neighbor slots satisfying per-char allowed constraints.
+    // If one char is frozen its fixed slot acts as the anchor; the other char is placed
+    // into a free roll-neighbor slot next to it.
     let mut placed: FxHashSet<char> = FxHashSet::default();
     for &[a, b] in &opt.rolls {
-        if [a, b]
-            .iter()
-            .any(|c| placed.contains(c) || frozen_chars.contains(c))
-        {
-            continue;
-        }
-        if let Some((i, j)) = find_neighbor_slots(&free, a, b, opt) {
-            place_pair(&mut genome, &mut free, &mut placed, i, j, a, b);
+        let a_done = placed.contains(&a) || frozen_chars.contains(&a);
+        let b_done = placed.contains(&b) || frozen_chars.contains(&b);
+        match (a_done, b_done) {
+            (true, true) => continue,
+            (true, false) => {
+                // a is frozen — anchor on its slot, place b next to it.
+                let anchor = opt.frozen[&a];
+                if let Some(j) = find_neighbor_to_frozen(&free, anchor, b, opt) {
+                    genome[free[j] as usize] = b;
+                    placed.insert(b);
+                    free.swap_remove(j);
+                }
+            }
+            (false, true) => {
+                // b is frozen — anchor on its slot, place a next to it.
+                let anchor = opt.frozen[&b];
+                if let Some(i) = find_neighbor_to_frozen(&free, anchor, a, opt) {
+                    genome[free[i] as usize] = a;
+                    placed.insert(a);
+                    free.swap_remove(i);
+                }
+            }
+            (false, false) => {
+                if let Some((i, j)) = find_neighbor_slots(&free, a, b, opt) {
+                    place_pair(&mut genome, &mut free, &mut placed, i, j, a, b);
+                }
+            }
         }
     }
 
@@ -85,6 +107,17 @@ fn find_neighbor_slots(
         }
     }
     None
+}
+
+/// Find index into `free` of a slot that is a roll-neighbor of `anchor` and valid for `ch`.
+fn find_neighbor_to_frozen(
+    free: &[u8],
+    anchor: u8,
+    ch: char,
+    opt: &OptimizationConfig,
+) -> Option<usize> {
+    free.iter()
+        .position(|&s| are_roll_neighbors(anchor, s) && opt.is_slot_valid(ch, s))
 }
 
 /// Write `(a, b)` into `genome` at `free[i]`/`free[j]`, then remove both from `free`.
@@ -163,6 +196,25 @@ mod tests {
             assert!(
                 are_roll_neighbors(st, sh),
                 "t at {st}, h at {sh} — not roll neighbors"
+            );
+        }
+    }
+
+    #[test]
+    fn roll_pair_frozen_anchor_respected() {
+        // 't' is frozen at slot 2; 'h' must land in a roll-neighbor slot.
+        let mut opt = OptimizationConfig {
+            rolls: vec![['t', 'h']],
+            ..Default::default()
+        };
+        opt.frozen.insert('t', 2);
+        for _ in 0..20 {
+            let g = constrained_keys(&opt);
+            assert_eq!(g[2], 't', "frozen 't' must stay at slot 2");
+            let sh = g.iter().position(|&c| c == 'h').unwrap() as u8;
+            assert!(
+                are_roll_neighbors(2, sh),
+                "h at {sh} — not roll neighbor of frozen t at 2"
             );
         }
     }
