@@ -1,13 +1,9 @@
-use crate::app::LayoutEvaluator;
-use crate::app::OptimizationConfig;
+use crate::app::{LayoutEvaluator, OptimizationConfig, write_layouts};
 use crate::models::Layout;
 use cliffa::cli::AppHandle;
 use darwin::{GeneticAlgorithm, NoopCrossover};
 use itertools::Itertools;
-use miette::Context;
-use miette::IntoDiagnostic;
 use miette::Result;
-use std::io::Write;
 
 use super::{OptimizerState, callback, corpus_evaluator, generate, mutate};
 
@@ -44,8 +40,7 @@ pub fn optimize(
     let pools = ga.run();
     info!("Algorithm complete");
 
-    println!("\n--- top 10 ---");
-    let top = pools
+    let top: Vec<_> = pools
         .iter()
         .flat_map(|p| {
             p.individuals
@@ -54,29 +49,13 @@ pub fn optimize(
                 .take(1)
         })
         .sorted_unstable_by(|a, b| b.fitness.total_cmp(&a.fitness))
-        .take(10);
+        .take(10)
+        .map(|ind| {
+            let score = ind.state.as_ref().unwrap().clone();
+            (Layout::from_keys(&ind.genome), score)
+        })
+        .collect();
 
-    let mut file = output_path
-        .as_ref()
-        .and_then(|o| std::fs::File::create(o).ok());
-
-    for ind in top {
-        let score = ind.state.as_ref().unwrap();
-        let genome = &ind.genome;
-        let layout = Layout::from_keys(genome).to_string();
-        let line = format!("{}, {}", layout, score.to_csv());
-        println!("{line}");
-
-        if let Some(ref mut file) = file {
-            writeln!(file, "{line}")
-                .into_diagnostic()
-                .wrap_err("Failed to write evaluated layouts")?;
-        }
-    }
-
-    if let Some(output) = output_path {
-        info!("Results written to {}", output.display());
-    }
-
-    Ok(())
+    // let pairs: Vec<_> = top.iter().map(|(l, s)| (l, s)).collect();
+    write_layouts(&top, 10, output_path.as_deref())
 }

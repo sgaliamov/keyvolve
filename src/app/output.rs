@@ -1,0 +1,48 @@
+use crate::models::{Layout, ScoreResult};
+use miette::{Context, IntoDiagnostic, Result};
+use std::{fs::OpenOptions, io::Write, path::Path};
+use tracing::info;
+
+/// Print top N layouts and optionally append them to a CSV file.
+/// Creates the file with a header row if it doesn't exist yet.
+pub fn write_layouts(
+    layouts: &[(Layout, ScoreResult)],
+    top_n: usize,
+    output_path: Option<&Path>,
+) -> Result<()> {
+    for (layout, score) in layouts.iter().take(top_n) {
+        println!("{layout}; {score}");
+    }
+
+    let Some(path) = output_path else {
+        return Ok(());
+    };
+
+    let is_new = !path.exists() || path.metadata().map(|m| m.len() == 0).unwrap_or(true);
+
+    let mut file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .into_diagnostic()
+        .wrap_err("Failed to open layouts file")?;
+
+    if is_new {
+        writeln!(
+            file,
+            "keys_1,keys_2,keys_3,keys_4,keys_5,keys_6,{}",
+            ScoreResult::csv_header()
+        )
+        .into_diagnostic()
+        .wrap_err("Failed to write header")?;
+    }
+
+    for (layout, score) in layouts {
+        writeln!(file, "{layout};{}", score.to_csv())
+            .into_diagnostic()
+            .wrap_err("Failed to write layout row")?;
+    }
+
+    info!("Results written to {}", path.display());
+    Ok(())
+}

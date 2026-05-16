@@ -254,7 +254,9 @@ mod tests {
     /// Build a 30-char genome from a 30-char string; '_' → EMPTY_SLOT.
     fn genome(s: &str) -> Vec<char> {
         assert_eq!(s.len(), 30);
-        s.chars().map(|c| if c == '_' { EMPTY_SLOT } else { c }).collect()
+        s.chars()
+            .map(|c| if c == '_' { EMPTY_SLOT } else { c })
+            .collect()
     }
 
     // Row 0 of left hand = slots 0..5.

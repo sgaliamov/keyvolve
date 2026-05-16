@@ -38,7 +38,7 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
                     let layouts_path = cfg.layouts.wrap_err("Missing layouts path in config")?;
                     let layouts = Layout::load(&layouts_path);
                     info!("Loaded {} layouts", layouts.len());
-                    evaluate(evaluator, &layouts, &layouts_path, app)?
+                    evaluate(evaluator, layouts, &layouts_path, app)?
                 }
                 Mode::Optimize => {
                     let mut ga = cfg.ga;

@@ -115,6 +115,9 @@ mod layout_test {
         let line = "zydpx, ralem, vbjuq, whtc_, fnosi,kg___,not used tail";
         let layout = Layout::new(line);
 
-        assert_eq!(layout.to_string(), "zydpx, ralem, vbjuq, whtc_, fnosi, kg___");
+        assert_eq!(
+            layout.to_string(),
+            "zydpx, ralem, vbjuq, whtc_, fnosi, kg___"
+        );
     }
 }
