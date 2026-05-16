@@ -56,6 +56,5 @@ pub fn optimize(
         })
         .collect();
 
-    // let pairs: Vec<_> = top.iter().map(|(l, s)| (l, s)).collect();
-    write_layouts(&top, 10, output_path.as_deref())
+    write_layouts(&top, 10, output_path.as_deref(), false)
 }

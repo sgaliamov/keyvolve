@@ -28,10 +28,10 @@ pub fn evaluate(
         .collect();
 
     scored.sort_by(|a, b| {
-        a.1.fitness
-            .partial_cmp(&b.1.fitness)
+        b.1.fitness
+            .partial_cmp(&a.1.fitness)
             .unwrap_or(std::cmp::Ordering::Equal)
     });
 
-    write_layouts(&scored, 10, Some(layouts_path.as_ref()))
+    write_layouts(&scored, 10, Some(layouts_path.as_ref()), true)
 }

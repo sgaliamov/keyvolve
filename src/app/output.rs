@@ -9,6 +9,7 @@ pub fn write_layouts(
     layouts: &[(Layout, ScoreResult)],
     top_n: usize,
     output_path: Option<&Path>,
+    overwrite: bool,
 ) -> Result<()> {
     for (layout, score) in layouts.iter().take(top_n) {
         println!("{layout}; {score}");
@@ -18,11 +19,13 @@ pub fn write_layouts(
         return Ok(());
     };
 
-    let is_new = !path.exists() || path.metadata().map(|m| m.len() == 0).unwrap_or(true);
+    let is_new = overwrite || !path.exists() || path.metadata().map(|m| m.len() == 0).unwrap_or(true);
 
     let mut file = OpenOptions::new()
         .create(true)
-        .append(true)
+        .write(overwrite)
+        .truncate(overwrite)
+        .append(!overwrite)
         .open(path)
         .into_diagnostic()
         .wrap_err("Failed to open layouts file")?;
@@ -30,7 +33,7 @@ pub fn write_layouts(
     if is_new {
         writeln!(
             file,
-            "keys_1,keys_2,keys_3,keys_4,keys_5,keys_6,{}",
+            "keys_1, keys_2, keys_3, keys_4, keys_5, keys_6, {}",
             ScoreResult::csv_header()
         )
         .into_diagnostic()
@@ -38,7 +41,7 @@ pub fn write_layouts(
     }
 
     for (layout, score) in layouts {
-        writeln!(file, "{layout};{}", score.to_csv())
+        writeln!(file, "{layout}, {}", score.to_csv())
             .into_diagnostic()
             .wrap_err("Failed to write layout row")?;
     }
