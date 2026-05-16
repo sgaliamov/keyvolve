@@ -36,11 +36,13 @@ impl Layout {
             return Vec::new();
         };
 
+        let mut seen = rustc_hash::FxHashSet::default();
         io::BufReader::new(file)
             .lines()
             .map_while(Result::ok)
             .filter(|line| !line.trim().is_empty())
             .filter(|line| !is_header(line))
+            .filter(|line| seen.insert(line.splitn(7, ',').take(6).collect::<String>()))
             .map(|line| Layout::new(line.trim()))
             .collect_vec()
     }

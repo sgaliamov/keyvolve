@@ -87,7 +87,7 @@ impl std::fmt::Display for ScoreResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "fitness: {:.2} | effort: {:.2} | left: {:.2} ({}, {:.1}%) | right: {:.2} ({}, {:.1}%) | switches: {} ({:.1}%)",
+            "φ {:.2} | ε {:.2} | λ {:.2} ({}, {:.1}%) | ρ {:.2} ({}, {:.1}%) | σ {} ({:.1}%)",
             self.fitness,
             self.effort,
             self.left_effort,
