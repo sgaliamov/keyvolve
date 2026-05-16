@@ -84,7 +84,7 @@ pub fn line_to_keys(line: &str) -> Keys {
     parts
         .skip(3)
         .take(3)
-        .flat_map(|part| part.chars())
+        .flat_map(|part| part.trim().chars())
         .enumerate()
         .map(|(p, c)| (c, (p + len) as u8))
         .merge(left)

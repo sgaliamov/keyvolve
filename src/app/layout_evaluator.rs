@@ -228,7 +228,7 @@ mod tests {
     fn score_word_zero_bigram_switch_penalty_removes_switch_cost() {
         let keyboard = Keyboard::new(
             json!({
-                "switchEffortPenalty": 0.0,
+                "bigramSwitchPenalty": 0.0,
                 "balancePenalty": 2.0,
                 "alternationPenalty": 0.0,
                 "efforts": [1.0, 2.0],
@@ -315,7 +315,7 @@ mod tests {
         let evaluator = LayoutEvaluator::new(
             &Keyboard::new(
                 json!({
-                    "switchEffortPenalty": 1.5,
+                    "bigramSwitchPenalty": 1.5,
                     "balancePenalty": 2.0,
                     "alternationPenalty": 0.5,
                     "efforts": [1.0, 2.0, 3.0, 5.0],
@@ -338,7 +338,7 @@ mod tests {
     fn test_keyboard() -> Keyboard {
         Keyboard::new(
             json!({
-                "switchEffortPenalty": 1.5,
+                "bigramSwitchPenalty": 1.5,
                 "balancePenalty": 2.0,
                 "alternationPenalty": 0.0,
                 "efforts": [1.0, 2.0, 3.0, 5.0],
