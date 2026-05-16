@@ -78,8 +78,16 @@ where
 /// Per-key constraints for optimization.
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-#[derive(Default)]
 pub struct OptimizationConfig {
+    /// Multiplier applied to per-switch self-effort; `1.0` = no penalty.
+    pub bigram_switch_penalty: f64,
+
+    /// Max multiplier applied for extreme hand imbalance.
+    pub balance_penalty: f64,
+
+    /// Coefficient `k` for corpus-level alternation-rate penalty.
+    pub alternation_penalty: f64,
+
     /// Characters whose physical position is locked: maps char → key index (0-29).
     #[serde(default)]
     pub frozen: FxHashMap<char, u8>,
@@ -101,6 +109,21 @@ pub struct OptimizationConfig {
 
     /// Output layouts csv file
     pub output: Option<std::path::PathBuf>,
+}
+
+impl Default for OptimizationConfig {
+    fn default() -> Self {
+        Self {
+            bigram_switch_penalty: 1.5,
+            balance_penalty: 2.0,
+            alternation_penalty: 0.25,
+            frozen: Default::default(),
+            blocked: Default::default(),
+            allowed: Default::default(),
+            rolls: Default::default(),
+            output: None,
+        }
+    }
 }
 
 impl OptimizationConfig {
@@ -171,7 +194,7 @@ mod tests {
 
     #[test]
     fn deserialize_allowed_map() {
-        let json = r#"{"allowed": {"a": [0, 4]}}"#;
+        let json = r#"{"bigramSwitchPenalty": 1.5, "balancePenalty": 2.0, "alternationPenalty": 0.25, "allowed": {"a": [0, 4]}}"#;
         let cfg: OptimizationConfig = serde_json::from_str(json).unwrap();
         let a_slots = &cfg.allowed[&'a'];
         assert!(a_slots.contains(&0));
@@ -208,7 +231,7 @@ mod tests {
 
     #[test]
     fn deserialize_rolls() {
-        let json = r#"{"rolls": ["th", "st"]}"#;
+        let json = r#"{"bigramSwitchPenalty": 1.5, "balancePenalty": 2.0, "alternationPenalty": 0.25, "rolls": ["th", "st"]}"#;
         let cfg: OptimizationConfig = serde_json::from_str(json).unwrap();
         assert_eq!(cfg.rolls, vec![['t', 'h'], ['s', 't']]);
     }

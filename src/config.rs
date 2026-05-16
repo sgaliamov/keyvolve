@@ -31,7 +31,6 @@ pub struct Config {
     pub merge: MergeConfig,
 
     /// frozen/blocked key constraints for `Mode::Optimize`
-    #[serde(default)]
     pub optimization: OptimizationConfig,
 }
 

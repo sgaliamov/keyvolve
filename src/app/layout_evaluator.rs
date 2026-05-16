@@ -21,8 +21,14 @@ pub struct LayoutEvaluator {
 }
 
 impl LayoutEvaluator {
-    /// Build from keyboard config and corpus. Groups are 0-based → `efforts[group]`.
-    pub fn new(keyboard: &Keyboard, words: Vec<String>) -> Self {
+    /// Build from keyboard config, corpus, and penalty coefficients.
+    pub fn new(
+        keyboard: &Keyboard,
+        words: Vec<String>,
+        bigram_switch_penalty: f64,
+        balance_penalty: f64,
+        alternation_penalty: f64,
+    ) -> Self {
         let mut pairs = FxHashMap::default();
 
         for (from, targets) in &keyboard.pairs {
@@ -34,9 +40,9 @@ impl LayoutEvaluator {
 
         LayoutEvaluator {
             pairs,
-            bigram_switch_penalty: keyboard.bigram_switch_penalty,
-            balance_penalty: keyboard.balance_penalty,
-            alternation_penalty: keyboard.alternation_penalty,
+            bigram_switch_penalty,
+            balance_penalty,
+            alternation_penalty,
             words,
         }
     }
@@ -166,7 +172,7 @@ mod tests {
 
     #[test]
     fn score_word_returns_zero_score_for_empty_input() {
-        let evaluator = LayoutEvaluator::new(&test_keyboard(), vec![]);
+        let evaluator = LayoutEvaluator::new(&test_keyboard(), vec![], 1.5, 2.0, 0.0);
 
         let score = evaluator.score_word("", &test_keys());
 
@@ -181,7 +187,7 @@ mod tests {
 
     #[test]
     fn score_word_adds_pair_effort_to_same_hand() {
-        let evaluator = LayoutEvaluator::new(&test_keyboard(), vec![]);
+        let evaluator = LayoutEvaluator::new(&test_keyboard(), vec![], 1.5, 2.0, 0.0);
 
         let score = evaluator.score_word("ab", &test_keys());
 
@@ -196,7 +202,7 @@ mod tests {
 
     #[test]
     fn score_word_uses_pair_table_for_repeated_key() {
-        let evaluator = LayoutEvaluator::new(&test_keyboard(), vec![]);
+        let evaluator = LayoutEvaluator::new(&test_keyboard(), vec![], 1.5, 2.0, 0.0);
 
         let score = evaluator.score_word("aa", &test_keys());
 
@@ -211,7 +217,7 @@ mod tests {
 
     #[test]
     fn score_word_charges_self_effort_on_hand_switch() {
-        let evaluator = LayoutEvaluator::new(&test_keyboard(), vec![]);
+        let evaluator = LayoutEvaluator::new(&test_keyboard(), vec![], 1.5, 2.0, 0.0);
 
         let score = evaluator.score_word("ac", &test_keys());
 
@@ -228,9 +234,6 @@ mod tests {
     fn score_word_zero_bigram_switch_penalty_removes_switch_cost() {
         let keyboard = Keyboard::new(
             json!({
-                "bigramSwitchPenalty": 0.0,
-                "balancePenalty": 2.0,
-                "alternationPenalty": 0.0,
                 "efforts": [1.0, 2.0],
                 "pairs": {
                     "0": {"0": 0, "1": 1},
@@ -239,7 +242,7 @@ mod tests {
             })
             .to_string(),
         );
-        let evaluator = LayoutEvaluator::new(&keyboard, vec![]);
+        let evaluator = LayoutEvaluator::new(&keyboard, vec![], 0.0, 2.0, 0.0);
 
         let score = evaluator.score_word("ac", &test_keys());
 
@@ -251,8 +254,13 @@ mod tests {
 
     #[test]
     fn score_corpus_applies_balance_penalty_to_aggregated_effort() {
-        let evaluator =
-            LayoutEvaluator::new(&test_keyboard(), vec!["ab".to_string(), "ac".to_string()]);
+        let evaluator = LayoutEvaluator::new(
+            &test_keyboard(),
+            vec!["ab".to_string(), "ac".to_string()],
+            1.5,
+            2.0,
+            0.0,
+        );
         let keys = test_keys();
 
         let score = evaluator.score_corpus(&keys);
@@ -315,9 +323,6 @@ mod tests {
         let evaluator = LayoutEvaluator::new(
             &Keyboard::new(
                 json!({
-                    "bigramSwitchPenalty": 1.5,
-                    "balancePenalty": 2.0,
-                    "alternationPenalty": 0.5,
                     "efforts": [1.0, 2.0, 3.0, 5.0],
                     "pairs": {
                         "0": {"0": 0, "1": 1},
@@ -327,6 +332,9 @@ mod tests {
                 .to_string(),
             ),
             vec!["ab".to_string(), "ac".to_string()],
+            1.5,
+            2.0,
+            0.5,
         );
 
         let score = evaluator.score_corpus(&test_keys());
@@ -338,9 +346,6 @@ mod tests {
     fn test_keyboard() -> Keyboard {
         Keyboard::new(
             json!({
-                "bigramSwitchPenalty": 1.5,
-                "balancePenalty": 2.0,
-                "alternationPenalty": 0.0,
                 "efforts": [1.0, 2.0, 3.0, 5.0],
                 "pairs": {
                     "0": {"0": 0, "1": 1},

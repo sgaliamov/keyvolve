@@ -4,54 +4,15 @@ use serde::Deserialize;
 use std::path::Path;
 
 /// Represents the keyboard configuration loaded from `keyboard.json`.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct Keyboard {
-    /// Multiplier applied to per-switch self-effort; `1.0` means no penalty.
-    #[serde(default = "default_bigram_switch_penalty")]
-    pub bigram_switch_penalty: f64,
-
-    /// Max multiplier applied for extreme hand imbalance.
-    #[serde(default = "default_balance_penalty")]
-    pub balance_penalty: f64,
-
-    /// Coefficient `k` used for corpus-level alternation-rate penalty.
-    #[serde(default = "default_alternation_penalty")]
-    pub alternation_penalty: f64,
-
     /// Effort multipliers used to scale effort values.
     pub efforts: Vec<f64>,
 
     /// Key matrix: pairs[from][to] = group.
     /// Pairs are defined for the left hand only; the right hand is inferred by symmetry.
     pub pairs: FxHashMap<u8, FxHashMap<u8, usize>>,
-}
-
-impl Default for Keyboard {
-    fn default() -> Self {
-        Self {
-            bigram_switch_penalty: default_bigram_switch_penalty(),
-            balance_penalty: default_balance_penalty(),
-            alternation_penalty: default_alternation_penalty(),
-            efforts: Vec::new(),
-            pairs: FxHashMap::default(),
-        }
-    }
-}
-
-/// Default switch-effort penalty multiplier.
-fn default_bigram_switch_penalty() -> f64 {
-    1.5
-}
-
-/// Default alternation penalty coefficient.
-fn default_alternation_penalty() -> f64 {
-    0.25
-}
-
-/// Default max imbalance multiplier.
-fn default_balance_penalty() -> f64 {
-    2.0
 }
 
 impl Keyboard {
@@ -111,26 +72,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn deserialize_defaults_switch_penalties_to_one() {
-        let kb = Keyboard::new(
-            r#"{
-                "efforts": [1.0],
-                "pairs": {"0": {"5": 1}}
-            }"#
-            .to_string(),
-        );
-
-        assert_eq!(kb.bigram_switch_penalty, 1.5);
-        assert_eq!(kb.alternation_penalty, 0.25);
-        assert_eq!(kb.balance_penalty, 2.0);
-    }
-
-    #[test]
     fn expand_pairs_mirrors_left_to_right() {
         let kb = Keyboard {
-            bigram_switch_penalty: 0.0,
-            balance_penalty: 2.0,
-            alternation_penalty: 0.0,
             efforts: vec![1.0],
             pairs: FxHashMap::from_iter([(0u8, FxHashMap::from_iter([(5u8, 1usize)]))]),
         }

@@ -30,7 +30,14 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
                 .collect::<Vec<_>>();
 
             let keyboard = Keyboard::load(cfg.keyboard.unwrap())?;
-            let evaluator = LayoutEvaluator::new(&keyboard, words);
+            let opt = cfg.optimization;
+            let evaluator = LayoutEvaluator::new(
+                &keyboard,
+                words,
+                opt.bigram_switch_penalty,
+                opt.balance_penalty,
+                opt.alternation_penalty,
+            );
 
             match mode {
                 Mode::Evaluate => {
@@ -49,7 +56,7 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
                         seed.extend(loaded.into_iter().map(layout_to_genome));
                     }
                     ga.seed = seed;
-                    optimize(evaluator, ga, cfg.optimization, app)?;
+                    optimize(evaluator, ga, opt, app)?;
                 }
                 Mode::Synthesise | Mode::Merge => unreachable!(),
             }
