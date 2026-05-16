@@ -1,11 +1,11 @@
 {
-  "mode": "optimize",
+  "_mode": "optimize",
   "-mode": "merge",
-  "_mode": "evaluate",
+  "mode": "evaluate",
   "~mode": "synthesise",
 
   "keyboard": "data/keyboard.json",
-  "-layouts": "data/seed.csv",
+  "layouts": "data/layouts.csv",
   "text": "data/synthesised",
 
   "merge": { "input": "data/samples", "output": "data/samples/merged.txt" },
@@ -13,7 +13,7 @@
   "optimization": {
     "output": "data/layouts.csv",
     "bigramSwitchPenalty": 1.5,
-    "balancePenalty": 2.0,
+    "balancePenalty": 1.5,
     "alternationPenalty": 0.25,
     "blocked": [19],
     "allowed": {
@@ -40,6 +40,7 @@
     "pools": 512,
     "randomRatio": 0.25
   },
+
   "synthesise": {
     "output": "data/synthesised",
     "minFrequency": 0.00001,
