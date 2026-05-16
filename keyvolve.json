@@ -15,8 +15,8 @@
     "bigramSwitchPenalty": 1.5,
     "balancePenalty": 1.5,
     "alternationPenalty": 0.25,
-    "blocked": [19],
-    "allowed": {
+    "-blocked": [19],
+    "-allowed": {
       "e": [6, 7, 8],
       "t": [1, 2, 3],
       "a": [2, 6, 7, 8],
@@ -31,7 +31,7 @@
       "l": [11, 12, 13],
       "y": [11, 12, 13]
     },
-    "rolls": ["th", "er"]
+    "-rolls": ["th", "er"]
   },
 
   "ga": {

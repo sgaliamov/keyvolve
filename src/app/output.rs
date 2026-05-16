@@ -19,7 +19,8 @@ pub fn write_layouts(
         return Ok(());
     };
 
-    let is_new = overwrite || !path.exists() || path.metadata().map(|m| m.len() == 0).unwrap_or(true);
+    let is_new =
+        overwrite || !path.exists() || path.metadata().map(|m| m.len() == 0).unwrap_or(true);
 
     let mut file = OpenOptions::new()
         .create(true)

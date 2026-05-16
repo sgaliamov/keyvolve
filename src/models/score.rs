@@ -63,7 +63,11 @@ impl ScoreResult {
         format!(
             "{:.4}, {:.2}, {:.2}, {:.2}, {:.2}%, {}, {:.2}%, {:.2}, {:.2}%, {}, {:.2}%, {}, {:.2}%",
             self.fitness,
-            if self.right_count == 0 { 0.0 } else { self.left_count as f64 / self.right_count as f64 },
+            if self.right_count == 0 {
+                0.0
+            } else {
+                self.left_count as f64 / self.right_count as f64
+            },
             self.effort,
             self.left_effort,
             self.left_effort_ratio() * 100.0,
@@ -90,7 +94,11 @@ impl std::fmt::Display for ScoreResult {
             f,
             "φ {:.4} | L/R {:.2} | ε {:.2} | L {:.2} ({}, {:.1}%) | R {:.2} ({}, {:.1}%) | ⇄ {} ({:.2}%)",
             self.fitness,
-            if self.right_count == 0 { 0.0 } else { self.left_count as f64 / self.right_count as f64 },
+            if self.right_count == 0 {
+                0.0
+            } else {
+                self.left_count as f64 / self.right_count as f64
+            },
             self.effort,
             self.left_effort,
             self.left_count,

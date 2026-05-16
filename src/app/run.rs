@@ -74,4 +74,3 @@ pub fn layout_to_genome(layout: Layout) -> Vec<char> {
     }
     slots
 }
-
