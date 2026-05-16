@@ -61,7 +61,7 @@ impl ScoreResult {
     /// Serialize as a CSV row (no header).
     pub fn to_csv(&self) -> String {
         format!(
-            "{:.2},{:.2},{:.2},{:.2}%,{},{:.2}%,{:.2},{:.2}%,{},{:.2}%,{},{:.2}%",
+            "{:.2}, {:.2}, {:.2}, {:.2}%, {}, {:.2}%, {:.2}, {:.2}%, {}, {:.2}%, {}, {:.2}%",
             self.fitness,
             self.effort,
             self.left_effort,

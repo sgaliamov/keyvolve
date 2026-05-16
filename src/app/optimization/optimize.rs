@@ -13,14 +13,14 @@ use super::{OptimizerState, callback, corpus_evaluator, generate, mutate};
 
 pub fn optimize(
     evaluator: LayoutEvaluator,
-    config: darwin::Config<char>,
-    optimization: OptimizationConfig,
+    ga_cfg: darwin::Config<char>,
+    opt_cfg: OptimizationConfig,
     app: AppHandle,
 ) -> Result<()> {
     use tracing::info;
     info!("Initializing genetic algorithm");
     let mut ga = GeneticAlgorithm::new(
-        config,
+        ga_cfg,
         generate,
         mutate,
         NoopCrossover,
@@ -28,15 +28,15 @@ pub fn optimize(
         callback,
     );
 
-    let output_path = optimization.output.clone();
+    let output_path = opt_cfg.output.clone();
 
     GeneticAlgorithm::set_state(
         &mut ga,
         OptimizerState {
-            cache: optimization.cache(),
+            cache: opt_cfg.cache(),
             evaluator,
             app,
-            optimization,
+            optimization: opt_cfg,
         },
     );
 
@@ -64,7 +64,7 @@ pub fn optimize(
         let score = ind.state.as_ref().unwrap();
         let genome = &ind.genome;
         let layout = Layout::from_keys(genome).to_string();
-        let line = format!("\"{}\";{}", layout, score.to_csv());
+        let line = format!("{}, {}", layout, score.to_csv());
         println!("{line}");
 
         if let Some(ref mut file) = file {

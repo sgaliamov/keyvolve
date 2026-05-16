@@ -6,19 +6,20 @@
 
   "merge": { "input": "data/samples", "output": "data/samples/merged.txt" },
 
-  "-optimization": {
-    "blocked": [4, 19],
+  "optimization": {
+    "output": "data/layouts.csv",
+    "blocked": [19],
     "allowed": {
       "e": [6, 7, 8],
-      "t": [1, 2, 3, 6, 7, 8, 12, 13],
+      "t": [1, 2, 3, 6, 7, 8, 13],
       "a": [2, 6, 7, 8],
-      "o": [1, 2, 3, 6, 7, 8, 12, 13],
-      "i": [1, 2, 3, 6, 7, 8, 12, 13],
+      "o": [2, 6, 7, 8],
+      "i": [1, 2, 3, 6, 7, 8],
       "n": [1, 2, 3, 6, 7, 8, 12, 13],
-      "r": [1, 2, 3, 6, 7, 8, 12, 13],
+      "r": [2, 6, 7, 8],
       "s": [1, 2, 3, 6, 7, 8, 12, 13]
     },
-    "rolls": ["he", "in", "er", "an", "en", "it"]
+    "-rolls": ["he", "in", "er", "an", "en", "it"]
   },
 
   "keyboard": "data/keyboard.json",
@@ -35,6 +36,8 @@
     "_cth_;finow;zgvdj;qusm_;bearp;xlyk_"
   ],
   "-seed": [
+    "_cthz;fniow;_jgdk;xusmq;bearp;vly__;4.1898;147",
+    "_htcz;bsaiw;__ylk;qfomx;prenu;jdgv_;4.1885;140",
     "_mofx;unerp;zvgdq;_htcj;wiasb;_lyk_;4.1954;231",
     "_pofx;unerm;jvgdq;_htcz;wiasb;_lyk_;4.1922;231",
     "_mofz;unerp;xvgdq;_htcj;wiasb;_lyk_;4.1922;231",

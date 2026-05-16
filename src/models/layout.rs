@@ -47,7 +47,7 @@ impl Layout {
 }
 
 impl fmt::Display for Layout {
-    /// Reconstruct semicolon-separated layout string (positions 0–14 left; 15–29 right, stored inner→outer per group).
+    /// Reconstruct comma-separated layout string (positions 0–14 left; 15–29 right, stored inner→outer per group).
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut slots = ['_'; 30];
         for (&ch, &pos) in &self.keys {
@@ -56,27 +56,26 @@ impl fmt::Display for Layout {
         let left = slots[..15]
             .chunks(5)
             .map(|c| c.iter().collect::<String>())
-            .join(";");
+            .join(", ");
         let right = slots[15..]
             .chunks(5)
             .map(|c| c.iter().collect::<String>())
-            .join(";");
-        write!(f, "{left};{right}")
+            .join(", ");
+        write!(f, "{left}, {right}")
     }
 }
 
 /// Detect persisted CSV header row.
 fn is_header(line: &str) -> bool {
-    line.starts_with("keys_1;keys_2;keys_3;keys_4;keys_5;keys_6;")
+    line.starts_with("keys_1,keys_2,keys_3,keys_4,keys_5,keys_6,")
 }
 
 pub fn line_to_keys(line: &str) -> Keys {
-    let parts = line.split(';');
-
+    let parts = line.split(',');
     let left = parts
         .clone()
         .take(3)
-        .flat_map(|part| part.chars())
+        .flat_map(|part| part.trim().chars())
         .enumerate()
         .map(|(p, c)| (c, p as u8))
         .collect_vec();
@@ -99,7 +98,7 @@ mod layout_test {
 
     #[test]
     fn test_line_to_keys_basic() {
-        let line = "zydpx;ralem;vbjuq;whtc_;fnosi;kg___;not used tail";
+        let line = "zydpx, ralem, vbjuq, whtc_, fnosi, kg___, not used tail";
         let keys = line_to_keys(line);
 
         assert_eq!(keys.len(), 26);
@@ -113,9 +112,9 @@ mod layout_test {
 
     #[test]
     fn test_name() {
-        let line = "zydpx;ralem;vbjuq;whtc_;fnosi;kg___;not used tail";
+        let line = "zydpx, ralem, vbjuq, whtc_, fnosi,kg___,not used tail";
         let layout = Layout::new(line);
 
-        assert_eq!(layout.to_string(), "zydpx;ralem;vbjuq;whtc_;fnosi;kg___");
+        assert_eq!(layout.to_string(), "zydpx, ralem, vbjuq, whtc_, fnosi, kg___");
     }
 }
