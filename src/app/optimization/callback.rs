@@ -7,11 +7,27 @@ pub fn callback(ctx: &GaContext) -> bool {
         return false;
     }
 
-    let Some((genome, fitness)) = ctx.pools.best() else {
+    let best = ctx
+        .pools
+        .iter()
+        .flat_map(|p| p.individuals.iter())
+        .filter(|ind| ind.fitness.is_finite())
+        .max_by(|a, b| a.fitness.total_cmp(&b.fitness));
+
+    let Some(best) = best else {
         return true;
     };
 
-    let name = Layout::from_keys(genome).to_string();
+    let name = Layout::from_keys(&best.genome).to_string();
+
+    let ratio_str = best.state.as_ref().map_or(String::new(), |s| {
+        let ratio = if s.right_count == 0 {
+            0.0
+        } else {
+            s.left_count as f64 / s.right_count as f64
+        };
+        format!(" | ⚖ {:.2}", ratio)
+    });
 
     let min_div = ctx
         .pools
@@ -24,8 +40,8 @@ pub fn callback(ctx: &GaContext) -> bool {
     };
 
     println!(
-        "{:>3}: {} | φ: {:.4}{}",
-        ctx.generation, name, fitness, div_str
+        "{:>3}: {} | φ: {:.4}{}{}",
+        ctx.generation, name, best.fitness, ratio_str, div_str
     );
     true
 }

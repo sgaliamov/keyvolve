@@ -4,6 +4,10 @@
   "_mode": "evaluate",
   "~mode": "synthesise",
 
+  "keyboard": "data/keyboard.json",
+  "-layouts": "data/seed.csv",
+  "text": "data/synthesised",
+
   "merge": { "input": "data/samples", "output": "data/samples/merged.txt" },
 
   "optimization": {
@@ -14,24 +18,23 @@
     "blocked": [19],
     "allowed": {
       "e": [6, 7, 8],
-      "t": [1, 2, 3, 6, 7, 8, 13],
+      "t": [1, 2, 3],
       "a": [2, 6, 7, 8],
       "o": [2, 6, 7, 8],
       "i": [1, 2, 3, 6, 7, 8],
       "n": [1, 2, 3, 6, 7, 8, 12, 13],
       "r": [2, 6, 7, 8],
-      "s": [1, 2, 3, 6, 7, 8, 12, 13]
+      "s": [1, 2, 3, 6, 7, 8, 12, 13],
+      "h": [1, 2, 3],
+      "c": [1, 2, 3]
     },
-    "-rolls": ["he", "in", "er", "an", "en", "it"]
+    "rolls": ["th", "er", "in"]
   },
 
-  "keyboard": "data/keyboard.json",
-  "-layouts": "data/seed.csv",
-  "text": "data/synthesised",
   "ga": {
     "mutationRatio": 0.75,
     "populationSize": 128,
-    "pools": 256,
+    "pools": 512,
     "randomRatio": 0.25
   },
   "synthesise": {

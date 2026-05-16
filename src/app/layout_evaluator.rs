@@ -80,7 +80,7 @@ impl LayoutEvaluator {
                 let a_left = ka < 15;
                 let b_left = kb < 15;
 
-                let (effort, switches) = if a_left == b_left {
+                let (effort, bigram_switches) = if a_left == b_left {
                     (self.lookup(ka, kb), 0)
                 } else {
                     // When hands alternate, key `a` was already counted in the
@@ -95,7 +95,7 @@ impl LayoutEvaluator {
                 let bigram = ScoreResult {
                     effort,
                     fitness: 0.0,
-                    switches,
+                    bigram_switches,
                     left_count: b_left as u32,
                     right_count: (!b_left) as u32,
                     left_effort: if b_left { effort } else { 0. },
@@ -122,7 +122,7 @@ impl LayoutEvaluator {
             self.balance_penalty,
         );
         result.fitness *= switch_factor(
-            result.switches,
+            result.bigram_switches,
             result.left_count + result.right_count,
             self.alternation_penalty,
         );
@@ -180,7 +180,7 @@ mod tests {
         assert_close(score.fitness, 0.0);
         assert_eq!(score.left_count, 0);
         assert_eq!(score.right_count, 0);
-        assert_eq!(score.switches, 0);
+        assert_eq!(score.bigram_switches, 0);
         assert_close(score.left_effort, 0.0);
         assert_close(score.right_effort, 0.0);
     }
@@ -193,7 +193,7 @@ mod tests {
 
         assert_eq!(score.left_count, 2);
         assert_eq!(score.right_count, 0);
-        assert_eq!(score.switches, 0);
+        assert_eq!(score.bigram_switches, 0);
         assert_close(score.effort, 3.0);
         assert_close(score.fitness, 0.0);
         assert_close(score.left_effort, 3.0);
@@ -208,7 +208,7 @@ mod tests {
 
         assert_eq!(score.left_count, 2);
         assert_eq!(score.right_count, 0);
-        assert_eq!(score.switches, 0);
+        assert_eq!(score.bigram_switches, 0);
         assert_close(score.effort, 2.0);
         assert_close(score.fitness, 0.0);
         assert_close(score.left_effort, 2.0);
@@ -223,7 +223,7 @@ mod tests {
 
         assert_eq!(score.left_count, 1);
         assert_eq!(score.right_count, 1);
-        assert_eq!(score.switches, 1);
+        assert_eq!(score.bigram_switches, 1);
         assert_close(score.effort, 2.5);
         assert_close(score.fitness, 0.0);
         assert_close(score.left_effort, 1.0);
@@ -248,7 +248,7 @@ mod tests {
 
         assert_close(score.effort, 1.0);
         assert_close(score.fitness, 0.0);
-        assert_eq!(score.switches, 1);
+        assert_eq!(score.bigram_switches, 1);
         assert_close(score.right_effort, 0.0);
     }
 
@@ -267,7 +267,7 @@ mod tests {
 
         assert_eq!(score.left_count, 3);
         assert_eq!(score.right_count, 1);
-        assert_eq!(score.switches, 1);
+        assert_eq!(score.bigram_switches, 1);
         assert_close(score.left_effort, 4.0);
         assert_close(score.right_effort, 1.5);
         assert_close(score.effort, 5.5);
