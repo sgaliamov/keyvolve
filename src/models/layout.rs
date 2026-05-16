@@ -69,7 +69,7 @@ impl fmt::Display for Layout {
 
 /// Detect persisted CSV header row.
 fn is_header(line: &str) -> bool {
-    line.starts_with("keys_1,keys_2,keys_3,keys_4,keys_5,keys_6,")
+    line.starts_with("keys_1,")
 }
 
 pub fn line_to_keys(line: &str) -> Keys {

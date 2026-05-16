@@ -12,7 +12,7 @@ pub fn write_layouts(
     overwrite: bool,
 ) -> Result<()> {
     for (layout, score) in layouts.iter().take(top_n) {
-        println!("{layout}; {score}");
+        println!("{layout} | {score}");
     }
 
     let Some(path) = output_path else {

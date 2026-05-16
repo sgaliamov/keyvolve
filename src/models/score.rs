@@ -61,7 +61,7 @@ impl ScoreResult {
     /// Serialize as a CSV row (no header).
     pub fn to_csv(&self) -> String {
         format!(
-            "{:.2}, {:.2}, {:.2}, {:.2}%, {}, {:.2}%, {:.2}, {:.2}%, {}, {:.2}%, {}, {:.2}%",
+            "{:.4}, {:.2}, {:.2}, {:.2}%, {}, {:.2}%, {:.2}, {:.2}%, {}, {:.2}%, {}, {:.2}%",
             self.fitness,
             self.effort,
             self.left_effort,
@@ -87,7 +87,7 @@ impl std::fmt::Display for ScoreResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "φ {:.2} | ε {:.2} | λ {:.2} ({}, {:.1}%) | ρ {:.2} ({}, {:.1}%) | σ {} ({:.1}%)",
+            "φ {:.4} | ε {:.2} | L {:.2} ({}, {:.1}%) | R {:.2} ({}, {:.1}%) | ⇄ {} ({:.2}%)",
             self.fitness,
             self.effort,
             self.left_effort,
