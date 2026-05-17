@@ -35,9 +35,9 @@
   },
 
   "ga": {
-    "mutationRatio": 0.75,
+    "mutationRatio": 0.9,
     "populationSize": 128,
-    "pools": 512,
+    "pools": 256,
     "randomRatio": 0.25
   },
 
