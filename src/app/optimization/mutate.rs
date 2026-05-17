@@ -18,18 +18,14 @@ pub fn mutate(ind: &KeysIndividual, ctx: &GaContext) -> Vec<KeysGenome> {
                 let mut genome = ind.genome.clone();
                 let count = rand::random_range(4usize..=8);
 
-                let mut free = unplace_units(&mut genome, opt, cache, count, &mut rng);
+                let unplaced = unplace_units(&mut genome, opt, cache, count, &mut rng);
+                let mut free = unplaced.free;
                 if free.is_empty() {
                     return genome;
                 }
 
                 // Collect chars that were just unplaced, in shuffled order.
-                let mut letters: Vec<char> = genome
-                    .iter()
-                    .zip(ind.genome.iter())
-                    .filter(|(new, old)| *new != *old)
-                    .map(|(_, old)| *old)
-                    .collect();
+                let mut letters = unplaced.letters;
                 letters.shuffle(&mut rng);
                 free.shuffle(&mut rng);
 

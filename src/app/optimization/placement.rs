@@ -3,6 +3,12 @@ use crate::app::optimization::{OptimizationCache, OptimizationConfig, are_roll_n
 use rand::seq::SliceRandom;
 use rustc_hash::FxHashSet;
 
+/// Slots and letters removed together during mutation.
+pub struct Unplaced {
+    pub free: Vec<u8>,
+    pub letters: Vec<char>,
+}
+
 /// Re-place `letters` into `free` slots using the same layered flow as the generator:
 /// 2. Rolls around frozen → 3. Allowed (with roll co-placement) → 4. Remaining rolls → 5. Free.
 /// Step 1 (frozen) is the caller's responsibility.
@@ -128,7 +134,7 @@ pub fn unplace_units(
     cache: &OptimizationCache,
     count: usize,
     rng: &mut impl rand::Rng,
-) -> Vec<u8> {
+) -> Unplaced {
     let mut used: FxHashSet<usize> = FxHashSet::default();
     let mut units: Vec<Vec<usize>> = Vec::new();
 
@@ -164,13 +170,18 @@ pub fn unplace_units(
 
     units.shuffle(rng);
     let mut freed = Vec::new();
+    let mut letters = Vec::new();
     for unit in units.iter().take(count) {
         for &idx in unit {
             freed.push(idx as u8);
+            letters.push(genome[idx]);
             genome[idx] = EMPTY_SLOT;
         }
     }
-    freed
+    Unplaced {
+        free: freed,
+        letters,
+    }
 }
 
 /// True when placing a letter at `slot` keeps letters in its row-hand segment contiguous.
@@ -250,6 +261,10 @@ pub fn place_pair(
 mod tests {
     use super::*;
     use crate::app::EMPTY_SLOT;
+    use crate::app::optimization::config::{OptimizationCache, OptimizationConfig};
+    use rand::SeedableRng;
+    use rand::rngs::StdRng;
+    use rustc_hash::{FxHashMap, FxHashSet};
 
     /// Build a 30-char genome from a 30-char string; '_' → EMPTY_SLOT.
     fn genome(s: &str) -> Vec<char> {
@@ -257,6 +272,33 @@ mod tests {
         s.chars()
             .map(|c| if c == '_' { EMPTY_SLOT } else { c })
             .collect()
+    }
+
+    fn test_opt(rolls: &[&str], blocked: &[u8]) -> OptimizationConfig {
+        OptimizationConfig {
+            bigram_switch_penalty: 1.5,
+            balance_penalty: 2.0,
+            alternation_penalty: 0.25,
+            frozen: FxHashMap::default(),
+            blocked: blocked.iter().copied().collect(),
+            rolls: rolls
+                .iter()
+                .map(|pair| {
+                    let mut chars = pair.chars();
+                    [chars.next().unwrap(), chars.next().unwrap()]
+                })
+                .collect(),
+            allowed: FxHashMap::default(),
+            output: None,
+        }
+    }
+
+    fn test_cache(frozen_chars: &[char]) -> OptimizationCache {
+        OptimizationCache {
+            frozen_slots: FxHashSet::default(),
+            frozen_chars: frozen_chars.iter().copied().collect(),
+            roll_partner: FxHashMap::default(),
+        }
     }
 
     // Row 0 of left hand = slots 0..5.
@@ -321,5 +363,51 @@ mod tests {
         assert!(is_contiguous_slot(&g, 18));
         assert!(!is_contiguous_slot(&g, 15));
         assert!(!is_contiguous_slot(&g, 19));
+    }
+
+    #[test]
+    fn unplace_units_returns_letters_for_freed_slots() {
+        let mut g = genome("ab___cdefghijklmnopqrstuvwxyzz");
+        let original = g.clone();
+        let opt = test_opt(&["ab"], &[]);
+        let cache = test_cache(&[]);
+        let mut rng = StdRng::seed_from_u64(7);
+
+        let unplaced = unplace_units(&mut g, &opt, &cache, 1, &mut rng);
+
+        assert_eq!(unplaced.free.len(), unplaced.letters.len());
+        for (&slot, &ch) in unplaced.free.iter().zip(&unplaced.letters) {
+            assert_eq!(original[slot as usize], ch);
+            assert_eq!(g[slot as usize], EMPTY_SLOT);
+        }
+    }
+
+    #[test]
+    fn unplace_units_keeps_roll_pair_together() {
+        let mut g = genome("ab___xxxxxxxxxxxxxxxxxxxxxxxxx");
+        let opt = test_opt(&["ab"], &[]);
+        let cache = test_cache(&[]);
+        let mut rng = StdRng::seed_from_u64(1);
+
+        let unplaced = unplace_units(&mut g, &opt, &cache, 1, &mut rng);
+
+        assert_eq!(unplaced.free.len(), 2);
+        assert_eq!(unplaced.letters.len(), 2);
+        assert!(unplaced.letters.contains(&'a'));
+        assert!(unplaced.letters.contains(&'b'));
+    }
+
+    #[test]
+    fn unplace_units_skips_blocked_and_frozen() {
+        let mut g = genome("abcdexxxxxxxxxxxxxxxxxxxxxxxxx");
+        let opt = test_opt(&["ab"], &[2]);
+        let cache = test_cache(&['d']);
+        let mut rng = StdRng::seed_from_u64(3);
+
+        let unplaced = unplace_units(&mut g, &opt, &cache, 4, &mut rng);
+
+        assert!(!unplaced.free.contains(&2));
+        assert!(!unplaced.letters.contains(&'c'));
+        assert!(!unplaced.letters.contains(&'d'));
     }
 }
