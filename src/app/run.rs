@@ -18,8 +18,7 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
             merge::merge(cfg.merge)?;
         }
         Mode::Synthesise => {
-            let input = cfg.text.wrap_err("Synthesise mode requires `text` path")?;
-            synthesise::synthesise(&input, cfg.synthesise)?;
+            synthesise::synthesise(cfg.synthesise)?;
         }
         mode => {
             let words = std::fs::read_to_string(cfg.text.unwrap())

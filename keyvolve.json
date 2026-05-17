@@ -1,8 +1,8 @@
 {
-  "mode": "optimize",
+  " mode": "optimize",
   "-mode": "merge",
   "_mode": "evaluate",
-  "~mode": "synthesise",
+  "mode": "synthesise",
 
   "keyboard": "data/keyboard.json",
   "-layouts": "data/layouts.csv",
@@ -15,8 +15,8 @@
     "bigramSwitchPenalty": 1.5,
     "balancePenalty": 1.5,
     "alternationPenalty": 0.25,
-    "-blocked": [19],
-    "-allowed": {
+    "blocked": [19],
+    "allowed": {
       "e": [6, 7, 8],
       "t": [1, 2, 3],
       "a": [2, 6, 7, 8],
@@ -24,14 +24,14 @@
       "i": [1, 2, 3, 6, 7, 8],
       "n": [1, 2, 3, 6, 7, 8, 12, 13],
       "r": [2, 6, 7, 8],
-      "s": [1, 2, 3, 6, 7, 8, 12, 13],
+      "s": [1, 2, 3, 6, 7, 8],
       "h": [1, 2, 3],
-      "c": [1, 2, 3],
-      "k": [11, 12, 13],
-      "l": [11, 12, 13],
-      "y": [11, 12, 13]
+      "c": [1, 2, 3]
     },
-    "-rolls": ["th", "er"]
+    "k": [11, 12, 13],
+    "l": [11, 12, 13],
+    "y": [11, 12, 13],
+    "rolls": ["th", "er"]
   },
 
   "ga": {
@@ -42,6 +42,7 @@
   },
 
   "synthesise": {
+    "text": "data/samples/merged.txt",
     "output": "data/synthesised",
     "minFrequency": 0.00001,
     "target": 100000

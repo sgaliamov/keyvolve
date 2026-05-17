@@ -13,7 +13,11 @@ use miette::{Context, IntoDiagnostic, Result};
 use std::{io::Write, path::Path};
 
 /// Run the full synthesise pipeline.
-pub fn synthesise(input: &Path, cfg: SynthesiseConfig) -> Result<()> {
+pub fn synthesise(cfg: SynthesiseConfig) -> Result<()> {
+    let input = cfg
+        .text
+        .as_deref()
+        .wrap_err("Synthesise mode requires `synthesise.text` path")?;
     let output = cfg
         .output
         .as_deref()
