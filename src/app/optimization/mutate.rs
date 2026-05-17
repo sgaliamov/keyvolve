@@ -16,7 +16,7 @@ pub fn mutate(ind: &KeysIndividual, ctx: &GaContext) -> Vec<KeysGenome> {
             let mut rng = rand::rng();
             for _ in 0..MUTATION_ATTEMPTS {
                 let mut genome = ind.genome.clone();
-                let count = rand::random_range(4usize..=8);
+                let count = rand::random_range(2usize..=8);
 
                 let unplaced = unplace_units(&mut genome, opt, cache, count, &mut rng);
                 let mut free = unplaced.free;
