@@ -35,6 +35,7 @@ pub fn optimize(
             optimization: opt_cfg,
         },
     );
+    ga.seed();
 
     info!("Running genetic algorithm");
     let pools = ga.run();

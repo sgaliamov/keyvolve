@@ -3,6 +3,7 @@ use itertools::Itertools;
 use rustc_hash::FxHashMap;
 
 /// Evaluates layouts by scoring words against a precomputed bigram effort table.
+#[derive(Clone)]
 pub struct LayoutEvaluator {
     /// Flat bigram effort map: (from_key, to_key) → effort value.
     pairs: FxHashMap<(u8, u8), f64>,

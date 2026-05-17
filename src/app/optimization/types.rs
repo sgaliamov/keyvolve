@@ -10,6 +10,7 @@ pub type KeysGenome = Vec<char>;
 pub type KeysIndividual = darwin::Individual<char, ScoreResult>;
 
 /// Shared state threaded through all GA callbacks.
+#[derive(Clone)]
 pub struct OptimizerState {
     pub evaluator: LayoutEvaluator,
     pub app: AppHandle,

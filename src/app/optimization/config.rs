@@ -150,6 +150,7 @@ impl OptimizationConfig {
 }
 
 /// Pre-computed lookups derived from [`OptimizationConfig`]; build once per run via [`OptimizationConfig::cache`].
+#[derive(Debug, Clone)]
 pub struct OptimizationCache {
     pub frozen_slots: FxHashSet<u8>,
     pub frozen_chars: FxHashSet<char>,
