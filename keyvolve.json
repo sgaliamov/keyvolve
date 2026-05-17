@@ -1,15 +1,16 @@
 {
-  " mode": "optimize",
+  "mode": "optimize",
   "-mode": "merge",
-  "_mode": "evaluate",
-  "mode": "synthesise",
+  "`mode": "evaluate",
+  "_mode": "synthesise",
 
   "keyboard": "data/keyboard.json",
-  "-layouts": "data/layouts.csv",
+  "_layouts": "data/layouts.csv",
   "text": "data/synthesised",
 
   "merge": { "input": "data/samples", "output": "data/samples/merged.txt" },
 
+  "layouts": "data/seed.csv",
   "optimization": {
     "output": "data/layouts.csv",
     "bigramSwitchPenalty": 1.5,
@@ -19,18 +20,15 @@
     "allowed": {
       "e": [6, 7, 8],
       "t": [1, 2, 3],
-      "a": [2, 6, 7, 8],
-      "o": [2, 6, 7, 8],
-      "i": [1, 2, 3, 6, 7, 8],
+      "a": [6, 7, 8],
+      "o": [6, 7, 8],
+      "i": [6, 7, 8],
       "n": [1, 2, 3, 6, 7, 8, 12, 13],
       "r": [2, 6, 7, 8],
       "s": [1, 2, 3, 6, 7, 8],
       "h": [1, 2, 3],
       "c": [1, 2, 3]
     },
-    "k": [11, 12, 13],
-    "l": [11, 12, 13],
-    "y": [11, 12, 13],
     "rolls": ["th", "er"]
   },
 
