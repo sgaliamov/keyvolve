@@ -1,36 +1,59 @@
-keys_1, keys_2, keys_3, keys_4, keys_5, keys_6, fitness, count_ratio, effort, left_effort, left_effort_ratio, left_count, left_count_ratio, right_effort, right_effort_ratio, right_count, right_count_ratio, bigram_switches, switch_ratio
-_cth_, bsaiw, _zylk, jfom_, prenu, qdgvx, 4.2058, 1.02, 218505.25, 108568.25, 49.69%, 62251, 50.51%, 109937.00, 50.31%, 60985, 49.49%, 43339, 35.17%
-_mofj, unerp, xvgdq, _htc_, wiasb, zlyk_, 4.2054, 0.98, 218524.65, 109937.00, 50.31%, 60985, 49.49%, 108587.65, 49.69%, 62251, 50.51%, 43339, 35.17%
-qwsf_, uared, zxcvb, kgnyj, lotim, ph___, 3.8122, 1.02, 238392.50, 122342.40, 51.32%, 62306, 50.56%, 116050.10, 48.68%, 60930, 49.44%, 49335, 40.03%
-kcdgz, fteav, xbwsq, jurh_, moinp, yl___, 3.7451, 1.05, 239790.25, 121547.55, 50.69%, 63164, 51.25%, 118242.70, 49.31%, 60072, 48.75%, 55249, 44.83%
-kcdgz, fteav, xbwsq, jurl_, ynioh, pm___, 3.6847, 1.05, 243717.70, 121547.55, 49.87%, 63164, 51.25%, 122170.15, 50.13%, 60072, 48.75%, 55249, 44.83%
-zlapk, wrenb, qymhj, xgid_, fsotu, vc___, 3.6673, 1.30, 238057.20, 133736.00, 56.18%, 69644, 56.51%, 104321.20, 43.82%, 53592, 43.49%, 49376, 40.07%
-yfhdk, oantg, qxbpz, jcul_, mseri, vw___, 3.6334, 1.05, 249288.55, 130264.15, 52.25%, 63231, 51.31%, 119024.40, 47.75%, 60005, 48.69%, 50509, 40.99%
-zmadp, yresf, xcubv, qwhn_, ktoil, jg___, 3.5966, 1.23, 247789.00, 143349.80, 57.85%, 67924, 55.12%, 104439.20, 42.15%, 55312, 44.88%, 46848, 38.01%
-jymdk, aserf, zxcvw, qplu_, gtnio, bh___, 3.5866, 1.03, 253833.75, 134186.15, 52.86%, 62660, 50.85%, 119647.60, 47.14%, 60576, 49.15%, 48201, 39.11%
-qwdfk, asetg, zxcvb, jurl_, ynioh, pm___, 3.5128, 1.05, 255642.35, 133472.20, 52.21%, 63164, 51.25%, 122170.15, 47.79%, 60072, 48.75%, 55249, 44.83%
-qdrwb, ashtg, zxmcv, jfup_, yneoi, kl___, 3.4995, 1.05, 256489.15, 139414.65, 54.35%, 63121, 51.22%, 117074.50, 45.65%, 60115, 48.78%, 55554, 45.08%
-qwfpk, asrth, zxcvb, jluy_, dneio, gm___, 3.4953, 0.93, 258366.80, 130778.45, 50.62%, 59248, 48.08%, 127588.35, 49.38%, 63988, 51.92%, 51179, 41.53%
-jmydg, asref, zxcvb, qwhk_, ltnio, up___, 3.4782, 1.09, 260745.55, 144732.90, 55.51%, 64139, 52.05%, 116012.65, 44.49%, 59097, 47.95%, 48628, 39.46%
-qlcpx, arenb, zwvhj, kfud_, gsito, ym___, 3.4349, 1.31, 253283.10, 140686.45, 55.55%, 69848, 56.68%, 112596.65, 44.45%, 53388, 43.32%, 50082, 40.64%
-qwldp, asrtg, zxcvj, kmuy_, fneio, bh___, 3.4257, 0.92, 260877.50, 134048.50, 51.38%, 59127, 47.98%, 126829.00, 48.62%, 64109, 52.02%, 56696, 46.01%
-qwudp, asetg, zxcvb, jfyl_, hniro, km___, 3.3748, 1.18, 262897.35, 145050.35, 55.17%, 66646, 54.08%, 117847.00, 44.83%, 56590, 45.92%, 54281, 44.05%
-gcrfz, dstnb, wmlpv, qhou_, yieax, jk___, 3.3523, 1.02, 260323.55, 148066.20, 56.88%, 62222, 50.49%, 112257.35, 43.12%, 61014, 49.51%, 71809, 58.27%
-kdlcw, mhtsr, bfgvx, ypou_, ineaj, qz___, 3.3042, 0.90, 265504.70, 141220.65, 53.19%, 58442, 47.42%, 124284.05, 46.81%, 64794, 52.58%, 65695, 53.31%
-qwfpg, asnrt, zxcvb, jluy_, hdeio, km___, 3.3013, 1.03, 270993.85, 144685.55, 53.39%, 62642, 50.83%, 126308.30, 46.61%, 60594, 49.17%, 57745, 46.86%
-qfmlw, dstnr, zvgcx, yuobj, iaeh_, pk___, 3.3011, 0.89, 263248.85, 132577.15, 50.36%, 57869, 46.96%, 130671.70, 49.64%, 65367, 53.04%, 69664, 56.53%
-kdlcw, mhtsr, bfgvx, ypouj, inea_, qz___, 3.2984, 0.90, 265971.90, 141220.65, 53.10%, 58442, 47.42%, 124751.25, 46.90%, 64794, 52.58%, 65695, 53.31%
-qfgrk, dhtns, jlmwb, zxcv_, oaeiu, py___, 3.2970, 1.01, 266958.10, 148503.10, 55.63%, 61894, 50.22%, 118455.00, 44.37%, 61342, 49.78%, 67098, 54.45%
-qgmlw, astnr, zxcvj, byuf_, ideoh, kp___, 3.2835, 1.09, 271195.75, 145191.40, 53.54%, 64333, 52.20%, 126004.35, 46.46%, 58903, 47.80%, 58313, 47.32%
-qgmlw, astnr, zxcvj, yfub_, ideoh, kp___, 3.2726, 1.09, 272096.30, 145191.40, 53.36%, 64333, 52.20%, 126904.90, 46.64%, 58903, 47.80%, 58313, 47.32%
-qwldg, asnrt, zxcvb, juop_, kmehi, yf___, 3.2664, 1.20, 268840.35, 153979.30, 57.28%, 67230, 54.55%, 114861.05, 42.72%, 56006, 45.45%, 57774, 46.88%
-qgmlw, dstnr, zxcfj, byuv_, iaeoh, kp___, 3.2518, 0.85, 266407.40, 130498.20, 48.98%, 56704, 46.01%, 135909.20, 51.02%, 66532, 53.99%, 67903, 55.10%
-qfmlw, astnr, zxcvg, yuobj, ideh_, pk___, 3.2374, 1.15, 272361.80, 151772.75, 55.72%, 66026, 53.58%, 120589.05, 44.28%, 57210, 46.42%, 59694, 48.44%
-qwdrf, asetg, zxcvb, jypl_, hunio, km___, 3.2163, 1.32, 268308.55, 153245.15, 57.12%, 70230, 56.99%, 115063.40, 42.88%, 53006, 43.01%, 52244, 42.39%
-wlmfc, rnths, xvgbj, kpuy_, oaeid, qz___, 3.1776, 1.04, 275671.70, 157737.30, 57.22%, 62803, 50.96%, 117934.40, 42.78%, 60433, 49.04%, 69363, 56.28%
-qwdrf, asetg, zxcvb, jypl_, huiok, nm___, 3.1236, 1.32, 276274.35, 153245.15, 55.47%, 70230, 56.99%, 123029.20, 44.53%, 53006, 43.01%, 52244, 42.39%
-qwerf, asdtg, zxcvb, jylk_, huoip, nm___, 3.1207, 1.32, 276531.65, 155643.95, 56.28%, 70230, 56.99%, 120887.70, 43.72%, 53006, 43.01%, 52244, 42.39%
-fgcrl, dhtns, bmwvz, qjkx_, aoeui, py___, 2.9252, 1.17, 294554.70, 170125.55, 57.76%, 66575, 54.02%, 124429.15, 42.24%, 56661, 45.98%, 70789, 57.44%
-qwdrt, asefg, zxcvb, jykl_, huiop, nm___, 2.8751, 1.32, 300146.05, 174991.55, 58.30%, 70230, 56.99%, 125154.50, 41.70%, 53006, 43.01%, 52244, 42.39%
-qwert, asdfg, zxcvb, yuio_, hjklp, nm___, 2.6973, 1.32, 319933.90, 176269.55, 55.10%, 70230, 56.99%, 143664.35, 44.90%, 53006, 43.01%, 52244, 42.39%
-tnwml, sgxjf, eadio, cbpr_, kqzvh, yu___, 1.6268, 2.84, 409414.95, 312500.00, 76.33%, 91146, 73.96%, 96914.95, 23.67%, 32090, 26.04%, 41028, 33.29%
+keys_1,keys_2,keys_3,keys_4,keys_5,keys_6,name
+qlcpx,arenb,zwvhj,kfud_,gsito,ym___,arensito
+zlapk,wrenb,qymhj,xgid_,fsotu,vc___,arensito2
+gcrfz,dstnb,wmlpv,qhou_,yieax,jk___,breakl15
+qwdrf,asetg,zxcvb,jypl_,huiok,nm___,c-qwerty
+qwdrt,asefg,zxcvb,jykl_,huiop,nm___,c-qwerty-2
+qwdrf,asetg,zxcvb,jypl_,hunio,km___,c-qwerty-n
+qfgrk,dhtns,jlmwb,zxcv_,oaeiu,py___,capewell-dvorak
+jmydg,asref,zxcvb,qwhk_,ltnio,up___,capewell9.2
+jymdk,aserf,zxcvw,qplu_,gtnio,bh___,capewell9.3
+zmadp,yresf,xcubv,qwhn_,ktoil,jg___,capwell-ex
+qwfpk,asrth,zxcvb,jluy_,dneio,gm___,collemak
+fgcrl,dhtns,bmwvz,qjkx_,aoeui,py___,dvorak
+qwfpg,asnrt,zxcvb,jluy_,hdeio,km___,gelatin
+qwldg,asnrt,zxcvb,juop_,kmehi,yf___,kaehi
+wlmfc,rnths,xvgbj,kpuy_,oaeid,qz___,klauser
+yfhdk,oantg,qxbpz,jcul_,mseri,vw___,mtgap_a
+kdlcw,mhtsr,bfgvx,ypou_,ineaj,qz___,mtgap_b
+kdlcw,mhtsr,bfgvx,ypouj,inea_,qz___,mtgap_c
+qpdvk,fheow,xcurb,zjly_,satim,gn___,my1
+jusbk,cerox,vwlpq,zgdf_,yitah,mn___,my10
+xloyq,uresf,jmdpb,kgih_,vtanw,cz___,my11
+zcihk,wtang,qdyxv,jfol_,pserb,mu___,my12
+zcidx,gnath,qwfyv,jbom_,uresp,kl___,my13
+qhidk,asntu,zxcvw,jyol_,fgerp,bm___,my14a
+qhidk,gnatu,zvwcx,jyol_,fserp,bm___,my14b
+khiwj,gnatf,qbvox,mulz_,dsery,cp___,my15
+qhidk,asntm,zxcvw,jyol_,fgerp,bu___,my16a
+qhidk,gnatm,zvwcx,jyol_,fserp,bu___,my16b
+zhigk,wnatd,xmbcv,jyol_,fserp,uq___,my17
+zhigk,wnatu,xvbcj,qyol_,fserp,md___,my18
+qhigu,asntm,zxcvb,jyol_,fwerp,kd___,my19
+ksubq,niaty,zxlgw,jphm_,freoc,vd___,my2
+qmubk,aserw,zxcvy,jghd_,foitn,lp___,my20
+qpmbk,asery,zxcvw,jgul_,fitno,hd___,my21
+qmofv,uderb,jpylw,zkic_,htans,xg___,my22
+psady,creth,klumx,wvgb_,znoif,qj___,my3
+vurpj,beaok,xymsq,zdlc_,wnitg,fh___,my4
+jcobz,preuf,kmwdv,qgns_,yitah,xl___,my5
+jhcwk,yserv,xfudq,zpon_,btaim,gl___,my6
+jlocq,fresv,zwpmx,khid_,bnaty,ug___,my7a
+jlopz,fresx,qmwcv,khid_,bnaty,ug___,my7b
+kpumx,dserw,zbylj,ofig_,vnath,qc___,my8
+jlofq,uresg,kmypw,vhid_,bnatc,zx___,my9
+qwudp,asetg,zxcvb,jfyl_,hniro,km___,niro
+kcdgz,fteav,xbwsq,jurl_,ynioh,pm___,normal-l
+qwdfk,asetg,zxcvb,jurl_,ynioh,pm___,norman
+kcdgz,fteav,xbwsq,jurh_,moinp,yl___,norman-lr
+qfmlw,astnr,zxcvg,yuobj,ideh_,pk___,qfmlwy
+qfmlw,dstnr,zvgcx,yuobj,iaeh_,pk___,qfmlwy
+qgmlw,astnr,zxcvj,byuf_,ideoh,kp___,qgmlwb
+qgmlw,dstnr,zxcfj,byuv_,iaeoh,kp___,qgmlwb
+qgmlw,astnr,zxcvj,yfub_,ideoh,kp___,qgmlwy
+qwerf,asdtg,zxcvb,jylk_,huoip,nm___,qwerf
+qwert,asdfg,zxcvb,yuio_,hjklp,nm___,qwerty
+qwldp,asrtg,zxcvj,kmuy_,fneio,bh___,soul
+tnwml,sgxjf,eadio,cbpr_,kqzvh,yu___,tnwmlc
+qdrwb,ashtg,zxmcv,jfup_,yneoi,kl___,workman
+qwsf_,uared,zxcvb,kgnyj,lotim,ph___,

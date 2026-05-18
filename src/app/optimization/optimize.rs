@@ -47,10 +47,10 @@ pub fn optimize(
             p.individuals
                 .iter()
                 .sorted_unstable_by(|a, b| b.fitness.total_cmp(&a.fitness))
-                .take(1)
+                .take(3)
         })
         .sorted_unstable_by(|a, b| b.fitness.total_cmp(&a.fitness))
-        .take(10)
+        .take(20)
         .map(|ind| {
             let score = ind.state.as_ref().unwrap().clone();
             (Layout::from_keys(&ind.genome), score)

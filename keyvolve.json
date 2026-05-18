@@ -16,8 +16,8 @@
     "bigramSwitchPenalty": 1.5,
     "balancePenalty": 1.5,
     "alternationPenalty": 0.25,
-    "-blocked": [19],
-    "-allowed": {
+    "blocked": [19],
+    "allowed": {
       "e": [6, 7, 8],
       "t": [1, 2, 3],
       "a": [2, 6, 7, 8],
@@ -29,7 +29,7 @@
       "h": [1, 2, 3],
       "c": [1, 2, 3]
     },
-    "-rolls": ["th", "er"]
+    "rolls": ["th", "er"]
   },
 
   "ga": {
@@ -37,7 +37,7 @@
     "populationSize": 128,
     "pools": 256,
     "randomRatio": 0.25,
-    "seedMutation": 4
+    "seedMutation": 0
   },
 
   "synthesise": {
