@@ -13,21 +13,23 @@
   "layouts": "data/seed.csv",
   "optimization": {
     "output": "data/layouts.csv",
-    "bigramSwitchPenalty": 1.5,
+    "bigramSwitchPenalty": 3.0,
     "balancePenalty": 1.5,
     "alternationPenalty": 0.25,
     "blocked": [19],
+    "-allowed": {
+      "h": [1, 2, 3],
+      "c": [1, 2, 3]
+    },
     "allowed": {
       "e": [6, 7, 8],
-      "t": [1, 2, 3],
+      "t": [1, 2, 6, 7, 8],
       "a": [2, 6, 7, 8],
       "o": [2, 6, 7, 8],
       "i": [2, 6, 7, 8],
-      "n": [1, 2, 3, 6, 7, 8, 12, 13],
+      "n": [1, 2, 6, 7, 8],
       "r": [2, 6, 7, 8],
-      "s": [1, 2, 3, 6, 7, 8],
-      "h": [1, 2, 3],
-      "c": [1, 2, 3]
+      "s": [1, 2, 6, 7, 8]
     },
     "rolls": ["th", "er"]
   },
@@ -37,7 +39,7 @@
     "populationSize": 128,
     "pools": 256,
     "randomRatio": 0.25,
-    "seedMutation": 0
+    "seedMutation": 4
   },
 
   "synthesise": {
