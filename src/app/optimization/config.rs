@@ -129,7 +129,12 @@ impl Default for OptimizationConfig {
 impl OptimizationConfig {
     /// Check whether placing `ch` at `slot` is permitted.
     /// Letters with no `allowed` entry are unconstrained.
+    /// Frozen chars always stay at their pinned slot and ignore `allowed` constraints.
     pub fn is_slot_allowed(&self, ch: char, slot: u8) -> bool {
+        if let Some(&frozen_slot) = self.frozen.get(&ch) {
+            return slot == frozen_slot;
+        }
+
         self.allowed
             .get(&ch)
             .is_none_or(|slots| slots.contains(&slot))
@@ -191,6 +196,17 @@ mod tests {
         assert!(cfg.is_slot_allowed('a', 0));
         assert!(cfg.is_slot_allowed('a', 19)); // mirrored
         assert!(!cfg.is_slot_allowed('a', 1));
+    }
+
+    #[test]
+    fn is_slot_valid_frozen_ignores_allowed() {
+        let mut cfg = OptimizationConfig::default();
+        cfg.frozen.insert('a', 4);
+        cfg.allowed.insert('a', expand_half(&[0]));
+
+        assert!(cfg.is_slot_allowed('a', 4));
+        assert!(!cfg.is_slot_allowed('a', 0));
+        assert!(!cfg.is_slot_allowed('a', 19));
     }
 
     #[test]
