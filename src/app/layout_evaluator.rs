@@ -3,12 +3,13 @@ use itertools::Itertools;
 use rustc_hash::FxHashMap;
 
 /// Evaluates layouts by scoring words against a precomputed bigram effort table.
+#[derive(Clone)]
 pub struct LayoutEvaluator {
     /// Flat bigram effort map: (from_key, to_key) → effort value.
     pairs: FxHashMap<(u8, u8), f64>,
 
     /// Per-switch effort multiplier; `1.0` means no penalty, `1.5` means +50%.
-    switch_effort_penalty: f64,
+    bigram_switch_penalty: f64,
 
     /// Max multiplier for extreme hand imbalance.
     balance_penalty: f64,
@@ -21,22 +22,28 @@ pub struct LayoutEvaluator {
 }
 
 impl LayoutEvaluator {
-    /// Build from keyboard config and corpus. Groups are 1-based → `efforts[group - 1]`.
-    pub fn new(keyboard: &Keyboard, words: Vec<String>) -> Self {
+    /// Build from keyboard config, corpus, and penalty coefficients.
+    pub fn new(
+        keyboard: &Keyboard,
+        words: Vec<String>,
+        bigram_switch_penalty: f64,
+        balance_penalty: f64,
+        alternation_penalty: f64,
+    ) -> Self {
         let mut pairs = FxHashMap::default();
 
         for (from, targets) in &keyboard.pairs {
             for (to, group) in targets {
-                let effort = keyboard.efforts[group - 1];
+                let effort = keyboard.efforts[*group];
                 pairs.insert((*from, *to), effort);
             }
         }
 
         LayoutEvaluator {
             pairs,
-            switch_effort_penalty: keyboard.switch_effort_penalty,
-            balance_penalty: keyboard.balance_penalty,
-            alternation_penalty: keyboard.alternation_penalty,
+            bigram_switch_penalty,
+            balance_penalty,
+            alternation_penalty,
             words,
         }
     }
@@ -74,22 +81,22 @@ impl LayoutEvaluator {
                 let a_left = ka < 15;
                 let b_left = kb < 15;
 
-                let (effort, switches) = if a_left == b_left {
+                let (effort, bigram_switches) = if a_left == b_left {
                     (self.lookup(ka, kb), 0)
                 } else {
                     // When hands alternate, key `a` was already counted in the
                     // previous iteration.  We charge the self-effort of key `b`
                     // here because the new hand is starting a fresh sequence
                     // (analogous to the first-letter cost above), multiplied by
-                    // `switch_effort_penalty` so `1.0` means no extra cost.
-                    (self.lookup(kb, kb) * self.switch_effort_penalty, 1)
+                    // `bigram_switch_penalty` so `1.0` means no extra cost.
+                    (self.lookup(kb, kb) * self.bigram_switch_penalty, 1)
                 };
 
                 // count efforts on the "to" key, since "from" was already counted in the previous iteration
                 let bigram = ScoreResult {
                     effort,
                     fitness: 0.0,
-                    switches,
+                    bigram_switches,
                     left_count: b_left as u32,
                     right_count: (!b_left) as u32,
                     left_effort: if b_left { effort } else { 0. },
@@ -116,7 +123,7 @@ impl LayoutEvaluator {
             self.balance_penalty,
         );
         result.fitness *= switch_factor(
-            result.switches,
+            result.bigram_switches,
             result.left_count + result.right_count,
             self.alternation_penalty,
         );
@@ -166,7 +173,7 @@ mod tests {
 
     #[test]
     fn score_word_returns_zero_score_for_empty_input() {
-        let evaluator = LayoutEvaluator::new(&test_keyboard(), vec![]);
+        let evaluator = LayoutEvaluator::new(&test_keyboard(), vec![], 1.5, 2.0, 0.0);
 
         let score = evaluator.score_word("", &test_keys());
 
@@ -174,20 +181,20 @@ mod tests {
         assert_close(score.fitness, 0.0);
         assert_eq!(score.left_count, 0);
         assert_eq!(score.right_count, 0);
-        assert_eq!(score.switches, 0);
+        assert_eq!(score.bigram_switches, 0);
         assert_close(score.left_effort, 0.0);
         assert_close(score.right_effort, 0.0);
     }
 
     #[test]
     fn score_word_adds_pair_effort_to_same_hand() {
-        let evaluator = LayoutEvaluator::new(&test_keyboard(), vec![]);
+        let evaluator = LayoutEvaluator::new(&test_keyboard(), vec![], 1.5, 2.0, 0.0);
 
         let score = evaluator.score_word("ab", &test_keys());
 
         assert_eq!(score.left_count, 2);
         assert_eq!(score.right_count, 0);
-        assert_eq!(score.switches, 0);
+        assert_eq!(score.bigram_switches, 0);
         assert_close(score.effort, 3.0);
         assert_close(score.fitness, 0.0);
         assert_close(score.left_effort, 3.0);
@@ -196,13 +203,13 @@ mod tests {
 
     #[test]
     fn score_word_uses_pair_table_for_repeated_key() {
-        let evaluator = LayoutEvaluator::new(&test_keyboard(), vec![]);
+        let evaluator = LayoutEvaluator::new(&test_keyboard(), vec![], 1.5, 2.0, 0.0);
 
         let score = evaluator.score_word("aa", &test_keys());
 
         assert_eq!(score.left_count, 2);
         assert_eq!(score.right_count, 0);
-        assert_eq!(score.switches, 0);
+        assert_eq!(score.bigram_switches, 0);
         assert_close(score.effort, 2.0);
         assert_close(score.fitness, 0.0);
         assert_close(score.left_effort, 2.0);
@@ -211,13 +218,13 @@ mod tests {
 
     #[test]
     fn score_word_charges_self_effort_on_hand_switch() {
-        let evaluator = LayoutEvaluator::new(&test_keyboard(), vec![]);
+        let evaluator = LayoutEvaluator::new(&test_keyboard(), vec![], 1.5, 2.0, 0.0);
 
         let score = evaluator.score_word("ac", &test_keys());
 
         assert_eq!(score.left_count, 1);
         assert_eq!(score.right_count, 1);
-        assert_eq!(score.switches, 1);
+        assert_eq!(score.bigram_switches, 1);
         assert_close(score.effort, 2.5);
         assert_close(score.fitness, 0.0);
         assert_close(score.left_effort, 1.0);
@@ -225,41 +232,43 @@ mod tests {
     }
 
     #[test]
-    fn score_word_zero_switch_effort_penalty_removes_switch_cost() {
+    fn score_word_zero_bigram_switch_penalty_removes_switch_cost() {
         let keyboard = Keyboard::new(
             json!({
-                "switchEffortPenalty": 0.0,
-                "balancePenalty": 2.0,
-                "alternationPenalty": 0.0,
                 "efforts": [1.0, 2.0],
                 "pairs": {
-                    "0": {"0": 1, "1": 2},
-                    "1": {"1": 1, "0": 2}
+                    "0": {"0": 0, "1": 1},
+                    "1": {"1": 0, "0": 1}
                 }
             })
             .to_string(),
         );
-        let evaluator = LayoutEvaluator::new(&keyboard, vec![]);
+        let evaluator = LayoutEvaluator::new(&keyboard, vec![], 0.0, 2.0, 0.0);
 
         let score = evaluator.score_word("ac", &test_keys());
 
         assert_close(score.effort, 1.0);
         assert_close(score.fitness, 0.0);
-        assert_eq!(score.switches, 1);
+        assert_eq!(score.bigram_switches, 1);
         assert_close(score.right_effort, 0.0);
     }
 
     #[test]
     fn score_corpus_applies_balance_penalty_to_aggregated_effort() {
-        let evaluator =
-            LayoutEvaluator::new(&test_keyboard(), vec!["ab".to_string(), "ac".to_string()]);
+        let evaluator = LayoutEvaluator::new(
+            &test_keyboard(),
+            vec!["ab".to_string(), "ac".to_string()],
+            1.5,
+            2.0,
+            0.0,
+        );
         let keys = test_keys();
 
         let score = evaluator.score_corpus(&keys);
 
         assert_eq!(score.left_count, 3);
         assert_eq!(score.right_count, 1);
-        assert_eq!(score.switches, 1);
+        assert_eq!(score.bigram_switches, 1);
         assert_close(score.left_effort, 4.0);
         assert_close(score.right_effort, 1.5);
         assert_close(score.effort, 5.5);
@@ -315,18 +324,18 @@ mod tests {
         let evaluator = LayoutEvaluator::new(
             &Keyboard::new(
                 json!({
-                    "switchEffortPenalty": 1.5,
-                    "balancePenalty": 2.0,
-                    "alternationPenalty": 0.5,
                     "efforts": [1.0, 2.0, 3.0, 5.0],
                     "pairs": {
-                        "0": {"0": 1, "1": 2},
-                        "1": {"1": 3, "0": 4}
+                        "0": {"0": 0, "1": 1},
+                        "1": {"1": 2, "0": 3}
                     }
                 })
                 .to_string(),
             ),
             vec!["ab".to_string(), "ac".to_string()],
+            1.5,
+            2.0,
+            0.5,
         );
 
         let score = evaluator.score_corpus(&test_keys());
@@ -338,13 +347,10 @@ mod tests {
     fn test_keyboard() -> Keyboard {
         Keyboard::new(
             json!({
-                "switchEffortPenalty": 1.5,
-                "balancePenalty": 2.0,
-                "alternationPenalty": 0.0,
                 "efforts": [1.0, 2.0, 3.0, 5.0],
                 "pairs": {
-                    "0": {"0": 1, "1": 2},
-                    "1": {"1": 3, "0": 4}
+                    "0": {"0": 0, "1": 1},
+                    "1": {"1": 2, "0": 3}
                 }
             })
             .to_string(),

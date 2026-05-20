@@ -1,3 +1,4 @@
+use crate::app::OptimizationConfig;
 use crate::app::merge::MergeConfig;
 use crate::app::synthesise::SynthesiseConfig;
 use serde::Deserialize;
@@ -9,7 +10,7 @@ pub struct Config {
     /// keyboard json settings
     pub keyboard: Option<PathBuf>,
 
-    /// layouts csv file
+    /// Input layouts csv file, can be used as a seed
     pub layouts: Option<PathBuf>,
 
     /// sample text file
@@ -17,10 +18,6 @@ pub struct Config {
 
     /// darwin config for the genetic algorithm
     pub ga: darwin::Config<char>,
-
-    /// seed layouts in semicolon format, e.g. "jpdmq;eaurv;xyblz;khoc_;gnsit;wf___"
-    #[serde(default)]
-    pub seed: Vec<String>,
 
     /// mode of operation: optimize, evaluate, or synthesise
     pub mode: Mode,
@@ -32,6 +29,9 @@ pub struct Config {
     /// settings for `Mode::Merge`
     #[serde(default)]
     pub merge: MergeConfig,
+
+    /// frozen/blocked key constraints for `Mode::Optimize`
+    pub optimization: OptimizationConfig,
 }
 
 #[derive(Debug, Default, Clone, Deserialize, PartialEq)]

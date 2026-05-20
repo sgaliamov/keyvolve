@@ -1,7 +1,7 @@
 [package]
 edition = "2024"
 name = "keyvolve"
-version = "0.1.2"
+version = "0.1.3"
 
 [dependencies]
 cliffa = {path = "cliffa"}
@@ -21,9 +21,6 @@ serde = {version = "1.0.228", features = [
 serde_json = "1.0.149" # Json support.
 thiserror = "2.0.18" # Errors.
 tracing = "0.1.44" # Logging library.
-
-[dev-dependencies]
-spectral = "0.6.0" # Fluent assertions.
 
 [workspace]
 members = ["cliffa", "darwin"]

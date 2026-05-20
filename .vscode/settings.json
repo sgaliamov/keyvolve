@@ -9,8 +9,11 @@
     "hierholzer",
     "keyvolve",
     "miette",
+    "overseeding",
     "synthesise",
-    "synthesised"
+    "synthesised",
+    "unplace",
+    "unplacing"
   ],
   "chat.tools.terminal.autoApprove": {
     ".\\scripts\\test.ps1": true,

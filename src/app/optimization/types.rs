@@ -1,4 +1,7 @@
+use crate::app::OptimizationConfig;
+use crate::app::optimization::OptimizationCache;
 use crate::{app::LayoutEvaluator, models::ScoreResult};
+use cliffa::cli::AppHandle;
 
 /// Genome: 30 chars occupying physical keyboard slots by index; `` ` `` = empty slot.
 pub type KeysGenome = Vec<char>;
@@ -6,6 +9,14 @@ pub type KeysGenome = Vec<char>;
 /// Individual in the GA population.
 pub type KeysIndividual = darwin::Individual<char, ScoreResult>;
 
+/// Shared state threaded through all GA callbacks.
+#[derive(Clone)]
+pub struct OptimizerState {
+    pub evaluator: LayoutEvaluator,
+    pub app: AppHandle,
+    pub optimization: OptimizationConfig,
+    pub cache: OptimizationCache,
+}
+
 /// GA context for layout optimization.
-pub type GaContext<'a> =
-    darwin::Context<'a, char, (LayoutEvaluator, cliffa::cli::AppHandle), ScoreResult>;
+pub type GaContext<'a> = darwin::Context<'a, char, OptimizerState, ScoreResult>;

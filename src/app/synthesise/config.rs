@@ -5,6 +5,9 @@ use std::path::PathBuf;
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SynthesiseConfig {
+    /// input source text path
+    pub text: Option<PathBuf>,
+
     /// output stem path — emits `<output>.csv` and `<output>.txt`
     pub output: Option<PathBuf>,
 
@@ -36,6 +39,7 @@ pub(super) fn default_max_word_len() -> usize {
 impl Default for SynthesiseConfig {
     fn default() -> Self {
         Self {
+            text: None,
             output: None,
             target: default_target(),
             min_frequency: default_min_freq(),
