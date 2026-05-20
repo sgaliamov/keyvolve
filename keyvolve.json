@@ -16,12 +16,12 @@
     "bigramSwitchPenalty": 3.0,
     "balancePenalty": 1.5,
     "alternationPenalty": 0.25,
-    "blocked": [19],
+    "-blocked": [19],
     "-allowed": {
       "h": [1, 2, 3],
       "c": [1, 2, 3]
     },
-    "allowed": {
+    "`allowed": {
       "e": [6, 7, 8],
       "t": [1, 2, 6, 7, 8],
       "a": [2, 6, 7, 8],
