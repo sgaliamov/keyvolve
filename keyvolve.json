@@ -10,20 +10,19 @@
 
   "merge": { "input": "data/samples", "output": "data/samples/merged.txt" },
 
-  "layouts": "data/seed.csv",
+  ",layouts": "data/seed.csv",
   "optimization": {
     "output": "data/layouts.csv",
     "bigramSwitchPenalty": 3.0,
     "balancePenalty": 1.5,
     "alternationPenalty": 0.25,
     "-blocked": [19],
-    "-allowed": {
-      "h": [1, 2, 3],
-      "c": [1, 2, 3]
-    },
+    "-allowed": {},
     "`allowed": {
       "e": [6, 7, 8],
       "t": [1, 2, 6, 7, 8],
+      "h": [1, 2, 6, 7, 8, 13],
+      "c": [1, 2, 6, 7, 8, 13],
       "a": [2, 6, 7, 8],
       "o": [2, 6, 7, 8],
       "i": [2, 6, 7, 8],
@@ -31,7 +30,7 @@
       "r": [2, 6, 7, 8],
       "s": [1, 2, 6, 7, 8]
     },
-    "rolls": ["th", "er"]
+    "`rolls": ["th", "er"]
   },
 
   "ga": {
