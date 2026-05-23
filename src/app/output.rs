@@ -7,11 +7,11 @@ use tracing::info;
 /// Creates the file with a header row if it doesn't exist yet.
 pub fn write_layouts(
     layouts: &[(Layout, ScoreResult)],
-    top_n: usize,
+    to_print: usize,
     output_path: Option<&Path>,
     overwrite: bool,
 ) -> Result<()> {
-    for (layout, score) in layouts.iter().take(top_n) {
+    for (layout, score) in layouts.iter().take(to_print) {
         println!("{layout} | {score}");
     }
 
