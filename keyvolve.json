@@ -17,9 +17,10 @@
     "balancePenalty": 1.5,
     "alternationPenalty": 0.25,
     "-blocked": [19],
-    "-allowed": {},
+    "allowed": {
+      "e": [6, 7, 8]
+    },
     "`allowed": {
-      "e": [6, 7, 8],
       "t": [1, 2, 6, 7, 8],
       "h": [1, 2, 6, 7, 8, 13],
       "c": [1, 2, 6, 7, 8, 13],
