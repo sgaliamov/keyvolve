@@ -54,8 +54,7 @@ pub fn synthesise(cfg: SynthesiseConfig) -> Result<()> {
 
     tracing::info!("Building corpus");
     let words = build_corpus(&scaled, cfg.max_word_len);
-    let corpus_path = output.with_extension("txt");
-    write_corpus(&words, &corpus_path)?;
+    write_corpus(&words, output)?;
 
     // Letter frequencies: original vs synthesised in one CSV.
     let freq_dir = output.parent().unwrap_or(output);
@@ -71,7 +70,7 @@ pub fn synthesise(cfg: SynthesiseConfig) -> Result<()> {
     tracing::info!(
         csv = %bigrams_path.display(),
         aggregated_csv = %aggregated_path.display(),
-        corpus = %corpus_path.display(),
+        corpus = %output.display(),
         letter_freq = %letter_freq_path.display(),
         words = words.len(),
         "Synthesise complete"
