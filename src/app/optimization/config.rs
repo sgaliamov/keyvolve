@@ -1,3 +1,4 @@
+use crate::models::slot_row;
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::Deserialize;
 use std::path::PathBuf;
@@ -40,12 +41,6 @@ where
 #[inline]
 fn slot_col(slot: u8) -> u8 {
     slot % 5
-}
-
-/// Row index (0 = top, 2 = bottom).
-#[inline]
-fn slot_row(slot: u8) -> u8 {
-    (slot % 15) / 5
 }
 
 /// True when two slots are on the same hand, 1–2 columns apart, and within one row of each other.

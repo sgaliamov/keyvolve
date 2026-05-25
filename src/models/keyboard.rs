@@ -3,6 +3,12 @@ use rustc_hash::FxHashMap;
 use serde::Deserialize;
 use std::path::Path;
 
+/// Row index within a hand (0 = top, 2 = bottom).
+#[inline]
+pub fn slot_row(slot: u8) -> u8 {
+    (slot % 15) / 5
+}
+
 /// Represents the keyboard configuration loaded from `keyboard.json`.
 #[derive(Debug, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]

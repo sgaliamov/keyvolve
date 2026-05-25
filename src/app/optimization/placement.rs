@@ -1,5 +1,6 @@
 use crate::app::EMPTY_SLOT;
 use crate::app::optimization::{OptimizationCache, OptimizationConfig, are_roll_neighbors};
+use crate::models::slot_row;
 use rand::seq::SliceRandom;
 use rustc_hash::FxHashSet;
 
@@ -188,7 +189,7 @@ pub fn unplace_units(
 /// Letters within the 5-slot row must form a single unbroken block; empties only at edges.
 pub fn is_contiguous_slot(genome: &[char], slot: u8) -> bool {
     let hand = slot / 15;
-    let row = (slot % 15) / 5;
+    let row = slot_row(slot);
     let col = slot % 5;
     let row_start = hand * 15 + row * 5;
     let mut min_col = u8::MAX;

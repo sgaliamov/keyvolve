@@ -1,4 +1,4 @@
-use crate::models::{Keyboard, Keys, ScoreResult};
+use crate::models::{Keyboard, Keys, ScoreResult, slot_row};
 use itertools::Itertools;
 use rustc_hash::FxHashMap;
 
@@ -149,12 +149,6 @@ impl LayoutEvaluator {
     fn lookup(&self, from: u8, to: u8) -> f64 {
         *self.pairs.get(&(from, to)).unwrap()
     }
-}
-
-/// Row index within a hand (0 = top, 2 = bottom).
-#[inline]
-fn slot_row(slot: u8) -> u8 {
-    (slot % 15) / 5
 }
 
 /// Weighted same-hand row-switch cost. Adjacent-row move = 1, jump-over-row = 2.
