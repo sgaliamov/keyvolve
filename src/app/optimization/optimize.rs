@@ -5,7 +5,7 @@ use darwin::{GeneticAlgorithm, Individual, NoopCrossover, Pool};
 use itertools::Itertools;
 use miette::Result;
 
-use super::{OptimizerState, callback, corpus_evaluator, generate, mutate};
+use super::{OptimizerState, callback, evaluator as evaluator_fn, generate, mutate};
 
 pub fn optimize(
     evaluator: LayoutEvaluator,
@@ -20,7 +20,7 @@ pub fn optimize(
         generate,
         mutate,
         NoopCrossover,
-        evaluator,
+        evaluator_fn,
         callback,
     );
 

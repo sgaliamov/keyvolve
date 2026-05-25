@@ -289,6 +289,7 @@ mod tests {
                 })
                 .collect(),
             allowed: FxHashMap::default(),
+            input: None,
             output: None,
         }
     }
