@@ -16,6 +16,9 @@ pub struct ScoreResult {
     /// Number of hand switches.
     pub bigram_switches: u32,
 
+    /// Weighted row-switch cost: adjacent-row move = 1, jump-over-row = 2.
+    pub row_switch_cost: u32,
+
     /// Effort accumulated on the left hand.
     pub left_effort: f64,
 
@@ -58,10 +61,18 @@ impl ScoreResult {
         )
     }
 
+    /// Share of same-hand transitions that switch rows, weighted by jump severity.
+    pub fn row_switch_ratio(&self) -> f64 {
+        ratio(
+            self.row_switch_cost as f64,
+            self.left_count.saturating_sub(1) as f64 + self.right_count.saturating_sub(1) as f64,
+        )
+    }
+
     /// Serialize as a CSV row (no header).
     pub fn to_csv(&self) -> String {
         format!(
-            "{:.4}, {:.2}, {:.2}, {:.2}, {:.2}%, {}, {:.2}%, {:.2}, {:.2}%, {}, {:.2}%, {}, {:.2}%",
+            "{:.4}, {:.2}, {:.2}, {:.2}, {:.2}%, {}, {:.2}%, {:.2}, {:.2}%, {}, {:.2}%, {}, {:.2}%, {}, {:.2}%",
             self.fitness,
             if self.right_count == 0 {
                 0.0
@@ -78,13 +89,15 @@ impl ScoreResult {
             self.right_count,
             self.right_count_ratio() * 100.0,
             self.bigram_switches,
-            self.switch_ratio() * 100.0
+            self.switch_ratio() * 100.0,
+            self.row_switch_cost,
+            self.row_switch_ratio() * 100.0
         )
     }
 
     /// CSV header matching [`to_csv`] column order.
     pub fn csv_header() -> &'static str {
-        "fitness, count_ratio, effort, left_effort, left_effort_ratio, left_count, left_count_ratio, right_effort, right_effort_ratio, right_count, right_count_ratio, bigram_switches, switch_ratio"
+        "fitness, count_ratio, effort, left_effort, left_effort_ratio, left_count, left_count_ratio, right_effort, right_effort_ratio, right_count, right_count_ratio, bigram_switches, switch_ratio, row_switch_cost, row_switch_ratio"
     }
 }
 
@@ -92,7 +105,7 @@ impl std::fmt::Display for ScoreResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "φ {:.4} | L/R {:.2} | ε {:.2} | L {:.2} ({}, {:.1}%) | R {:.2} ({}, {:.1}%) | ⇄ {} ({:.2}%)",
+            "φ {:.4} | L/R {:.2} | ε {:.2} | L {:.2} ({}, {:.1}%) | R {:.2} ({}, {:.1}%) | ⇄ {} ({:.2}%) | ↕ {} ({:.2}%)",
             self.fitness,
             if self.right_count == 0 {
                 0.0
@@ -108,6 +121,8 @@ impl std::fmt::Display for ScoreResult {
             self.right_effort_ratio() * 100.0,
             self.bigram_switches,
             self.switch_ratio() * 100.0,
+            self.row_switch_cost,
+            self.row_switch_ratio() * 100.0,
         )
     }
 }
@@ -127,6 +142,7 @@ impl std::ops::Add for ScoreResult {
             left_count: self.left_count + other.left_count,
             right_count: self.right_count + other.right_count,
             bigram_switches: self.bigram_switches + other.bigram_switches,
+            row_switch_cost: self.row_switch_cost + other.row_switch_cost,
             left_effort: self.left_effort + other.left_effort,
             right_effort: self.right_effort + other.right_effort,
         }

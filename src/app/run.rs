@@ -36,6 +36,7 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
                 opt.bigram_switch_penalty,
                 opt.balance_penalty,
                 opt.alternation_penalty,
+                opt.row_switch_penalty,
             );
 
             match mode {

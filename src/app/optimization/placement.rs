@@ -279,6 +279,7 @@ mod tests {
             bigram_switch_penalty: 1.5,
             balance_penalty: 2.0,
             alternation_penalty: 0.25,
+            row_switch_penalty: 0.25,
             frozen: FxHashMap::default(),
             blocked: blocked.iter().copied().collect(),
             rolls: rolls
