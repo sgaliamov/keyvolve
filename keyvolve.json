@@ -6,10 +6,13 @@
 
   "keyboard": "data/keyboard.json",
   "text": "data/synthesised",
+  "layouts": "data/layouts.csv",
 
-  "merge": { "input": "data/samples", "output": "data/samples/merged.txt" },
+  "merge": {
+    "input": "data/samples",
+    "output": "data/samples/merged.txt"
+  },
 
-  ",layouts": "data/seed.csv",
   "optimization": {
     "input": "data/layouts.csv",
     "output": "data/layouts.csv",

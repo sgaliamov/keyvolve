@@ -1,7 +1,7 @@
 param (
     [switch]
     [alias('d')]
-    $debug,
+    $dev,
     [Parameter(ValueFromRemainingArguments=$true)]
     [string[]]
     $AppArgs
@@ -9,7 +9,7 @@ param (
 
 $ErrorActionPreference = 'Stop'
 
-if ($debug) {
+if ($dev) {
     $Env:RUST_BACKTRACE = "full"
     $Env:RAYON_NUM_THREADS = 1
 

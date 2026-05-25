@@ -20,6 +20,7 @@ pub struct Config {
     pub ga: darwin::Config<char>,
 
     /// mode of operation: optimize, evaluate, or synthesise
+    #[serde(default)]
     pub mode: Mode,
 
     /// settings for `Mode::Synthesise`
