@@ -21,30 +21,27 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
             synthesise::synthesise(cfg.synthesise)?;
         }
         mode => {
-            let words = std::fs::read_to_string(cfg.text.unwrap())
-                .into_diagnostic()
-                .wrap_err("Failed to read text file")?
-                .split_whitespace()
-                .map(|s| s.to_string())
-                .collect::<Vec<_>>();
-
-            let keyboard = Keyboard::load(cfg.keyboard.unwrap())?;
+            let keyboard = Keyboard::load(cfg.keyboard)?;
             let opt = cfg.optimization;
-            let evaluator = LayoutEvaluator::new(
-                &keyboard,
-                words,
-                opt.bigram_switch_penalty,
-                opt.balance_penalty,
-                opt.alternation_penalty,
-                opt.row_switch_penalty,
-            );
 
             match mode {
                 Mode::Evaluate => {
                     let eval = cfg.evaluate;
-                    let layouts_path = eval.input.clone().or(cfg.layouts.clone()).wrap_err(
-                        "Evaluate mode requires `evaluate.input` or top-level `layouts`",
-                    )?;
+                    let words = std::fs::read_to_string(&eval.text)
+                        .into_diagnostic()
+                        .wrap_err("Failed to read text file")?
+                        .split_whitespace()
+                        .map(|s| s.to_string())
+                        .collect::<Vec<_>>();
+                    let evaluator = LayoutEvaluator::new(
+                        &keyboard,
+                        words,
+                        opt.bigram_switch_penalty,
+                        opt.balance_penalty,
+                        opt.alternation_penalty,
+                        opt.row_switch_penalty,
+                    );
+                    let layouts_path = eval.input.clone();
                     let mut eval = eval;
                     if eval.output.is_none() {
                         eval.output = Some(layouts_path.clone());
@@ -54,6 +51,20 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
                     evaluate::evaluate(evaluator, layouts, &eval, app)?
                 }
                 Mode::Optimize => {
+                    let words = std::fs::read_to_string(&opt.text)
+                        .into_diagnostic()
+                        .wrap_err("Failed to read text file")?
+                        .split_whitespace()
+                        .map(|s| s.to_string())
+                        .collect::<Vec<_>>();
+                    let evaluator = LayoutEvaluator::new(
+                        &keyboard,
+                        words,
+                        opt.bigram_switch_penalty,
+                        opt.balance_penalty,
+                        opt.alternation_penalty,
+                        opt.row_switch_penalty,
+                    );
                     let mut ga = cfg.ga;
                     ga.ranges = vec![vec![(EMPTY_SLOT, 'z'); 30]];
                     let mut seed: Vec<_> = vec![];

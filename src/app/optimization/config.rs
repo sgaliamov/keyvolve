@@ -75,6 +75,9 @@ where
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct OptimizationConfig {
+    /// Input corpus text file used for optimization scoring.
+    pub text: PathBuf,
+
     /// Multiplier applied to per-switch self-effort; `1.0` = no penalty.
     pub bigram_switch_penalty: f64,
 
@@ -116,6 +119,7 @@ pub struct OptimizationConfig {
 impl Default for OptimizationConfig {
     fn default() -> Self {
         Self {
+            text: PathBuf::default(),
             bigram_switch_penalty: 1.5,
             balance_penalty: 2.0,
             alternation_penalty: 0.25,

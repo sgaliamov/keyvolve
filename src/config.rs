@@ -3,19 +3,12 @@ use crate::app::evaluate::EvaluateConfig;
 use crate::app::merge::MergeConfig;
 use crate::app::synthesise::SynthesiseConfig;
 use serde::Deserialize;
-use std::path::PathBuf;
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
     /// keyboard json settings
-    pub keyboard: Option<PathBuf>,
-
-    /// Input layouts csv file for evaluation.
-    pub layouts: Option<PathBuf>,
-
-    /// sample text file
-    pub text: Option<PathBuf>,
+    pub keyboard: std::path::PathBuf,
 
     /// darwin config for the genetic algorithm
     pub ga: darwin::Config<char>,

@@ -277,6 +277,7 @@ mod tests {
 
     fn test_opt(rolls: &[&str], blocked: &[u8]) -> OptimizationConfig {
         OptimizationConfig {
+            text: std::path::PathBuf::default(),
             bigram_switch_penalty: 1.5,
             balance_penalty: 2.0,
             alternation_penalty: 0.25,
