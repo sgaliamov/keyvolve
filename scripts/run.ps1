@@ -1,7 +1,10 @@
 param (
     [switch]
     [alias('d')]
-    $debug
+    $debug,
+    [Parameter(ValueFromRemainingArguments=$true)]
+    [string[]]
+    $AppArgs
 )
 
 $ErrorActionPreference = 'Stop'
@@ -12,7 +15,10 @@ if ($debug) {
 
     cargo build
     Clear-Host
-    cargo run
+
+    $cargoArgs = @('run')
+    if ($AppArgs -and $AppArgs.Count -gt 0) { $cargoArgs += '--'; $cargoArgs += $AppArgs }
+    & cargo @cargoArgs
 }
 else {
     # Set `BelowNormal` after the application started to be able to stop it with Ctrl+C.
@@ -34,7 +40,9 @@ else {
     Clear-Host
 
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
-    cargo run --release
+    $cargoArgs = @('run','--release')
+    if ($AppArgs -and $AppArgs.Count -gt 0) { $cargoArgs += '--'; $cargoArgs += $AppArgs }
+    & cargo @cargoArgs
 
     $sw.Stop()
     $minutes = [int][Math]::Floor($sw.Elapsed.TotalMinutes)
