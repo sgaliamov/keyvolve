@@ -1,5 +1,5 @@
 {
-  "mode": "optimize",
+  "1mode": "optimize",
   "-mode": "merge",
   "`mode": "evaluate",
   "_mode": "synthesise",

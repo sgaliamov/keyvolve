@@ -20,7 +20,7 @@ pub fn optimize(
         generate,
         mutate,
         NoopCrossover,
-        corpus_evaluator,
+        evaluator,
         callback,
     );
 

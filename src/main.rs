@@ -11,6 +11,7 @@ fn main() -> Result<()> {
     cli::Builder::default()
         .with_level(Level::INFO)
         .with_target(false)
+        .with_cli_alias("m", "mode")
         .with_time(false)
         .show_level(false)
         .run(app::run)
