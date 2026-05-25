@@ -17,6 +17,9 @@ pub struct LayoutEvaluator {
     /// Coefficient `k` for corpus-level alternation-rate penalty.
     alternation_penalty: f64,
 
+    /// Coefficient `k` for weighted same-hand row-switch penalty.
+    row_switch_penalty: f64,
+
     /// Corpus words to evaluate.
     words: Vec<String>,
 }
@@ -29,6 +32,7 @@ impl LayoutEvaluator {
         bigram_switch_penalty: f64,
         balance_penalty: f64,
         alternation_penalty: f64,
+        row_switch_penalty: f64,
     ) -> Self {
         let mut pairs = FxHashMap::default();
 
@@ -44,6 +48,7 @@ impl LayoutEvaluator {
             bigram_switch_penalty,
             balance_penalty,
             alternation_penalty,
+            row_switch_penalty,
             words,
         }
     }
@@ -81,15 +86,15 @@ impl LayoutEvaluator {
                 let a_left = ka < 15;
                 let b_left = kb < 15;
 
-                let (effort, bigram_switches) = if a_left == b_left {
-                    (self.lookup(ka, kb), 0)
+                let (effort, bigram_switches, row_switch_cost) = if a_left == b_left {
+                    (self.lookup(ka, kb), 0, row_switch_cost(ka, kb))
                 } else {
                     // When hands alternate, key `a` was already counted in the
                     // previous iteration.  We charge the self-effort of key `b`
                     // here because the new hand is starting a fresh sequence
                     // (analogous to the first-letter cost above), multiplied by
                     // `bigram_switch_penalty` so `1.0` means no extra cost.
-                    (self.lookup(kb, kb) * self.bigram_switch_penalty, 1)
+                    (self.lookup(kb, kb) * self.bigram_switch_penalty, 1, 0)
                 };
 
                 // count efforts on the "to" key, since "from" was already counted in the previous iteration
@@ -97,6 +102,7 @@ impl LayoutEvaluator {
                     effort,
                     fitness: 0.0,
                     bigram_switches,
+                    row_switch_cost,
                     left_count: b_left as u32,
                     right_count: (!b_left) as u32,
                     left_effort: if b_left { effort } else { 0. },
@@ -122,10 +128,16 @@ impl LayoutEvaluator {
             result.right_count.into(),
             self.balance_penalty,
         );
-        result.fitness *= switch_factor(
+        result.fitness *= linear_rate_penalty(
             result.bigram_switches,
             result.left_count + result.right_count,
             self.alternation_penalty,
+        );
+        // Same-hand row changes only: same row = 0, adjacent row = 1, top↔bottom jump = 2.
+        result.fitness *= linear_rate_penalty(
+            result.row_switch_cost,
+            result.left_count + result.right_count,
+            self.row_switch_penalty,
         );
         result.fitness = 1. / result.fitness * 1_000_000.; // lower effort → higher fitness
 
@@ -137,6 +149,18 @@ impl LayoutEvaluator {
     fn lookup(&self, from: u8, to: u8) -> f64 {
         *self.pairs.get(&(from, to)).unwrap()
     }
+}
+
+/// Row index within a hand (0 = top, 2 = bottom).
+#[inline]
+fn slot_row(slot: u8) -> u8 {
+    (slot % 15) / 5
+}
+
+/// Weighted same-hand row-switch cost. Adjacent-row move = 1, jump-over-row = 2.
+#[inline]
+fn row_switch_cost(from: u8, to: u8) -> u32 {
+    slot_row(from).abs_diff(slot_row(to)).into()
 }
 
 /// Multiplier ≥ 1 penalizing imbalanced effort. At 50/50 → 1.0, approaches `max` at extremes.
@@ -157,13 +181,14 @@ fn balance_factor(left: f64, right: f64, max: f64) -> f64 {
     max - ((max - 1.) / ((ratio - 1.).powi(2) + 1.))
 }
 
-/// Multiplier ≥ 1 penalizing high hand-switch rate. At zero switches → 1.0.
-fn switch_factor(switches: u32, presses: u32, k: f64) -> f64 {
+/// Linear corpus-level penalty `1 + k * (count / (presses - 1))`.
+/// Returns `1.0` when fewer than two presses exist, so no transition can happen.
+fn linear_rate_penalty(count: u32, presses: u32, k: f64) -> f64 {
     if presses <= 1 {
         return 1.0;
     }
 
-    1.0 + k * (switches as f64 / (presses - 1) as f64)
+    1.0 + k * (count as f64 / (presses - 1) as f64)
 }
 
 #[cfg(test)]
@@ -173,7 +198,7 @@ mod tests {
 
     #[test]
     fn score_word_returns_zero_score_for_empty_input() {
-        let evaluator = LayoutEvaluator::new(&test_keyboard(), vec![], 1.5, 2.0, 0.0);
+        let evaluator = LayoutEvaluator::new(&test_keyboard(), vec![], 1.5, 2.0, 0.0, 0.0);
 
         let score = evaluator.score_word("", &test_keys());
 
@@ -182,19 +207,21 @@ mod tests {
         assert_eq!(score.left_count, 0);
         assert_eq!(score.right_count, 0);
         assert_eq!(score.bigram_switches, 0);
+        assert_eq!(score.row_switch_cost, 0);
         assert_close(score.left_effort, 0.0);
         assert_close(score.right_effort, 0.0);
     }
 
     #[test]
     fn score_word_adds_pair_effort_to_same_hand() {
-        let evaluator = LayoutEvaluator::new(&test_keyboard(), vec![], 1.5, 2.0, 0.0);
+        let evaluator = LayoutEvaluator::new(&test_keyboard(), vec![], 1.5, 2.0, 0.0, 0.0);
 
         let score = evaluator.score_word("ab", &test_keys());
 
         assert_eq!(score.left_count, 2);
         assert_eq!(score.right_count, 0);
         assert_eq!(score.bigram_switches, 0);
+        assert_eq!(score.row_switch_cost, 0);
         assert_close(score.effort, 3.0);
         assert_close(score.fitness, 0.0);
         assert_close(score.left_effort, 3.0);
@@ -203,13 +230,14 @@ mod tests {
 
     #[test]
     fn score_word_uses_pair_table_for_repeated_key() {
-        let evaluator = LayoutEvaluator::new(&test_keyboard(), vec![], 1.5, 2.0, 0.0);
+        let evaluator = LayoutEvaluator::new(&test_keyboard(), vec![], 1.5, 2.0, 0.0, 0.0);
 
         let score = evaluator.score_word("aa", &test_keys());
 
         assert_eq!(score.left_count, 2);
         assert_eq!(score.right_count, 0);
         assert_eq!(score.bigram_switches, 0);
+        assert_eq!(score.row_switch_cost, 0);
         assert_close(score.effort, 2.0);
         assert_close(score.fitness, 0.0);
         assert_close(score.left_effort, 2.0);
@@ -218,13 +246,14 @@ mod tests {
 
     #[test]
     fn score_word_charges_self_effort_on_hand_switch() {
-        let evaluator = LayoutEvaluator::new(&test_keyboard(), vec![], 1.5, 2.0, 0.0);
+        let evaluator = LayoutEvaluator::new(&test_keyboard(), vec![], 1.5, 2.0, 0.0, 0.0);
 
         let score = evaluator.score_word("ac", &test_keys());
 
         assert_eq!(score.left_count, 1);
         assert_eq!(score.right_count, 1);
         assert_eq!(score.bigram_switches, 1);
+        assert_eq!(score.row_switch_cost, 0);
         assert_close(score.effort, 2.5);
         assert_close(score.fitness, 0.0);
         assert_close(score.left_effort, 1.0);
@@ -243,14 +272,39 @@ mod tests {
             })
             .to_string(),
         );
-        let evaluator = LayoutEvaluator::new(&keyboard, vec![], 0.0, 2.0, 0.0);
+        let evaluator = LayoutEvaluator::new(&keyboard, vec![], 0.0, 2.0, 0.0, 0.0);
 
         let score = evaluator.score_word("ac", &test_keys());
 
         assert_close(score.effort, 1.0);
         assert_close(score.fitness, 0.0);
         assert_eq!(score.bigram_switches, 1);
+        assert_eq!(score.row_switch_cost, 0);
         assert_close(score.right_effort, 0.0);
+    }
+
+    #[test]
+    fn score_word_counts_adjacent_same_hand_row_switch() {
+        let evaluator =
+            LayoutEvaluator::new(&row_switch_test_keyboard(), vec![], 1.5, 2.0, 0.0, 0.0);
+
+        let score = evaluator.score_word("ad", &test_keys());
+
+        assert_eq!(score.bigram_switches, 0);
+        assert_eq!(score.row_switch_cost, 1);
+        assert_close(score.effort, 3.0);
+    }
+
+    #[test]
+    fn score_word_counts_jump_row_switch_as_double() {
+        let evaluator =
+            LayoutEvaluator::new(&row_switch_test_keyboard(), vec![], 1.5, 2.0, 0.0, 0.0);
+
+        let score = evaluator.score_word("ae", &test_keys());
+
+        assert_eq!(score.bigram_switches, 0);
+        assert_eq!(score.row_switch_cost, 2);
+        assert_close(score.effort, 5.0);
     }
 
     #[test]
@@ -261,6 +315,7 @@ mod tests {
             1.5,
             2.0,
             0.0,
+            0.0,
         );
         let keys = test_keys();
 
@@ -269,6 +324,7 @@ mod tests {
         assert_eq!(score.left_count, 3);
         assert_eq!(score.right_count, 1);
         assert_eq!(score.bigram_switches, 1);
+        assert_eq!(score.row_switch_cost, 0);
         assert_close(score.left_effort, 4.0);
         assert_close(score.right_effort, 1.5);
         assert_close(score.effort, 5.5);
@@ -307,16 +363,16 @@ mod tests {
     }
 
     #[test]
-    fn switch_factor_returns_one_without_transitions() {
-        assert_close(switch_factor(0, 0, 0.5), 1.0);
-        assert_close(switch_factor(0, 1, 0.5), 1.0);
+    fn linear_rate_penalty_returns_one_without_transitions() {
+        assert_close(linear_rate_penalty(0, 0, 0.5), 1.0);
+        assert_close(linear_rate_penalty(0, 1, 0.5), 1.0);
     }
 
     #[test]
-    fn switch_factor_scales_with_switch_rate() {
-        assert_close(switch_factor(0, 3, 0.5), 1.0);
-        assert_close(switch_factor(1, 3, 0.5), 1.25);
-        assert_close(switch_factor(2, 3, 0.5), 1.5);
+    fn linear_rate_penalty_scales_with_transition_rate() {
+        assert_close(linear_rate_penalty(0, 3, 0.5), 1.0);
+        assert_close(linear_rate_penalty(1, 3, 0.5), 1.25);
+        assert_close(linear_rate_penalty(2, 3, 0.5), 1.5);
     }
 
     #[test]
@@ -336,11 +392,29 @@ mod tests {
             1.5,
             2.0,
             0.5,
+            0.0,
         );
 
         let score = evaluator.score_corpus(&test_keys());
 
         assert_close(score.fitness, 86580.09);
+    }
+
+    #[test]
+    fn score_corpus_applies_configured_row_switch_penalty() {
+        let evaluator = LayoutEvaluator::new(
+            &row_switch_test_keyboard(),
+            vec!["ad".to_string()],
+            1.5,
+            2.0,
+            0.0,
+            0.5,
+        );
+
+        let score = evaluator.score_corpus(&test_keys());
+
+        assert_eq!(score.row_switch_cost, 1);
+        assert_close(score.fitness, 111111.11);
     }
 
     /// Build minimal keyboard for evaluator tests using production JSON parsing.
@@ -357,9 +431,24 @@ mod tests {
         )
     }
 
+    /// Build keyboard that covers same-hand row transitions used by row-switch tests.
+    fn row_switch_test_keyboard() -> Keyboard {
+        Keyboard::new(
+            json!({
+                "efforts": [1.0, 2.0, 4.0],
+                "pairs": {
+                    "0": {"0": 0, "5": 1, "10": 2},
+                    "5": {"5": 0},
+                    "10": {"10": 0}
+                }
+            })
+            .to_string(),
+        )
+    }
+
     /// Build tiny layout for evaluator tests.
     fn test_keys() -> Keys {
-        FxHashMap::from_iter([('a', 0), ('b', 1), ('c', 19)])
+        FxHashMap::from_iter([('a', 0), ('b', 1), ('c', 19), ('d', 5), ('e', 10)])
     }
 
     /// Compare floats without drama.
