@@ -16,13 +16,13 @@
 
   "optimization": {
     "text": "data/synthesised",
-    "input": "data/seed.csv",
+    "-input": "data/seed.csv",
     "output": "data/layouts.csv",
     "-blocked": [19],
     "allowed": {
-      "e": [6, 7, 8]
     },
     "`allowed": {
+      "e": [6, 7, 8],
       "t": [1, 2, 6, 7, 8],
       "h": [1, 2, 6, 7, 8, 13],
       "c": [1, 2, 6, 7, 8, 13],
