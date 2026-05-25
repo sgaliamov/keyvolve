@@ -1,7 +1,7 @@
-use crate::app::OptimizationConfig;
 use crate::app::evaluate::EvaluateConfig;
 use crate::app::merge::MergeConfig;
 use crate::app::synthesise::SynthesiseConfig;
+use crate::app::{LayoutEvaluatorConfig, OptimizationConfig};
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]
@@ -24,6 +24,10 @@ pub struct Config {
     /// settings for `Mode::Evaluate`
     #[serde(default)]
     pub evaluate: EvaluateConfig,
+
+    /// Layout scoring settings shared by evaluation and optimization.
+    #[serde(default)]
+    pub evaluator: LayoutEvaluatorConfig,
 
     /// settings for `Mode::Merge`
     #[serde(default)]

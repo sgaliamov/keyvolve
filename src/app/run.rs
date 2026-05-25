@@ -1,11 +1,12 @@
 use crate::app::{evaluate, merge, synthesise};
 use crate::{
     Config, Mode,
-    app::{EMPTY_SLOT, LayoutEvaluator, optimize},
+    app::{EMPTY_SLOT, LayoutEvaluator, LayoutEvaluatorConfig, optimize},
     models::{Keyboard, Layout},
 };
 use cliffa::cli::AppHandle;
 use miette::{Context, IntoDiagnostic, Result};
+use std::path::Path;
 use tracing::{info, trace};
 
 /// Entry point called by the CLI builder after argument parsing.
@@ -22,25 +23,13 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
         }
         mode => {
             let keyboard = Keyboard::load(cfg.keyboard)?;
+            let evaluator_cfg = cfg.evaluator;
             let opt = cfg.optimization;
 
             match mode {
                 Mode::Evaluate => {
                     let eval = cfg.evaluate;
-                    let words = std::fs::read_to_string(&eval.text)
-                        .into_diagnostic()
-                        .wrap_err("Failed to read text file")?
-                        .split_whitespace()
-                        .map(|s| s.to_string())
-                        .collect::<Vec<_>>();
-                    let evaluator = LayoutEvaluator::new(
-                        &keyboard,
-                        words,
-                        opt.bigram_switch_penalty,
-                        opt.balance_penalty,
-                        opt.alternation_penalty,
-                        opt.row_switch_penalty,
-                    );
+                    let evaluator = build_evaluator(&keyboard, &eval.text, evaluator_cfg)?;
                     let layouts_path = eval.input.clone();
                     let mut eval = eval;
                     if eval.output.is_none() {
@@ -51,20 +40,7 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
                     evaluate::evaluate(evaluator, layouts, &eval, app)?
                 }
                 Mode::Optimize => {
-                    let words = std::fs::read_to_string(&opt.text)
-                        .into_diagnostic()
-                        .wrap_err("Failed to read text file")?
-                        .split_whitespace()
-                        .map(|s| s.to_string())
-                        .collect::<Vec<_>>();
-                    let evaluator = LayoutEvaluator::new(
-                        &keyboard,
-                        words,
-                        opt.bigram_switch_penalty,
-                        opt.balance_penalty,
-                        opt.alternation_penalty,
-                        opt.row_switch_penalty,
-                    );
+                    let evaluator = build_evaluator(&keyboard, &opt.text, evaluator_cfg)?;
                     let mut ga = cfg.ga;
                     ga.ranges = vec![vec![(EMPTY_SLOT, 'z'); 30]];
                     let mut seed: Vec<_> = vec![];
@@ -82,6 +58,26 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Build evaluator from keyboard, corpus file, and optimization penalties.
+fn build_evaluator(
+    keyboard: &Keyboard,
+    text_path: impl AsRef<Path>,
+    config: LayoutEvaluatorConfig,
+) -> Result<LayoutEvaluator> {
+    let words = load_words(text_path)?;
+    Ok(LayoutEvaluator::new(keyboard, words, config))
+}
+
+/// Load whitespace-separated corpus words from text file.
+fn load_words(text_path: impl AsRef<Path>) -> Result<Vec<String>> {
+    Ok(std::fs::read_to_string(text_path)
+        .into_diagnostic()
+        .wrap_err("Failed to read text file")?
+        .split_whitespace()
+        .map(str::to_owned)
+        .collect())
 }
 
 /// Convert a `Layout` into a 30-slot genome; empty slots filled with `EMPTY_SLOT`.

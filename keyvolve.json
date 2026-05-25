@@ -18,10 +18,6 @@
     "text": "data/synthesised",
     "input": "data/seed.csv",
     "output": "data/layouts.csv",
-    "bigramSwitchPenalty": 3.0,
-    "balancePenalty": 1.5,
-    "alternationPenalty": 0.25,
-    "rowSwitchPenalty": 0.25,
     "-blocked": [19],
     "allowed": {
       "e": [6, 7, 8]
@@ -45,6 +41,13 @@
     "input": "data/layouts.csv",
     "output": "data/layouts.csv",
     "print": 10
+  },
+
+  "evaluator": {
+    "bigramSwitchPenalty": 3.0,
+    "balancePenalty": 1.5,
+    "alternationPenalty": 0.25,
+    "rowSwitchPenalty": 0.25
   },
 
   "ga": {

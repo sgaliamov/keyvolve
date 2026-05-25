@@ -1,6 +1,35 @@
 use crate::models::{Keyboard, Keys, ScoreResult, slot_row};
 use itertools::Itertools;
 use rustc_hash::FxHashMap;
+use serde::Deserialize;
+
+/// Static scoring knobs for layout evaluation.
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct LayoutEvaluatorConfig {
+    /// Per-switch effort multiplier; `1.0` means no penalty, `1.5` means +50%.
+    pub bigram_switch_penalty: f64,
+
+    /// Max multiplier for extreme hand imbalance.
+    pub balance_penalty: f64,
+
+    /// Coefficient `k` for corpus-level alternation-rate penalty.
+    pub alternation_penalty: f64,
+
+    /// Coefficient `k` for weighted same-hand row-switch penalty.
+    pub row_switch_penalty: f64,
+}
+
+impl Default for LayoutEvaluatorConfig {
+    fn default() -> Self {
+        Self {
+            bigram_switch_penalty: 1.5,
+            balance_penalty: 2.0,
+            alternation_penalty: 0.25,
+            row_switch_penalty: 0.25,
+        }
+    }
+}
 
 /// Evaluates layouts by scoring words against a precomputed bigram effort table.
 #[derive(Clone)]
@@ -8,32 +37,16 @@ pub struct LayoutEvaluator {
     /// Flat bigram effort map: (from_key, to_key) → effort value.
     pairs: FxHashMap<(u8, u8), f64>,
 
-    /// Per-switch effort multiplier; `1.0` means no penalty, `1.5` means +50%.
-    bigram_switch_penalty: f64,
-
-    /// Max multiplier for extreme hand imbalance.
-    balance_penalty: f64,
-
-    /// Coefficient `k` for corpus-level alternation-rate penalty.
-    alternation_penalty: f64,
-
-    /// Coefficient `k` for weighted same-hand row-switch penalty.
-    row_switch_penalty: f64,
+    /// Static scoring knobs.
+    config: LayoutEvaluatorConfig,
 
     /// Corpus words to evaluate.
     words: Vec<String>,
 }
 
 impl LayoutEvaluator {
-    /// Build from keyboard config, corpus, and penalty coefficients.
-    pub fn new(
-        keyboard: &Keyboard,
-        words: Vec<String>,
-        bigram_switch_penalty: f64,
-        balance_penalty: f64,
-        alternation_penalty: f64,
-        row_switch_penalty: f64,
-    ) -> Self {
+    /// Build from keyboard config, corpus, and scoring config.
+    pub fn new(keyboard: &Keyboard, words: Vec<String>, config: LayoutEvaluatorConfig) -> Self {
         let mut pairs = FxHashMap::default();
 
         for (from, targets) in &keyboard.pairs {
@@ -45,10 +58,7 @@ impl LayoutEvaluator {
 
         LayoutEvaluator {
             pairs,
-            bigram_switch_penalty,
-            balance_penalty,
-            alternation_penalty,
-            row_switch_penalty,
+            config,
             words,
         }
     }
@@ -94,7 +104,11 @@ impl LayoutEvaluator {
                     // here because the new hand is starting a fresh sequence
                     // (analogous to the first-letter cost above), multiplied by
                     // `bigram_switch_penalty` so `1.0` means no extra cost.
-                    (self.lookup(kb, kb) * self.bigram_switch_penalty, 1, 0)
+                    (
+                        self.lookup(kb, kb) * self.config.bigram_switch_penalty,
+                        1,
+                        0,
+                    )
                 };
 
                 // count efforts on the "to" key, since "from" was already counted in the previous iteration
@@ -126,18 +140,18 @@ impl LayoutEvaluator {
         result.fitness *= balance_factor(
             result.left_count.into(),
             result.right_count.into(),
-            self.balance_penalty,
+            self.config.balance_penalty,
         );
         result.fitness *= linear_rate_penalty(
             result.bigram_switches,
             result.left_count + result.right_count,
-            self.alternation_penalty,
+            self.config.alternation_penalty,
         );
         // Same-hand row changes only: same row = 0, adjacent row = 1, top↔bottom jump = 2.
         result.fitness *= linear_rate_penalty(
             result.row_switch_cost,
             result.left_count + result.right_count,
-            self.row_switch_penalty,
+            self.config.row_switch_penalty,
         );
         result.fitness = 1. / result.fitness * 1_000_000.; // lower effort → higher fitness
 
@@ -192,7 +206,7 @@ mod tests {
 
     #[test]
     fn score_word_returns_zero_score_for_empty_input() {
-        let evaluator = LayoutEvaluator::new(&test_keyboard(), vec![], 1.5, 2.0, 0.0, 0.0);
+        let evaluator = LayoutEvaluator::new(&test_keyboard(), vec![], test_config());
 
         let score = evaluator.score_word("", &test_keys());
 
@@ -208,7 +222,7 @@ mod tests {
 
     #[test]
     fn score_word_adds_pair_effort_to_same_hand() {
-        let evaluator = LayoutEvaluator::new(&test_keyboard(), vec![], 1.5, 2.0, 0.0, 0.0);
+        let evaluator = LayoutEvaluator::new(&test_keyboard(), vec![], test_config());
 
         let score = evaluator.score_word("ab", &test_keys());
 
@@ -224,7 +238,7 @@ mod tests {
 
     #[test]
     fn score_word_uses_pair_table_for_repeated_key() {
-        let evaluator = LayoutEvaluator::new(&test_keyboard(), vec![], 1.5, 2.0, 0.0, 0.0);
+        let evaluator = LayoutEvaluator::new(&test_keyboard(), vec![], test_config());
 
         let score = evaluator.score_word("aa", &test_keys());
 
@@ -240,7 +254,7 @@ mod tests {
 
     #[test]
     fn score_word_charges_self_effort_on_hand_switch() {
-        let evaluator = LayoutEvaluator::new(&test_keyboard(), vec![], 1.5, 2.0, 0.0, 0.0);
+        let evaluator = LayoutEvaluator::new(&test_keyboard(), vec![], test_config());
 
         let score = evaluator.score_word("ac", &test_keys());
 
@@ -266,7 +280,14 @@ mod tests {
             })
             .to_string(),
         );
-        let evaluator = LayoutEvaluator::new(&keyboard, vec![], 0.0, 2.0, 0.0, 0.0);
+        let evaluator = LayoutEvaluator::new(
+            &keyboard,
+            vec![],
+            LayoutEvaluatorConfig {
+                bigram_switch_penalty: 0.0,
+                ..test_config()
+            },
+        );
 
         let score = evaluator.score_word("ac", &test_keys());
 
@@ -279,8 +300,7 @@ mod tests {
 
     #[test]
     fn score_word_counts_adjacent_same_hand_row_switch() {
-        let evaluator =
-            LayoutEvaluator::new(&row_switch_test_keyboard(), vec![], 1.5, 2.0, 0.0, 0.0);
+        let evaluator = LayoutEvaluator::new(&row_switch_test_keyboard(), vec![], test_config());
 
         let score = evaluator.score_word("ad", &test_keys());
 
@@ -291,8 +311,7 @@ mod tests {
 
     #[test]
     fn score_word_counts_jump_row_switch_as_double() {
-        let evaluator =
-            LayoutEvaluator::new(&row_switch_test_keyboard(), vec![], 1.5, 2.0, 0.0, 0.0);
+        let evaluator = LayoutEvaluator::new(&row_switch_test_keyboard(), vec![], test_config());
 
         let score = evaluator.score_word("ae", &test_keys());
 
@@ -306,10 +325,7 @@ mod tests {
         let evaluator = LayoutEvaluator::new(
             &test_keyboard(),
             vec!["ab".to_string(), "ac".to_string()],
-            1.5,
-            2.0,
-            0.0,
-            0.0,
+            test_config(),
         );
         let keys = test_keys();
 
@@ -383,10 +399,10 @@ mod tests {
                 .to_string(),
             ),
             vec!["ab".to_string(), "ac".to_string()],
-            1.5,
-            2.0,
-            0.5,
-            0.0,
+            LayoutEvaluatorConfig {
+                alternation_penalty: 0.5,
+                ..test_config()
+            },
         );
 
         let score = evaluator.score_corpus(&test_keys());
@@ -399,10 +415,10 @@ mod tests {
         let evaluator = LayoutEvaluator::new(
             &row_switch_test_keyboard(),
             vec!["ad".to_string()],
-            1.5,
-            2.0,
-            0.0,
-            0.5,
+            LayoutEvaluatorConfig {
+                row_switch_penalty: 0.5,
+                ..test_config()
+            },
         );
 
         let score = evaluator.score_corpus(&test_keys());
@@ -443,6 +459,15 @@ mod tests {
     /// Build tiny layout for evaluator tests.
     fn test_keys() -> Keys {
         FxHashMap::from_iter([('a', 0), ('b', 1), ('c', 19), ('d', 5), ('e', 10)])
+    }
+
+    fn test_config() -> LayoutEvaluatorConfig {
+        LayoutEvaluatorConfig {
+            bigram_switch_penalty: 1.5,
+            balance_penalty: 2.0,
+            alternation_penalty: 0.0,
+            row_switch_penalty: 0.0,
+        }
     }
 
     /// Compare floats without drama.
