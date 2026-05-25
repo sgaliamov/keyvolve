@@ -1,4 +1,5 @@
 use crate::app::OptimizationConfig;
+use crate::app::evaluate::EvaluateConfig;
 use crate::app::merge::MergeConfig;
 use crate::app::synthesise::SynthesiseConfig;
 use serde::Deserialize;
@@ -26,6 +27,10 @@ pub struct Config {
     /// settings for `Mode::Synthesise`
     #[serde(default)]
     pub synthesise: SynthesiseConfig,
+
+    /// settings for `Mode::Evaluate`
+    #[serde(default)]
+    pub evaluate: EvaluateConfig,
 
     /// settings for `Mode::Merge`
     #[serde(default)]

@@ -1,4 +1,4 @@
-mod evaluate;
+pub mod evaluate;
 mod layout_evaluator;
 pub mod merge;
 mod optimization;

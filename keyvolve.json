@@ -14,7 +14,7 @@
   },
 
   "optimization": {
-    "input": "data/layouts.csv",
+    "input": "data/seed.csv",
     "output": "data/layouts.csv",
     "bigramSwitchPenalty": 3.0,
     "balancePenalty": 1.5,

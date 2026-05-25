@@ -41,10 +41,17 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
 
             match mode {
                 Mode::Evaluate => {
-                    let layouts_path = cfg.layouts.wrap_err("Missing layouts path in config")?;
+                    let eval = cfg.evaluate;
+                    let layouts_path = eval.input.clone().or(cfg.layouts.clone()).wrap_err(
+                        "Evaluate mode requires `evaluate.input` or top-level `layouts`",
+                    )?;
+                    let mut eval = eval;
+                    if eval.output.is_none() {
+                        eval.output = Some(layouts_path.clone());
+                    }
                     let layouts = Layout::load(&layouts_path);
                     info!("Loaded {} layouts", layouts.len());
-                    evaluate(evaluator, layouts, &layouts_path, app)?
+                    evaluate::evaluate(evaluator, layouts, &eval, app)?
                 }
                 Mode::Optimize => {
                     let mut ga = cfg.ga;

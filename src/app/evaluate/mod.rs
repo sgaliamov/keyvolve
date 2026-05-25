@@ -1,3 +1,7 @@
+pub mod config;
+
+pub use config::*;
+
 use crate::{
     app::{LayoutEvaluator, write_layouts},
     models::Layout,
@@ -7,11 +11,11 @@ use miette::Result;
 use rayon::prelude::*;
 use tracing::info;
 
-/// Evaluate the layouts and write results to a file.
+/// Evaluate layouts and write scored results.
 pub fn evaluate(
     evaluator: LayoutEvaluator,
     layouts: Vec<Layout>,
-    layouts_path: impl AsRef<std::path::Path>,
+    cfg: &EvaluateConfig,
     app: AppHandle,
 ) -> Result<()> {
     info!("Evaluating {} layouts", layouts.len());
@@ -33,5 +37,5 @@ pub fn evaluate(
             .unwrap_or(std::cmp::Ordering::Equal)
     });
 
-    write_layouts(&scored, 10, Some(layouts_path.as_ref()), true)
+    write_layouts(&scored, cfg.print, cfg.output.as_deref(), true)
 }

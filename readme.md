@@ -41,6 +41,17 @@ Scores candidate layouts against a bigram-weighted corpus, then evolves them tow
 | `synthesise` | Build digraph CSV + fake-word corpus from raw text |
 | `merge`      | Merge/clean `.txt` files into one corpus           |
 
+## Mode-specific config
+
+### `evaluate`
+- `evaluate.input` — layouts CSV to score. Falls back to top-level `layouts` for compatibility.
+- `evaluate.output` — destination CSV for scored layouts. Omitted → overwrite `evaluate.input`.
+- `evaluate.print` — number of best layouts printed to stdout. Default: `10`.
+
+### `merge`
+- `merge.input` — folder containing `.txt` files.
+- `merge.output` — merged cleaned corpus file.
+
 ## Data files
 - `data/keyboard.json` — effort groups, bigram pair costs, penalty coefficients.
 - `data/layouts.csv` — semicolon-layout + fitness; header on first line.
