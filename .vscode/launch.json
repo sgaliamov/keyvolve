@@ -15,6 +15,10 @@
         {
           "name": "RUST_BACKTRACE",
           "value": "full"
+        },
+        {
+          "name": "MODE",
+          "value": "synthesise"
         }
       ],
       "cwd": "${workspaceFolder}"
