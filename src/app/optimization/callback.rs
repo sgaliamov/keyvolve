@@ -26,7 +26,7 @@ pub fn callback(ctx: &GaContext) -> bool {
         } else {
             s.left_count as f64 / s.right_count as f64
         };
-        format!(" | L/R {:.2}", ratio)
+        format!(" | ⇄ {:.2} | ↕ {:.2}%", ratio, s.row_switch_ratio() * 100.0)
     });
 
     let min_div = ctx
