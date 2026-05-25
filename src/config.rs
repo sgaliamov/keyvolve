@@ -10,7 +10,7 @@ pub struct Config {
     /// keyboard json settings
     pub keyboard: Option<PathBuf>,
 
-    /// Input layouts csv file, can be used as a seed
+    /// Input layouts csv file for evaluation.
     pub layouts: Option<PathBuf>,
 
     /// sample text file
@@ -30,7 +30,7 @@ pub struct Config {
     #[serde(default)]
     pub merge: MergeConfig,
 
-    /// frozen/blocked key constraints for `Mode::Optimize`
+    /// Optimization settings, including optional seed layouts input.
     pub optimization: OptimizationConfig,
 }
 

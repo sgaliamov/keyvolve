@@ -1,5 +1,6 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::Deserialize;
+use std::path::PathBuf;
 
 /// Mirror a left-hand slot (0–14) to its right-hand counterpart (15–29).
 /// Layout:  left 0–14, right 15–29, 5 cols/row, 3 rows.
@@ -107,8 +108,11 @@ pub struct OptimizationConfig {
     #[serde(default, deserialize_with = "de_rolls")]
     pub rolls: Vec<[char; 2]>,
 
+    /// Input layouts csv file, used as optimization seed.
+    pub input: Option<PathBuf>,
+
     /// Output layouts csv file
-    pub output: Option<std::path::PathBuf>,
+    pub output: Option<PathBuf>,
 }
 
 impl Default for OptimizationConfig {
@@ -121,6 +125,7 @@ impl Default for OptimizationConfig {
             blocked: Default::default(),
             allowed: Default::default(),
             rolls: Default::default(),
+            input: None,
             output: None,
         }
     }

@@ -49,7 +49,7 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
                     let mut ga = cfg.ga;
                     ga.ranges = vec![vec![(EMPTY_SLOT, 'z'); 30]];
                     let mut seed: Vec<_> = vec![];
-                    if let Some(layouts_path) = cfg.layouts {
+                    if let Some(layouts_path) = opt.input.clone() {
                         let loaded = Layout::load(&layouts_path);
                         info!("Loaded {} seed layouts from file", loaded.len());
                         seed.extend(loaded.into_iter().map(layout_to_genome));
