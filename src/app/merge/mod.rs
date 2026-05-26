@@ -255,6 +255,10 @@ fn process_file(
         let raw = line.into_diagnostic()?;
         let cleaned = clean_line(&raw);
         for word in cleaned.split_whitespace() {
+            if word.len() <= 1 {
+                continue;
+            }
+
             on_word(word)?;
         }
     }
