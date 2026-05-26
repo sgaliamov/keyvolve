@@ -10,6 +10,29 @@ use std::{
     path::{Path, PathBuf},
 };
 
+/// Temp directory guard that cleans up on drop.
+struct TempDirGuard {
+    path: PathBuf,
+}
+
+impl TempDirGuard {
+    /// Create a cleanup guard for an existing temp directory.
+    fn new(path: PathBuf) -> Self {
+        Self { path }
+    }
+
+    /// Borrow temp directory path.
+    fn path(&self) -> &Path {
+        &self.path
+    }
+}
+
+impl Drop for TempDirGuard {
+    fn drop(&mut self) {
+        cleanup_temp_dir(&self.path);
+    }
+}
+
 /// Merge all `.txt` files in a folder into one file.
 /// Non-`a-z` chars (after lowercasing) become spaces; consecutive spaces on a line collapse to one.
 /// Files are processed in parallel; results are written in sorted filename order.
@@ -39,19 +62,25 @@ pub fn merge(cfg: MergeConfig, app: AppHandle) -> Result<()> {
 
     tracing::info!(folder = %input.display(), count = paths.len(), "Merging files");
 
-    let temp_dir = prepare_temp_dir(&output)?;
+    let temp_dir = TempDirGuard::new(prepare_temp_dir(&output)?);
     let bucket_count = 256usize;
-    let preview = spill_words(&paths, &temp_dir, bucket_count, shuffle, seed, print, &app)?;
+    let preview = spill_words(
+        &paths,
+        temp_dir.path(),
+        bucket_count,
+        shuffle,
+        seed,
+        print,
+        &app,
+    )?;
 
     if app.should_finish() {
         tracing::info!("Merge interrupted before printing or writing");
-        cleanup_temp_dir(&temp_dir);
         return Ok(());
     }
 
     print_words(&preview);
-    write_buckets(&output, &temp_dir, bucket_count, shuffle, seed, &app)?;
-    cleanup_temp_dir(&temp_dir);
+    write_buckets(&output, temp_dir.path(), bucket_count, shuffle, seed, &app)?;
 
     tracing::info!(output = %output.display(), "Merge complete");
     Ok(())
