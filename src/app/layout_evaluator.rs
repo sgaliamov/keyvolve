@@ -190,6 +190,7 @@ fn balance_factor(left: f64, right: f64, max: f64) -> f64 {
 }
 
 /// Linear corpus-level penalty `1 + k * (count / (presses - 1))`.
+/// `k` scales the penalty strength: `0.0` disables it, larger values increase the multiplier linearly.
 /// Returns `1.0` when fewer than two presses exist, so no transition can happen.
 fn linear_rate_penalty(count: u32, presses: u32, k: f64) -> f64 {
     if presses <= 1 {

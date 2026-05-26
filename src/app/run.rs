@@ -16,7 +16,7 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
 
     match cfg.mode {
         Mode::Merge => {
-            merge::merge(cfg.merge)?;
+            merge::merge(cfg.merge, app)?;
         }
         Mode::Synthesise => {
             synthesise::synthesise(cfg.synthesise)?;
