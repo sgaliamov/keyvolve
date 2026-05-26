@@ -33,7 +33,7 @@ pub(super) fn default_min_freq() -> f64 {
 }
 
 pub(super) fn default_max_word_len() -> usize {
-    10
+    5
 }
 
 impl Default for SynthesiseConfig {
