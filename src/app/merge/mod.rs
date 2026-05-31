@@ -37,7 +37,6 @@ impl Drop for TempDirGuard {
 /// Non-`a-z` chars (after lowercasing) become spaces; consecutive spaces on a line collapse to one.
 /// Files are processed in parallel; results are written in sorted filename order.
 pub fn merge(cfg: MergeConfig, app: AppHandle) -> Result<()> {
-    let print = cfg.print;
     let shuffle = cfg.shuffle;
     let seed = cfg.seed;
 
@@ -64,22 +63,13 @@ pub fn merge(cfg: MergeConfig, app: AppHandle) -> Result<()> {
 
     let temp_dir = TempDirGuard::new(prepare_temp_dir(&output)?);
     let bucket_count = 256usize;
-    let preview = spill_words(
-        &paths,
-        temp_dir.path(),
-        bucket_count,
-        shuffle,
-        seed,
-        print,
-        &app,
-    )?;
+    spill_words(&paths, temp_dir.path(), bucket_count, shuffle, seed, &app)?;
 
     if app.should_finish() {
         tracing::info!("Merge interrupted before printing or writing");
         return Ok(());
     }
 
-    print_words(&preview);
     write_buckets(&output, temp_dir.path(), bucket_count, shuffle, seed, &app)?;
 
     tracing::info!(output = %output.display(), "Merge complete");
@@ -93,9 +83,8 @@ fn spill_words(
     bucket_count: usize,
     shuffle: bool,
     seed: Option<u64>,
-    print: usize,
     app: &AppHandle,
-) -> Result<Vec<String>> {
+) -> Result<()> {
     let mut writers = (0..bucket_count)
         .map(|i| {
             File::create(bucket_path(temp_dir, i))
@@ -103,9 +92,7 @@ fn spill_words(
                 .map(BufWriter::new)
         })
         .collect::<Result<Vec<_>>>()?;
-    let mut preview = Vec::with_capacity(print);
     let mut rng = make_rng(seed);
-    let mut seen = 0usize;
 
     for path in paths {
         if app.should_finish() {
@@ -113,17 +100,6 @@ fn spill_words(
         }
 
         process_file(path, app, |word| {
-            seen += 1;
-
-            if preview.len() < print {
-                preview.push(word.to_owned());
-            } else if shuffle {
-                let index = rng.random_range(0..seen);
-                if index < print {
-                    preview[index] = word.to_owned();
-                }
-            }
-
             let bucket = if shuffle {
                 rng.random_range(0..bucket_count)
             } else {
@@ -140,14 +116,7 @@ fn spill_words(
         writer.flush().into_diagnostic()?;
     }
 
-    Ok(preview)
-}
-
-/// Print preview words to stdout.
-fn print_words(words: &[String]) {
-    for word in words {
-        println!("{word}");
-    }
+    Ok(())
 }
 
 /// Read bucket files and write final output.
@@ -166,7 +135,7 @@ fn write_buckets(
     let mut order = (0..bucket_count).collect::<Vec<_>>();
 
     if shuffle {
-        shuffle_indices(&mut order, seed, app);
+        shuffle_slice(&mut order, seed, app);
     }
 
     for bucket in order {
@@ -211,7 +180,7 @@ fn write_bucket(
             words.push(line.into_diagnostic()?);
         }
 
-        shuffle_words(&mut words, mix_seed(seed, salt), app);
+        shuffle_slice(&mut words, mix_seed(seed, salt), app);
         for word in &words {
             if app.should_finish() {
                 return Ok(());
@@ -266,33 +235,18 @@ fn process_file(
     Ok(())
 }
 
-/// Shuffle words in place. Seeded when provided.
-fn shuffle_words(words: &mut [String], seed: Option<u64>, app: &AppHandle) {
+/// Shuffle slice in place. Seeded when provided.
+fn shuffle_slice<T>(items: &mut [T], seed: Option<u64>, app: &AppHandle) {
     let mut rng = make_rng(seed);
 
-    for i in (1..words.len()).rev() {
+    for i in (1..items.len()).rev() {
         if app.should_finish() {
             tracing::info!("Shuffle interrupted");
             return;
         }
 
         let j = rng.random_range(0..=i);
-        words.swap(i, j);
-    }
-}
-
-/// Shuffle indices in place. Seeded when provided.
-fn shuffle_indices(indices: &mut [usize], seed: Option<u64>, app: &AppHandle) {
-    let mut rng = make_rng(seed);
-
-    for i in (1..indices.len()).rev() {
-        if app.should_finish() {
-            tracing::info!("Shuffle interrupted");
-            return;
-        }
-
-        let j = rng.random_range(0..=i);
-        indices.swap(i, j);
+        items.swap(i, j);
     }
 }
 
