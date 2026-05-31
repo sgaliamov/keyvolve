@@ -1,8 +1,7 @@
 use rustc_hash::FxHashMap;
-use std::io::BufRead;
 
 /// Count all `a-z` digraph pairs from a buffered reader, skipping cross-whitespace pairs.
-pub fn count_bigrams(reader: impl BufRead) -> FxHashMap<[char; 2], u64> {
+pub fn count_bigrams(reader: impl std::io::BufRead) -> FxHashMap<[char; 2], u64> {
     let mut counts: FxHashMap<[char; 2], u64> = FxHashMap::default();
     let mut prev: Option<char> = None;
 
@@ -15,11 +14,9 @@ pub fn count_bigrams(reader: impl BufRead) -> FxHashMap<[char; 2], u64> {
                 }
                 prev = Some(lc);
             } else {
-                // Whitespace or punctuation — break digraph chain.
                 prev = None;
             }
         }
-        // Line boundary = word boundary.
         prev = None;
     }
 
@@ -27,7 +24,7 @@ pub fn count_bigrams(reader: impl BufRead) -> FxHashMap<[char; 2], u64> {
 }
 
 /// Count `a-z` letter frequencies from a buffered reader.
-pub fn count_letters(reader: impl BufRead) -> FxHashMap<char, u64> {
+pub fn count_letters(reader: impl std::io::BufRead) -> FxHashMap<char, u64> {
     let mut counts: FxHashMap<char, u64> = FxHashMap::default();
     for line in reader.lines().map_while(Result::ok) {
         for ch in line.chars() {
@@ -39,6 +36,160 @@ pub fn count_letters(reader: impl BufRead) -> FxHashMap<char, u64> {
     counts
 }
 
+/// Corpus metrics used by synthesise mode.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CorpusStats {
+    /// normalized letter frequencies
+    pub letters: FxHashMap<char, f64>,
+    /// normalized bigram frequencies
+    pub bigrams: FxHashMap<[char; 2], f64>,
+    /// normalized first-letter frequencies
+    pub first_letters: FxHashMap<char, f64>,
+    /// average word length in characters
+    pub average_word_length: f64,
+}
+
+/// Relative errors for tracked metrics.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CorpusScore {
+    /// max letter relative error
+    pub letters: f64,
+    /// max bigram relative error
+    pub bigrams: f64,
+    /// max first-letter relative error
+    pub first_letters: f64,
+    /// average word length relative error
+    pub average_word_length: f64,
+    /// max error across all metrics
+    pub max_error: f64,
+}
+
+/// Build normalized stats from a word slice.
+pub fn calculate_stats(words: &[String]) -> CorpusStats {
+    let mut letter_counts: FxHashMap<char, u64> = FxHashMap::default();
+    let mut bigram_counts: FxHashMap<[char; 2], u64> = FxHashMap::default();
+    let mut first_letter_counts: FxHashMap<char, u64> = FxHashMap::default();
+    let mut total_letters = 0u64;
+    let mut total_bigrams = 0u64;
+    let mut total_words = 0u64;
+    let mut total_word_len = 0u64;
+
+    for word in words {
+        if word.is_empty() {
+            continue;
+        }
+
+        total_words += 1;
+        total_word_len += word.len() as u64;
+
+        let mut chars = word.chars();
+        if let Some(first) = chars.next() {
+            *first_letter_counts.entry(first).or_insert(0) += 1;
+            *letter_counts.entry(first).or_insert(0) += 1;
+            total_letters += 1;
+
+            let mut prev = first;
+            for ch in chars {
+                *letter_counts.entry(ch).or_insert(0) += 1;
+                *bigram_counts.entry([prev, ch]).or_insert(0) += 1;
+                total_letters += 1;
+                total_bigrams += 1;
+                prev = ch;
+            }
+        }
+    }
+
+    CorpusStats {
+        letters: normalize_char_counts(&letter_counts, total_letters),
+        bigrams: normalize_bigram_counts(&bigram_counts, total_bigrams),
+        first_letters: normalize_char_counts(&first_letter_counts, total_words),
+        average_word_length: if total_words > 0 {
+            total_word_len as f64 / total_words as f64
+        } else {
+            0.0
+        },
+    }
+}
+
+/// Compare source and candidate stats with max relative error per metric.
+pub fn score_stats(source: &CorpusStats, candidate: &CorpusStats) -> CorpusScore {
+    let letters = max_map_error(&source.letters, &candidate.letters);
+    let bigrams = max_map_error(&source.bigrams, &candidate.bigrams);
+    let first_letters = max_map_error(&source.first_letters, &candidate.first_letters);
+    let average_word_length =
+        relative_error(source.average_word_length, candidate.average_word_length);
+    let max_error = letters
+        .max(bigrams)
+        .max(first_letters)
+        .max(average_word_length);
+
+    CorpusScore {
+        letters,
+        bigrams,
+        first_letters,
+        average_word_length,
+        max_error,
+    }
+}
+
+fn normalize_char_counts(counts: &FxHashMap<char, u64>, total: u64) -> FxHashMap<char, f64> {
+    if total == 0 {
+        return FxHashMap::default();
+    }
+
+    counts
+        .iter()
+        .map(|(&key, &count)| (key, count as f64 / total as f64))
+        .collect()
+}
+
+fn normalize_bigram_counts(
+    counts: &FxHashMap<[char; 2], u64>,
+    total: u64,
+) -> FxHashMap<[char; 2], f64> {
+    if total == 0 {
+        return FxHashMap::default();
+    }
+
+    counts
+        .iter()
+        .map(|(&key, &count)| (key, count as f64 / total as f64))
+        .collect()
+}
+
+fn max_map_error<K: Copy + Eq + std::hash::Hash>(
+    source: &FxHashMap<K, f64>,
+    candidate: &FxHashMap<K, f64>,
+) -> f64 {
+    let mut max_error: f64 = 0.0;
+
+    for (&key, &expected) in source {
+        let actual = candidate.get(&key).copied().unwrap_or(0.0);
+        max_error = max_error.max(relative_error(expected, actual));
+    }
+
+    for (&key, &actual) in candidate {
+        let expected = source.get(&key).copied().unwrap_or(0.0);
+        max_error = max_error.max(relative_error(expected, actual));
+    }
+
+    max_error
+}
+
+fn relative_error(expected: f64, actual: f64) -> f64 {
+    const EPSILON: f64 = 1e-12;
+
+    if expected.abs() <= EPSILON {
+        if actual.abs() <= EPSILON {
+            0.0
+        } else {
+            actual.abs()
+        }
+    } else {
+        (expected - actual).abs() / expected.abs()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -46,29 +197,50 @@ mod tests {
 
     #[test]
     fn digraphs_counts_pairs_and_breaks_on_whitespace() {
-        // basic pairs, case folding, space as separator, ab ≠ ba
         let counts = count_bigrams(Cursor::new("ab BC ba ba aa"));
         assert_eq!(counts[&['a', 'b']], 1);
         assert_eq!(counts[&['b', 'c']], 1);
         assert_eq!(counts[&['b', 'a']], 2);
         assert_eq!(counts[&['a', 'a']], 1);
-        // space breaks chain → no repeated cross-space pair
         assert!(!counts.contains_key(&['b', 'b']));
     }
 
     #[test]
     fn digraphs_boundary_and_punctuation_break_chain() {
-        // line boundary
         let counts = count_bigrams(Cursor::new("ab\nbc"));
         assert_eq!(counts[&['a', 'b']], 1);
         assert_eq!(counts[&['b', 'c']], 1);
         assert!(!counts.contains_key(&['b', 'b']));
 
-        // punctuation
         let counts = count_bigrams(Cursor::new("a.b"));
         assert!(counts.is_empty());
-
-        // empty
         assert!(count_bigrams(Cursor::new("")).is_empty());
+    }
+
+    #[test]
+    fn calculate_stats_counts_requested_metrics() {
+        let words = vec!["ab".to_owned(), "ac".to_owned()];
+        let stats = calculate_stats(&words);
+
+        assert_eq!(stats.letters[&'a'], 0.5);
+        assert_eq!(stats.letters[&'b'], 0.25);
+        assert_eq!(stats.letters[&'c'], 0.25);
+        assert_eq!(stats.bigrams[&['a', 'b']], 0.5);
+        assert_eq!(stats.bigrams[&['a', 'c']], 0.5);
+        assert_eq!(stats.first_letters[&'a'], 1.0);
+        assert_eq!(stats.average_word_length, 2.0);
+    }
+
+    #[test]
+    fn score_stats_uses_max_relative_error() {
+        let source = calculate_stats(&["ab".to_owned(), "ac".to_owned()]);
+        let candidate = calculate_stats(&["ab".to_owned(), "ab".to_owned()]);
+        let score = score_stats(&source, &candidate);
+
+        assert_eq!(score.letters, 1.0);
+        assert_eq!(score.bigrams, 1.0);
+        assert_eq!(score.first_letters, 0.0);
+        assert_eq!(score.average_word_length, 0.0);
+        assert_eq!(score.max_error, 1.0);
     }
 }

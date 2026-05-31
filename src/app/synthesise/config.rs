@@ -1,6 +1,18 @@
 use serde::Deserialize;
 use std::path::PathBuf;
 
+/// Synthesise generation method.
+#[derive(Debug, Default, Clone, Copy, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum SynthesiseMethod {
+    /// Original graph-based digraph synthesis.
+    #[default]
+    Digraph,
+
+    /// Sample words from the source corpus and score against source metrics.
+    SampleWords,
+}
+
 /// Settings for the corpus synthesise mode.
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -8,8 +20,12 @@ pub struct SynthesiseConfig {
     /// input source text path
     pub text: Option<PathBuf>,
 
-    /// output stem path — emits `<output>.csv` and `<output>.txt`
+    /// output corpus path
     pub output: Option<PathBuf>,
+
+    /// synthesis method to run
+    #[serde(default)]
+    pub method: SynthesiseMethod,
 
     /// target total digraph edge count in the synthesised corpus
     #[serde(default = "default_target")]
@@ -22,6 +38,26 @@ pub struct SynthesiseConfig {
     /// max characters per output word
     #[serde(default = "default_max_word_len")]
     pub max_word_len: usize,
+
+    /// global max allowed relative error across tracked metrics
+    #[serde(default = "default_tolerance")]
+    pub tolerance: f64,
+
+    /// tries before giving up and returning the best candidate
+    #[serde(default = "default_attempts")]
+    pub attempts: usize,
+
+    /// optional fixed output word count; source word count when omitted
+    #[serde(default)]
+    pub words: Option<usize>,
+
+    /// optional RNG seed for reproducible sampling
+    #[serde(default)]
+    pub seed: Option<u64>,
+}
+
+pub(super) fn default_tolerance() -> f64 {
+    0.01
 }
 
 pub(super) fn default_target() -> usize {
@@ -36,14 +72,23 @@ pub(super) fn default_max_word_len() -> usize {
     5
 }
 
+pub(super) fn default_attempts() -> usize {
+    32
+}
+
 impl Default for SynthesiseConfig {
     fn default() -> Self {
         Self {
             text: None,
             output: None,
+            method: SynthesiseMethod::default(),
             target: default_target(),
             min_frequency: default_min_freq(),
             max_word_len: default_max_word_len(),
+            tolerance: default_tolerance(),
+            attempts: default_attempts(),
+            words: None,
+            seed: None,
         }
     }
 }

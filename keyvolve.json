@@ -12,8 +12,11 @@
   "synthesise": {
     "text": "data/samples/merged.txt",
     "output": "data/synthesised",
+    "method": "sampleWords",
     "minFrequency": 0.00001,
-    "target": 100000
+    "target": 100000,
+    "tolerance": 0.01,
+    "attempts": 32
   },
 
   "optimization": {
