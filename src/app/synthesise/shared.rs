@@ -1,3 +1,4 @@
+use crate::app::synthesise::counter::CorpusScore;
 use miette::{Context, IntoDiagnostic, Result};
 use std::{
     fs,
@@ -31,4 +32,32 @@ pub(super) fn report_path(output: &Path) -> PathBuf {
         .parent()
         .unwrap_or(output)
         .join(format!("{stem}.synth-report.txt"))
+}
+
+/// Write compact synth score report.
+pub(super) fn write_report(
+    path: &Path,
+    score: &CorpusScore,
+    source_words: usize,
+    generated_words: usize,
+    tolerance: f64,
+) -> Result<()> {
+    let mut out = fs::File::create(path)
+        .into_diagnostic()
+        .wrap_err("Failed to create synth report")?;
+    writeln!(out, "source_words={source_words}").into_diagnostic()?;
+    writeln!(out, "generated_words={generated_words}").into_diagnostic()?;
+    writeln!(out, "tolerance={tolerance:.6}").into_diagnostic()?;
+    writeln!(out, "letters_error={:.6}", score.letters).into_diagnostic()?;
+    writeln!(out, "bigrams_error={:.6}", score.bigrams).into_diagnostic()?;
+    writeln!(out, "first_letters_error={:.6}", score.first_letters).into_diagnostic()?;
+    writeln!(
+        out,
+        "average_word_length_error={:.6}",
+        score.average_word_length
+    )
+    .into_diagnostic()?;
+    writeln!(out, "max_error={:.6}", score.max_error).into_diagnostic()?;
+    writeln!(out, "passed={}", score.max_error <= tolerance).into_diagnostic()?;
+    Ok(())
 }

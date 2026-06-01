@@ -12,7 +12,7 @@
   "synthesise": {
     "text": "data/samples/merged.txt",
     "output": "data/synthesised",
-    "method": "sampleWords",
+    "method": "BigramMarkov",
     "minFrequency": 0.00001,
     "target": 100000,
     "tolerance": 0.01,

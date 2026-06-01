@@ -1,13 +1,13 @@
 use crate::app::synthesise::{
     SynthesiseConfig,
     counter::{CorpusScore, CorpusStats, CorpusStatsCounter, score_stats},
-    shared::{report_path, write_corpus},
+    shared::{report_path, write_corpus, write_report},
 };
 use miette::{Context, IntoDiagnostic, Result};
 use std::{
     collections::BTreeMap,
     fs,
-    io::{BufReader, Read, Write},
+    io::{BufReader, Read},
     path::Path,
 };
 
@@ -201,34 +201,6 @@ impl PrefixSearch {
         self.cache.insert(words, candidate.clone());
         Ok(candidate)
     }
-}
-
-/// Write compact synth score report.
-fn write_report(
-    path: &Path,
-    score: &CorpusScore,
-    source_words: usize,
-    generated_words: usize,
-    tolerance: f64,
-) -> Result<()> {
-    let mut out = fs::File::create(path)
-        .into_diagnostic()
-        .wrap_err("Failed to create synth report")?;
-    writeln!(out, "source_words={source_words}").into_diagnostic()?;
-    writeln!(out, "generated_words={generated_words}").into_diagnostic()?;
-    writeln!(out, "tolerance={tolerance:.6}").into_diagnostic()?;
-    writeln!(out, "letters_error={:.6}", score.letters).into_diagnostic()?;
-    writeln!(out, "bigrams_error={:.6}", score.bigrams).into_diagnostic()?;
-    writeln!(out, "first_letters_error={:.6}", score.first_letters).into_diagnostic()?;
-    writeln!(
-        out,
-        "average_word_length_error={:.6}",
-        score.average_word_length
-    )
-    .into_diagnostic()?;
-    writeln!(out, "max_error={:.6}", score.max_error).into_diagnostic()?;
-    writeln!(out, "passed={}", score.max_error <= tolerance).into_diagnostic()?;
-    Ok(())
 }
 
 /// Scan full source corpus once to collect overall stats and total word count.

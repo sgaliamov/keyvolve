@@ -11,6 +11,9 @@ pub enum SynthesiseMethod {
 
     /// Sample words from the source corpus and score against source metrics.
     SampleWords,
+
+    /// Generate words from a bigram Markov chain, optimising CorpusScore metrics.
+    BigramMarkov,
 }
 
 /// Settings for the corpus synthesise mode.
