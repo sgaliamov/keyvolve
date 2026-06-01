@@ -1,6 +1,6 @@
 use crate::app::synthesise::{
     SynthesiseConfig,
-    counter::{CorpusScore, CorpusStats, CorpusStatsCounter, calculate_stats, score_stats},
+    counter::{CorpusScore, CorpusStats, CorpusStatsCounter, score_stats},
     shared::{report_path, write_corpus},
 };
 use miette::{Context, IntoDiagnostic, Result};
@@ -14,7 +14,7 @@ use std::{
 /// Best candidate found during prefix search.
 #[derive(Debug, Clone)]
 struct Candidate {
-    words: Vec<String>,
+    words: usize,
     score: CorpusScore,
 }
 
@@ -29,6 +29,12 @@ struct SourceSummary {
 #[derive(Debug, Default)]
 struct PrefixSearch {
     cache: BTreeMap<usize, Candidate>,
+}
+
+/// Prefix words read result.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct PrefixWords {
+    words: Vec<String>,
 }
 
 /// Run the sample-word synthesise pipeline.
@@ -59,13 +65,14 @@ pub(super) fn synthesise_sample_words(cfg: SynthesiseConfig) -> Result<()> {
     );
     let best = find_best_candidate(input, &source, target_words, &cfg)?;
 
-    write_corpus(&best.words, output)?;
+    let best_words = read_prefix_words(input, best.words)?.words;
+    write_corpus(&best_words, output)?;
     let report = report_path(output);
     write_report(
         &report,
         &best.score,
         source.word_count,
-        best.words.len(),
+        best.words,
         cfg.tolerance,
     )?;
 
@@ -74,7 +81,7 @@ pub(super) fn synthesise_sample_words(cfg: SynthesiseConfig) -> Result<()> {
         output = %output.display(),
         report = %report.display(),
         source_words = source.word_count,
-        generated_words = best.words.len(),
+        generated_words = best.words,
         max_error = best.score.max_error,
         tolerance = cfg.tolerance,
         method = "sampleWords",
@@ -93,7 +100,7 @@ fn find_best_candidate(
     if source.word_count == 0 || target_words == 0 {
         tracing::warn!("Source corpus empty; skipping sampling");
         return Ok(Candidate {
-            words: Vec::new(),
+            words: 0,
             score: CorpusScore {
                 letters: 0.0,
                 bigrams: 0.0,
@@ -166,7 +173,7 @@ fn find_best_candidate(
 
     let best = search.evaluate(input, high, &source.stats)?;
     tracing::info!(
-        words = best.words.len(),
+        words = best.words,
         max_error = best.score.max_error,
         tolerance = cfg.tolerance,
         "Smallest matching prefix selected"
@@ -186,11 +193,10 @@ impl PrefixSearch {
             return Ok(candidate.clone());
         }
 
-        let words_out = read_prefix_words(input, words)?;
-        let stats = calculate_stats(&words_out);
+        let stats = read_prefix_stats(input, words)?;
         let candidate = Candidate {
             score: score_stats(source_stats, &stats),
-            words: words_out,
+            words,
         };
         self.cache.insert(words, candidate.clone());
         Ok(candidate)
@@ -267,8 +273,47 @@ fn scan_source(path: &Path) -> Result<SourceSummary> {
     })
 }
 
+/// Read stats for first N words from source file.
+fn read_prefix_stats(path: &Path, limit: usize) -> Result<CorpusStats> {
+    let file = fs::File::open(path)
+        .into_diagnostic()
+        .wrap_err("Failed to open synth source text")?;
+    let mut reader = BufReader::new(file);
+    let mut buf = [0u8; 64 * 1024];
+    let mut counter = CorpusStatsCounter::default();
+    let mut word = Vec::new();
+    let mut seen = 0usize;
+
+    while seen < limit {
+        let read = reader
+            .read(&mut buf)
+            .into_diagnostic()
+            .wrap_err("Failed while reading synth source text")?;
+        if read == 0 {
+            break;
+        }
+
+        for &byte in &buf[..read] {
+            if byte.is_ascii_whitespace() {
+                finish_stat_word(&mut counter, &mut word, &mut seen)?;
+                if seen == limit {
+                    break;
+                }
+            } else {
+                word.push(byte);
+            }
+        }
+    }
+
+    if seen < limit {
+        finish_stat_word(&mut counter, &mut word, &mut seen)?;
+    }
+
+    Ok(counter.finish())
+}
+
 /// Read first N words from source file.
-fn read_prefix_words(path: &Path, limit: usize) -> Result<Vec<String>> {
+fn read_prefix_words(path: &Path, limit: usize) -> Result<PrefixWords> {
     let file = fs::File::open(path)
         .into_diagnostic()
         .wrap_err("Failed to open synth source text")?;
@@ -302,7 +347,7 @@ fn read_prefix_words(path: &Path, limit: usize) -> Result<Vec<String>> {
         finish_prefix_word(&mut words, &mut word)?;
     }
 
-    Ok(words)
+    Ok(PrefixWords { words })
 }
 
 /// Finalize one buffered word during full-source scan.
@@ -337,6 +382,24 @@ fn finish_prefix_word(words: &mut Vec<String>, word: &mut Vec<u8>) -> Result<()>
     Ok(())
 }
 
+/// Finalize one buffered word while reading prefix stats.
+fn finish_stat_word(
+    counter: &mut CorpusStatsCounter,
+    word: &mut Vec<u8>,
+    seen: &mut usize,
+) -> Result<()> {
+    if word.is_empty() {
+        return Ok(());
+    }
+
+    let text = String::from_utf8(std::mem::take(word))
+        .into_diagnostic()
+        .wrap_err("Synth source contains invalid UTF-8 word")?;
+    counter.add_word(&text);
+    *seen += 1;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -349,7 +412,7 @@ mod tests {
     fn read_prefix_words_uses_requested_count() {
         let path = fixture_path("aa bb cc");
         let words = read_prefix_words(&path, 2).unwrap();
-        assert_eq!(words, vec!["aa".to_owned(), "bb".to_owned()]);
+        assert_eq!(words.words, vec!["aa".to_owned(), "bb".to_owned()]);
     }
 
     #[test]
@@ -367,7 +430,11 @@ mod tests {
         let source = scan_source(&path).unwrap();
         assert_eq!(source.word_count, 3);
 
-        let expected = calculate_stats(&["ab".to_owned(), "ac".to_owned(), "zzz".to_owned()]);
+        let expected = crate::app::synthesise::counter::calculate_stats(&[
+            "ab".to_owned(),
+            "ac".to_owned(),
+            "zzz".to_owned(),
+        ]);
         assert_eq!(source.stats, expected);
     }
 
@@ -384,8 +451,17 @@ mod tests {
         };
 
         let best = find_best_candidate(&path, &source, source.word_count, &cfg).unwrap();
-        assert_eq!(best.words.len(), source.word_count);
+        assert_eq!(best.words, source.word_count);
         assert_eq!(best.score.max_error, 0.0);
+    }
+
+    #[test]
+    fn read_prefix_stats_matches_materialized_stats() {
+        let path = fixture_path("ab ac zzz");
+        let stats = read_prefix_stats(&path, 2).unwrap();
+        let expected =
+            crate::app::synthesise::counter::calculate_stats(&["ab".to_owned(), "ac".to_owned()]);
+        assert_eq!(stats, expected);
     }
 
     fn fixture_path(contents: &str) -> PathBuf {
