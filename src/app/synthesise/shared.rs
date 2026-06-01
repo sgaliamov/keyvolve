@@ -20,16 +20,6 @@ pub(super) fn write_corpus(words: &[String], path: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Load whitespace-separated words from source file.
-pub(super) fn load_words(path: &Path) -> Result<Vec<String>> {
-    Ok(fs::read_to_string(path)
-        .into_diagnostic()
-        .wrap_err("Failed to read synth source text")?
-        .split_whitespace()
-        .map(str::to_owned)
-        .collect())
-}
-
 /// Report path next to corpus output.
 pub(super) fn report_path(output: &Path) -> PathBuf {
     let stem = output

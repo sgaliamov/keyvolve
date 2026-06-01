@@ -1,4 +1,5 @@
 use rustc_hash::FxHashMap;
+use std::hash::Hash;
 
 /// Count all `a-z` digraph pairs from a buffered reader, skipping cross-whitespace pairs.
 pub fn count_bigrams(reader: impl std::io::BufRead) -> FxHashMap<[char; 2], u64> {
@@ -49,6 +50,18 @@ pub struct CorpusStats {
     pub average_word_length: f64,
 }
 
+/// Incremental corpus stats builder.
+#[derive(Debug, Clone, Default)]
+pub struct CorpusStatsCounter {
+    letter_counts: FxHashMap<char, u64>,
+    bigram_counts: FxHashMap<[char; 2], u64>,
+    first_letter_counts: FxHashMap<char, u64>,
+    total_letters: u64,
+    total_bigrams: u64,
+    total_words: u64,
+    total_word_len: u64,
+}
+
 /// Relative errors for tracked metrics.
 #[derive(Debug, Clone, PartialEq)]
 pub struct CorpusScore {
@@ -66,49 +79,11 @@ pub struct CorpusScore {
 
 /// Build normalized stats from a word slice.
 pub fn calculate_stats(words: &[String]) -> CorpusStats {
-    let mut letter_counts: FxHashMap<char, u64> = FxHashMap::default();
-    let mut bigram_counts: FxHashMap<[char; 2], u64> = FxHashMap::default();
-    let mut first_letter_counts: FxHashMap<char, u64> = FxHashMap::default();
-    let mut total_letters = 0u64;
-    let mut total_bigrams = 0u64;
-    let mut total_words = 0u64;
-    let mut total_word_len = 0u64;
-
+    let mut counter = CorpusStatsCounter::default();
     for word in words {
-        if word.is_empty() {
-            continue;
-        }
-
-        total_words += 1;
-        total_word_len += word.len() as u64;
-
-        let mut chars = word.chars();
-        if let Some(first) = chars.next() {
-            *first_letter_counts.entry(first).or_insert(0) += 1;
-            *letter_counts.entry(first).or_insert(0) += 1;
-            total_letters += 1;
-
-            let mut prev = first;
-            for ch in chars {
-                *letter_counts.entry(ch).or_insert(0) += 1;
-                *bigram_counts.entry([prev, ch]).or_insert(0) += 1;
-                total_letters += 1;
-                total_bigrams += 1;
-                prev = ch;
-            }
-        }
+        counter.add_word(word);
     }
-
-    CorpusStats {
-        letters: normalize_char_counts(&letter_counts, total_letters),
-        bigrams: normalize_bigram_counts(&bigram_counts, total_bigrams),
-        first_letters: normalize_char_counts(&first_letter_counts, total_words),
-        average_word_length: if total_words > 0 {
-            total_word_len as f64 / total_words as f64
-        } else {
-            0.0
-        },
-    }
+    counter.finish()
 }
 
 /// Compare source and candidate stats with max relative error per metric.
@@ -157,7 +132,49 @@ fn normalize_bigram_counts(
         .collect()
 }
 
-fn max_map_error<K: Copy + Eq + std::hash::Hash>(
+impl CorpusStatsCounter {
+    /// Add one word to the running corpus stats.
+    pub fn add_word(&mut self, word: &str) {
+        if word.is_empty() {
+            return;
+        }
+
+        self.total_words += 1;
+        self.total_word_len += word.len() as u64;
+
+        let mut chars = word.chars();
+        if let Some(first) = chars.next() {
+            *self.first_letter_counts.entry(first).or_insert(0) += 1;
+            *self.letter_counts.entry(first).or_insert(0) += 1;
+            self.total_letters += 1;
+
+            let mut prev = first;
+            for ch in chars {
+                *self.letter_counts.entry(ch).or_insert(0) += 1;
+                *self.bigram_counts.entry([prev, ch]).or_insert(0) += 1;
+                self.total_letters += 1;
+                self.total_bigrams += 1;
+                prev = ch;
+            }
+        }
+    }
+
+    /// Finish counts into normalized stats.
+    pub fn finish(&self) -> CorpusStats {
+        CorpusStats {
+            letters: normalize_char_counts(&self.letter_counts, self.total_letters),
+            bigrams: normalize_bigram_counts(&self.bigram_counts, self.total_bigrams),
+            first_letters: normalize_char_counts(&self.first_letter_counts, self.total_words),
+            average_word_length: if self.total_words > 0 {
+                self.total_word_len as f64 / self.total_words as f64
+            } else {
+                0.0
+            },
+        }
+    }
+}
+
+fn max_map_error<K: Copy + Eq + Hash>(
     source: &FxHashMap<K, f64>,
     candidate: &FxHashMap<K, f64>,
 ) -> f64 {
@@ -242,5 +259,18 @@ mod tests {
         assert_eq!(score.first_letters, 0.0);
         assert_eq!(score.average_word_length, 0.0);
         assert_eq!(score.max_error, 1.0);
+    }
+
+    #[test]
+    fn counter_matches_slice_calculation() {
+        let words = vec!["ab".to_owned(), "ac".to_owned(), "bbb".to_owned()];
+        let expected = calculate_stats(&words);
+
+        let mut counter = CorpusStatsCounter::default();
+        for word in &words {
+            counter.add_word(word);
+        }
+
+        assert_eq!(counter.finish(), expected);
     }
 }
