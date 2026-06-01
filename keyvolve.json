@@ -12,11 +12,11 @@
   "synthesise": {
     "text": "data/samples/merged.txt",
     "output": "data/synthesised",
-    "method": "BigramMarkov",
+    "method": "bigramMarkov",
     "minFrequency": 0.00001,
-    "target": 100000,
+    "target": 10000,
     "tolerance": 0.01,
-    "attempts": 32
+    "attempts": 256
   },
 
   "optimization": {

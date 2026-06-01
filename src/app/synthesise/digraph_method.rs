@@ -5,7 +5,7 @@ use crate::app::synthesise::{
         count_corpus_letters, filter_and_scale, read_counts, read_letter_counts, write_bigrams,
         write_bigrams_aggregated, write_letter_freq_combined,
     },
-    shared::write_corpus,
+    shared::{report_path, write_corpus, write_report_words},
 };
 use miette::{Context, Result};
 
@@ -52,6 +52,15 @@ pub(super) fn synthesise_digraph(cfg: SynthesiseConfig) -> Result<()> {
     tracing::info!("Building corpus");
     let words = build_corpus(&scaled, cfg.max_word_len);
     write_corpus(&words, output)?;
+
+    let report = report_path(output);
+    write_report_words(&report, words.len())?;
+    tracing::info!(
+        report = %report.display(),
+        words = words.len(),
+        method = "digraph",
+        "Report written"
+    );
 
     let freq_dir = output.parent().unwrap_or(output);
     let letter_freq_path = freq_dir

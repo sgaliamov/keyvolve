@@ -72,6 +72,59 @@ impl MarkovChain {
     }
 }
 
+/// Keep only bigrams whose frequency ≥ `min_frequency`; re-normalize.
+fn filter_bigrams(
+    bigrams: &FxHashMap<[char; 2], f64>,
+    min_frequency: f64,
+) -> FxHashMap<[char; 2], f64> {
+    let filtered: FxHashMap<[char; 2], f64> = bigrams
+        .iter()
+        .filter(|(_, f)| **f >= min_frequency)
+        .map(|(&k, &f)| (k, f))
+        .collect();
+    let total: f64 = filtered.values().sum();
+    if total == 0.0 {
+        return filtered;
+    }
+    filtered.into_iter().map(|(k, f)| (k, f / total)).collect()
+}
+
+/// Score comparing only bigrams present in filtered source (avoids max-error explosion on rare pairs).
+fn filtered_score(
+    source_filtered: &FxHashMap<[char; 2], f64>,
+    candidate: &CorpusStats,
+    source: &CorpusStats,
+) -> f64 {
+    // Re-normalize candidate bigrams over the same filtered key set.
+    let cand_total: f64 = candidate
+        .bigrams
+        .iter()
+        .filter(|(k, _)| source_filtered.contains_key(*k))
+        .map(|(_, &f)| f)
+        .sum();
+
+    let mut max_err: f64 = 0.0;
+    for (k, &expected) in source_filtered {
+        let actual = if cand_total > 0.0 {
+            candidate.bigrams.get(k).copied().unwrap_or(0.0) / cand_total
+        } else {
+            0.0
+        };
+        let err = if expected.abs() < 1e-12 {
+            actual.abs()
+        } else {
+            (expected - actual).abs() / expected
+        };
+        max_err = max_err.max(err);
+    }
+    // Check remaining metrics against unfiltered source.
+    let score = score_stats(source, candidate);
+    max_err
+        .max(score.letters)
+        .max(score.first_letters)
+        .max(score.average_word_length)
+}
+
 /// Generate one word: start at `first`, extend via chain until geometric stop or `max_len`.
 /// `stop_p = 1 / avg_word_len` yields the correct expected length.
 fn generate_word(
@@ -100,17 +153,23 @@ fn generate_word(
 }
 
 /// Run `attempts` independent generation passes seeded deterministically;
-/// return the corpus with the lowest `max_error` vs source stats.
+/// return the corpus with the lowest max error vs source stats.
+/// Bigrams below `min_frequency` are excluded from both chain and scoring.
 fn best_of_attempts(
     source: &CorpusStats,
+    min_frequency: f64,
     target_bigrams: usize,
     max_word_len: usize,
     attempts: usize,
     seed: Option<u64>,
 ) -> Vec<String> {
-    let chain = MarkovChain::from_bigrams(&source.bigrams);
-    let first_sampler = WeightedSampler::new(&source.first_letters);
-    // geometric stop probability → E[word_len] = 1/stop_p = avg_word_len
+    // Filter rare bigrams — reduces scoring variance and chain noise.
+    let filtered_bigrams = filter_bigrams(&source.bigrams, min_frequency);
+    let chain = MarkovChain::from_bigrams(&filtered_bigrams);
+    // Seed words from letter dist (≈ stationary dist of chain) so generated
+    // bigram frequencies converge to source bigram frequencies.
+    let letter_sampler = WeightedSampler::new(&source.letters);
+    // geometric stop probability → E[word_len] = avg_word_len
     let stop_p = 1.0 / source.average_word_length.max(1.0);
 
     let mut best_words: Vec<String> = Vec::new();
@@ -125,14 +184,15 @@ fn best_of_attempts(
         let mut bigrams_emitted: usize = 0;
 
         while bigrams_emitted < target_bigrams {
-            if let Some(first) = first_sampler.sample(&mut rng) {
+            if let Some(first) = letter_sampler.sample(&mut rng) {
                 let word = generate_word(first, &chain, stop_p, max_word_len, &mut rng);
                 bigrams_emitted += word.len().saturating_sub(1);
                 words.push(word);
             }
         }
 
-        let err = score_stats(source, &calculate_stats(&words)).max_error;
+        let candidate = calculate_stats(&words);
+        let err = filtered_score(&filtered_bigrams, &candidate, source);
         tracing::debug!(
             attempt,
             max_error = err,
@@ -227,13 +287,24 @@ pub(super) fn synthesise_bigram_markov(cfg: SynthesiseConfig) -> Result<()> {
 
     let words = best_of_attempts(
         &source_stats,
+        cfg.min_frequency,
         cfg.target,
         cfg.max_word_len,
         cfg.attempts,
         cfg.seed,
     );
 
-    let final_score = score_stats(&source_stats, &calculate_stats(&words));
+    let filtered_bigrams = filter_bigrams(&source_stats.bigrams, cfg.min_frequency);
+    let final_candidate = calculate_stats(&words);
+    let final_score = {
+        let mut s = score_stats(&source_stats, &final_candidate);
+        // Override bigrams_error with filtered version (matches generation target).
+        let filtered_bigrams_err = filtered_score(&filtered_bigrams, &final_candidate, &source_stats)
+            - s.letters.max(s.first_letters).max(s.average_word_length);
+        s.bigrams = filtered_bigrams_err.max(0.0);
+        s.max_error = s.letters.max(s.bigrams).max(s.first_letters).max(s.average_word_length);
+        s
+    };
     tracing::info!(
         generated_words = words.len(),
         max_error = final_score.max_error,
@@ -324,7 +395,7 @@ mod tests {
     #[test]
     fn best_of_attempts_produces_corpus_close_to_source() {
         let source = source_stats();
-        let words = best_of_attempts(&source, 1_000, 5, 8, Some(0));
+        let words = best_of_attempts(&source, 0.0, 1_000, 5, 8, Some(0));
         let score = score_stats(&source, &calculate_stats(&words));
         // Should be well under 60% error with 1k bigrams and 8 attempts.
         assert!(
