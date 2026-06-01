@@ -4,19 +4,31 @@ use crate::app::synthesise::{
     shared::{report_path, write_corpus},
 };
 use miette::{Context, IntoDiagnostic, Result};
-use rand::{RngExt, SeedableRng, rngs::StdRng};
 use std::{
-    cell::RefCell,
+    collections::BTreeMap,
     fs,
-    io::{BufReader, Read, Seek, SeekFrom, Write},
+    io::{BufReader, Read, Write},
     path::Path,
 };
 
-/// Best candidate found during sampling.
+/// Best candidate found during prefix search.
 #[derive(Debug, Clone)]
 struct Candidate {
     words: Vec<String>,
     score: CorpusScore,
+}
+
+/// Summary of source corpus built in one streaming pass.
+#[derive(Debug, Clone)]
+struct SourceSummary {
+    stats: CorpusStats,
+    word_count: usize,
+}
+
+/// Prefix evaluation cache.
+#[derive(Debug, Default)]
+struct PrefixSearch {
+    cache: BTreeMap<usize, Candidate>,
 }
 
 /// Run the sample-word synthesise pipeline.
@@ -32,29 +44,27 @@ pub(super) fn synthesise_sample_words(cfg: SynthesiseConfig) -> Result<()> {
     tracing::info!(
         input = %input.display(),
         output = %output.display(),
-        attempts = cfg.attempts.max(1),
         requested_words = cfg.words,
         tolerance = cfg.tolerance,
         method = "sampleWords",
-        "Indexing source corpus"
+        "Scanning source corpus"
     );
-    let source = IndexedWords::from_path(input)?;
-    let target_words = cfg.words.unwrap_or(source.word_count());
-    let source_stats = source.stats().clone();
+    let source = scan_source(input)?;
+    let target_words = cfg.words.unwrap_or(source.word_count);
     tracing::info!(
-        source_words = source.word_count(),
+        source_words = source.word_count,
         target_words,
-        average_word_length = source_stats.average_word_length,
+        average_word_length = source.stats.average_word_length,
         "Source corpus indexed"
     );
-    let best = find_best_candidate(&source, &source_stats, target_words, &cfg)?;
+    let best = find_best_candidate(input, &source, target_words, &cfg)?;
 
     write_corpus(&best.words, output)?;
     let report = report_path(output);
     write_report(
         &report,
         &best.score,
-        source.word_count(),
+        source.word_count,
         best.words.len(),
         cfg.tolerance,
     )?;
@@ -63,7 +73,7 @@ pub(super) fn synthesise_sample_words(cfg: SynthesiseConfig) -> Result<()> {
         input = %input.display(),
         output = %output.display(),
         report = %report.display(),
-        source_words = source.word_count(),
+        source_words = source.word_count,
         generated_words = best.words.len(),
         max_error = best.score.max_error,
         tolerance = cfg.tolerance,
@@ -73,14 +83,14 @@ pub(super) fn synthesise_sample_words(cfg: SynthesiseConfig) -> Result<()> {
     Ok(())
 }
 
-/// Sample candidate corpora and keep the best one.
+/// Find smallest prefix that matches tolerance using exponential growth then binary search.
 fn find_best_candidate(
-    source: &IndexedWords,
-    source_stats: &CorpusStats,
+    input: &Path,
+    source: &SourceSummary,
     target_words: usize,
     cfg: &SynthesiseConfig,
 ) -> Result<Candidate> {
-    if source.is_empty() {
+    if source.word_count == 0 || target_words == 0 {
         tracing::warn!("Source corpus empty; skipping sampling");
         return Ok(Candidate {
             words: Vec::new(),
@@ -94,89 +104,97 @@ fn find_best_candidate(
         });
     }
 
-    let mut best: Option<Candidate> = None;
-    let attempts = cfg.attempts.max(1);
+    let cap = target_words.min(source.word_count);
+    let mut search = PrefixSearch::default();
+    let mut low = 0usize;
+    let mut high = 1usize.min(cap);
 
-    tracing::debug!(
-        attempts,
-        target_words,
-        tolerance = cfg.tolerance,
-        "Sampling candidates"
-    );
+    tracing::debug!(cap, tolerance = cfg.tolerance, "Searching prefix bounds");
 
-    for attempt in 0..attempts {
-        let attempt_number = attempt + 1;
-        let words = sample_words(source, target_words, mix_seed(cfg.seed, attempt as u64))?;
-        let stats = calculate_stats(&words);
-        let score = score_stats(source_stats, &stats);
+    loop {
+        let candidate = search.evaluate(input, high, &source.stats)?;
+        tracing::debug!(
+            words = high,
+            max_error = candidate.score.max_error,
+            tolerance = cfg.tolerance,
+            "Evaluated prefix"
+        );
 
-        let replace = best
-            .as_ref()
-            .map(|current| score.max_error < current.score.max_error)
-            .unwrap_or(true);
-        if replace {
-            tracing::debug!(
-                attempt = attempt_number,
-                attempts,
-                max_error = score.max_error,
-                letters_error = score.letters,
-                bigrams_error = score.bigrams,
-                first_letters_error = score.first_letters,
-                average_word_length_error = score.average_word_length,
-                "New best candidate"
-            );
-            best = Some(Candidate { words, score });
-        } else {
-            tracing::trace!(
-                attempt = attempt_number,
-                attempts,
-                max_error = score.max_error,
-                "Candidate rejected"
-            );
-        }
-
-        if best
-            .as_ref()
-            .is_some_and(|current| current.score.max_error <= cfg.tolerance)
-        {
-            tracing::info!(
-                attempt = attempt_number,
-                attempts,
-                max_error = best
-                    .as_ref()
-                    .map(|candidate| candidate.score.max_error)
-                    .unwrap_or(0.0),
-                tolerance = cfg.tolerance,
-                "Tolerance reached; stopping early"
-            );
+        if candidate.score.max_error <= cfg.tolerance || high == cap {
             break;
         }
+
+        low = high;
+        high = (high.saturating_mul(2)).min(cap);
     }
 
-    if let Some(candidate) = best.as_ref() {
-        tracing::debug!(
-            generated_words = candidate.words.len(),
-            max_error = candidate.score.max_error,
-            "Best candidate selected"
+    let high_candidate = search.evaluate(input, high, &source.stats)?;
+    if high_candidate.score.max_error > cfg.tolerance {
+        tracing::warn!(
+            cap,
+            max_error = high_candidate.score.max_error,
+            tolerance = cfg.tolerance,
+            "Tolerance not reached within cap; using largest prefix"
         );
+        return Ok(high_candidate);
     }
 
-    best.wrap_err("Failed to build synth candidate")
+    tracing::info!(
+        low,
+        high,
+        tolerance = cfg.tolerance,
+        "Tolerance reached; starting binary search"
+    );
+
+    while low + 1 < high {
+        let mid = low + (high - low) / 2;
+        let candidate = search.evaluate(input, mid, &source.stats)?;
+        tracing::trace!(
+            low,
+            mid,
+            high,
+            max_error = candidate.score.max_error,
+            "Binary search step"
+        );
+
+        if candidate.score.max_error <= cfg.tolerance {
+            high = mid;
+        } else {
+            low = mid;
+        }
+    }
+
+    let best = search.evaluate(input, high, &source.stats)?;
+    tracing::info!(
+        words = best.words.len(),
+        max_error = best.score.max_error,
+        tolerance = cfg.tolerance,
+        "Smallest matching prefix selected"
+    );
+    Ok(best)
 }
 
-/// Sample words with replacement from the source corpus.
-fn sample_words(source: &IndexedWords, count: usize, seed: Option<u64>) -> Result<Vec<String>> {
-    if source.is_empty() || count == 0 {
-        return Ok(Vec::new());
-    }
+impl PrefixSearch {
+    /// Evaluate one prefix length, using cache to avoid rescanning same size.
+    fn evaluate(
+        &mut self,
+        input: &Path,
+        words: usize,
+        source_stats: &CorpusStats,
+    ) -> Result<Candidate> {
+        if let Some(candidate) = self.cache.get(&words) {
+            return Ok(candidate.clone());
+        }
 
-    let mut rng = make_rng(seed);
-    (0..count)
-        .map(|_| {
-            let index = rng.random_range(0..source.word_count());
-            source.word_at(index)
-        })
-        .collect()
+        let words_out = read_prefix_words(input, words)?;
+        let stats = calculate_stats(&words_out);
+        let candidate = Candidate {
+            score: score_stats(source_stats, &stats),
+            words: words_out,
+        };
+        self.cache.insert(words, candidate.clone());
+        Ok(candidate)
+    }
 }
 
 /// Write compact synth score report.
@@ -207,155 +225,93 @@ fn write_report(
     Ok(())
 }
 
-/// Create RNG from optional seed.
-fn make_rng(seed: Option<u64>) -> StdRng {
-    match seed {
-        Some(seed) => StdRng::seed_from_u64(seed),
-        None => {
-            let mut rng = rand::rng();
-            StdRng::from_rng(&mut rng)
-        }
-    }
-}
+/// Scan full source corpus once to collect overall stats and total word count.
+fn scan_source(path: &Path) -> Result<SourceSummary> {
+    tracing::debug!(input = %path.display(), "Opening source corpus for full scan");
+    let file = fs::File::open(path)
+        .into_diagnostic()
+        .wrap_err("Failed to open synth source text")?;
+    let mut reader = BufReader::new(file);
+    let mut counter = CorpusStatsCounter::default();
+    let mut buf = [0u8; 64 * 1024];
+    let mut word = Vec::new();
+    let mut word_count = 0usize;
+    let mut bytes_scanned = 0u64;
 
-/// Mix optional seed with an attempt salt.
-fn mix_seed(seed: Option<u64>, salt: u64) -> Option<u64> {
-    seed.map(|seed| seed ^ salt.wrapping_mul(0x9E37_79B9_7F4A_7C15))
-}
-
-/// Word source indexed by file byte offsets.
-#[derive(Debug)]
-struct IndexedWords {
-    offsets: Vec<u64>,
-    stats: CorpusStats,
-    reader: RefCell<BufReader<fs::File>>,
-}
-
-impl IndexedWords {
-    /// Index words from source file without loading full content into memory.
-    fn from_path(path: &Path) -> Result<Self> {
-        tracing::debug!(input = %path.display(), "Opening source corpus for indexing");
-        let file = fs::File::open(path)
+    loop {
+        let read = reader
+            .read(&mut buf)
             .into_diagnostic()
-            .wrap_err("Failed to open synth source text")?;
-        let mut reader = BufReader::new(file);
-        let mut offsets = Vec::new();
-        let mut counter = CorpusStatsCounter::default();
-        let mut buf = [0u8; 64 * 1024];
-        let mut word = Vec::new();
-        let mut word_start: Option<u64> = None;
-        let mut pos = 0u64;
+            .wrap_err("Failed while reading synth source text")?;
+        if read == 0 {
+            break;
+        }
 
-        loop {
-            let read = reader
-                .read(&mut buf)
-                .into_diagnostic()
-                .wrap_err("Failed while reading synth source text")?;
-            if read == 0 {
-                break;
+        for &byte in &buf[..read] {
+            if byte.is_ascii_whitespace() {
+                finish_word(&mut counter, &mut word, &mut word_count)?;
+            } else {
+                word.push(byte);
             }
+        }
 
-            for &byte in &buf[..read] {
-                if byte.is_ascii_whitespace() {
-                    finish_word(&mut offsets, &mut counter, &mut word, &mut word_start)?;
-                } else {
-                    if word_start.is_none() {
-                        word_start = Some(pos);
-                    }
-                    word.push(byte);
+        bytes_scanned += read as u64;
+    }
+
+    finish_word(&mut counter, &mut word, &mut word_count)?;
+    tracing::debug!(word_count, bytes_scanned, "Source scan complete");
+
+    Ok(SourceSummary {
+        stats: counter.finish(),
+        word_count,
+    })
+}
+
+/// Read first N words from source file.
+fn read_prefix_words(path: &Path, limit: usize) -> Result<Vec<String>> {
+    let file = fs::File::open(path)
+        .into_diagnostic()
+        .wrap_err("Failed to open synth source text")?;
+    let mut reader = BufReader::new(file);
+    let mut buf = [0u8; 64 * 1024];
+    let mut words = Vec::with_capacity(limit);
+    let mut word = Vec::new();
+
+    while words.len() < limit {
+        let read = reader
+            .read(&mut buf)
+            .into_diagnostic()
+            .wrap_err("Failed while reading synth source text")?;
+        if read == 0 {
+            break;
+        }
+
+        for &byte in &buf[..read] {
+            if byte.is_ascii_whitespace() {
+                finish_prefix_word(&mut words, &mut word)?;
+                if words.len() == limit {
+                    break;
                 }
-                pos += 1;
+            } else {
+                word.push(byte);
             }
         }
-
-        finish_word(&mut offsets, &mut counter, &mut word, &mut word_start)?;
-        tracing::debug!(
-            indexed_words = offsets.len(),
-            bytes_scanned = pos,
-            "Source scan complete"
-        );
-
-        let reader = BufReader::new(
-            fs::File::open(path)
-                .into_diagnostic()
-                .wrap_err("Failed to reopen synth source text")?,
-        );
-
-        Ok(Self {
-            offsets,
-            stats: counter.finish(),
-            reader: RefCell::new(reader),
-        })
     }
 
-    /// Count of indexed words.
-    fn word_count(&self) -> usize {
-        self.offsets.len()
+    if words.len() < limit {
+        finish_prefix_word(&mut words, &mut word)?;
     }
 
-    /// Whether source has no words.
-    fn is_empty(&self) -> bool {
-        self.offsets.is_empty()
-    }
-
-    /// Source stats computed during indexing.
-    fn stats(&self) -> &CorpusStats {
-        &self.stats
-    }
-
-    /// Read one word by byte offset.
-    fn word_at(&self, index: usize) -> Result<String> {
-        let offset = *self
-            .offsets
-            .get(index)
-            .ok_or_else(|| miette::miette!("Source word index out of range: {index}"))?;
-        let mut reader = self.reader.borrow_mut();
-        reader
-            .seek(SeekFrom::Start(offset))
-            .into_diagnostic()
-            .wrap_err("Failed to seek synth source text")?;
-
-        let mut bytes = Vec::new();
-        let mut buf = [0u8; 256];
-
-        loop {
-            let read = reader
-                .read(&mut buf)
-                .into_diagnostic()
-                .wrap_err("Failed while reading sampled word")?;
-            if read == 0 {
-                break;
-            }
-
-            let mut end = read;
-            for (i, &byte) in buf[..read].iter().enumerate() {
-                if byte.is_ascii_whitespace() {
-                    end = i;
-                    bytes.extend_from_slice(&buf[..end]);
-                    return String::from_utf8(bytes)
-                        .into_diagnostic()
-                        .wrap_err("Synth source contains invalid UTF-8 word");
-                }
-            }
-
-            bytes.extend_from_slice(&buf[..end]);
-        }
-
-        String::from_utf8(bytes)
-            .into_diagnostic()
-            .wrap_err("Synth source contains invalid UTF-8 word")
-    }
+    Ok(words)
 }
 
-/// Finalize one buffered word during indexing.
+/// Finalize one buffered word during full-source scan.
 fn finish_word(
-    offsets: &mut Vec<u64>,
     counter: &mut CorpusStatsCounter,
     word: &mut Vec<u8>,
-    word_start: &mut Option<u64>,
+    word_count: &mut usize,
 ) -> Result<()> {
     if word.is_empty() {
-        *word_start = None;
         return Ok(());
     }
 
@@ -363,7 +319,21 @@ fn finish_word(
         .into_diagnostic()
         .wrap_err("Synth source contains invalid UTF-8 word")?;
     counter.add_word(&text);
-    offsets.push(word_start.take().unwrap_or_default());
+    *word_count += 1;
+    Ok(())
+}
+
+/// Finalize one buffered word while reading a prefix block.
+fn finish_prefix_word(words: &mut Vec<String>, word: &mut Vec<u8>) -> Result<()> {
+    if word.is_empty() {
+        return Ok(());
+    }
+
+    words.push(
+        String::from_utf8(std::mem::take(word))
+            .into_diagnostic()
+            .wrap_err("Synth source contains invalid UTF-8 word")?,
+    );
     Ok(())
 }
 
@@ -376,11 +346,10 @@ mod tests {
     };
 
     #[test]
-    fn sample_words_uses_requested_count() {
-        let source = indexed_words_fixture("aa bb");
-        let words = sample_words(&source, 5, Some(7)).unwrap();
-        assert_eq!(words.len(), 5);
-        assert!(words.iter().all(|word| word == "aa" || word == "bb"));
+    fn read_prefix_words_uses_requested_count() {
+        let path = fixture_path("aa bb cc");
+        let words = read_prefix_words(&path, 2).unwrap();
+        assert_eq!(words, vec!["aa".to_owned(), "bb".to_owned()]);
     }
 
     #[test]
@@ -393,25 +362,40 @@ mod tests {
     }
 
     #[test]
-    fn indexed_words_reads_offsets_and_stats() {
-        let source = indexed_words_fixture("ab ac\nzzz");
-        assert_eq!(source.word_count(), 3);
-        assert_eq!(source.word_at(0).unwrap(), "ab");
-        assert_eq!(source.word_at(1).unwrap(), "ac");
-        assert_eq!(source.word_at(2).unwrap(), "zzz");
+    fn scan_source_reads_stats_and_word_count() {
+        let path = fixture_path("ab ac\nzzz");
+        let source = scan_source(&path).unwrap();
+        assert_eq!(source.word_count, 3);
 
         let expected = calculate_stats(&["ab".to_owned(), "ac".to_owned(), "zzz".to_owned()]);
-        assert_eq!(source.stats(), &expected);
+        assert_eq!(source.stats, expected);
     }
 
-    fn indexed_words_fixture(contents: &str) -> IndexedWords {
+    #[test]
+    fn find_best_candidate_picks_smallest_passing_prefix() {
+        let path = fixture_path("aa aa aa ab");
+        let source = scan_source(&path).unwrap();
+        let cfg = SynthesiseConfig {
+            text: Some(path.clone()),
+            output: Some(path.clone()),
+            tolerance: 0.0,
+            words: Some(source.word_count),
+            ..SynthesiseConfig::default()
+        };
+
+        let best = find_best_candidate(&path, &source, source.word_count, &cfg).unwrap();
+        assert_eq!(best.words.len(), source.word_count);
+        assert_eq!(best.score.max_error, 0.0);
+    }
+
+    fn fixture_path(contents: &str) -> PathBuf {
         let mut path = std::env::temp_dir();
         let stamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        path.push(format!("keyvolve-sample-words-{stamp}.txt"));
+        path.push(format!("keyvolve-prefix-sample-{stamp}.txt"));
         fs::write(&path, contents).unwrap();
-        IndexedWords::from_path(&path).unwrap()
+        path
     }
 }
