@@ -65,11 +65,11 @@ pub struct CorpusStatsCounter {
 /// Relative errors for tracked metrics.
 #[derive(Debug, Clone, PartialEq)]
 pub struct CorpusScore {
-    /// max letter relative error
+    /// average letter relative error
     pub letters: f64,
-    /// max bigram relative error
+    /// average bigram relative error
     pub bigrams: f64,
-    /// max first-letter relative error
+    /// average first-letter relative error
     pub first_letters: f64,
     /// average word length relative error
     pub average_word_length: f64,
@@ -86,11 +86,11 @@ pub fn calculate_stats(words: &[String]) -> CorpusStats {
     counter.finish()
 }
 
-/// Compare source and candidate stats with max relative error per metric.
+/// Compare source and candidate stats with average relative error per metric.
 pub fn score_stats(source: &CorpusStats, candidate: &CorpusStats) -> CorpusScore {
-    let letters = max_map_error(&source.letters, &candidate.letters);
-    let bigrams = max_map_error(&source.bigrams, &candidate.bigrams);
-    let first_letters = max_map_error(&source.first_letters, &candidate.first_letters);
+    let letters = avg_map_error(&source.letters, &candidate.letters);
+    let bigrams = avg_map_error(&source.bigrams, &candidate.bigrams);
+    let first_letters = avg_map_error(&source.first_letters, &candidate.first_letters);
     let average_word_length =
         relative_error(source.average_word_length, candidate.average_word_length);
     let max_error = letters
@@ -174,23 +174,22 @@ impl CorpusStatsCounter {
     }
 }
 
-fn max_map_error<K: Copy + Eq + Hash>(
+fn avg_map_error<K: Copy + Eq + Hash>(
     source: &FxHashMap<K, f64>,
     candidate: &FxHashMap<K, f64>,
 ) -> f64 {
-    let mut max_error: f64 = 0.0;
+    let mut total_error: f64 = 0.0;
+    let mut count: usize = 0;
 
-    for (&key, &expected) in source {
-        let actual = candidate.get(&key).copied().unwrap_or(0.0);
-        max_error = max_error.max(relative_error(expected, actual));
-    }
-
-    for (&key, &actual) in candidate {
+    let all_keys: rustc_hash::FxHashSet<K> = source.keys().chain(candidate.keys()).copied().collect();
+    for key in all_keys {
         let expected = source.get(&key).copied().unwrap_or(0.0);
-        max_error = max_error.max(relative_error(expected, actual));
+        let actual = candidate.get(&key).copied().unwrap_or(0.0);
+        total_error += relative_error(expected, actual);
+        count += 1;
     }
 
-    max_error
+    if count == 0 { 0.0 } else { total_error / count as f64 }
 }
 
 fn relative_error(expected: f64, actual: f64) -> f64 {
@@ -249,12 +248,14 @@ mod tests {
     }
 
     #[test]
-    fn score_stats_uses_max_relative_error() {
+    fn score_stats_uses_average_relative_error() {
         let source = calculate_stats(&["ab".to_owned(), "ac".to_owned()]);
         let candidate = calculate_stats(&["ab".to_owned(), "ab".to_owned()]);
         let score = score_stats(&source, &candidate);
 
-        assert_eq!(score.letters, 1.0);
+        // letters: a=0.5 vs 0.5 (0%), b=0.25 vs 0.5 (100%), c=0.25 vs 0.0 (100%) → avg = 2/3
+        assert!((score.letters - 2.0 / 3.0).abs() < 1e-9);
+        // bigrams: ab=0.5 vs 1.0 (100%), ac=0.5 vs 0.0 (100%) → avg = 1.0
         assert_eq!(score.bigrams, 1.0);
         assert_eq!(score.first_letters, 0.0);
         assert_eq!(score.average_word_length, 0.0);

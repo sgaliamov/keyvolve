@@ -14,7 +14,7 @@
     "output": "data/synthesised",
     "method": "bigramMarkov",
     "minFrequency": 0.00001,
-    "target": 10000,
+    "target": 64000,
     "tolerance": 0.01,
     "attempts": 256
   },
