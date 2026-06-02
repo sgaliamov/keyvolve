@@ -38,9 +38,13 @@ pub struct SynthesiseConfig {
     #[serde(default = "default_min_freq")]
     pub min_frequency: f64,
 
-    /// max characters per output word
-    #[serde(default = "default_max_word_len")]
-    pub max_word_len: usize,
+    /// max characters per output word for digraph method
+    #[serde(default = "default_digraph_max_word_len")]
+    pub digraph_max_word_len: usize,
+
+    /// max characters per output word for markov method
+    #[serde(default = "default_markov_max_word_len")]
+    pub markov_max_word_len: usize,
 
     /// global max allowed relative error across tracked metrics
     #[serde(default = "default_tolerance")]
@@ -71,7 +75,11 @@ pub(super) fn default_min_freq() -> f64 {
     0.001
 }
 
-pub(super) fn default_max_word_len() -> usize {
+pub(super) fn default_digraph_max_word_len() -> usize {
+    5
+}
+
+pub(super) fn default_markov_max_word_len() -> usize {
     5
 }
 
@@ -91,7 +99,8 @@ impl Default for SynthesiseConfig {
             method: SynthesiseMethod::default(),
             target: default_target(),
             min_frequency: default_min_freq(),
-            max_word_len: default_max_word_len(),
+            digraph_max_word_len: default_digraph_max_word_len(),
+            markov_max_word_len: default_markov_max_word_len(),
             tolerance: default_tolerance(),
             attempts: default_attempts(),
             word_count: default_word_count(),

@@ -52,7 +52,7 @@ pub(super) fn synthesise_digraph(cfg: SynthesiseConfig) -> Result<()> {
     tracing::debug!(csv = %aggregated_path.display(), "Aggregated CSV written");
 
     tracing::info!("Building corpus");
-    let words = build_corpus(&scaled, cfg.max_word_len);
+    let words = build_corpus(&scaled, cfg.digraph_max_word_len);
     write_corpus(&words, output)?;
 
     let freq_dir = output.parent().unwrap_or(output);

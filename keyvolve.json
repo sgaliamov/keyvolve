@@ -17,7 +17,8 @@
     "target": 64000,
     "tolerance": 0.01,
     "attempts": 256,
-    "maxWordLen": 5
+    "digraphMaxWordLen": 5,
+    "markovMaxWordLen": 15
   },
 
   "optimization": {

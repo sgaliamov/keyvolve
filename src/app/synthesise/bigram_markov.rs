@@ -257,7 +257,7 @@ pub(super) fn synthesise_bigram_markov(cfg: SynthesiseConfig) -> Result<()> {
         &source_stats,
         cfg.min_frequency,
         cfg.target,
-        cfg.max_word_len,
+        cfg.markov_max_word_len,
         cfg.attempts,
         cfg.seed,
     );
