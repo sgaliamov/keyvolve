@@ -17,7 +17,7 @@ pub enum SynthesiseMethod {
 }
 
 /// Settings for the corpus synthesise mode.
-#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Default, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SynthesiseConfig {
     /// input source text path
@@ -30,8 +30,24 @@ pub struct SynthesiseConfig {
     #[serde(default)]
     pub method: SynthesiseMethod,
 
+    /// digraph method config
+    #[serde(default)]
+    pub digraph: DigraphSynthesiseConfig,
+
+    /// sample method config
+    #[serde(default)]
+    pub sample: SampleSynthesiseConfig,
+
+    /// markov method config
+    #[serde(default)]
+    pub markov: MarkovSynthesiseConfig,
+}
+
+/// Parameters used by the digraph synthesis method.
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct DigraphSynthesiseConfig {
     /// target total digraph edge count in the synthesised corpus
-    /// output word count for sample method
     #[serde(default = "default_target")]
     pub target: usize,
 
@@ -39,15 +55,45 @@ pub struct SynthesiseConfig {
     #[serde(default = "default_min_freq")]
     pub min_frequency: f64,
 
-    /// max characters per output word for digraph method
+    /// max characters per output word
     #[serde(default = "default_digraph_max_word_len")]
-    pub digraph_max_word_len: usize,
+    pub max_word_len: usize,
+}
 
-    /// max characters per output word for markov method
+/// Parameters used by the sample synthesis method.
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SampleSynthesiseConfig {
+    /// output word count sampled from source
+    #[serde(default = "default_target")]
+    pub word_count: usize,
+
+    /// max allowed relative error across tracked metrics
+    #[serde(default = "default_tolerance")]
+    pub tolerance: f64,
+
+    /// optional RNG seed for reproducible sampling
+    #[serde(default)]
+    pub seed: Option<u64>,
+}
+
+/// Parameters used by the markov synthesis method.
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct MarkovSynthesiseConfig {
+    /// target total digraph edge count in generated corpus
+    #[serde(default = "default_target")]
+    pub target: usize,
+
+    /// minimum accepted relative frequency (pairs below this are dropped)
+    #[serde(default = "default_min_freq")]
+    pub min_frequency: f64,
+
+    /// max characters per output word
     #[serde(default = "default_markov_max_word_len")]
-    pub markov_max_word_len: usize,
+    pub max_word_len: usize,
 
-    /// global max allowed relative error across tracked metrics
+    /// max allowed relative error across tracked metrics
     #[serde(default = "default_tolerance")]
     pub tolerance: f64,
 
@@ -84,16 +130,32 @@ pub(super) fn default_attempts() -> usize {
     32
 }
 
-impl Default for SynthesiseConfig {
+impl Default for DigraphSynthesiseConfig {
     fn default() -> Self {
         Self {
-            text: None,
-            output: None,
-            method: SynthesiseMethod::default(),
             target: default_target(),
             min_frequency: default_min_freq(),
-            digraph_max_word_len: default_digraph_max_word_len(),
-            markov_max_word_len: default_markov_max_word_len(),
+            max_word_len: default_digraph_max_word_len(),
+        }
+    }
+}
+
+impl Default for SampleSynthesiseConfig {
+    fn default() -> Self {
+        Self {
+            word_count: default_target(),
+            tolerance: default_tolerance(),
+            seed: None,
+        }
+    }
+}
+
+impl Default for MarkovSynthesiseConfig {
+    fn default() -> Self {
+        Self {
+            target: default_target(),
+            min_frequency: default_min_freq(),
+            max_word_len: default_markov_max_word_len(),
             tolerance: default_tolerance(),
             attempts: default_attempts(),
             seed: None,

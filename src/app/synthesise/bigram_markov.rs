@@ -280,8 +280,8 @@ pub(super) fn synthesise_bigram_markov(cfg: SynthesiseConfig) -> Result<()> {
     tracing::info!(
         input = %input.display(),
         output = %output.display(),
-        target = cfg.target,
-        attempts = cfg.attempts,
+        target = cfg.markov.target,
+        attempts = cfg.markov.attempts,
         method = "bigramMarkov",
         "Scanning source corpus"
     );
@@ -310,11 +310,11 @@ pub(super) fn synthesise_bigram_markov(cfg: SynthesiseConfig) -> Result<()> {
 
     let words = best_of_attempts(
         &source_stats,
-        cfg.min_frequency,
-        cfg.target,
-        cfg.markov_max_word_len,
-        cfg.attempts,
-        cfg.seed,
+        cfg.markov.min_frequency,
+        cfg.markov.target,
+        cfg.markov.max_word_len,
+        cfg.markov.attempts,
+        cfg.markov.seed,
     );
 
     let final_candidate = calculate_stats(&words);
@@ -331,16 +331,16 @@ pub(super) fn synthesise_bigram_markov(cfg: SynthesiseConfig) -> Result<()> {
         bigrams_error = final_score.bigrams,
         first_letters_error = final_score.first_letters,
         avg_word_len_error = final_score.average_word_length,
-        tolerance = cfg.tolerance,
-        passed = final_score.max_error <= cfg.tolerance,
+        tolerance = cfg.markov.tolerance,
+        passed = final_score.max_error <= cfg.markov.tolerance,
         method = "bigramMarkov",
         "Generation complete"
     );
 
-    if final_score.max_error > cfg.tolerance {
+    if final_score.max_error > cfg.markov.tolerance {
         tracing::warn!(
             max_error = final_score.max_error,
-            tolerance = cfg.tolerance,
+            tolerance = cfg.markov.tolerance,
             "Tolerance not met; increase `attempts` or relax `tolerance`"
         );
     }
@@ -353,7 +353,7 @@ pub(super) fn synthesise_bigram_markov(cfg: SynthesiseConfig) -> Result<()> {
         &final_score,
         source_word_count,
         words.len(),
-        cfg.tolerance,
+        cfg.markov.tolerance,
     )?;
 
     tracing::info!(

@@ -25,8 +25,8 @@ pub(super) fn synthesise_sample_words(cfg: SynthesiseConfig) -> Result<()> {
         .as_deref()
         .wrap_err("Synthesise mode requires `synthesise.output` path")?;
 
-    let n = cfg.target;
-    let mut rng = StdRng::seed_from_u64(cfg.seed.unwrap_or(0xcafe_babe_dead_beef));
+    let n = cfg.sample.word_count;
+    let mut rng = StdRng::seed_from_u64(cfg.sample.seed.unwrap_or(0xcafe_babe_dead_beef));
 
     let file = fs::File::open(input)
         .into_diagnostic()
@@ -73,7 +73,13 @@ pub(super) fn synthesise_sample_words(cfg: SynthesiseConfig) -> Result<()> {
 
     write_corpus(&reservoir, output)?;
     let report = report_path(output, "sample");
-    write_report(&report, &score, total_words, sampled_n, cfg.tolerance)?;
+    write_report(
+        &report,
+        &score,
+        total_words,
+        sampled_n,
+        cfg.sample.tolerance,
+    )?;
 
     tracing::info!(
         input = %input.display(),
@@ -110,8 +116,11 @@ mod tests {
         let cfg = SynthesiseConfig {
             text: Some(path.clone()),
             output: Some(path.clone()),
-            target: 3,
-            seed: Some(42),
+            sample: crate::app::synthesise::SampleSynthesiseConfig {
+                word_count: 3,
+                seed: Some(42),
+                ..crate::app::synthesise::SampleSynthesiseConfig::default()
+            },
             ..SynthesiseConfig::default()
         };
         synthesise_sample_words(cfg).unwrap();

@@ -12,13 +12,23 @@
   "synthesise": {
     "text": "data/samples/merged.txt",
     "output": "data/synthesised",
-    "method": "bigramMarkov",
-    "minFrequency": 0.00001,
-    "target": 64000,
-    "tolerance": 0.01,
-    "attempts": 256,
-    "digraphMaxWordLen": 5,
-    "markovMaxWordLen": 15
+    "method": "markov",
+    "digraph": {
+      "minFrequency": 0.00001,
+      "target": 64000,
+      "maxWordLen": 5
+    },
+    "sample": {
+      "wordCount": 100000,
+      "tolerance": 0.01
+    },
+    "markov": {
+      "minFrequency": 0.00001,
+      "target": 64000,
+      "maxWordLen": 15,
+      "attempts": 256,
+      "tolerance": 0.01
+    }
   },
 
   "optimization": {
