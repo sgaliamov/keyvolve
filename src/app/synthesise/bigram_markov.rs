@@ -1,23 +1,16 @@
 use crate::app::synthesise::{
-    SynthesiseConfig,
+    CachedSourceStats, SynthesiseConfig,
     counter::{CorpusStats, CorpusStatsCounter, calculate_stats, score_stats},
-    shared::{report_path, write_corpus, write_report},
+    shared::{read_stats_cache, report_path, stats_cache_path, write_corpus, write_report, write_stats_cache},
 };
 use miette::{Context, IntoDiagnostic, Result};
 use rand::{RngExt, SeedableRng, rngs::StdRng};
 use rustc_hash::FxHashMap;
-use serde::{Deserialize, Serialize};
 use std::{
     fs,
     io::{BufReader, Read},
-    path::{Path, PathBuf},
+    path::Path,
 };
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct CachedSourceStats {
-    stats: CorpusStats,
-    word_count: usize,
-}
 
 /// Weighted discrete sampler built from a char → weight map.
 struct WeightedSampler {
@@ -232,39 +225,7 @@ fn scan_source(path: &Path) -> Result<(CorpusStats, usize)> {
     Ok((counter.finish(), word_count))
 }
 
-/// Cache file for source stats, stored next to output in `stats/`.
-fn source_stats_cache_path(input: &Path, output: &Path) -> PathBuf {
-    let src_stem = input.file_stem().unwrap_or_default().to_string_lossy();
-    output
-        .parent()
-        .unwrap_or(output)
-        .join("stats")
-        .join(format!("{src_stem}.source-stats.json"))
-}
 
-fn read_cached_source_stats(path: &Path) -> Result<CachedSourceStats> {
-    let text = fs::read_to_string(path)
-        .into_diagnostic()
-        .wrap_err("Failed to read cached source stats")?;
-    serde_json::from_str(&text)
-        .into_diagnostic()
-        .wrap_err("Failed to parse cached source stats")
-}
-
-fn write_cached_source_stats(path: &Path, data: &CachedSourceStats) -> Result<()> {
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)
-            .into_diagnostic()
-            .wrap_err("Failed to create source stats cache directory")?;
-    }
-    let json = serde_json::to_string_pretty(data)
-        .into_diagnostic()
-        .wrap_err("Failed to serialize source stats cache")?;
-    fs::write(path, json)
-        .into_diagnostic()
-        .wrap_err("Failed to write source stats cache")?;
-    Ok(())
-}
 
 /// Run the Markov-chain bigram synthesise pipeline.
 pub(super) fn synthesise_bigram_markov(cfg: SynthesiseConfig) -> Result<()> {
@@ -286,10 +247,10 @@ pub(super) fn synthesise_bigram_markov(cfg: SynthesiseConfig) -> Result<()> {
         "Scanning source corpus"
     );
 
-    let cache_path = source_stats_cache_path(input, output);
+    let cache_path = stats_cache_path(input);
     let (source_stats, source_word_count) = if cache_path.exists() {
         tracing::info!(cache = %cache_path.display(), "Using saved source stats");
-        let cached = read_cached_source_stats(&cache_path)?;
+        let cached = read_stats_cache(&cache_path)?;
         (cached.stats, cached.word_count)
     } else {
         let (stats, word_count) = scan_source(input)?;
@@ -297,7 +258,7 @@ pub(super) fn synthesise_bigram_markov(cfg: SynthesiseConfig) -> Result<()> {
             stats: stats.clone(),
             word_count,
         };
-        write_cached_source_stats(&cache_path, &cached)?;
+        write_stats_cache(&cache_path, &cached)?;
         tracing::info!(cache = %cache_path.display(), "Saved source stats cache");
         (stats, word_count)
     };

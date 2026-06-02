@@ -1,7 +1,7 @@
 use crate::app::synthesise::{
-    SynthesiseConfig,
-    counter::{CorpusStatsCounter, score_stats},
-    shared::{report_path, write_corpus, write_report},
+    CachedSourceStats, SynthesiseConfig,
+    counter::{CorpusStats, CorpusStatsCounter, score_stats},
+    shared::{read_stats_cache, report_path, stats_cache_path, write_corpus, write_report, write_stats_cache},
 };
 use miette::{Context, IntoDiagnostic, Result};
 use rand::{RngExt, SeedableRng, rngs::StdRng};
@@ -28,40 +28,63 @@ pub(super) fn synthesise_sample_words(cfg: SynthesiseConfig) -> Result<()> {
     let n = cfg.sample.word_count;
     let mut rng = StdRng::seed_from_u64(cfg.sample.seed.unwrap_or(0xcafe_babe_dead_beef));
 
-    let file = fs::File::open(input)
-        .into_diagnostic()
-        .wrap_err("Failed to open synth source text")?;
-    let reader = BufReader::new(file);
+    let cache_path = stats_cache_path(input);
+    let cached_stats: Option<(CorpusStats, usize)> = if cache_path.exists() {
+        tracing::info!(cache = %cache_path.display(), "Using saved source stats");
+        let c = read_stats_cache(&cache_path)?;
+        Some((c.stats, c.word_count))
+    } else {
+        None
+    };
 
-    let mut source_counter = CorpusStatsCounter::default();
     let mut reservoir: Vec<String> = Vec::new();
     let mut total_words: usize = 0;
+    let mut source_counter = CorpusStatsCounter::default();
+    let track_stats = cached_stats.is_none();
 
-    // Algorithm R reservoir sampling + full-corpus stats in one pass.
-    for line in reader.lines() {
-        let line = line
+    {
+        let file = fs::File::open(input)
             .into_diagnostic()
-            .wrap_err("Failed to read synth source text")?;
-        for word in line.split_ascii_whitespace() {
-            if word.is_empty() {
-                continue;
-            }
-            source_counter.add_word(word);
-            total_words += 1;
+            .wrap_err("Failed to open synth source text")?;
+        let reader = BufReader::new(file);
 
-            if reservoir.len() < n {
-                reservoir.push(word.to_owned());
-            } else {
-                let j = rng.random_range(0..total_words);
-                if j < n {
-                    reservoir[j] = word.to_owned();
+        // Algorithm R reservoir sampling; optionally accumulate stats in same pass.
+        for line in reader.lines() {
+            let line = line
+                .into_diagnostic()
+                .wrap_err("Failed to read synth source text")?;
+            for word in line.split_ascii_whitespace() {
+                if word.is_empty() {
+                    continue;
+                }
+                if track_stats {
+                    source_counter.add_word(word);
+                }
+                total_words += 1;
+
+                if reservoir.len() < n {
+                    reservoir.push(word.to_owned());
+                } else {
+                    let j = rng.random_range(0..total_words);
+                    if j < n {
+                        reservoir[j] = word.to_owned();
+                    }
                 }
             }
         }
     }
 
     let sampled_n = reservoir.len();
-    let source_stats = source_counter.finish();
+    let source_stats = if let Some((stats, wc)) = cached_stats {
+        total_words = wc;
+        stats
+    } else {
+        let stats = source_counter.finish();
+        let cached = CachedSourceStats { stats: stats.clone(), word_count: total_words };
+        write_stats_cache(&cache_path, &cached)?;
+        tracing::info!(cache = %cache_path.display(), "Source stats saved");
+        stats
+    };
 
     let mut sample_counter = CorpusStatsCounter::default();
     for word in &reservoir {

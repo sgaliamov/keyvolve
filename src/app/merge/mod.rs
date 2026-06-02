@@ -1,5 +1,8 @@
 pub mod config;
 
+use crate::app::synthesise::{
+    CachedSourceStats, CorpusStatsCounter, filter_stats_bigrams, stats_cache_path, write_stats_cache,
+};
 use cliffa::cli::AppHandle;
 pub use config::*;
 use miette::{Context, IntoDiagnostic, Result};
@@ -72,7 +75,46 @@ pub fn merge(cfg: MergeConfig, app: AppHandle) -> Result<()> {
 
     write_buckets(&output, temp_dir.path(), bucket_count, shuffle, seed, &app)?;
 
+    if !app.should_finish() {
+        save_stats(&output, cfg.min_frequency)?;
+    }
+
     tracing::info!(output = %output.display(), "Merge complete");
+    Ok(())
+}
+
+/// Compute `CorpusStats` from the merged output and write to the stats cache.
+fn save_stats(output: &Path, min_frequency: f64) -> Result<()> {
+    let cache_path = stats_cache_path(output);
+    if cache_path.exists() {
+        tracing::info!(cache = %cache_path.display(), "Stats cache already exists; skipping");
+        return Ok(());
+    }
+
+    tracing::info!(output = %output.display(), "Computing corpus stats");
+    let file = File::open(output)
+        .into_diagnostic()
+        .wrap_err("Failed to open merged output for stats")?;
+    let reader = BufReader::new(file);
+    let mut counter = CorpusStatsCounter::default();
+    let mut word_count = 0usize;
+
+    for line in reader.lines() {
+        let line = line.into_diagnostic()?;
+        for word in line.split_ascii_whitespace() {
+            if !word.is_empty() {
+                counter.add_word(word);
+                word_count += 1;
+            }
+        }
+    }
+
+    let mut stats = counter.finish();
+    filter_stats_bigrams(&mut stats, min_frequency);
+
+    let cached = CachedSourceStats { stats, word_count };
+    write_stats_cache(&cache_path, &cached)?;
+    tracing::info!(cache = %cache_path.display(), words = word_count, "Stats saved");
     Ok(())
 }
 

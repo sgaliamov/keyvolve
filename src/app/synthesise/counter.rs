@@ -1,6 +1,33 @@
 use rustc_hash::FxHashMap;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::hash::Hash;
+
+/// Serde helper: serialize `FxHashMap<[char; 2], f64>` as `{"ab": 0.5, ...}`.
+mod bigram_map_serde {
+    use super::*;
+
+    pub fn serialize<S: Serializer>(map: &FxHashMap<[char; 2], f64>, s: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeMap;
+        let mut m = s.serialize_map(Some(map.len()))?;
+        for (k, v) in map {
+            let key: String = k.iter().collect();
+            m.serialize_entry(&key, v)?;
+        }
+        m.end()
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<FxHashMap<[char; 2], f64>, D::Error> {
+        let raw: FxHashMap<String, f64> = FxHashMap::deserialize(d)?;
+        raw.into_iter()
+            .map(|(k, v)| {
+                let mut chars = k.chars();
+                let a = chars.next().ok_or_else(|| serde::de::Error::custom("empty bigram key"))?;
+                let b = chars.next().ok_or_else(|| serde::de::Error::custom("bigram key too short"))?;
+                Ok(([a, b], v))
+            })
+            .collect()
+    }
+}
 
 /// Count all `a-z` digraph pairs from a buffered reader, skipping cross-whitespace pairs.
 pub fn count_bigrams(reader: impl std::io::BufRead) -> FxHashMap<[char; 2], u64> {
@@ -44,6 +71,7 @@ pub struct CorpusStats {
     /// normalized letter frequencies
     pub letters: FxHashMap<char, f64>,
     /// normalized bigram frequencies
+    #[serde(with = "bigram_map_serde")]
     pub bigrams: FxHashMap<[char; 2], f64>,
     /// normalized first-letter frequencies
     pub first_letters: FxHashMap<char, f64>,
