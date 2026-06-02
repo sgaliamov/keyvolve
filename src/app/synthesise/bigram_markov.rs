@@ -292,7 +292,7 @@ pub(super) fn synthesise_bigram_markov(cfg: SynthesiseConfig) -> Result<()> {
 
     write_corpus(&words, output)?;
 
-    let report = report_path(output);
+    let report = report_path(output, "markov");
     write_report(
         &report,
         &final_score,

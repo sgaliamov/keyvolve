@@ -72,7 +72,7 @@ pub(super) fn synthesise_sample_words(cfg: SynthesiseConfig) -> Result<()> {
     let score = score_stats(&source_stats, &sample_stats);
 
     write_corpus(&reservoir, output)?;
-    let report = report_path(output);
+    let report = report_path(output, "sample");
     write_report(&report, &score, total_words, sampled_n, cfg.tolerance)?;
 
     tracing::info!(
@@ -99,8 +99,8 @@ mod tests {
     fn report_path_uses_output_stem() {
         let path = Path::new("data/synthesised.txt");
         assert_eq!(
-            report_path(path),
-            PathBuf::from("data").join("synthesised.synth-report.txt")
+            report_path(path, "sample"),
+            PathBuf::from("data").join("synthesised.sample.txt")
         );
     }
 

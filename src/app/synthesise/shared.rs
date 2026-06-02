@@ -21,8 +21,8 @@ pub(super) fn write_corpus(words: &[String], path: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Report path next to corpus output.
-pub(super) fn report_path(output: &Path) -> PathBuf {
+/// Report path next to corpus output, with method suffix.
+pub(super) fn report_path(output: &Path, method: &str) -> PathBuf {
     let stem = output
         .file_stem()
         .unwrap_or_default()
@@ -31,7 +31,7 @@ pub(super) fn report_path(output: &Path) -> PathBuf {
     output
         .parent()
         .unwrap_or(output)
-        .join(format!("{stem}.synth-report.txt"))
+        .join(format!("{stem}.{method}.txt"))
 }
 
 /// Write compact synth score report.

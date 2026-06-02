@@ -90,7 +90,7 @@ pub(super) fn synthesise_digraph(cfg: SynthesiseConfig) -> Result<()> {
     let generated_stats = calculate_stats(&words);
     let score = score_stats(&source_stats, &generated_stats);
 
-    let report = report_path(output);
+    let report = report_path(output, "digraph");
     write_report(&report, &score, 0, words.len(), cfg.tolerance)?;
 
     tracing::info!(
