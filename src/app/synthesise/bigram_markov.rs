@@ -282,7 +282,7 @@ pub(super) fn synthesise_bigram_markov(cfg: SynthesiseConfig) -> Result<()> {
         output = %output.display(),
         target = cfg.markov.target,
         attempts = cfg.markov.attempts,
-        method = "bigramMarkov",
+        method = "markov",
         "Scanning source corpus"
     );
 
@@ -333,7 +333,7 @@ pub(super) fn synthesise_bigram_markov(cfg: SynthesiseConfig) -> Result<()> {
         avg_word_len_error = final_score.average_word_length,
         tolerance = cfg.markov.tolerance,
         passed = final_score.max_error <= cfg.markov.tolerance,
-        method = "bigramMarkov",
+        method = "markov",
         "Generation complete"
     );
 
@@ -360,7 +360,7 @@ pub(super) fn synthesise_bigram_markov(cfg: SynthesiseConfig) -> Result<()> {
         corpus = %output.display(),
         report = %report.display(),
         words = words.len(),
-        method = "bigramMarkov",
+        method = "markov",
         "Synthesise complete"
     );
     Ok(())

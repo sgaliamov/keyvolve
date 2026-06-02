@@ -1,5 +1,4 @@
 {
-  "_modes": ["optimize", "evaluate", "synthesise", "merge"],
   "keyboard": "data/keyboard.json",
 
   "merge": {
