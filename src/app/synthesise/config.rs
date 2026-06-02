@@ -72,6 +72,10 @@ pub struct SampleSynthesiseConfig {
     #[serde(default = "default_tolerance")]
     pub tolerance: f64,
 
+    /// minimum accepted relative frequency (pairs below this are dropped from scoring)
+    #[serde(default = "default_min_freq")]
+    pub min_frequency: f64,
+
     /// optional RNG seed for reproducible sampling
     #[serde(default)]
     pub seed: Option<u64>,
@@ -145,6 +149,7 @@ impl Default for SampleSynthesiseConfig {
         Self {
             word_count: default_target(),
             tolerance: default_tolerance(),
+            min_frequency: default_min_freq(),
             seed: None,
         }
     }

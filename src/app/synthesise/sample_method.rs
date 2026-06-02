@@ -1,7 +1,7 @@
 use crate::app::synthesise::{
     CachedSourceStats, SynthesiseConfig,
-    counter::{CorpusStats, CorpusStatsCounter, score_stats},
-    shared::{read_stats_cache, report_path, stats_cache_path, write_corpus, write_report, write_stats_cache},
+    counter::{CorpusStats, CorpusStatsCounter},
+    shared::{read_stats_cache, report_path, score_with_filter, stats_cache_path, write_corpus, write_report, write_stats_cache},
 };
 use miette::{Context, IntoDiagnostic, Result};
 use rand::{RngExt, SeedableRng, rngs::StdRng};
@@ -92,7 +92,7 @@ pub(super) fn synthesise_sample_words(cfg: SynthesiseConfig) -> Result<()> {
     }
     let sample_stats = sample_counter.finish();
 
-    let score = score_stats(&source_stats, &sample_stats);
+    let score = score_with_filter(&source_stats, &sample_stats, cfg.sample.min_frequency);
 
     write_corpus(&reservoir, output)?;
     let report = report_path(output, "sample");

@@ -1,13 +1,13 @@
 use crate::app::synthesise::{
     SynthesiseConfig,
     corpus::build_corpus,
-    counter::{CorpusStats, calculate_stats, score_stats},
+    counter::{CorpusStats, calculate_stats},
     digraph::{
         count_corpus_letters, filter_and_scale, read_counts, read_counts_csv, read_letter_counts,
         read_letter_counts_csv, write_bigrams, write_bigrams_aggregated,
         write_letter_freq_combined,
     },
-    shared::{report_path, write_corpus, write_report},
+    shared::{report_path, score_with_filter, write_corpus, write_report},
 };
 use miette::{Context, Result};
 use rustc_hash::FxHashMap;
@@ -104,7 +104,7 @@ pub(super) fn synthesise_digraph(cfg: SynthesiseConfig) -> Result<()> {
         average_word_length: 0.0,
     };
     let generated_stats = calculate_stats(&words);
-    let score = score_stats(&source_stats, &generated_stats);
+    let score = score_with_filter(&source_stats, &generated_stats, 0.0);
 
     let report = report_path(output, "digraph");
     write_report(&report, &score, 0, words.len(), 0.01)?;

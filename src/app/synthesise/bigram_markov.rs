@@ -1,7 +1,7 @@
 use crate::app::synthesise::{
     CachedSourceStats, SynthesiseConfig,
-    counter::{CorpusStats, CorpusStatsCounter, calculate_stats, score_stats},
-    shared::{read_stats_cache, report_path, stats_cache_path, write_corpus, write_report, write_stats_cache},
+    counter::{CorpusStats, CorpusStatsCounter, calculate_stats},
+    shared::{read_stats_cache, report_path, score_with_filter, stats_cache_path, write_corpus, write_report, write_stats_cache},
 };
 use miette::{Context, IntoDiagnostic, Result};
 use rand::{RngExt, SeedableRng, rngs::StdRng};
@@ -158,7 +158,7 @@ fn best_of_attempts(
         }
 
         let candidate = calculate_stats(&words);
-        let s = score_stats(source, &candidate);
+        let s = score_with_filter(source, &candidate, min_frequency);
         // Exclude first_letters: conflicts with bigram accuracy, irrelevant for layout eval.
         let err = s.bigrams.max(s.letters).max(s.average_word_length);
         tracing::debug!(
@@ -279,7 +279,7 @@ pub(super) fn synthesise_bigram_markov(cfg: SynthesiseConfig) -> Result<()> {
     );
 
     let final_candidate = calculate_stats(&words);
-    let mut final_score = score_stats(&source_stats, &final_candidate);
+    let mut final_score = score_with_filter(&source_stats, &final_candidate, cfg.markov.min_frequency);
     // Exclude first_letters from max_error: conflicts with bigram accuracy, irrelevant for layout eval.
     final_score.max_error = final_score
         .bigrams

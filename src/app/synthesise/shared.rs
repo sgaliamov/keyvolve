@@ -1,4 +1,4 @@
-use crate::app::synthesise::counter::{CorpusScore, CorpusStats};
+use crate::app::synthesise::counter::{CorpusScore, CorpusStats, score_stats};
 use miette::{Context, IntoDiagnostic, Result};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -61,6 +61,14 @@ pub fn filter_stats_bigrams(stats: &mut CorpusStats, min_frequency: f64) {
             *v /= total;
         }
     }
+}
+
+/// Score `candidate` against `source`, filtering source bigrams below `min_frequency` first.
+/// Use this everywhere instead of calling `score_stats` directly.
+pub fn score_with_filter(source: &CorpusStats, candidate: &CorpusStats, min_frequency: f64) -> CorpusScore {
+    let mut filtered = source.clone();
+    filter_stats_bigrams(&mut filtered, min_frequency);
+    score_stats(&filtered, candidate)
 }
 
 /// Write space-separated words to a text file.
