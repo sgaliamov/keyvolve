@@ -11,6 +11,8 @@
     "markov",
     "miette",
     "overseeding",
+    "rngs",
+    "seedable",
     "synthesise",
     "synthesised",
     "unplace",
