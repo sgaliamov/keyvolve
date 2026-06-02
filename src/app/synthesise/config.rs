@@ -31,6 +31,7 @@ pub struct SynthesiseConfig {
     pub method: SynthesiseMethod,
 
     /// target total digraph edge count in the synthesised corpus
+    /// output word count for sample method
     #[serde(default = "default_target")]
     pub target: usize,
 
@@ -53,10 +54,6 @@ pub struct SynthesiseConfig {
     /// tries before giving up and returning the best candidate
     #[serde(default = "default_attempts")]
     pub attempts: usize,
-
-    /// output word count for sample method
-    #[serde(default = "default_word_count")]
-    pub word_count: usize,
 
     /// optional RNG seed for reproducible sampling
     #[serde(default)]
@@ -87,10 +84,6 @@ pub(super) fn default_attempts() -> usize {
     32
 }
 
-pub(super) fn default_word_count() -> usize {
-    100_000
-}
-
 impl Default for SynthesiseConfig {
     fn default() -> Self {
         Self {
@@ -103,7 +96,6 @@ impl Default for SynthesiseConfig {
             markov_max_word_len: default_markov_max_word_len(),
             tolerance: default_tolerance(),
             attempts: default_attempts(),
-            word_count: default_word_count(),
             seed: None,
         }
     }

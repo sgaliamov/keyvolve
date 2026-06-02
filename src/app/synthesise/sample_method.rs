@@ -25,7 +25,7 @@ pub(super) fn synthesise_sample_words(cfg: SynthesiseConfig) -> Result<()> {
         .as_deref()
         .wrap_err("Synthesise mode requires `synthesise.output` path")?;
 
-    let n = cfg.word_count;
+    let n = cfg.target;
     let mut rng = StdRng::seed_from_u64(cfg.seed.unwrap_or(0xcafe_babe_dead_beef));
 
     let file = fs::File::open(input)
@@ -110,7 +110,7 @@ mod tests {
         let cfg = SynthesiseConfig {
             text: Some(path.clone()),
             output: Some(path.clone()),
-            word_count: 3,
+            target: 3,
             seed: Some(42),
             ..SynthesiseConfig::default()
         };
