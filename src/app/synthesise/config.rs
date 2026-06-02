@@ -72,7 +72,7 @@ pub struct DigraphSynthesiseConfig {
 pub struct SampleSynthesiseConfig {
     /// output word count sampled from source
     #[serde(default = "default_target")]
-    pub word_count: usize,
+    pub target: usize,
 }
 
 /// Parameters used by the markov synthesis method.
@@ -139,7 +139,7 @@ impl Default for DigraphSynthesiseConfig {
 impl Default for SampleSynthesiseConfig {
     fn default() -> Self {
         Self {
-            word_count: default_target(),
+            target: default_target(),
         }
     }
 }

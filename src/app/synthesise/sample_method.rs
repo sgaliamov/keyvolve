@@ -28,7 +28,7 @@ pub(super) fn synthesise_sample_words(cfg: SynthesiseConfig) -> Result<()> {
         .as_deref()
         .wrap_err("Synthesise mode requires `synthesise.output` path")?;
 
-    let n = cfg.sample.word_count;
+    let n = cfg.sample.target;
     let mut rng = StdRng::seed_from_u64(cfg.seed.unwrap_or(0xcafe_babe_dead_beef));
 
     let stats_dir = cfg
@@ -143,7 +143,7 @@ mod tests {
             text: Some(path.clone()),
             output: Some(path.clone()),
             seed: Some(42),
-            sample: crate::app::synthesise::SampleSynthesiseConfig { word_count: 3 },
+            sample: crate::app::synthesise::SampleSynthesiseConfig { target: 3 },
             ..SynthesiseConfig::default()
         };
         synthesise_sample_words(cfg).unwrap();
