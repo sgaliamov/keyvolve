@@ -109,14 +109,12 @@ pub(super) fn write_report(
     score: &CorpusScore,
     source_words: usize,
     generated_words: usize,
-    tolerance: f64,
 ) -> Result<()> {
     let mut out = fs::File::create(path)
         .into_diagnostic()
         .wrap_err("Failed to create synth report")?;
     writeln!(out, "source_words={source_words}").into_diagnostic()?;
     writeln!(out, "generated_words={generated_words}").into_diagnostic()?;
-    writeln!(out, "tolerance={:.2}%", tolerance * 100.0).into_diagnostic()?;
     writeln!(out, "letters_error={:.2}%", score.letters * 100.0).into_diagnostic()?;
     writeln!(out, "bigrams_error={:.2}%", score.bigrams * 100.0).into_diagnostic()?;
     writeln!(
@@ -131,7 +129,5 @@ pub(super) fn write_report(
         score.average_word_length * 100.0
     )
     .into_diagnostic()?;
-    writeln!(out, "max_error={:.2}%", score.max_error * 100.0).into_diagnostic()?;
-    writeln!(out, "passed={}", score.max_error <= tolerance).into_diagnostic()?;
     Ok(())
 }

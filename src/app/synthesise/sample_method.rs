@@ -29,7 +29,7 @@ pub(super) fn synthesise_sample_words(cfg: SynthesiseConfig) -> Result<()> {
         .wrap_err("Synthesise mode requires `synthesise.output` path")?;
 
     let n = cfg.sample.word_count;
-    let mut rng = StdRng::seed_from_u64(cfg.sample.seed.unwrap_or(0xcafe_babe_dead_beef));
+    let mut rng = StdRng::seed_from_u64(cfg.seed.unwrap_or(0xcafe_babe_dead_beef));
 
     let cache_path = stats_cache_path(input, output);
     let cached_stats: Option<(CorpusStats, usize)> = if cache_path.exists() {
@@ -98,17 +98,11 @@ pub(super) fn synthesise_sample_words(cfg: SynthesiseConfig) -> Result<()> {
     }
     let sample_stats = sample_counter.finish();
 
-    let score = score_with_filter(&source_stats, &sample_stats, cfg.sample.min_frequency);
+    let score = score_with_filter(&source_stats, &sample_stats, cfg.min_frequency);
 
     write_corpus(&reservoir, output)?;
     let report = report_path(output);
-    write_report(
-        &report,
-        &score,
-        total_words,
-        sampled_n,
-        cfg.sample.tolerance,
-    )?;
+    write_report(&report, &score, total_words, sampled_n)?;
 
     tracing::info!(
         input = %input.display(),
@@ -135,7 +129,7 @@ mod tests {
         let path = Path::new("data/synthesised.txt");
         assert_eq!(
             report_path(path),
-            PathBuf::from("data").join("synthesised.sample.txt")
+            PathBuf::from("data").join("synthesised.rpt")
         );
     }
 
@@ -145,11 +139,8 @@ mod tests {
         let cfg = SynthesiseConfig {
             text: Some(path.clone()),
             output: Some(path.clone()),
-            sample: crate::app::synthesise::SampleSynthesiseConfig {
-                word_count: 3,
-                seed: Some(42),
-                ..crate::app::synthesise::SampleSynthesiseConfig::default()
-            },
+            seed: Some(42),
+            sample: crate::app::synthesise::SampleSynthesiseConfig { word_count: 3 },
             ..SynthesiseConfig::default()
         };
         synthesise_sample_words(cfg).unwrap();

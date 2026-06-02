@@ -268,46 +268,29 @@ pub(super) fn synthesise_bigram_markov(cfg: SynthesiseConfig) -> Result<()> {
 
     let words = best_of_attempts(
         &source_stats,
-        cfg.markov.min_frequency,
+        cfg.min_frequency,
         cfg.markov.target,
         cfg.markov.max_word_len,
         cfg.markov.attempts,
-        cfg.markov.seed,
+        cfg.seed,
     );
 
     let final_candidate = calculate_stats(&words);
-    let final_score = score_with_filter(&source_stats, &final_candidate, cfg.markov.min_frequency);
+    let final_score = score_with_filter(&source_stats, &final_candidate, cfg.min_frequency);
     tracing::info!(
         generated_words = words.len(),
-        max_error = final_score.max_error,
         letters_error = final_score.letters,
         bigrams_error = final_score.bigrams,
         first_letters_error = final_score.first_letters,
         avg_word_len_error = final_score.average_word_length,
-        tolerance = cfg.markov.tolerance,
-        passed = final_score.max_error <= cfg.markov.tolerance,
         method = "markov",
         "Generation complete"
     );
 
-    if final_score.max_error > cfg.markov.tolerance {
-        tracing::warn!(
-            max_error = final_score.max_error,
-            tolerance = cfg.markov.tolerance,
-            "Tolerance not met; increase `attempts` or relax `tolerance`"
-        );
-    }
-
     write_corpus(&words, output)?;
 
     let report = report_path(output);
-    write_report(
-        &report,
-        &final_score,
-        source_word_count,
-        words.len(),
-        cfg.markov.tolerance,
-    )?;
+    write_report(&report, &final_score, source_word_count, words.len())?;
 
     tracing::info!(
         corpus = %output.display(),

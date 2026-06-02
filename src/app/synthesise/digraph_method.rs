@@ -39,14 +39,14 @@ pub(super) fn synthesise_digraph(cfg: SynthesiseConfig) -> Result<()> {
     };
     tracing::debug!(unique_pairs = counts.len(), "Counts loaded");
 
-    let scaled = filter_and_scale(&counts, cfg.digraph.min_frequency, cfg.digraph.target);
+    let scaled = filter_and_scale(&counts, cfg.min_frequency, cfg.digraph.target);
     tracing::debug!(
         pairs_kept = scaled.len(),
-        min_frequency = cfg.digraph.min_frequency,
+        min_frequency = cfg.min_frequency,
         target = cfg.digraph.target,
         "Digraphs filtered and scaled"
     );
-    write_bigrams(&scaled, &counts, cfg.digraph.min_frequency, &bigrams_path)?;
+    write_bigrams(&scaled, &counts, cfg.min_frequency, &bigrams_path)?;
     tracing::debug!(csv = %bigrams_path.display(), "CSV written");
 
     let aggregated_path = output
@@ -54,12 +54,7 @@ pub(super) fn synthesise_digraph(cfg: SynthesiseConfig) -> Result<()> {
         .unwrap_or(output)
         .join("stats")
         .join(format!("{src_stem}.bigrams.aggregated.csv"));
-    write_bigrams_aggregated(
-        &scaled,
-        &counts,
-        cfg.digraph.min_frequency,
-        &aggregated_path,
-    )?;
+    write_bigrams_aggregated(&scaled, &counts, cfg.min_frequency, &aggregated_path)?;
     tracing::debug!(csv = %aggregated_path.display(), "Aggregated CSV written");
 
     tracing::info!("Building corpus");
@@ -107,7 +102,7 @@ pub(super) fn synthesise_digraph(cfg: SynthesiseConfig) -> Result<()> {
     let score = score_with_filter(&source_stats, &generated_stats, 0.0);
 
     let report = report_path(output);
-    write_report(&report, &score, 0, words.len(), 0.01)?;
+    write_report(&report, &score, 0, words.len())?;
 
     tracing::info!(
         csv = %bigrams_path.display(),

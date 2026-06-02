@@ -30,6 +30,13 @@ pub struct SynthesiseConfig {
     #[serde(default)]
     pub method: SynthesiseMethod,
 
+    /// minimum accepted relative frequency (pairs below this are dropped)
+    #[serde(default = "default_min_freq")]
+    pub min_frequency: f64,
+
+    /// optional RNG seed for reproducible sampling
+    pub seed: Option<u64>,
+
     /// digraph method config
     #[serde(default)]
     pub digraph: DigraphSynthesiseConfig,
@@ -51,10 +58,6 @@ pub struct DigraphSynthesiseConfig {
     #[serde(default = "default_target")]
     pub target: usize,
 
-    /// minimum accepted relative frequency (pairs below this are dropped)
-    #[serde(default = "default_min_freq")]
-    pub min_frequency: f64,
-
     /// max characters per output word
     #[serde(default = "default_digraph_max_word_len")]
     pub max_word_len: usize,
@@ -67,18 +70,6 @@ pub struct SampleSynthesiseConfig {
     /// output word count sampled from source
     #[serde(default = "default_target")]
     pub word_count: usize,
-
-    /// max allowed relative error across tracked metrics
-    #[serde(default = "default_tolerance")]
-    pub tolerance: f64,
-
-    /// minimum accepted relative frequency (pairs below this are dropped from scoring)
-    #[serde(default = "default_min_freq")]
-    pub min_frequency: f64,
-
-    /// optional RNG seed for reproducible sampling
-    #[serde(default)]
-    pub seed: Option<u64>,
 }
 
 /// Parameters used by the markov synthesis method.
@@ -89,29 +80,13 @@ pub struct MarkovSynthesiseConfig {
     #[serde(default = "default_markov_target")]
     pub target: usize,
 
-    /// minimum accepted relative frequency (pairs below this are dropped)
-    #[serde(default = "default_min_freq")]
-    pub min_frequency: f64,
-
     /// max characters per output word
     #[serde(default = "default_markov_max_word_len")]
     pub max_word_len: usize,
 
-    /// max allowed relative error across tracked metrics
-    #[serde(default = "default_tolerance")]
-    pub tolerance: f64,
-
     /// tries before giving up and returning the best candidate
     #[serde(default = "default_attempts")]
     pub attempts: usize,
-
-    /// optional RNG seed for reproducible sampling
-    #[serde(default)]
-    pub seed: Option<u64>,
-}
-
-pub(super) fn default_tolerance() -> f64 {
-    0.01
 }
 
 pub(super) fn default_target() -> usize {
@@ -142,7 +117,6 @@ impl Default for DigraphSynthesiseConfig {
     fn default() -> Self {
         Self {
             target: default_target(),
-            min_frequency: default_min_freq(),
             max_word_len: default_digraph_max_word_len(),
         }
     }
@@ -152,9 +126,6 @@ impl Default for SampleSynthesiseConfig {
     fn default() -> Self {
         Self {
             word_count: default_target(),
-            tolerance: default_tolerance(),
-            min_frequency: default_min_freq(),
-            seed: None,
         }
     }
 }
@@ -163,11 +134,8 @@ impl Default for MarkovSynthesiseConfig {
     fn default() -> Self {
         Self {
             target: default_markov_target(),
-            min_frequency: default_min_freq(),
             max_word_len: default_markov_max_word_len(),
-            tolerance: default_tolerance(),
             attempts: default_attempts(),
-            seed: None,
         }
     }
 }
