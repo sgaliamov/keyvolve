@@ -14,9 +14,9 @@ pub struct CachedSourceStats {
     pub word_count: usize,
 }
 
-/// Path for cached source stats: `{output.parent}/stats/{output.stem}.source-stats.json`.
-pub fn stats_cache_path(output: &Path) -> PathBuf {
-    let stem = output.file_stem().unwrap_or_default().to_string_lossy();
+/// Path for cached source stats: `{output.parent}/stats/{source.stem}.source-stats.json`.
+pub fn stats_cache_path(source: &Path, output: &Path) -> PathBuf {
+    let stem = source.file_stem().unwrap_or_default().to_string_lossy();
     output
         .parent()
         .unwrap_or(output)

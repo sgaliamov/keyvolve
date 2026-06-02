@@ -247,7 +247,7 @@ pub(super) fn synthesise_bigram_markov(cfg: SynthesiseConfig) -> Result<()> {
         "Scanning source corpus"
     );
 
-    let cache_path = stats_cache_path(output);
+    let cache_path = stats_cache_path(input, output);
     let (source_stats, source_word_count) = if cache_path.exists() {
         tracing::info!(cache = %cache_path.display(), "Using saved source stats");
         let cached = read_stats_cache(&cache_path)?;

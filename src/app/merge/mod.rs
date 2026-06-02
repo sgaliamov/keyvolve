@@ -85,7 +85,7 @@ pub fn merge(cfg: MergeConfig, app: AppHandle) -> Result<()> {
 
 /// Compute `CorpusStats` from the merged output and write to the stats cache.
 fn save_stats(output: &Path, min_frequency: f64) -> Result<()> {
-    let cache_path = stats_cache_path(output);
+    let cache_path = stats_cache_path(output, output);
     if cache_path.exists() {
         tracing::info!(cache = %cache_path.display(), "Stats cache already exists; skipping");
         return Ok(());
