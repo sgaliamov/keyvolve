@@ -1,13 +1,15 @@
 use crate::app::synthesise::{
     SynthesiseConfig,
     corpus::build_corpus,
+    counter::{CorpusStats, calculate_stats, score_stats},
     digraph::{
         count_corpus_letters, filter_and_scale, read_counts, read_letter_counts, write_bigrams,
         write_bigrams_aggregated, write_letter_freq_combined,
     },
-    shared::{report_path, write_corpus, write_report_words},
+    shared::{report_path, write_corpus, write_report},
 };
 use miette::{Context, Result};
+use rustc_hash::FxHashMap;
 
 /// Run the original digraph-based synthesise pipeline.
 pub(super) fn synthesise_digraph(cfg: SynthesiseConfig) -> Result<()> {
@@ -53,15 +55,6 @@ pub(super) fn synthesise_digraph(cfg: SynthesiseConfig) -> Result<()> {
     let words = build_corpus(&scaled, cfg.max_word_len);
     write_corpus(&words, output)?;
 
-    let report = report_path(output);
-    write_report_words(&report, words.len())?;
-    tracing::info!(
-        report = %report.display(),
-        words = words.len(),
-        method = "digraph",
-        "Report written"
-    );
-
     let freq_dir = output.parent().unwrap_or(output);
     let letter_freq_path = freq_dir
         .join("stats")
@@ -71,6 +64,29 @@ pub(super) fn synthesise_digraph(cfg: SynthesiseConfig) -> Result<()> {
     let synth_letters = count_corpus_letters(&words);
     write_letter_freq_combined(&orig_letters, &synth_letters, &letter_freq_path)?;
     tracing::debug!(csv = %letter_freq_path.display(), "Letter frequencies written");
+
+    // Score generated corpus against source stats.
+    // Source first_letters and avg_word_length are unavailable without a full text scan;
+    // only letter and bigram errors are meaningful here.
+    let total_raw: u64 = counts.values().sum();
+    let total_letters: u64 = orig_letters.values().sum();
+    let source_stats = CorpusStats {
+        bigrams: counts
+            .iter()
+            .map(|(&k, &v)| (k, v as f64 / total_raw.max(1) as f64))
+            .collect(),
+        letters: orig_letters
+            .iter()
+            .map(|(&k, &v)| (k, v as f64 / total_letters.max(1) as f64))
+            .collect(),
+        first_letters: FxHashMap::default(),
+        average_word_length: 0.0,
+    };
+    let generated_stats = calculate_stats(&words);
+    let score = score_stats(&source_stats, &generated_stats);
+
+    let report = report_path(output);
+    write_report(&report, &score, 0, words.len(), cfg.tolerance)?;
 
     tracing::info!(
         csv = %bigrams_path.display(),

@@ -10,10 +10,10 @@ pub enum SynthesiseMethod {
     Digraph,
 
     /// Sample words from the source corpus and score against source metrics.
-    SampleWords,
+    Sample,
 
-    /// Generate words from a bigram Markov chain, optimising CorpusScore metrics.
-    BigramMarkov,
+    /// Generate words from a bigram Markov chain, optimizing CorpusScore metrics.
+    Markov,
 }
 
 /// Settings for the corpus synthesise mode.
@@ -50,9 +50,9 @@ pub struct SynthesiseConfig {
     #[serde(default = "default_attempts")]
     pub attempts: usize,
 
-    /// optional fixed output word count; source word count when omitted
-    #[serde(default)]
-    pub words: Option<usize>,
+    /// output word count for sample method
+    #[serde(default = "default_word_count")]
+    pub word_count: usize,
 
     /// optional RNG seed for reproducible sampling
     #[serde(default)]
@@ -79,6 +79,10 @@ pub(super) fn default_attempts() -> usize {
     32
 }
 
+pub(super) fn default_word_count() -> usize {
+    100_000
+}
+
 impl Default for SynthesiseConfig {
     fn default() -> Self {
         Self {
@@ -90,7 +94,7 @@ impl Default for SynthesiseConfig {
             max_word_len: default_max_word_len(),
             tolerance: default_tolerance(),
             attempts: default_attempts(),
-            words: None,
+            word_count: default_word_count(),
             seed: None,
         }
     }

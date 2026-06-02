@@ -16,7 +16,8 @@
     "minFrequency": 0.00001,
     "target": 64000,
     "tolerance": 0.01,
-    "attempts": 256
+    "attempts": 256,
+    "maxWordLen": 16
   },
 
   "optimization": {

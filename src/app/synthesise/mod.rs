@@ -17,7 +17,7 @@ use sample_words::synthesise_sample_words;
 pub fn synthesise(cfg: SynthesiseConfig) -> Result<()> {
     match cfg.method {
         SynthesiseMethod::Digraph => synthesise_digraph(cfg),
-        SynthesiseMethod::SampleWords => synthesise_sample_words(cfg),
-        SynthesiseMethod::BigramMarkov => synthesise_bigram_markov(cfg),
+        SynthesiseMethod::Sample => synthesise_sample_words(cfg),
+        SynthesiseMethod::Markov => synthesise_bigram_markov(cfg),
     }
 }
