@@ -115,7 +115,7 @@ pub(super) fn default_target() -> usize {
 }
 
 pub(super) fn default_min_freq() -> f64 {
-    0.001
+    0.0001
 }
 
 pub(super) fn default_digraph_max_word_len() -> usize {
@@ -123,7 +123,7 @@ pub(super) fn default_digraph_max_word_len() -> usize {
 }
 
 pub(super) fn default_markov_max_word_len() -> usize {
-    5
+    15
 }
 
 pub(super) fn default_attempts() -> usize {
