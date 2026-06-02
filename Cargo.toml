@@ -18,7 +18,7 @@ serde = {version = "1.0.228", features = [
   "derive",
 #   "rc",
 ]}# Serialization and deserialization.
-serde_json = "1.0.149" # Json support.
+serde_json = "1.0.150" # Json support.
 thiserror = "2.0.18" # Errors.
 tracing = "0.1.44" # Logging library.
 
