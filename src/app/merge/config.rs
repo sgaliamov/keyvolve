@@ -19,6 +19,9 @@ pub struct MergeConfig {
     /// output file path
     pub output: Option<PathBuf>,
 
+    /// stats directory; defaults to `output/../stats`
+    pub stats: Option<PathBuf>,
+
     /// Shuffle cleaned lines before writing.
     #[serde(default)]
     pub shuffle: bool,
@@ -35,11 +38,23 @@ pub struct MergeConfig {
     pub min_frequency: f64,
 }
 
+impl MergeConfig {
+    /// Resolved stats directory: explicit `stats` field, or `output/../stats`.
+    pub fn stats_dir(&self) -> Option<std::path::PathBuf> {
+        if let Some(s) = &self.stats {
+            return Some(s.clone());
+        }
+        let out = self.output.as_deref()?;
+        Some(out.parent()?.parent()?.join("stats"))
+    }
+}
+
 impl Default for MergeConfig {
     fn default() -> Self {
         Self {
             input: None,
             output: None,
+            stats: None,
             shuffle: false,
             seed: None,
             print: default_print(),

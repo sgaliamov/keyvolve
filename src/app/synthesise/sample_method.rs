@@ -31,7 +31,10 @@ pub(super) fn synthesise_sample_words(cfg: SynthesiseConfig) -> Result<()> {
     let n = cfg.sample.word_count;
     let mut rng = StdRng::seed_from_u64(cfg.seed.unwrap_or(0xcafe_babe_dead_beef));
 
-    let cache_path = stats_cache_path(input, output);
+    let stats_dir = cfg
+        .stats_dir()
+        .wrap_err("Synthesise mode requires `synthesise.output` path to resolve stats dir")?;
+    let cache_path = stats_cache_path(input, &stats_dir);
     let cached_stats: Option<(CorpusStats, usize)> = if cache_path.exists() {
         tracing::info!(cache = %cache_path.display(), "Using saved source stats");
         let c = read_stats_cache(&cache_path)?;

@@ -43,6 +43,7 @@ impl Drop for TempDirGuard {
 pub fn merge(cfg: MergeConfig, app: AppHandle) -> Result<()> {
     let shuffle = cfg.shuffle;
     let seed = cfg.seed;
+    let stats_dir = cfg.stats_dir();
 
     let input = cfg
         .input
@@ -76,8 +77,10 @@ pub fn merge(cfg: MergeConfig, app: AppHandle) -> Result<()> {
 
     write_buckets(&output, temp_dir.path(), bucket_count, shuffle, seed, &app)?;
 
-    if !app.should_finish() {
-        save_stats(&output, cfg.min_frequency)?;
+    if !app.should_finish()
+        && let Some(ref stats_dir) = stats_dir
+    {
+        save_stats(&output, cfg.min_frequency, stats_dir)?;
     }
 
     tracing::info!(output = %output.display(), "Merge complete");
@@ -85,8 +88,8 @@ pub fn merge(cfg: MergeConfig, app: AppHandle) -> Result<()> {
 }
 
 /// Compute `CorpusStats` from the merged output and write to the stats cache.
-fn save_stats(output: &Path, min_frequency: f64) -> Result<()> {
-    let cache_path = stats_cache_path(output, output);
+fn save_stats(output: &Path, min_frequency: f64, stats_dir: &std::path::Path) -> Result<()> {
+    let cache_path = stats_cache_path(output, stats_dir);
     if cache_path.exists() {
         tracing::info!(cache = %cache_path.display(), "Stats cache already exists; skipping");
         return Ok(());

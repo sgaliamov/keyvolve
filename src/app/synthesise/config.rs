@@ -26,6 +26,9 @@ pub struct SynthesiseConfig {
     /// output corpus path
     pub output: Option<PathBuf>,
 
+    /// stats directory; defaults to `output/../stats`
+    pub stats: Option<PathBuf>,
+
     /// synthesis method to run
     #[serde(default)]
     pub method: SynthesiseMethod,
@@ -111,6 +114,17 @@ pub(super) fn default_markov_max_word_len() -> usize {
 
 pub(super) fn default_attempts() -> usize {
     32
+}
+
+impl SynthesiseConfig {
+    /// Resolved stats directory: explicit `stats` field, or `output/../stats`.
+    pub fn stats_dir(&self) -> Option<std::path::PathBuf> {
+        if let Some(s) = &self.stats {
+            return Some(s.clone());
+        }
+        let out = self.output.as_deref()?;
+        Some(out.parent()?.parent()?.join("stats"))
+    }
 }
 
 impl Default for DigraphSynthesiseConfig {
