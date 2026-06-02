@@ -71,8 +71,13 @@ pub fn score_with_filter(
     score_stats(&filtered, candidate)
 }
 
-/// Write space-separated words to a text file.
+/// Write space-separated words to a text file, creating parent directories as needed.
 pub(super) fn write_corpus(words: &[String], path: &Path) -> Result<()> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)
+            .into_diagnostic()
+            .wrap_err("Failed to create corpus output directory")?;
+    }
     let mut out = fs::File::create(path)
         .into_diagnostic()
         .wrap_err("Failed to create corpus output file")?;
