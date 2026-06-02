@@ -3,8 +3,9 @@ use crate::app::synthesise::{
     corpus::build_corpus,
     counter::{CorpusStats, calculate_stats, score_stats},
     digraph::{
-        count_corpus_letters, filter_and_scale, read_counts, read_letter_counts, write_bigrams,
-        write_bigrams_aggregated, write_letter_freq_combined,
+        count_corpus_letters, filter_and_scale, read_counts, read_counts_csv, read_letter_counts,
+        read_letter_counts_csv, write_bigrams, write_bigrams_aggregated,
+        write_letter_freq_combined,
     },
     shared::{report_path, write_corpus, write_report},
 };
@@ -30,7 +31,12 @@ pub(super) fn synthesise_digraph(cfg: SynthesiseConfig) -> Result<()> {
         .join(bigrams_name);
 
     tracing::info!(input = %input.display(), "Reading digraph counts");
-    let counts = read_counts(input)?;
+    let counts = if bigrams_path.exists() {
+        tracing::info!(csv = %bigrams_path.display(), "Using saved bigram stats");
+        read_counts_csv(&bigrams_path)?
+    } else {
+        read_counts(input)?
+    };
     tracing::debug!(unique_pairs = counts.len(), "Counts loaded");
 
     let scaled = filter_and_scale(&counts, cfg.min_frequency, cfg.target);
@@ -60,7 +66,12 @@ pub(super) fn synthesise_digraph(cfg: SynthesiseConfig) -> Result<()> {
         .join("stats")
         .join(format!("{src_stem}.letters.csv"));
 
-    let orig_letters = read_letter_counts(input)?;
+    let orig_letters = if letter_freq_path.exists() {
+        tracing::info!(csv = %letter_freq_path.display(), "Using saved letter stats");
+        read_letter_counts_csv(&letter_freq_path)?
+    } else {
+        read_letter_counts(input)?
+    };
     let synth_letters = count_corpus_letters(&words);
     write_letter_freq_combined(&orig_letters, &synth_letters, &letter_freq_path)?;
     tracing::debug!(csv = %letter_freq_path.display(), "Letter frequencies written");

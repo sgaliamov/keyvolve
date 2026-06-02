@@ -13,6 +13,36 @@ pub fn read_counts(input: &Path) -> Result<FxHashMap<[char; 2], u64>> {
     Ok(count_bigrams(BufReader::new(file)))
 }
 
+/// Load bigram raw counts from an existing stats CSV (`pair,count,%,raw,raw%`).
+/// Uses `raw` column when present; falls back to `count`.
+pub fn read_counts_csv(path: &Path) -> Result<FxHashMap<[char; 2], u64>> {
+    let text = fs::read_to_string(path)
+        .into_diagnostic()
+        .wrap_err("Failed to read bigram stats CSV")?;
+    let mut counts: FxHashMap<[char; 2], u64> = FxHashMap::default();
+
+    for (i, line) in text.lines().enumerate() {
+        if i == 0 || line.trim().is_empty() {
+            continue;
+        }
+        let parts: Vec<&str> = line.split(',').collect();
+        if parts.len() < 2 {
+            continue;
+        }
+        let pair_text = parts[0].trim();
+        let mut chars = pair_text.chars();
+        let (Some(a), Some(b), None) = (chars.next(), chars.next(), chars.next()) else {
+            continue;
+        };
+
+        let raw_idx = if parts.len() >= 4 { 3 } else { 1 };
+        let raw = parts[raw_idx].trim().parse::<u64>().unwrap_or(0);
+        counts.insert([a, b], raw);
+    }
+
+    Ok(counts)
+}
+
 /// Filter by min relative frequency, then scale counts to `target` total edges.
 /// Rounding error is redistributed to the top pairs.
 pub fn filter_and_scale(
@@ -106,6 +136,36 @@ pub fn read_letter_counts(input: &Path) -> Result<FxHashMap<char, u64>> {
         .into_diagnostic()
         .wrap_err("Failed to open file for letter frequency counting")?;
     Ok(count_letters(BufReader::new(file)))
+}
+
+/// Load original letter counts from an existing combined letter-frequency CSV
+/// (`letter,orig_count,orig_%,synth_count,synth_%`).
+pub fn read_letter_counts_csv(path: &Path) -> Result<FxHashMap<char, u64>> {
+    let text = fs::read_to_string(path)
+        .into_diagnostic()
+        .wrap_err("Failed to read letter stats CSV")?;
+    let mut counts: FxHashMap<char, u64> = FxHashMap::default();
+
+    for (i, line) in text.lines().enumerate() {
+        if i == 0 || line.trim().is_empty() {
+            continue;
+        }
+        let parts: Vec<&str> = line.split(',').collect();
+        if parts.len() < 2 {
+            continue;
+        }
+        let mut chars = parts[0].trim().chars();
+        let Some(ch) = chars.next() else {
+            continue;
+        };
+        if chars.next().is_some() {
+            continue;
+        }
+        let count = parts[1].trim().parse::<u64>().unwrap_or(0);
+        counts.insert(ch, count);
+    }
+
+    Ok(counts)
 }
 
 /// Count `a-z` letter frequencies from corpus word list.

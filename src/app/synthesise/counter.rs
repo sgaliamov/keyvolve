@@ -1,4 +1,5 @@
 use rustc_hash::FxHashMap;
+use serde::{Deserialize, Serialize};
 use std::hash::Hash;
 
 /// Count all `a-z` digraph pairs from a buffered reader, skipping cross-whitespace pairs.
@@ -38,7 +39,7 @@ pub fn count_letters(reader: impl std::io::BufRead) -> FxHashMap<char, u64> {
 }
 
 /// Corpus metrics used by synthesise mode.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CorpusStats {
     /// normalized letter frequencies
     pub letters: FxHashMap<char, f64>,
