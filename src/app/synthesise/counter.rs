@@ -6,7 +6,10 @@ use std::hash::Hash;
 mod bigram_map_serde {
     use super::*;
 
-    pub fn serialize<S: Serializer>(map: &FxHashMap<[char; 2], f64>, s: S) -> Result<S::Ok, S::Error> {
+    pub fn serialize<S: Serializer>(
+        map: &FxHashMap<[char; 2], f64>,
+        s: S,
+    ) -> Result<S::Ok, S::Error> {
         use serde::ser::SerializeMap;
         let mut m = s.serialize_map(Some(map.len()))?;
         for (k, v) in map {
@@ -16,13 +19,19 @@ mod bigram_map_serde {
         m.end()
     }
 
-    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<FxHashMap<[char; 2], f64>, D::Error> {
+    pub fn deserialize<'de, D: Deserializer<'de>>(
+        d: D,
+    ) -> Result<FxHashMap<[char; 2], f64>, D::Error> {
         let raw: FxHashMap<String, f64> = FxHashMap::deserialize(d)?;
         raw.into_iter()
             .map(|(k, v)| {
                 let mut chars = k.chars();
-                let a = chars.next().ok_or_else(|| serde::de::Error::custom("empty bigram key"))?;
-                let b = chars.next().ok_or_else(|| serde::de::Error::custom("bigram key too short"))?;
+                let a = chars
+                    .next()
+                    .ok_or_else(|| serde::de::Error::custom("empty bigram key"))?;
+                let b = chars
+                    .next()
+                    .ok_or_else(|| serde::de::Error::custom("bigram key too short"))?;
                 Ok(([a, b], v))
             })
             .collect()
@@ -203,27 +212,24 @@ impl CorpusStatsCounter {
     }
 }
 
+/// Total variation distance between two distributions: `0.5 * Σ|p(k) - q(k)|`.
+/// Range [0, 1]. Mass-weighted, so sparse tail noise doesn't dominate the way it
+/// does with mean-of-relative-errors. Missing keys count as 0.
 fn avg_map_error<K: Copy + Eq + Hash>(
     source: &FxHashMap<K, f64>,
     candidate: &FxHashMap<K, f64>,
 ) -> f64 {
-    let mut total_error: f64 = 0.0;
-    let mut count: usize = 0;
-
     let all_keys: rustc_hash::FxHashSet<K> =
         source.keys().chain(candidate.keys()).copied().collect();
-    for key in all_keys {
-        let expected = source.get(&key).copied().unwrap_or(0.0);
-        let actual = candidate.get(&key).copied().unwrap_or(0.0);
-        total_error += relative_error(expected, actual);
-        count += 1;
-    }
-
-    if count == 0 {
-        0.0
-    } else {
-        total_error / count as f64
-    }
+    let sum: f64 = all_keys
+        .into_iter()
+        .map(|k| {
+            let p = source.get(&k).copied().unwrap_or(0.0);
+            let q = candidate.get(&k).copied().unwrap_or(0.0);
+            (p - q).abs()
+        })
+        .sum();
+    0.5 * sum
 }
 
 fn relative_error(expected: f64, actual: f64) -> f64 {
@@ -282,18 +288,18 @@ mod tests {
     }
 
     #[test]
-    fn score_stats_uses_average_relative_error() {
+    fn score_stats_uses_total_variation_distance() {
         let source = calculate_stats(&["ab".to_owned(), "ac".to_owned()]);
         let candidate = calculate_stats(&["ab".to_owned(), "ab".to_owned()]);
         let score = score_stats(&source, &candidate);
 
-        // letters: a=0.5 vs 0.5 (0%), b=0.25 vs 0.5 (100%), c=0.25 vs 0.0 (100%) → avg = 2/3
-        assert!((score.letters - 2.0 / 3.0).abs() < 1e-9);
-        // bigrams: ab=0.5 vs 1.0 (100%), ac=0.5 vs 0.0 (100%) → avg = 1.0
-        assert_eq!(score.bigrams, 1.0);
+        // letters: a 0.5 vs 0.5, b 0.25 vs 0.5, c 0.25 vs 0.0 → TVD = 0.5*(0+0.25+0.25) = 0.25
+        assert!((score.letters - 0.25).abs() < 1e-9);
+        // bigrams: ab 0.5 vs 1.0, ac 0.5 vs 0.0 → TVD = 0.5*(0.5+0.5) = 0.5
+        assert!((score.bigrams - 0.5).abs() < 1e-9);
         assert_eq!(score.first_letters, 0.0);
         assert_eq!(score.average_word_length, 0.0);
-        assert_eq!(score.max_error, 1.0);
+        assert!((score.max_error - 0.5).abs() < 1e-9);
     }
 
     #[test]

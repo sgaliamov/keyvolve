@@ -106,7 +106,7 @@ pub(super) fn synthesise_digraph(cfg: SynthesiseConfig) -> Result<()> {
     let generated_stats = calculate_stats(&words);
     let score = score_with_filter(&source_stats, &generated_stats, 0.0);
 
-    let report = report_path(output, "digraph");
+    let report = report_path(output);
     write_report(&report, &score, 0, words.len(), 0.01)?;
 
     tracing::info!(

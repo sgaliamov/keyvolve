@@ -1,7 +1,10 @@
 use crate::app::synthesise::{
     CachedSourceStats, SynthesiseConfig,
     counter::{CorpusStats, CorpusStatsCounter},
-    shared::{read_stats_cache, report_path, score_with_filter, stats_cache_path, write_corpus, write_report, write_stats_cache},
+    shared::{
+        read_stats_cache, report_path, score_with_filter, stats_cache_path, write_corpus,
+        write_report, write_stats_cache,
+    },
 };
 use miette::{Context, IntoDiagnostic, Result};
 use rand::{RngExt, SeedableRng, rngs::StdRng};
@@ -80,7 +83,10 @@ pub(super) fn synthesise_sample_words(cfg: SynthesiseConfig) -> Result<()> {
         stats
     } else {
         let stats = source_counter.finish();
-        let cached = CachedSourceStats { stats: stats.clone(), word_count: total_words };
+        let cached = CachedSourceStats {
+            stats: stats.clone(),
+            word_count: total_words,
+        };
         write_stats_cache(&cache_path, &cached)?;
         tracing::info!(cache = %cache_path.display(), "Source stats saved");
         stats
@@ -95,7 +101,7 @@ pub(super) fn synthesise_sample_words(cfg: SynthesiseConfig) -> Result<()> {
     let score = score_with_filter(&source_stats, &sample_stats, cfg.sample.min_frequency);
 
     write_corpus(&reservoir, output)?;
-    let report = report_path(output, "sample");
+    let report = report_path(output);
     write_report(
         &report,
         &score,
@@ -128,7 +134,7 @@ mod tests {
     fn report_path_uses_output_stem() {
         let path = Path::new("data/synthesised.txt");
         assert_eq!(
-            report_path(path, "sample"),
+            report_path(path),
             PathBuf::from("data").join("synthesised.sample.txt")
         );
     }

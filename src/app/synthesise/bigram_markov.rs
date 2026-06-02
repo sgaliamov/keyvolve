@@ -1,7 +1,10 @@
 use crate::app::synthesise::{
     CachedSourceStats, SynthesiseConfig,
     counter::{CorpusStats, CorpusStatsCounter, calculate_stats},
-    shared::{read_stats_cache, report_path, score_with_filter, stats_cache_path, write_corpus, write_report, write_stats_cache},
+    shared::{
+        read_stats_cache, report_path, score_with_filter, stats_cache_path, write_corpus,
+        write_report, write_stats_cache,
+    },
 };
 use miette::{Context, IntoDiagnostic, Result};
 use rand::{RngExt, SeedableRng, rngs::StdRng};
@@ -130,11 +133,8 @@ fn best_of_attempts(
     // Filter rare bigrams — keeps chain clean; rare pairs produce noisy transitions.
     let filtered_bigrams = filter_bigrams(&source.bigrams, min_frequency);
     let chain = MarkovChain::from_bigrams(&filtered_bigrams);
-    // Seed words from letter dist (≈ stationary dist of chain) so generated
-    // bigram frequencies converge to source bigram frequencies.
-    // first_letters is intentionally not used: it conflicts with bigram accuracy
-    // and is irrelevant for keyboard layout evaluation (optimizer uses bigrams only).
-    let letter_sampler = WeightedSampler::new(&source.letters);
+    // Seed words from `first_letters` (actual word-start distribution).
+    let letter_sampler = WeightedSampler::new(&source.first_letters);
     // geometric stop probability → E[word_len] = avg_word_len
     let stop_p = 1.0 / source.average_word_length.max(1.0);
 
@@ -159,8 +159,7 @@ fn best_of_attempts(
 
         let candidate = calculate_stats(&words);
         let s = score_with_filter(source, &candidate, min_frequency);
-        // Exclude first_letters: conflicts with bigram accuracy, irrelevant for layout eval.
-        let err = s.bigrams.max(s.letters).max(s.average_word_length);
+        let err = s.max_error;
         tracing::debug!(
             attempt,
             max_error = err,
@@ -225,8 +224,6 @@ fn scan_source(path: &Path) -> Result<(CorpusStats, usize)> {
     Ok((counter.finish(), word_count))
 }
 
-
-
 /// Run the Markov-chain bigram synthesise pipeline.
 pub(super) fn synthesise_bigram_markov(cfg: SynthesiseConfig) -> Result<()> {
     let input = cfg
@@ -279,12 +276,7 @@ pub(super) fn synthesise_bigram_markov(cfg: SynthesiseConfig) -> Result<()> {
     );
 
     let final_candidate = calculate_stats(&words);
-    let mut final_score = score_with_filter(&source_stats, &final_candidate, cfg.markov.min_frequency);
-    // Exclude first_letters from max_error: conflicts with bigram accuracy, irrelevant for layout eval.
-    final_score.max_error = final_score
-        .bigrams
-        .max(final_score.letters)
-        .max(final_score.average_word_length);
+    let final_score = score_with_filter(&source_stats, &final_candidate, cfg.markov.min_frequency);
     tracing::info!(
         generated_words = words.len(),
         max_error = final_score.max_error,
@@ -308,7 +300,7 @@ pub(super) fn synthesise_bigram_markov(cfg: SynthesiseConfig) -> Result<()> {
 
     write_corpus(&words, output)?;
 
-    let report = report_path(output, "markov");
+    let report = report_path(output);
     write_report(
         &report,
         &final_score,
@@ -381,8 +373,8 @@ mod tests {
             .collect();
         let source = calculate_stats(&words);
         let generated = best_of_attempts(&source, 0.0, 10_000, 5, 8, Some(0));
-        let s = score_stats(&source, &calculate_stats(&generated));
-        let err = s.bigrams.max(s.letters).max(s.average_word_length);
+        let s = score_with_filter(&source, &calculate_stats(&generated), 0.0);
+        let err = s.max_error;
         assert!(err < 0.1, "combined_error too high: {:.4}", err);
     }
 }

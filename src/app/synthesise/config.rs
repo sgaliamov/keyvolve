@@ -86,7 +86,7 @@ pub struct SampleSynthesiseConfig {
 #[serde(rename_all = "camelCase")]
 pub struct MarkovSynthesiseConfig {
     /// target total digraph edge count in generated corpus
-    #[serde(default = "default_target")]
+    #[serde(default = "default_markov_target")]
     pub target: usize,
 
     /// minimum accepted relative frequency (pairs below this are dropped)
@@ -116,6 +116,10 @@ pub(super) fn default_tolerance() -> f64 {
 
 pub(super) fn default_target() -> usize {
     100_000
+}
+
+pub(super) fn default_markov_target() -> usize {
+    2_000_000
 }
 
 pub(super) fn default_min_freq() -> f64 {
@@ -158,7 +162,7 @@ impl Default for SampleSynthesiseConfig {
 impl Default for MarkovSynthesiseConfig {
     fn default() -> Self {
         Self {
-            target: default_target(),
+            target: default_markov_target(),
             min_frequency: default_min_freq(),
             max_word_len: default_markov_max_word_len(),
             tolerance: default_tolerance(),

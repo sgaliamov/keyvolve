@@ -65,7 +65,11 @@ pub fn filter_stats_bigrams(stats: &mut CorpusStats, min_frequency: f64) {
 
 /// Score `candidate` against `source`, filtering source bigrams below `min_frequency` first.
 /// Use this everywhere instead of calling `score_stats` directly.
-pub fn score_with_filter(source: &CorpusStats, candidate: &CorpusStats, min_frequency: f64) -> CorpusScore {
+pub fn score_with_filter(
+    source: &CorpusStats,
+    candidate: &CorpusStats,
+    min_frequency: f64,
+) -> CorpusScore {
     let mut filtered = source.clone();
     filter_stats_bigrams(&mut filtered, min_frequency);
     score_stats(&filtered, candidate)
@@ -87,7 +91,7 @@ pub(super) fn write_corpus(words: &[String], path: &Path) -> Result<()> {
 }
 
 /// Report path next to corpus output, with method suffix.
-pub(super) fn report_path(output: &Path, method: &str) -> PathBuf {
+pub(super) fn report_path(output: &Path) -> PathBuf {
     let stem = output
         .file_stem()
         .unwrap_or_default()
@@ -96,7 +100,7 @@ pub(super) fn report_path(output: &Path, method: &str) -> PathBuf {
     output
         .parent()
         .unwrap_or(output)
-        .join(format!("{stem}.{method}.txt"))
+        .join(format!("{stem}.rpt"))
 }
 
 /// Write compact synth score report.
