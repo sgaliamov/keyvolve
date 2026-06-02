@@ -66,14 +66,19 @@ pub(super) fn synthesise_digraph(cfg: SynthesiseConfig) -> Result<()> {
     tracing::debug!(csv = %letter_freq_path.display(), "Letter frequencies written");
 
     // Score generated corpus against source stats.
-    // Source first_letters and avg_word_length are unavailable without a full text scan;
-    // only letter and bigram errors are meaningful here.
-    let total_raw: u64 = counts.values().sum();
+    // Use only the kept (filtered) bigrams as source reference — rare pairs were
+    // intentionally discarded, so including them would inflate error.
+    let kept_bigrams: FxHashMap<[char; 2], u64> = scaled
+        .iter()
+        .filter(|(_, n)| *n > 0)
+        .map(|(pair, _)| (*pair, counts.get(pair).copied().unwrap_or(0)))
+        .collect();
+    let kept_total: u64 = kept_bigrams.values().sum();
     let total_letters: u64 = orig_letters.values().sum();
     let source_stats = CorpusStats {
-        bigrams: counts
+        bigrams: kept_bigrams
             .iter()
-            .map(|(&k, &v)| (k, v as f64 / total_raw.max(1) as f64))
+            .map(|(&k, &v)| (k, v as f64 / kept_total.max(1) as f64))
             .collect(),
         letters: orig_letters
             .iter()

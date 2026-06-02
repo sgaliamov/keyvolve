@@ -34,15 +34,6 @@ pub(super) fn report_path(output: &Path) -> PathBuf {
         .join(format!("{stem}.synth-report.txt"))
 }
 
-/// Write minimal synth report when error metrics are unavailable.
-pub(super) fn write_report_words(path: &Path, generated_words: usize) -> Result<()> {
-    let mut out = fs::File::create(path)
-        .into_diagnostic()
-        .wrap_err("Failed to create synth report")?;
-    writeln!(out, "generated_words={generated_words}").into_diagnostic()?;
-    Ok(())
-}
-
 /// Write compact synth score report.
 pub(super) fn write_report(
     path: &Path,
@@ -59,8 +50,18 @@ pub(super) fn write_report(
     writeln!(out, "tolerance={:.2}%", tolerance * 100.0).into_diagnostic()?;
     writeln!(out, "letters_error={:.2}%", score.letters * 100.0).into_diagnostic()?;
     writeln!(out, "bigrams_error={:.2}%", score.bigrams * 100.0).into_diagnostic()?;
-    writeln!(out, "first_letters_error={:.2}%", score.first_letters * 100.0).into_diagnostic()?;
-    writeln!(out, "average_word_length_error={:.2}%", score.average_word_length * 100.0).into_diagnostic()?;
+    writeln!(
+        out,
+        "first_letters_error={:.2}%",
+        score.first_letters * 100.0
+    )
+    .into_diagnostic()?;
+    writeln!(
+        out,
+        "average_word_length_error={:.2}%",
+        score.average_word_length * 100.0
+    )
+    .into_diagnostic()?;
     writeln!(out, "max_error={:.2}%", score.max_error * 100.0).into_diagnostic()?;
     writeln!(out, "passed={}", score.max_error <= tolerance).into_diagnostic()?;
     Ok(())

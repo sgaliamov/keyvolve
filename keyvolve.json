@@ -17,7 +17,7 @@
     "target": 64000,
     "tolerance": 0.01,
     "attempts": 256,
-    "maxWordLen": 16
+    "maxWordLen": 5
   },
 
   "optimization": {

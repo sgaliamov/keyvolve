@@ -4,14 +4,14 @@ mod corpus;
 mod counter;
 mod digraph;
 mod digraph_method;
-mod sample_words;
+mod sample_method;
 mod shared;
 
 use bigram_markov::synthesise_bigram_markov;
 pub use config::*;
 use digraph_method::synthesise_digraph;
 use miette::Result;
-use sample_words::synthesise_sample_words;
+use sample_method::synthesise_sample_words;
 
 /// Run the configured synthesise pipeline.
 pub fn synthesise(cfg: SynthesiseConfig) -> Result<()> {

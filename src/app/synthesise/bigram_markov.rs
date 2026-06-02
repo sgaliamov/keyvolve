@@ -265,7 +265,8 @@ pub(super) fn synthesise_bigram_markov(cfg: SynthesiseConfig) -> Result<()> {
     let final_candidate = calculate_stats(&words);
     let mut final_score = score_stats(&source_stats, &final_candidate);
     // Exclude first_letters from max_error: conflicts with bigram accuracy, irrelevant for layout eval.
-    final_score.max_error = final_score.bigrams
+    final_score.max_error = final_score
+        .bigrams
         .max(final_score.letters)
         .max(final_score.average_word_length);
     tracing::info!(

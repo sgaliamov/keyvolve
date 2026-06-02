@@ -39,7 +39,9 @@ pub(super) fn synthesise_sample_words(cfg: SynthesiseConfig) -> Result<()> {
 
     // Algorithm R reservoir sampling + full-corpus stats in one pass.
     for line in reader.lines() {
-        let line = line.into_diagnostic().wrap_err("Failed to read synth source text")?;
+        let line = line
+            .into_diagnostic()
+            .wrap_err("Failed to read synth source text")?;
         for word in line.split_ascii_whitespace() {
             if word.is_empty() {
                 continue;

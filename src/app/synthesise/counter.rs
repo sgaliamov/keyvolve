@@ -181,7 +181,8 @@ fn avg_map_error<K: Copy + Eq + Hash>(
     let mut total_error: f64 = 0.0;
     let mut count: usize = 0;
 
-    let all_keys: rustc_hash::FxHashSet<K> = source.keys().chain(candidate.keys()).copied().collect();
+    let all_keys: rustc_hash::FxHashSet<K> =
+        source.keys().chain(candidate.keys()).copied().collect();
     for key in all_keys {
         let expected = source.get(&key).copied().unwrap_or(0.0);
         let actual = candidate.get(&key).copied().unwrap_or(0.0);
@@ -189,7 +190,11 @@ fn avg_map_error<K: Copy + Eq + Hash>(
         count += 1;
     }
 
-    if count == 0 { 0.0 } else { total_error / count as f64 }
+    if count == 0 {
+        0.0
+    } else {
+        total_error / count as f64
+    }
 }
 
 fn relative_error(expected: f64, actual: f64) -> f64 {
