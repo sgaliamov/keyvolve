@@ -17,7 +17,7 @@
       "maxWordLen": 5
     },
     "sample": {
-      "wordCount": 100000
+      "target": 100000
     },
     "markov": {
       "target": 64000,

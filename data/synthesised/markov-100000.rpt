@@ -1,0 +1,6 @@
+source_words=3465110798
+generated_words=26329
+letters_error=1.28%
+bigrams_error=7.49%
+first_letters_error=1.05%
+average_word_length_error=3.75%
