@@ -27,11 +27,11 @@
   },
 
   "optimization": {
-    "text": "data/synthesised",
+    "text": "data/synthesised/sample-5000",
     "-input": "data/seed.csv",
     "output": "data/layouts.csv",
     "-blocked": [19],
-    "allowed": {
+    ",allowed": {
       "e": [6, 7, 8]
     },
     "`allowed": {
@@ -45,11 +45,11 @@
       "r": [2, 6, 7, 8],
       "s": [1, 2, 6, 7, 8]
     },
-    "rolls": ["th", "er"]
+    ",rolls": ["th", "er"]
   },
 
   "evaluate": {
-    "text": "data/synthesised",
+    "text": "data\\synthesised\\sample-100000",
     "input": "data/layouts.csv",
     "output": "data/layouts.csv",
     "print": 10
@@ -59,13 +59,13 @@
     "bigramSwitchPenalty": 3.0,
     "balancePenalty": 1.5,
     "alternationPenalty": 0.25,
-    "rowSwitchPenalty": 0.25
+    "rowSwitchPenalty": 0.5
   },
 
   "ga": {
     "mutationRatio": 0.9,
     "populationSize": 128,
-    "pools": 256,
+    "pools": 512,
     "randomRatio": 0.25,
     "seedMutation": 4
   }
