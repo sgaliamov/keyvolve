@@ -27,11 +27,11 @@
   },
 
   "optimization": {
-    "text": "data/synthesised/sample-5000",
+    "text": "data/synthesised/sample-20000",
     "-input": "data/seed.csv",
     "output": "data/layouts.csv",
     "-blocked": [19],
-    ",allowed": {
+    "allowed": {
       "e": [6, 7, 8]
     },
     "`allowed": {
@@ -45,11 +45,11 @@
       "r": [2, 6, 7, 8],
       "s": [1, 2, 6, 7, 8]
     },
-    ",rolls": ["th", "er"]
+    "rolls": ["th", "er"]
   },
 
   "evaluate": {
-    "text": "data\\synthesised\\sample-100000",
+    "text": "data\\synthesised\\sample-1000000",
     "input": "data/layouts.csv",
     "output": "data/layouts.csv",
     "print": 10
