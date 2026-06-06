@@ -11,8 +11,10 @@ mod bigram_map_serde {
         s: S,
     ) -> Result<S::Ok, S::Error> {
         use serde::ser::SerializeMap;
+        let mut entries: Vec<_> = map.iter().collect();
+        entries.sort_by(|a, b| b.1.total_cmp(a.1));
         let mut m = s.serialize_map(Some(map.len()))?;
-        for (k, v) in map {
+        for (k, v) in entries {
             let key: String = k.iter().collect();
             m.serialize_entry(&key, v)?;
         }
@@ -35,6 +37,26 @@ mod bigram_map_serde {
                 Ok(([a, b], v))
             })
             .collect()
+    }
+}
+
+/// Serde helper: serialize `FxHashMap<char, f64>` sorted by value descending.
+mod char_map_serde {
+    use super::*;
+
+    pub fn serialize<S: Serializer>(map: &FxHashMap<char, f64>, s: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeMap;
+        let mut entries: Vec<_> = map.iter().collect();
+        entries.sort_by(|a, b| b.1.total_cmp(a.1));
+        let mut m = s.serialize_map(Some(map.len()))?;
+        for (k, v) in entries {
+            m.serialize_entry(&k.to_string(), v)?;
+        }
+        m.end()
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<FxHashMap<char, f64>, D::Error> {
+        FxHashMap::deserialize(d)
     }
 }
 
@@ -78,11 +100,13 @@ pub fn count_letters(reader: impl std::io::BufRead) -> FxHashMap<char, u64> {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CorpusStats {
     /// normalized letter frequencies
+    #[serde(with = "char_map_serde")]
     pub letters: FxHashMap<char, f64>,
     /// normalized bigram frequencies
     #[serde(with = "bigram_map_serde")]
     pub bigrams: FxHashMap<[char; 2], f64>,
     /// normalized first-letter frequencies
+    #[serde(with = "char_map_serde")]
     pub first_letters: FxHashMap<char, f64>,
     /// average word length in characters
     pub average_word_length: f64,

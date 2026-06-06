@@ -30,7 +30,7 @@
     "text": "data/synthesised/sample-20000",
     "-input": "data/seed.csv",
     "output": "data/layouts.csv",
-    "-blocked": [19],
+    "blocked": [19],
     "allowed": {
       "e": [6, 7, 8]
     },
