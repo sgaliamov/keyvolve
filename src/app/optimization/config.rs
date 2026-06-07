@@ -97,11 +97,19 @@ pub struct OptimizationConfig {
     #[serde(default, deserialize_with = "de_rolls")]
     pub rolls: Vec<[char; 2]>,
 
+    /// Number of independent mutants produced per parent per generation. Default: 10.
+    #[serde(default = "default_mutation_count")]
+    pub mutation_count: usize,
+
     /// Input layouts csv file, used as optimization seed.
     pub input: Option<PathBuf>,
 
     /// Output layouts csv file
     pub output: Option<PathBuf>,
+}
+
+fn default_mutation_count() -> usize {
+    10
 }
 
 impl OptimizationConfig {
