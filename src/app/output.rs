@@ -6,13 +6,13 @@ use tracing::info;
 /// Print top N layouts and optionally append them to a CSV file.
 /// Creates the file with a header row if it doesn't exist yet.
 pub fn write_layouts(
-    layouts: &[(Layout, ScoreResult)],
+    layouts: &[(Layout, ScoreResult, usize)],
     to_print: usize,
     output_path: Option<&Path>,
     overwrite: bool,
 ) -> Result<()> {
-    for (layout, score) in layouts.iter().take(to_print) {
-        println!("{layout} | {score}");
+    for (layout, score, pool) in layouts.iter().take(to_print) {
+        println!("[pool {pool:>2}] {layout} | {score}");
     }
 
     let Some(path) = output_path else {
@@ -41,7 +41,7 @@ pub fn write_layouts(
         .wrap_err("Failed to write header")?;
     }
 
-    for (layout, score) in layouts {
+    for (layout, score, _) in layouts {
         writeln!(file, "{layout}, {}", score.to_csv())
             .into_diagnostic()
             .wrap_err("Failed to write layout row")?;

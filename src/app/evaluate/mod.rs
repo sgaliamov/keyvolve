@@ -27,7 +27,7 @@ pub fn evaluate(
                 return None;
             }
             let score_corpus = evaluator.score_corpus(&layout.keys);
-            Some((layout, score_corpus))
+            Some((layout, score_corpus, 0usize))
         })
         .collect();
 

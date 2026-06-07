@@ -47,12 +47,13 @@ pub fn optimize(
 
     let pools = &pools;
 
-    let top: Vec<_> = top_by_home_row(pools, 10)
-        .into_iter()
-        .map(to_output_row)
-        .collect();
+    let top = top_by_home_row(pools, 10);
 
-    write_layouts(&top, 10, output_path.as_deref(), false)
+    let rows: Vec<_> = top
+        .iter()
+        .map(|(pool, ind)| to_output_row(*pool, ind))
+        .collect();
+    write_layouts(&rows, rows.len(), output_path.as_deref(), false)
 }
 
 /// Sorted chars at home-row slots — group identity.
@@ -66,26 +67,31 @@ fn home_row_key(genome: &[char]) -> [char; 10] {
 fn top_by_home_row(
     pools: &darwin::Pools<char, ScoreResult>,
     max_groups: usize,
-) -> Vec<&Individual<char, ScoreResult>> {
-    // Parallel collect all scored individuals.
-    let all: Vec<_> = pools
+) -> Vec<(usize, &Individual<char, ScoreResult>)> {
+    // Parallel collect all scored individuals, tagged with pool number.
+    let all: Vec<(usize, &Individual<char, ScoreResult>)> = pools
         .par_iter()
-        .flat_map_iter(|p| p.individuals.iter().filter(|ind| ind.fitness.is_finite()))
+        .flat_map_iter(|p| {
+            p.individuals
+                .iter()
+                .filter(|ind| ind.fitness.is_finite())
+                .map(|ind| (p.number, ind))
+        })
         .collect();
 
     // Group by home-row fingerprint; sort within groups in parallel.
     let mut groups: Vec<Vec<_>> = all
         .into_iter()
-        .into_group_map_by(|ind| home_row_key(&ind.genome))
+        .into_group_map_by(|(_, ind)| home_row_key(&ind.genome))
         .into_values()
         .collect();
 
     groups.par_iter_mut().for_each(|g| {
-        g.sort_unstable_by(|a, b| b.fitness.total_cmp(&a.fitness));
+        g.sort_unstable_by(|a, b| b.1.fitness.total_cmp(&a.1.fitness));
     });
 
     // Sort groups by their champion, keep top `max_groups`.
-    groups.sort_unstable_by(|a, b| b[0].fitness.total_cmp(&a[0].fitness));
+    groups.sort_unstable_by(|a, b| b[0].1.fitness.total_cmp(&a[0].1.fitness));
     groups.truncate(max_groups);
 
     // Tier-based extraction with cross-group dedup.
@@ -100,11 +106,14 @@ fn top_by_home_row(
             };
             g.iter().take(n).copied()
         })
-        .unique_by(|ind| &ind.genome)
+        .unique_by(|(_, ind)| &ind.genome)
         .collect()
 }
 
-fn to_output_row(individual: &Individual<char, ScoreResult>) -> (Layout, ScoreResult) {
+fn to_output_row(
+    pool: usize,
+    individual: &Individual<char, ScoreResult>,
+) -> (Layout, ScoreResult, usize) {
     let score = individual.state.as_ref().unwrap().clone();
-    (Layout::from_keys(&individual.genome), score)
+    (Layout::from_keys(&individual.genome), score, pool)
 }
