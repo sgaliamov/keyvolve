@@ -150,4 +150,60 @@ mod tests {
             assert!(pos == 0 || pos == 19, "a landed at {pos}");
         }
     }
+
+    /// Stress test against the real `keyvolve.json` constraints: every placed
+    /// char must satisfy `is_slot_allowed` after generation AND after mutation.
+    #[test]
+    fn real_config_respects_allowed() {
+        use crate::app::optimization::{place_letters, unplace_units};
+        use rand::seq::SliceRandom;
+
+        let json = r#"{
+            "text": "x",
+            "blocked": [19],
+            "allowed": {
+                "t":[1,2,3],"h":[1,2,3],
+                "c":[1,2,3,6,7,8,11,12,13],
+                "e":[6,7,8],"a":[1,2,3,6,7,8],
+                "o":[1,2,3,6,7,8],"r":[1,2,6,7,8],
+                "s":[1,2,3,6,7,8,11,12,13]
+            },
+            "rolls":["ht","er"]
+        }"#;
+        let opt: OptimizationConfig = serde_json::from_str(json).unwrap();
+        let cache = opt.cache();
+
+        let check = |g: &[char], when: &str| {
+            for (slot, &ch) in g.iter().enumerate() {
+                if ch != EMPTY_SLOT {
+                    assert!(
+                        opt.is_slot_allowed(ch, slot as u8),
+                        "{when}: '{ch}' at slot {slot} violates allowed"
+                    );
+                }
+            }
+            let mut present: Vec<char> = g.iter().copied().filter(|&c| c != EMPTY_SLOT).collect();
+            present.sort_unstable();
+            assert_eq!(
+                present,
+                ('a'..='z').collect::<Vec<_>>(),
+                "{when}: genome must contain every letter exactly once"
+            );
+        };
+
+        let mut rng = rand::rng();
+        for _ in 0..5_000 {
+            let mut g = constrained_keys(&opt, &cache);
+            check(&g, "generate");
+
+            // Exercise the mutate core: unplace then re-place.
+            let unplaced = unplace_units(&mut g, &opt, &cache, 6, &mut rng);
+            let mut free = unplaced.free;
+            let mut letters = unplaced.letters;
+            letters.shuffle(&mut rng);
+            free.shuffle(&mut rng);
+            place_letters(&mut g, &mut free, &letters, &opt, &cache);
+            check(&g, "mutate");
+        }
+    }
 }

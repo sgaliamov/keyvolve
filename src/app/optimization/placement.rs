@@ -48,8 +48,19 @@ pub fn place_letters(
         }
     }
 
-    // ── 3. Allowed ───────────────────────────────────────────────────────────
-    for &ch in letters.iter().filter(|c| opt.allowed.contains_key(c)) {
+    // ── 3. Allowed (most-constrained first) ──────────────────────────────────
+    // Sort by allowed-set size ascending: tight letters (e.g. a roll pair locked
+    // to one column triplet) claim their few slots before wide letters can steal
+    // them. Without this, a wide letter grabs a tight letter's only slot → the
+    // tight letter is starved and spills onto a disallowed slot.
+    let mut constrained: Vec<char> = letters
+        .iter()
+        .copied()
+        .filter(|c| opt.allowed.contains_key(c))
+        .collect();
+    constrained.sort_by_key(|c| opt.allowed[c].len());
+
+    for ch in constrained {
         if placed.contains(&ch) {
             continue;
         }
@@ -62,16 +73,7 @@ pub fn place_letters(
             place_pair(genome, free, &mut placed, i, j, ch, partner);
             continue;
         }
-        let idx = free
-            .iter()
-            .position(|&s| opt.is_slot_allowed(ch, s) && is_contiguous_slot(genome, s))
-            .or_else(|| free.iter().position(|&s| opt.is_slot_allowed(ch, s)))
-            .or((!free.is_empty()).then_some(0));
-        if let Some(idx) = idx {
-            genome[free[idx] as usize] = ch;
-            placed.insert(ch);
-            free.swap_remove(idx);
-        }
+        place_constrained(genome, free, &mut placed, ch, opt, cache);
     }
 
     // ── 4. Remaining rolls ───────────────────────────────────────────────────
@@ -256,6 +258,46 @@ pub fn place_pair(
     let (hi, lo) = if i > j { (i, j) } else { (j, i) };
     free.swap_remove(hi);
     free.swap_remove(lo);
+}
+
+/// Place a constrained `ch` onto one of its allowed slots, preferring a contiguous free one.
+/// If no allowed slot is free, evict a movable occupant of an allowed slot to a free slot it
+/// accepts — so `ch` never lands on a disallowed slot. Pairs with most-constrained-first
+/// ordering, which keeps the swap path effectively unreachable for sane configs.
+pub fn place_constrained(
+    genome: &mut [char],
+    free: &mut Vec<u8>,
+    placed: &mut FxHashSet<char>,
+    ch: char,
+    opt: &OptimizationConfig,
+    cache: &OptimizationCache,
+) {
+    // Direct: a free allowed slot (contiguous preferred).
+    if let Some(idx) = free
+        .iter()
+        .position(|&s| opt.is_slot_allowed(ch, s) && is_contiguous_slot(genome, s))
+        .or_else(|| free.iter().position(|&s| opt.is_slot_allowed(ch, s)))
+    {
+        genome[free[idx] as usize] = ch;
+        placed.insert(ch);
+        free.swap_remove(idx);
+        return;
+    }
+
+    // Swap: relocate a movable occupant of an allowed slot to a free slot it accepts.
+    for s in 0..genome.len() as u8 {
+        let occ = genome[s as usize];
+        if occ == EMPTY_SLOT || !opt.is_slot_allowed(ch, s) || cache.frozen_chars.contains(&occ) {
+            continue;
+        }
+        if let Some(idx) = free.iter().position(|&f| opt.is_slot_allowed(occ, f)) {
+            genome[free[idx] as usize] = occ;
+            genome[s as usize] = ch;
+            placed.insert(ch);
+            free.swap_remove(idx);
+            return;
+        }
+    }
 }
 
 #[cfg(test)]

@@ -100,7 +100,7 @@ fn top_by_home_row(
         .enumerate()
         .flat_map(|(i, g)| {
             let n = match i {
-                0 | 1 => 8,
+                0 | 1 => 6,
                 2 | 3 => 4,
                 _ => 2,
             };
