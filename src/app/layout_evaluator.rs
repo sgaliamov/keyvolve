@@ -18,6 +18,9 @@ pub struct LayoutEvaluatorConfig {
 
     /// Coefficient `k` for weighted same-hand row-switch penalty.
     pub row_switch_penalty: f64,
+
+    /// Extra effort multiplier applied to every pinky key press; `1.0` disables it.
+    pub pinky_multiplier: f64,
 }
 
 impl Default for LayoutEvaluatorConfig {
@@ -27,6 +30,7 @@ impl Default for LayoutEvaluatorConfig {
             balance_penalty: 2.0,
             alternation_penalty: 0.25,
             row_switch_penalty: 0.25,
+            pinky_multiplier: 1.1,
         }
     }
 }
@@ -74,7 +78,7 @@ impl LayoutEvaluator {
         let first_left = first_key < 15;
 
         // First character: self-effort as baseline, count the first key press.
-        let effort = self.lookup(first_key, first_key);
+        let effort = self.lookup(first_key, first_key) * self.pinky_mul(first_key);
         let seed = ScoreResult {
             effort,
             left_count: first_left as u32,
@@ -97,7 +101,7 @@ impl LayoutEvaluator {
                 let b_left = kb < 15;
 
                 let (effort, bigram_switches, row_switch_cost) = if a_left == b_left {
-                    (self.lookup(ka, kb), 0, row_switch_cost(ka, kb))
+                    (self.lookup(ka, kb) * self.pinky_mul(kb), 0, row_switch_cost(ka, kb))
                 } else {
                     // When hands alternate, key `a` was already counted in the
                     // previous iteration.  We charge the self-effort of key `b`
@@ -105,7 +109,7 @@ impl LayoutEvaluator {
                     // (analogous to the first-letter cost above), multiplied by
                     // `bigram_switch_penalty` so `1.0` means no extra cost.
                     (
-                        self.lookup(kb, kb) * self.config.bigram_switch_penalty,
+                        self.lookup(kb, kb) * self.config.bigram_switch_penalty * self.pinky_mul(kb),
                         1,
                         0,
                     )
@@ -163,6 +167,19 @@ impl LayoutEvaluator {
     fn lookup(&self, from: u8, to: u8) -> f64 {
         *self.pairs.get(&(from, to)).unwrap()
     }
+
+    /// Returns `config.pinky_multiplier` when `slot` is a pinky key, else `1.0`.
+    #[inline]
+    fn pinky_mul(&self, slot: u8) -> f64 {
+        if is_pinky(slot) { self.config.pinky_multiplier } else { 1.0 }
+    }
+}
+
+/// Returns `true` when `slot` is on the pinky finger.
+/// Left pinky: col 0 (slots 0, 5, 10). Right pinky: col 4 (slots 19, 24, 29).
+#[inline]
+fn is_pinky(slot: u8) -> bool {
+    if slot < 15 { slot.is_multiple_of(5) } else { slot % 5 == 4 }
 }
 
 /// Weighted same-hand row-switch cost. Adjacent-row move = 1, jump-over-row = 2.
@@ -428,6 +445,37 @@ mod tests {
         assert_close(score.fitness, 11111111.11);
     }
 
+    #[test]
+    fn score_word_applies_pinky_multiplier_to_pinky_keys() {
+        let evaluator = LayoutEvaluator::new(
+            &test_keyboard(),
+            vec![],
+            LayoutEvaluatorConfig {
+                pinky_multiplier: 1.5,
+                ..test_config()
+            },
+        );
+        // 'a' → slot 0 (left pinky). Both presses in "aa" are pinky → 1.5× each.
+        let score = evaluator.score_word("aa", &test_keys());
+        assert_close(score.effort, 3.0); // 2 × 1.0 × 1.5
+    }
+
+    #[test]
+    fn score_word_no_pinky_multiplier_on_non_pinky_keys() {
+        let evaluator = LayoutEvaluator::new(
+            &test_keyboard(),
+            vec![],
+            LayoutEvaluatorConfig {
+                pinky_multiplier: 1.5,
+                ..test_config()
+            },
+        );
+        // 'b' → slot 1 (not pinky). "bb": lookup(1,1) + lookup(1,1), no multiplier.
+        let keys = FxHashMap::from_iter([('b', 1u8)]);
+        let score = evaluator.score_word("bb", &keys);
+        assert_close(score.effort, 6.0); // 2 × efforts[2] = 2 × 3.0
+    }
+
     /// Build minimal keyboard for evaluator tests using production JSON parsing.
     fn test_keyboard() -> Keyboard {
         Keyboard::new(
@@ -468,6 +516,7 @@ mod tests {
             balance_penalty: 2.0,
             alternation_penalty: 0.0,
             row_switch_penalty: 0.0,
+            pinky_multiplier: 1.0,
         }
     }
 
