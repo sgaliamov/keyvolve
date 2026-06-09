@@ -27,7 +27,7 @@
   },
 
   "optimization": {
-    "text": "data/synthesised/sample-5000",
+    "text": "data/synthesised/sample-100000",
     "-input": "data/seed.csv",
     "output": "data/layouts.csv",
     "mutationCount": 10,
@@ -61,7 +61,7 @@
     "balancePenalty": 1.5,
     "alternationPenalty": 0.25,
     "rowSwitchPenalty": 0.5,
-    "pinkyMultiplier": 1.01
+    "pinkyMultiplier": 1.04
   },
 
   "ga": {
