@@ -27,10 +27,10 @@
   },
 
   "optimization": {
-    "text": "data/synthesised/sample-20000",
+    "text": "data/synthesised/sample-5000",
     "-input": "data/seed.csv",
     "output": "data/layouts.csv",
-    "mutationCount": 20,
+    "mutationCount": 10,
     "blocked": [19],
     "allowed": {
       "t": [1, 2, 3, 6, 7, 8],
@@ -61,13 +61,13 @@
     "balancePenalty": 1.5,
     "alternationPenalty": 0.25,
     "rowSwitchPenalty": 0.5,
-    "pinkyMultiplier": 1.05
+    "pinkyMultiplier": 1.01
   },
 
   "ga": {
     "mutationRatio": 0.9,
-    "populationSize": 128,
-    "pools": 512,
+    "populationSize": 100,
+    "pools": 200,
     "randomRatio": 0.25,
     "seedMutation": 4
   }
