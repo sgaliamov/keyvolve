@@ -66,11 +66,12 @@
 
   "ga": {
     "mutationRatio": 0.6,
-    "populationSize": 200,
-    "pools": 400,
+    "populationSize": 20,
+    "pools": 40,
     "randomRatio": 0.25,
     "seedMutation": 4,
     "dump": "data/dump.bin",
-    "dumpRatio": 0.5
+    "dumpRatio": 0.5,
+    "keepDump": true
   }
 }
