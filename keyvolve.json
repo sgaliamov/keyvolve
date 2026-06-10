@@ -33,13 +33,13 @@
     "mutationCount": 10,
     "blocked": [19],
     "allowed": {
-      "t": [1, 2, 3, 6, 7, 8],
-      "h": [1, 2, 3, 6, 7, 8],
+      "t": [1, 2, 3],
+      "h": [1, 2, 3],
       "e": [6, 7, 8],
       "a": [1, 2, 3, 6, 7, 8],
       "o": [1, 2, 3, 6, 7, 8],
       "i": [1, 2, 3, 6, 7, 8],
-      "r": [1, 2, 6, 7, 8]
+      "r": [6, 7, 8]
     },
     "`allowed": {
       "c": [1, 2, 3, 6, 7, 8, 11, 12, 13],
@@ -65,10 +65,12 @@
   },
 
   "ga": {
-    "mutationRatio": 0.9,
-    "populationSize": 100,
-    "pools": 200,
+    "mutationRatio": 0.6,
+    "populationSize": 200,
+    "pools": 400,
     "randomRatio": 0.25,
-    "seedMutation": 4
+    "seedMutation": 4,
+    "dump": "data/dump.bin",
+    "dumpRatio": 0.05
   }
 }

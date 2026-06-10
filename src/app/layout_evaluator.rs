@@ -101,7 +101,11 @@ impl LayoutEvaluator {
                 let b_left = kb < 15;
 
                 let (effort, bigram_switches, row_switch_cost) = if a_left == b_left {
-                    (self.lookup(ka, kb) * self.pinky_mul(kb), 0, row_switch_cost(ka, kb))
+                    (
+                        self.lookup(ka, kb) * self.pinky_mul(kb),
+                        0,
+                        row_switch_cost(ka, kb),
+                    )
                 } else {
                     // When hands alternate, key `a` was already counted in the
                     // previous iteration.  We charge the self-effort of key `b`
@@ -109,7 +113,9 @@ impl LayoutEvaluator {
                     // (analogous to the first-letter cost above), multiplied by
                     // `bigram_switch_penalty` so `1.0` means no extra cost.
                     (
-                        self.lookup(kb, kb) * self.config.bigram_switch_penalty * self.pinky_mul(kb),
+                        self.lookup(kb, kb)
+                            * self.config.bigram_switch_penalty
+                            * self.pinky_mul(kb),
                         1,
                         0,
                     )
@@ -171,7 +177,11 @@ impl LayoutEvaluator {
     /// Returns `config.pinky_multiplier` when `slot` is a pinky key, else `1.0`.
     #[inline]
     fn pinky_mul(&self, slot: u8) -> f64 {
-        if is_pinky(slot) { self.config.pinky_multiplier } else { 1.0 }
+        if is_pinky(slot) {
+            self.config.pinky_multiplier
+        } else {
+            1.0
+        }
     }
 }
 
@@ -179,7 +189,11 @@ impl LayoutEvaluator {
 /// Left pinky: col 0 (slots 0, 5, 10). Right pinky: col 4 (slots 19, 24, 29).
 #[inline]
 fn is_pinky(slot: u8) -> bool {
-    if slot < 15 { slot.is_multiple_of(5) } else { slot % 5 == 4 }
+    if slot < 15 {
+        slot.is_multiple_of(5)
+    } else {
+        slot % 5 == 4
+    }
 }
 
 /// Weighted same-hand row-switch cost. Adjacent-row move = 1, jump-over-row = 2.
