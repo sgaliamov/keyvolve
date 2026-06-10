@@ -28,7 +28,7 @@
 
   "optimization": {
     "text": "data/synthesised/sample-100000",
-    "-input": "data/seed.csv",
+    "input": "data/seed.csv",
     "output": "data/layouts.csv",
     "mutationCount": 10,
     "blocked": [19],
@@ -71,6 +71,6 @@
     "randomRatio": 0.25,
     "seedMutation": 4,
     "dump": "data/dump.bin",
-    "dumpRatio": 0.05
+    "dumpRatio": 0.5
   }
 }
