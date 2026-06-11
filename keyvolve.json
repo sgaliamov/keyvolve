@@ -39,11 +39,11 @@
       "a": [1, 2, 3, 6, 7, 8],
       "o": [1, 2, 3, 6, 7, 8],
       "i": [1, 2, 3, 6, 7, 8],
-      "r": [6, 7, 8]
+      "r": [6, 7, 8],
+      "s": [1, 2, 6, 7, 8]
     },
     "`allowed": {
       "c": [1, 2, 3, 6, 7, 8, 11, 12, 13],
-      "s": [1, 2, 3, 6, 7, 8, 11, 12, 13],
       "n": [1, 2, 6, 7, 8]
     },
     "rolls": ["ht", "er", "in"]
@@ -61,17 +61,17 @@
     "balancePenalty": 1.5,
     "alternationPenalty": 0.25,
     "rowSwitchPenalty": 0.5,
-    "pinkyMultiplier": 1.04
+    "pinkyMultiplier": 1.0
   },
 
   "ga": {
     "mutationRatio": 0.6,
-    "populationSize": 20,
-    "pools": 40,
+    "populationSize": 100,
+    "pools": 50,
     "randomRatio": 0.25,
     "seedMutation": 4,
     "dump": "data/dump.bin",
-    "dumpRatio": 0.5,
+    "dumpRatio": 0.8,
     "keepDump": true
   }
 }

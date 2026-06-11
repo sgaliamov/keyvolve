@@ -131,6 +131,8 @@ pub fn place_letters(
 
 /// Unplace `count` random movable units from `genome` back into a freed-slots vec.
 /// Roll pairs currently at neighbor slots are unplaced together as one unit.
+/// Letters sitting on blocked or disallowed slots (stale seed/dump genomes) are
+/// always unplaced first, so mutation self-heals constraint violations.
 pub fn unplace_units(
     genome: &mut [char],
     opt: &OptimizationConfig,
@@ -138,6 +140,38 @@ pub fn unplace_units(
     count: usize,
     rng: &mut impl rand::Rng,
 ) -> Unplaced {
+    let mut freed = Vec::new();
+    let mut letters = Vec::new();
+
+    // ── Heal ── violators always unplace; blocked slots never rejoin the pool.
+    for i in 0..genome.len() {
+        let (slot, ch) = (i as u8, genome[i]);
+        if ch != EMPTY_SLOT
+            && !cache.frozen_chars.contains(&ch)
+            && (opt.blocked.contains(&slot) || !opt.is_slot_allowed(ch, slot))
+        {
+            letters.push(ch);
+            genome[i] = EMPTY_SLOT;
+            if !opt.blocked.contains(&slot) {
+                freed.push(slot);
+            }
+        }
+    }
+    // Letters healed off blocked slots need landing room: open existing empties.
+    if freed.len() < letters.len() {
+        let healed: FxHashSet<u8> = freed.iter().copied().collect();
+        for i in 0..genome.len() {
+            let slot = i as u8;
+            if genome[i] == EMPTY_SLOT
+                && !healed.contains(&slot)
+                && !opt.blocked.contains(&slot)
+                && !cache.frozen_slots.contains(&slot)
+            {
+                freed.push(slot);
+            }
+        }
+    }
+
     let mut used: FxHashSet<usize> = FxHashSet::default();
     let mut units: Vec<Vec<usize>> = Vec::new();
 
@@ -172,8 +206,6 @@ pub fn unplace_units(
     }
 
     units.shuffle(rng);
-    let mut freed = Vec::new();
-    let mut letters = Vec::new();
     for unit in units.iter().take(count) {
         for &idx in unit {
             freed.push(idx as u8);
@@ -449,8 +481,47 @@ mod tests {
 
         let unplaced = unplace_units(&mut g, &opt, &cache, 4, &mut rng);
 
+        // 'c' is healed off the blocked slot, but the slot itself stays withheld.
         assert!(!unplaced.free.contains(&2));
-        assert!(!unplaced.letters.contains(&'c'));
+        assert!(unplaced.letters.contains(&'c'));
         assert!(!unplaced.letters.contains(&'d'));
+    }
+
+    #[test]
+    fn unplace_units_heals_disallowed_letter() {
+        // 'a' allowed only at slot 0, but sits at slot 4 — must be unplaced even with count 0.
+        let mut g = genome("bcd_axxxxxxxxxxxxxxxxxxxxxxxxx");
+        let mut opt = test_opt(&[], &[]);
+        opt.allowed.insert('a', [0u8].into_iter().collect());
+        let cache = test_cache(&[]);
+        let mut rng = StdRng::seed_from_u64(5);
+
+        let unplaced = unplace_units(&mut g, &opt, &cache, 0, &mut rng);
+
+        assert_eq!(unplaced.letters, vec!['a']);
+        assert_eq!(unplaced.free, vec![4]);
+        assert_eq!(g[4], EMPTY_SLOT);
+    }
+
+    #[test]
+    fn unplace_units_heals_blocked_occupant_without_freeing_blocked_slot() {
+        // 'c' sits on blocked slot 2 — unplaced, slot 2 withheld, empties opened as landing room.
+        let mut g = genome("abcdefghijklmnopqrstuvwxyz____");
+        let opt = test_opt(&[], &[2]);
+        let cache = test_cache(&[]);
+        let mut rng = StdRng::seed_from_u64(9);
+
+        let unplaced = unplace_units(&mut g, &opt, &cache, 0, &mut rng);
+
+        assert_eq!(unplaced.letters, vec!['c']);
+        assert_eq!(g[2], EMPTY_SLOT);
+        assert!(
+            !unplaced.free.contains(&2),
+            "blocked slot must not be freed"
+        );
+        assert!(
+            unplaced.free.len() >= unplaced.letters.len(),
+            "healed letters need landing room"
+        );
     }
 }

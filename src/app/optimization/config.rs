@@ -1,3 +1,4 @@
+use crate::app::EMPTY_SLOT;
 use crate::models::slot_row;
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::Deserialize;
@@ -126,6 +127,17 @@ impl OptimizationConfig {
             .is_none_or(|slots| slots.contains(&slot))
     }
 
+    /// True when every placed char sits on a permitted slot: frozen chars at their
+    /// pins, constrained chars within `allowed`, nothing on blocked slots.
+    /// Guards against genomes from external sources (seed csv, dump) that were
+    /// produced under different constraints.
+    pub fn is_genome_valid(&self, genome: &[char]) -> bool {
+        genome.iter().enumerate().all(|(i, &ch)| {
+            let slot = i as u8;
+            ch == EMPTY_SLOT || (!self.blocked.contains(&slot) && self.is_slot_allowed(ch, slot))
+        })
+    }
+
     /// Pre-compute derived lookups that are hot in the generator loop.
     pub fn cache(&self) -> OptimizationCache {
         OptimizationCache {
@@ -193,6 +205,28 @@ mod tests {
         assert!(cfg.is_slot_allowed('a', 4));
         assert!(!cfg.is_slot_allowed('a', 0));
         assert!(!cfg.is_slot_allowed('a', 19));
+    }
+
+    #[test]
+    fn genome_validity_checks_allowed_and_blocked() {
+        let mut cfg = OptimizationConfig::default();
+        cfg.allowed.insert('a', [0u8, 1].into_iter().collect());
+        cfg.blocked.insert(29);
+
+        let mut g = vec![EMPTY_SLOT; 30];
+        g[0] = 'a';
+        g[5] = 'b';
+        assert!(cfg.is_genome_valid(&g));
+
+        g[2] = 'a'; // second 'a' on disallowed slot
+        assert!(!cfg.is_genome_valid(&g));
+
+        g[2] = EMPTY_SLOT;
+        g[29] = 'b'; // blocked slot occupied
+        assert!(!cfg.is_genome_valid(&g));
+
+        g[29] = EMPTY_SLOT; // empty blocked slot is fine
+        assert!(cfg.is_genome_valid(&g));
     }
 
     #[test]
