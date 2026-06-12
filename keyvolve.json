@@ -31,8 +31,8 @@
     "input": "data/seed.csv",
     "output": "data/layouts.csv",
     "mutationCount": 10,
-    "blocked": [19],
-    "allowed": {
+    "-blocked": [19],
+    "-allowed": {
       "t": [1, 2, 3],
       "h": [1, 2, 3],
       "e": [6, 7, 8],
@@ -46,7 +46,7 @@
       "c": [1, 2, 3, 6, 7, 8, 11, 12, 13],
       "n": [1, 2, 6, 7, 8]
     },
-    "rolls": ["ht", "er", "in"]
+    "-rolls": ["ht", "er", "in"]
   },
 
   "evaluate": {
@@ -66,10 +66,10 @@
 
   "ga": {
     "mutationRatio": 0.6,
-    "populationSize": 100,
-    "pools": 50,
+    "populationSize": 200,
+    "pools": 250,
     "randomRatio": 0.25,
-    "seedMutation": 4,
+    "seedMutation": 10,
     "dump": "data/dump.bin",
     "dumpRatio": 0.8,
     "keepDump": true
