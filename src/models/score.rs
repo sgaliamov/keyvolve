@@ -8,16 +8,16 @@ pub struct ScoreResult {
     pub fitness: f64,
 
     /// Number of consecutive same-hand bigrams on the left.
-    pub left_count: u32,
+    pub left_count: u64,
 
     /// Number of consecutive same-hand bigrams on the right.
-    pub right_count: u32,
+    pub right_count: u64,
 
     /// Number of hand switches.
-    pub bigram_switches: u32,
+    pub bigram_switches: u64,
 
     /// Weighted row-switch cost: adjacent-row move = 1, jump-over-row = 2.
-    pub row_switch_cost: u32,
+    pub row_switch_cost: u64,
 
     /// Effort accumulated on the left hand.
     pub left_effort: f64,
@@ -145,6 +145,25 @@ impl std::ops::Add for ScoreResult {
             row_switch_cost: self.row_switch_cost + other.row_switch_cost,
             left_effort: self.left_effort + other.left_effort,
             right_effort: self.right_effort + other.right_effort,
+        }
+    }
+}
+
+/// Scale every field by a corpus frequency; lets one unit score stand in for `n` occurrences.
+impl std::ops::Mul<u64> for ScoreResult {
+    type Output = Self;
+
+    fn mul(self, n: u64) -> Self {
+        let f = n as f64;
+        ScoreResult {
+            effort: self.effort * f,
+            fitness: self.fitness * f,
+            left_count: self.left_count * n,
+            right_count: self.right_count * n,
+            bigram_switches: self.bigram_switches * n,
+            row_switch_cost: self.row_switch_cost * n,
+            left_effort: self.left_effort * f,
+            right_effort: self.right_effort * f,
         }
     }
 }

@@ -1,4 +1,5 @@
 use crate::models::{Keyboard, Keys, ScoreResult, slot_row};
+#[cfg(test)]
 use itertools::Itertools;
 use rustc_hash::FxHashMap;
 use serde::Deserialize;
@@ -35,7 +36,33 @@ impl Default for LayoutEvaluatorConfig {
     }
 }
 
-/// Evaluates layouts by scoring words against a precomputed bigram effort table.
+/// Compact corpus representation: first-character and bigram frequencies.
+/// Built by streaming so a multi-GB corpus never lands in memory whole.
+#[derive(Debug, Default, Clone)]
+pub struct CorpusCounts {
+    /// How many words start with each character.
+    pub first_chars: FxHashMap<char, u64>,
+
+    /// How many times each adjacent character pair occurs within words.
+    pub bigrams: FxHashMap<(char, char), u64>,
+}
+
+impl CorpusCounts {
+    /// Fold one word's characters into the counts.
+    pub fn add(&mut self, word: &str) {
+        let mut chars = word.chars();
+        let Some(mut prev) = chars.next() else {
+            return;
+        };
+        *self.first_chars.entry(prev).or_default() += 1;
+        for c in chars {
+            *self.bigrams.entry((prev, c)).or_default() += 1;
+            prev = c;
+        }
+    }
+}
+
+/// Evaluates layouts by scoring a corpus against a precomputed bigram effort table.
 #[derive(Clone)]
 pub struct LayoutEvaluator {
     /// Flat bigram effort map: (from_key, to_key) → effort value.
@@ -44,13 +71,27 @@ pub struct LayoutEvaluator {
     /// Static scoring knobs.
     config: LayoutEvaluatorConfig,
 
-    /// Corpus words to evaluate.
-    words: Vec<String>,
+    /// Corpus collapsed to first-char + bigram frequencies.
+    counts: CorpusCounts,
 }
 
 impl LayoutEvaluator {
-    /// Build from keyboard config, corpus, and scoring config.
+    /// Build from an in-memory word list (tests and small inputs).
+    #[cfg(test)]
     pub fn new(keyboard: &Keyboard, words: Vec<String>, config: LayoutEvaluatorConfig) -> Self {
+        let mut counts = CorpusCounts::default();
+        for word in &words {
+            counts.add(word);
+        }
+        Self::from_counts(keyboard, counts, config)
+    }
+
+    /// Build from precomputed corpus frequencies (streaming path for large corpora).
+    pub fn from_counts(
+        keyboard: &Keyboard,
+        counts: CorpusCounts,
+        config: LayoutEvaluatorConfig,
+    ) -> Self {
         let mut pairs = FxHashMap::default();
 
         for (from, targets) in &keyboard.pairs {
@@ -63,93 +104,100 @@ impl LayoutEvaluator {
         LayoutEvaluator {
             pairs,
             config,
-            words,
+            counts,
         }
     }
 
-    /// Score a single word against a layout.
+    /// Score a single word against a layout. Test-only; production scores via
+    /// [`Self::score_corpus`] over the precomputed frequency maps.
+    #[cfg(test)]
     fn score_word(&self, word: &str, keys: &Keys) -> ScoreResult {
-        let chars = word.chars().collect_vec();
-        if chars.is_empty() {
+        let mut chars = word.chars();
+        let Some(first) = chars.next() else {
             return ScoreResult::default();
-        }
-
-        let first_key = *keys.get(&chars[0]).expect("key not found in layout");
-        let first_left = first_key < 15;
-
-        // First character: self-effort as baseline, count the first key press.
-        let effort = self.lookup(first_key, first_key) * self.pinky_mul(first_key);
-        let seed = ScoreResult {
-            effort,
-            left_count: first_left as u32,
-            right_count: (!first_left) as u32,
-            left_effort: if first_left { effort } else { 0. },
-            right_effort: if !first_left { effort } else { 0. },
-            ..Default::default()
         };
 
-        chars
-            .iter()
+        word.chars()
             .tuple_windows()
-            .map(|(a, b)| {
-                let ka = *keys.get(a).expect("key not found in layout");
-                let kb = *keys.get(b).expect("key not found in layout");
-                (ka, kb)
+            .fold(self.score_first(first, keys), |acc, (a, b)| {
+                acc + self.score_bigram(a, b, keys)
             })
-            .fold(seed, |acc, (ka, kb)| {
-                let a_left = ka < 15;
-                let b_left = kb < 15;
+    }
 
-                let (effort, bigram_switches, row_switch_cost) = if a_left == b_left {
-                    (
-                        self.lookup(ka, kb) * self.pinky_mul(kb),
-                        0,
-                        row_switch_cost(ka, kb),
-                    )
-                } else {
-                    // When hands alternate, key `a` was already counted in the
-                    // previous iteration.  We charge the self-effort of key `b`
-                    // here because the new hand is starting a fresh sequence
-                    // (analogous to the first-letter cost above), multiplied by
-                    // `bigram_switch_penalty` so `1.0` means no extra cost.
-                    (
-                        self.lookup(kb, kb)
-                            * self.config.bigram_switch_penalty
-                            * self.pinky_mul(kb),
-                        1,
-                        0,
-                    )
-                };
+    /// Seed cost for a word's first character: self-effort baseline, one key press.
+    fn score_first(&self, c: char, keys: &Keys) -> ScoreResult {
+        let key = *keys.get(&c).expect("key not found in layout");
+        let left = key < 15;
+        let effort = self.lookup(key, key) * self.pinky_mul(key);
+        ScoreResult {
+            effort,
+            left_count: left as u64,
+            right_count: !left as u64,
+            left_effort: if left { effort } else { 0. },
+            right_effort: if !left { effort } else { 0. },
+            ..Default::default()
+        }
+    }
 
-                // count efforts on the "to" key, since "from" was already counted in the previous iteration
-                let bigram = ScoreResult {
-                    effort,
-                    fitness: 0.0,
-                    bigram_switches,
-                    row_switch_cost,
-                    left_count: b_left as u32,
-                    right_count: (!b_left) as u32,
-                    left_effort: if b_left { effort } else { 0. },
-                    right_effort: if !b_left { effort } else { 0. },
-                };
+    /// Cost of one adjacent character pair within a word. Effort charged on the
+    /// "to" key, since "from" was already counted by the previous press.
+    fn score_bigram(&self, a: char, b: char, keys: &Keys) -> ScoreResult {
+        let ka = *keys.get(&a).expect("key not found in layout");
+        let kb = *keys.get(&b).expect("key not found in layout");
+        let a_left = ka < 15;
+        let b_left = kb < 15;
 
-                acc + bigram
-            })
+        let (effort, bigram_switches, row_switch_cost) = if a_left == b_left {
+            (
+                self.lookup(ka, kb) * self.pinky_mul(kb),
+                0,
+                row_switch_cost(ka, kb),
+            )
+        } else {
+            // Hands alternate: key `a` was already counted in the previous press.
+            // Charge the self-effort of key `b` (like the first-letter cost),
+            // scaled by `bigram_switch_penalty` so `1.0` means no extra cost.
+            (
+                self.lookup(kb, kb) * self.config.bigram_switch_penalty * self.pinky_mul(kb),
+                1,
+                0,
+            )
+        };
+
+        ScoreResult {
+            effort,
+            fitness: 0.0,
+            bigram_switches,
+            row_switch_cost,
+            left_count: b_left as u64,
+            right_count: !b_left as u64,
+            left_effort: if b_left { effort } else { 0. },
+            right_effort: if !b_left { effort } else { 0. },
+        }
     }
 
     /// Score the corpus, applying a hand-balance factor to total effort.
     pub fn score_corpus(&self, keys: &Keys) -> ScoreResult {
-        let mut result = self
-            .words
+        let seeds = self
+            .counts
+            .first_chars
             .iter()
-            .map(|w| self.score_word(w, keys))
+            .map(|(&c, &n)| self.score_first(c, keys) * n);
+        let bigrams = self
+            .counts
+            .bigrams
+            .iter()
+            .map(|(&(a, b), &n)| self.score_bigram(a, b, keys) * n);
+
+        let mut result = seeds
+            .chain(bigrams)
             .fold(ScoreResult::default(), |acc, x| acc + x);
 
         // balance_factor is based on the actual usage of keys
         result.fitness = result.effort;
         result.fitness *= balance_factor(
-            result.left_count.into(),
-            result.right_count.into(),
+            result.left_count as f64,
+            result.right_count as f64,
             self.config.balance_penalty,
         );
         result.fitness *= linear_rate_penalty(
@@ -198,7 +246,7 @@ fn is_pinky(slot: u8) -> bool {
 
 /// Weighted same-hand row-switch cost. Adjacent-row move = 1, jump-over-row = 2.
 #[inline]
-fn row_switch_cost(from: u8, to: u8) -> u32 {
+fn row_switch_cost(from: u8, to: u8) -> u64 {
     slot_row(from).abs_diff(slot_row(to)).into()
 }
 
@@ -223,7 +271,7 @@ fn balance_factor(left: f64, right: f64, max: f64) -> f64 {
 /// Linear corpus-level penalty `1 + k * (count / (presses - 1))`.
 /// `k` scales the penalty strength: `0.0` disables it, larger values increase the multiplier linearly.
 /// Returns `1.0` when fewer than two presses exist, so no transition can happen.
-fn linear_rate_penalty(count: u32, presses: u32, k: f64) -> f64 {
+fn linear_rate_penalty(count: u64, presses: u64, k: f64) -> f64 {
     if presses <= 1 {
         return 1.0;
     }

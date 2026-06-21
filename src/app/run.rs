@@ -1,11 +1,13 @@
 use crate::app::{evaluate, merge, synthesise};
 use crate::{
     Config, Mode,
-    app::{EMPTY_SLOT, LayoutEvaluator, LayoutEvaluatorConfig, optimize},
+    app::{CorpusCounts, EMPTY_SLOT, LayoutEvaluator, LayoutEvaluatorConfig, optimize},
     models::{Keyboard, Layout},
 };
 use cliffa::cli::AppHandle;
 use miette::{Context, IntoDiagnostic, Result};
+use std::fs::File;
+use std::io::{BufRead, BufReader};
 use std::path::Path;
 use tracing::{info, trace};
 
@@ -66,18 +68,28 @@ fn build_evaluator(
     text_path: impl AsRef<Path>,
     config: LayoutEvaluatorConfig,
 ) -> Result<LayoutEvaluator> {
-    let words = load_words(text_path)?;
-    Ok(LayoutEvaluator::new(keyboard, words, config))
+    let counts = load_counts(text_path)?;
+    Ok(LayoutEvaluator::from_counts(keyboard, counts, config))
 }
 
-/// Load whitespace-separated corpus words from text file.
-fn load_words(text_path: impl AsRef<Path>) -> Result<Vec<String>> {
-    Ok(std::fs::read_to_string(text_path)
+/// Stream whitespace-separated corpus words into compact frequency counts.
+/// Reads line-by-line so multi-GB corpora never materialize in memory.
+fn load_counts(text_path: impl AsRef<Path>) -> Result<CorpusCounts> {
+    let file = File::open(&text_path)
         .into_diagnostic()
-        .wrap_err("Failed to read text file")?
-        .split_whitespace()
-        .map(str::to_owned)
-        .collect())
+        .wrap_err("Failed to read text file")?;
+
+    let mut counts = CorpusCounts::default();
+    for line in BufReader::new(file).lines() {
+        let line = line
+            .into_diagnostic()
+            .wrap_err("Failed to read text file")?;
+        for word in line.split_whitespace() {
+            counts.add(word);
+        }
+    }
+
+    Ok(counts)
 }
 
 /// Convert a `Layout` into a 30-slot genome; empty slots filled with `EMPTY_SLOT`.
