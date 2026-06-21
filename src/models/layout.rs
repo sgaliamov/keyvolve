@@ -30,6 +30,16 @@ impl Layout {
         Layout { keys }
     }
 
+    /// Mirror-invariant identity: lexicographically smaller of the layout and its
+    /// hand-swapped reflection. Left↔right mirror images collapse to one key — used
+    /// to dedup reflections, which always share the same fitness.
+    pub fn mirror_key(&self) -> String {
+        let slots = self.slots();
+        let forward: String = slots.iter().collect();
+        let mirrored: String = (0..30).map(|i| slots[mirror_slot(i)]).collect();
+        forward.min(mirrored)
+    }
+
     pub fn load(path: impl AsRef<Path>) -> Vec<Layout> {
         let path = path.as_ref();
         let Ok(file) = File::open(path) else {
@@ -46,15 +56,21 @@ impl Layout {
             .map(|line| Layout::new(line.trim()))
             .collect_vec()
     }
+
+    /// 30-slot character array; `_` marks an empty slot. Index = physical key position.
+    fn slots(&self) -> [char; 30] {
+        let mut slots = ['_'; 30];
+        for (&ch, &pos) in &self.keys {
+            slots[pos as usize] = ch;
+        }
+        slots
+    }
 }
 
 impl fmt::Display for Layout {
     /// Reconstruct comma-separated layout string (positions 0–14 left; 15–29 right, stored inner→outer per group).
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut slots = ['_'; 30];
-        for (&ch, &pos) in &self.keys {
-            slots[pos as usize] = ch;
-        }
+        let slots = self.slots();
         let left = slots[..15]
             .chunks(5)
             .map(|c| c.iter().collect::<String>())
@@ -70,6 +86,17 @@ impl fmt::Display for Layout {
 /// Detect persisted CSV header row.
 fn is_header(line: &str) -> bool {
     line.starts_with("keys_1,")
+}
+
+/// Hand-swap reflection of a slot index (0–29). Involution: `mirror_slot(mirror_slot(i)) == i`.
+/// Left col k (slots 0–14) ↔ right col 4-k (slots 15–29), same row.
+fn mirror_slot(i: usize) -> usize {
+    if i < 15 {
+        (i / 5) * 5 + (4 - i % 5) + 15
+    } else {
+        let r = i - 15;
+        (r / 5) * 5 + (4 - r % 5)
+    }
 }
 
 pub fn line_to_keys(line: &str) -> Keys {
@@ -121,5 +148,23 @@ mod layout_test {
             layout.to_string(),
             "zydpx, ralem, vbjuq, whtc_, fnosi, kg___"
         );
+    }
+
+    #[test]
+    fn mirror_key_collapses_reflected_layouts() {
+        let layout = Layout::new("zydpx, ralem, vbjuq, whtc_, fnosi, kg___");
+        let slots = layout.slots();
+        let reflected: Vec<char> = (0..30).map(|i| slots[mirror_slot(i)]).collect();
+        let reflected = Layout::from_keys(&reflected);
+
+        assert_eq!(layout.mirror_key(), reflected.mirror_key());
+    }
+
+    #[test]
+    fn mirror_key_differs_for_non_reflections() {
+        let a = Layout::new("zydpx, ralem, vbjuq, whtc_, fnosi, kg___");
+        let b = Layout::new("qydpx, ralem, vbjuz, whtc_, fnosi, kg___");
+
+        assert_ne!(a.mirror_key(), b.mirror_key());
     }
 }

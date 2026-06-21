@@ -1,5 +1,6 @@
 use crate::models::{Layout, ScoreResult};
 use miette::{Context, IntoDiagnostic, Result};
+use rustc_hash::FxHashSet;
 use std::{fs::OpenOptions, io::Write, path::Path};
 use tracing::info;
 
@@ -11,7 +12,14 @@ pub fn write_layouts(
     output_path: Option<&Path>,
     overwrite: bool,
 ) -> Result<()> {
-    for (layout, score, pool) in layouts.iter().take(to_print) {
+    // Drop hand-swapped mirror reflections: each pair shares fitness, keep one.
+    let mut seen = FxHashSet::default();
+    let layouts: Vec<_> = layouts
+        .iter()
+        .filter(|(layout, _, _)| seen.insert(layout.mirror_key()))
+        .collect();
+
+    for (layout, score, pool) in layouts.iter().copied().take(to_print) {
         println!("[pool {pool:>2}] {layout} | {score}");
     }
 
