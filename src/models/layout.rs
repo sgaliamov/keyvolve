@@ -40,6 +40,12 @@ impl Layout {
         forward.min(mirrored)
     }
 
+    /// `true` when `a` sits on the left hand (slot 0–14). Picks which mirror twin
+    /// to keep on save. `false` when `a` is on the right or absent.
+    pub fn a_is_left(&self) -> bool {
+        self.keys.get(&'a').is_some_and(|&p| p < 15)
+    }
+
     pub fn load(path: impl AsRef<Path>) -> Vec<Layout> {
         let path = path.as_ref();
         let Ok(file) = File::open(path) else {
@@ -166,5 +172,17 @@ mod layout_test {
         let b = Layout::new("qydpx, ralem, vbjuz, whtc_, fnosi, kg___");
 
         assert_ne!(a.mirror_key(), b.mirror_key());
+    }
+
+    #[test]
+    fn a_is_left_tracks_a_hand() {
+        // `a` at slot 6 (left); its reflection puts `a` on the right.
+        let layout = Layout::new("zydpx, ralem, vbjuq, whtc_, fnosi, kg___");
+        let slots = layout.slots();
+        let reflected: Vec<char> = (0..30).map(|i| slots[mirror_slot(i)]).collect();
+        let reflected = Layout::from_keys(&reflected);
+
+        assert!(layout.a_is_left());
+        assert!(!reflected.a_is_left());
     }
 }

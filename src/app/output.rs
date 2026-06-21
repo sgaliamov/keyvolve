@@ -13,9 +13,18 @@ pub fn write_layouts(
     overwrite: bool,
 ) -> Result<()> {
     // Drop hand-swapped mirror reflections: each pair shares fitness, keep one.
+    // Prefer the twin with `a` on the left hand; fall back to the other when its
+    // a-left mirror isn't present in this batch.
+    let a_left: FxHashSet<_> = layouts
+        .iter()
+        .filter(|(layout, _, _)| layout.a_is_left())
+        .map(|(layout, _, _)| layout.mirror_key())
+        .collect();
+
     let mut seen = FxHashSet::default();
     let layouts: Vec<_> = layouts
         .iter()
+        .filter(|(layout, _, _)| layout.a_is_left() || !a_left.contains(&layout.mirror_key()))
         .filter(|(layout, _, _)| seen.insert(layout.mirror_key()))
         .collect();
 
