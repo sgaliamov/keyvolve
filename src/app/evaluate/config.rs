@@ -17,10 +17,19 @@ pub struct EvaluateConfig {
     /// number of layouts to print to stdout
     #[serde(default = "default_print")]
     pub print: usize,
+
+    /// Mirror every layout to the `a`-on-left orientation and dedup hand-swapped
+    /// twins on save. Default: `true`.
+    #[serde(default = "default_true")]
+    pub canonicalize: bool,
 }
 
 fn default_print() -> usize {
     10
+}
+
+fn default_true() -> bool {
+    true
 }
 
 impl Default for EvaluateConfig {
@@ -30,6 +39,7 @@ impl Default for EvaluateConfig {
             input: PathBuf::default(),
             output: None,
             print: default_print(),
+            canonicalize: true,
         }
     }
 }

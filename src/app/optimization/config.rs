@@ -107,10 +107,19 @@ pub struct OptimizationConfig {
 
     /// Output layouts csv file
     pub output: Option<PathBuf>,
+
+    /// Mirror every layout to the `a`-on-left orientation and dedup hand-swapped
+    /// twins on save, rewriting the output file. Default: `true`.
+    #[serde(default = "default_true")]
+    pub canonicalize: bool,
 }
 
 fn default_mutation_count() -> usize {
     10
+}
+
+fn default_true() -> bool {
+    true
 }
 
 impl OptimizationConfig {

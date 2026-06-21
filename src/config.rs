@@ -34,6 +34,7 @@ pub struct Config {
     pub merge: MergeConfig,
 
     /// Optimization settings, including optional seed layouts input.
+    #[serde(default)]
     pub optimization: OptimizationConfig,
 }
 

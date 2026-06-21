@@ -29,6 +29,7 @@ pub fn optimize(
     );
 
     let output_path = opt_cfg.output.clone();
+    let canonicalize = opt_cfg.canonicalize;
 
     GeneticAlgorithm::set_state(
         &mut ga,
@@ -53,7 +54,13 @@ pub fn optimize(
         .iter()
         .map(|(pool, ind)| to_output_row(*pool, ind))
         .collect();
-    write_layouts(&rows, rows.len(), output_path.as_deref(), false)
+    write_layouts(
+        &rows,
+        rows.len(),
+        output_path.as_deref(),
+        false,
+        canonicalize,
+    )
 }
 
 /// Sorted chars at home-row slots — group identity.

@@ -365,6 +365,7 @@ mod tests {
             mutation_count: 10,
             input: None,
             output: None,
+            canonicalize: true,
         }
     }
 

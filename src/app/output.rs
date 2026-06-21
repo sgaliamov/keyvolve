@@ -4,11 +4,30 @@ use rustc_hash::FxHashSet;
 use std::{fs, io::Write, path::Path};
 use tracing::info;
 
-/// Print the top N layouts and persist them, canonicalized so `a` always sits on
-/// the left hand. Hand-swapped mirror twins (identical fitness) collapse to a
-/// single row. In append mode the rows already on disk are folded in and the file
-/// is rewritten deduped; in overwrite mode only the current batch is written.
+/// Print the top N layouts and persist them.
+///
+/// When `canonicalize` is set, every layout is mirrored to the `a`-on-left
+/// orientation and hand-swapped twins (identical fitness) collapse to one row;
+/// in append mode the rows already on disk are folded in and the file rewritten
+/// deduped. When unset, layouts are written verbatim (plain append/overwrite),
+/// leaving mirror twins in place.
 pub fn write_layouts(
+    layouts: &[(Layout, ScoreResult, usize)],
+    to_print: usize,
+    output_path: Option<&Path>,
+    overwrite: bool,
+    canonicalize: bool,
+) -> Result<()> {
+    if canonicalize {
+        write_canonical(layouts, to_print, output_path, overwrite)
+    } else {
+        write_plain(layouts, to_print, output_path, overwrite)
+    }
+}
+
+/// Canonicalize to `a`-left, dedup mirror twins, and rewrite the whole file
+/// (folding in any rows already on disk when appending).
+fn write_canonical(
     layouts: &[(Layout, ScoreResult, usize)],
     to_print: usize,
     output_path: Option<&Path>,
@@ -40,6 +59,53 @@ pub fn write_layouts(
     let rows = dedup(existing.into_iter().chain(batch));
 
     write_csv(path, &rows)
+}
+
+/// Write layouts verbatim: append (header when new) or overwrite, no dedup.
+fn write_plain(
+    layouts: &[(Layout, ScoreResult, usize)],
+    to_print: usize,
+    output_path: Option<&Path>,
+    overwrite: bool,
+) -> Result<()> {
+    for (layout, score, pool) in layouts.iter().take(to_print) {
+        println!("[pool {pool:>2}] {layout} | {score}");
+    }
+
+    let Some(path) = output_path else {
+        return Ok(());
+    };
+
+    let is_new =
+        overwrite || !path.exists() || path.metadata().map(|m| m.len() == 0).unwrap_or(true);
+
+    let mut file = fs::OpenOptions::new()
+        .create(true)
+        .write(overwrite)
+        .truncate(overwrite)
+        .append(!overwrite)
+        .open(path)
+        .into_diagnostic()
+        .wrap_err("Failed to open layouts file")?;
+
+    if is_new {
+        writeln!(
+            file,
+            "keys_1, keys_2, keys_3, keys_4, keys_5, keys_6, {}",
+            ScoreResult::csv_header()
+        )
+        .into_diagnostic()
+        .wrap_err("Failed to write header")?;
+    }
+
+    for (layout, score, _) in layouts {
+        writeln!(file, "{layout}, {}", score.to_csv())
+            .into_diagnostic()
+            .wrap_err("Failed to write layout row")?;
+    }
+
+    info!("Results written to {}", path.display());
+    Ok(())
 }
 
 /// Canonical orientation with `a` on the left hand. Mirrors both layout and score
