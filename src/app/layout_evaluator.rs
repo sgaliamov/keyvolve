@@ -211,7 +211,7 @@ impl LayoutEvaluator {
             result.left_count + result.right_count,
             self.config.row_switch_penalty,
         );
-        result.fitness = 1. / result.fitness * 100_000_000.; // lower effort → higher fitness
+        result.fitness = 1. / result.fitness * 100_000_000_000.; // lower effort → higher fitness
 
         result
     }

@@ -9,6 +9,7 @@ use std::{
 
 pub type Keys = FxHashMap<char, u8>;
 
+#[derive(Clone)]
 pub struct Layout {
     pub keys: Keys,
 }
@@ -30,18 +31,19 @@ impl Layout {
         Layout { keys }
     }
 
-    /// Mirror-invariant identity: lexicographically smaller of the layout and its
-    /// hand-swapped reflection. Left↔right mirror images collapse to one key — used
-    /// to dedup reflections, which always share the same fitness.
-    pub fn mirror_key(&self) -> String {
-        let slots = self.slots();
-        let forward: String = slots.iter().collect();
-        let mirrored: String = (0..30).map(|i| slots[mirror_slot(i)]).collect();
-        forward.min(mirrored)
+    /// Hand-swapped twin: every key reflected left↔right. Involution.
+    /// Fitness is hand-symmetric, so a layout and its mirror score identically.
+    pub fn mirrored(&self) -> Layout {
+        let keys = self
+            .keys
+            .iter()
+            .map(|(&c, &p)| (c, mirror_slot(p as usize) as u8))
+            .collect();
+        Layout { keys }
     }
 
-    /// `true` when `a` sits on the left hand (slot 0–14). Picks which mirror twin
-    /// to keep on save. `false` when `a` is on the right or absent.
+    /// `true` when `a` sits on the left hand (slot 0–14); `false` if on the right
+    /// or absent. Drives canonicalization to the `a`-left orientation on save.
     pub fn a_is_left(&self) -> bool {
         self.keys.get(&'a').is_some_and(|&p| p < 15)
     }
@@ -157,32 +159,18 @@ mod layout_test {
     }
 
     #[test]
-    fn mirror_key_collapses_reflected_layouts() {
+    fn mirrored_is_an_involution() {
         let layout = Layout::new("zydpx, ralem, vbjuq, whtc_, fnosi, kg___");
-        let slots = layout.slots();
-        let reflected: Vec<char> = (0..30).map(|i| slots[mirror_slot(i)]).collect();
-        let reflected = Layout::from_keys(&reflected);
 
-        assert_eq!(layout.mirror_key(), reflected.mirror_key());
+        assert_eq!(layout.mirrored().mirrored().to_string(), layout.to_string());
     }
 
     #[test]
-    fn mirror_key_differs_for_non_reflections() {
-        let a = Layout::new("zydpx, ralem, vbjuq, whtc_, fnosi, kg___");
-        let b = Layout::new("qydpx, ralem, vbjuz, whtc_, fnosi, kg___");
-
-        assert_ne!(a.mirror_key(), b.mirror_key());
-    }
-
-    #[test]
-    fn a_is_left_tracks_a_hand() {
-        // `a` at slot 6 (left); its reflection puts `a` on the right.
+    fn mirrored_swaps_a_hand() {
+        // `a` at slot 6 (left); mirroring moves it to the right hand.
         let layout = Layout::new("zydpx, ralem, vbjuq, whtc_, fnosi, kg___");
-        let slots = layout.slots();
-        let reflected: Vec<char> = (0..30).map(|i| slots[mirror_slot(i)]).collect();
-        let reflected = Layout::from_keys(&reflected);
 
         assert!(layout.a_is_left());
-        assert!(!reflected.a_is_left());
+        assert!(!layout.mirrored().a_is_left());
     }
 }

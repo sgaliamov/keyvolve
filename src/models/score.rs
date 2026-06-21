@@ -99,6 +99,36 @@ impl ScoreResult {
     pub fn csv_header() -> &'static str {
         "fitness, count_ratio, effort, left_effort, left_effort_ratio, left_count, left_count_ratio, right_effort, right_effort_ratio, right_count, right_count_ratio, bigram_switches, switch_ratio, row_switch_cost, row_switch_ratio"
     }
+
+    /// Hand-swapped score: left/right counts and efforts trade places. Symmetric
+    /// fields (fitness, effort, switches) stay — a layout and its mirror score
+    /// identically apart from which hand owns each share.
+    pub fn mirror(&self) -> Self {
+        ScoreResult {
+            left_count: self.right_count,
+            right_count: self.left_count,
+            left_effort: self.right_effort,
+            right_effort: self.left_effort,
+            ..self.clone()
+        }
+    }
+
+    /// Parse the raw (non-derived) fields from a persisted CSV row, skipping the
+    /// six key columns. Derived ratios are recomputed by [`to_csv`], so they are
+    /// ignored here. Returns `None` on a malformed row.
+    pub fn from_csv(line: &str) -> Option<Self> {
+        let c: Vec<&str> = line.split(',').skip(6).map(str::trim).collect();
+        Some(ScoreResult {
+            fitness: c.first()?.parse().ok()?,
+            effort: c.get(2)?.parse().ok()?,
+            left_effort: c.get(3)?.parse().ok()?,
+            left_count: c.get(5)?.parse().ok()?,
+            right_effort: c.get(7)?.parse().ok()?,
+            right_count: c.get(9)?.parse().ok()?,
+            bigram_switches: c.get(11)?.parse().ok()?,
+            row_switch_cost: c.get(13)?.parse().ok()?,
+        })
+    }
 }
 
 impl std::fmt::Display for ScoreResult {
@@ -165,5 +195,52 @@ impl std::ops::Mul<u64> for ScoreResult {
             left_effort: self.left_effort * f,
             right_effort: self.right_effort * f,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn mirror_swaps_hands() {
+        let s = ScoreResult {
+            left_count: 3,
+            right_count: 5,
+            left_effort: 1.0,
+            right_effort: 2.0,
+            ..Default::default()
+        };
+        let m = s.mirror();
+
+        assert_eq!(m.left_count, 5);
+        assert_eq!(m.right_count, 3);
+        assert_eq!(m.left_effort, 2.0);
+        assert_eq!(m.right_effort, 1.0);
+    }
+
+    #[test]
+    fn from_csv_roundtrips_raw_fields() {
+        let s = ScoreResult {
+            effort: 10.0,
+            fitness: 5.0,
+            left_count: 3,
+            right_count: 5,
+            bigram_switches: 2,
+            row_switch_cost: 1,
+            left_effort: 4.0,
+            right_effort: 6.0,
+        };
+        let line = format!("k1, k2, k3, k4, k5, k6, {}", s.to_csv());
+        let parsed = ScoreResult::from_csv(&line).unwrap();
+
+        assert_eq!(parsed.fitness, 5.0);
+        assert_eq!(parsed.effort, 10.0);
+        assert_eq!(parsed.left_count, 3);
+        assert_eq!(parsed.right_count, 5);
+        assert_eq!(parsed.left_effort, 4.0);
+        assert_eq!(parsed.right_effort, 6.0);
+        assert_eq!(parsed.bigram_switches, 2);
+        assert_eq!(parsed.row_switch_cost, 1);
     }
 }
