@@ -144,7 +144,7 @@ pub fn unplace_units(
     let mut letters = Vec::new();
 
     // ── Heal ── violators always unplace; blocked slots never rejoin the pool.
-    for i in 0..genome.len() {
+    (0..genome.len()).for_each(|i| {
         let (slot, ch) = (i as u8, genome[i]);
         if ch != EMPTY_SLOT
             && !cache.frozen_chars.contains(&ch)
@@ -156,11 +156,11 @@ pub fn unplace_units(
                 freed.push(slot);
             }
         }
-    }
+    });
     // Letters healed off blocked slots need landing room: open existing empties.
     if freed.len() < letters.len() {
         let healed: FxHashSet<u8> = freed.iter().copied().collect();
-        for i in 0..genome.len() {
+        (0..genome.len()).for_each(|i| {
             let slot = i as u8;
             if genome[i] == EMPTY_SLOT
                 && !healed.contains(&slot)
@@ -169,7 +169,7 @@ pub fn unplace_units(
             {
                 freed.push(slot);
             }
-        }
+        });
     }
 
     let mut used: FxHashSet<usize> = FxHashSet::default();

@@ -31,34 +31,37 @@
     "input": "data/seed.csv",
     "output": "data/layouts.csv",
     "mutationCount": 10,
-    "-blocked": [19],
-    "-allowed": {
-      "t": [1, 2, 3],
-      "h": [1, 2, 3],
+    "blocked": [0, 4, 15, 19],
+    "allowed": {
       "e": [6, 7, 8],
-      "a": [1, 2, 3, 6, 7, 8],
-      "o": [1, 2, 3, 6, 7, 8],
-      "i": [1, 2, 3, 6, 7, 8],
-      "r": [6, 7, 8],
-      "s": [1, 2, 6, 7, 8]
+      "t": [1, 2],
+      "a": [1, 2, 6, 7, 8],
+      "i": [1, 2, 6, 7, 8],
+      "o": [1, 2, 6, 7, 8],
+      "n": [1, 2, 6, 7, 8],
+      "r": [1, 2, 5, 6, 7, 8],
+      "s": [1, 2, 5, 6, 7, 8],
+      "h": [1, 2, 3],
+      "j": [0, 4, 10, 11, 14],
+      "x": [0, 4, 10, 11, 14],
+      "z": [0, 4, 10, 11, 14],
+      "q": [0, 4, 10, 11, 14]
     },
-    "`allowed": {
-      "c": [1, 2, 3, 6, 7, 8, 11, 12, 13],
-      "n": [1, 2, 6, 7, 8]
-    },
-    "-rolls": ["ht", "er", "in"]
+    "rolls": ["ht", "er", "in", "ng"]
   },
 
   "evaluate": {
     "text": "data\\synthesised\\sample-1000000",
+    "-text": "data\\samples\\merged.txt",
     "input": "data/layouts.csv",
+    "-input": "data/seed.csv",
     "output": "data/layouts.csv",
     "print": 10
   },
 
   "evaluator": {
     "bigramSwitchPenalty": 3.0,
-    "balancePenalty": 1.5,
+    "balancePenalty": 2.0,
     "alternationPenalty": 0.25,
     "rowSwitchPenalty": 0.5,
     "pinkyMultiplier": 1.0
