@@ -193,8 +193,10 @@ impl LayoutEvaluator {
             .chain(bigrams)
             .fold(ScoreResult::default(), |acc, x| acc + x);
 
-        // balance_factor is based on the actual usage of keys
-        result.fitness = result.effort;
+        // Mean effort per keypress: dividing by total presses makes fitness
+        // independent of corpus size, so layouts compare equally across input lengths.
+        let presses = (result.left_count + result.right_count).max(1) as f64;
+        result.fitness = result.effort / presses;
         result.fitness *= balance_factor(
             result.left_count as f64,
             result.right_count as f64,
@@ -211,7 +213,7 @@ impl LayoutEvaluator {
             result.left_count + result.right_count,
             self.config.row_switch_penalty,
         );
-        result.fitness = 1. / result.fitness * 100_000_000_000.; // lower effort → higher fitness
+        result.fitness = 1. / result.fitness * 100.; // lower mean effort → higher fitness; 100 ≈ ideal
 
         result
     }
@@ -418,7 +420,7 @@ mod tests {
         assert_close(score.left_effort, 4.0);
         assert_close(score.right_effort, 1.5);
         assert_close(score.effort, 5.5);
-        assert_close(score.fitness, 10101010.1);
+        assert_close(score.fitness, 40.40);
     }
 
     #[test]
@@ -487,7 +489,7 @@ mod tests {
 
         let score = evaluator.score_corpus(&test_keys());
 
-        assert_close(score.fitness, 8658008.66);
+        assert_close(score.fitness, 34.63);
     }
 
     #[test]
@@ -504,7 +506,7 @@ mod tests {
         let score = evaluator.score_corpus(&test_keys());
 
         assert_eq!(score.row_switch_cost, 1);
-        assert_close(score.fitness, 11111111.11);
+        assert_close(score.fitness, 22.22);
     }
 
     #[test]
