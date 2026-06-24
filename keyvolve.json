@@ -28,7 +28,7 @@
 
   "optimization": {
     "text": "data/synthesised/sample-100000",
-    "input": "data/seed.csv",
+    "-input": "data/seed.csv",
     "output": "data/layouts.csv",
     "mutationCount": 10,
     "blocked": [0, 4, 15, 19],
@@ -54,13 +54,13 @@
   },
 
   "evaluate": {
-    "=text": "data\\synthesised\\sample-1000000",
-    "text": "data\\samples\\merged.txt",
-    "-input": "data/layouts.csv",
-    "input": "data/seed.csv",
+    "text": "data\\synthesised\\sample-1000000",
+    "=text": "data\\samples\\merged.txt",
+    "input": "data/layouts.csv",
+    "-input": "data/seed.csv",
     "output": "data/layouts.csv",
     "print": 10,
-    "canonicalize": false
+    "aSide": "right"
   },
 
   "evaluator": {
@@ -79,6 +79,6 @@
     "seedMutation": 10,
     "dump": "data/dump.bin",
     "dumpRatio": 0.8,
-    "keepDump": true
+    "keepDump": false
   }
 }

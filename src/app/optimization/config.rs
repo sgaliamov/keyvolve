@@ -1,4 +1,4 @@
-use crate::app::EMPTY_SLOT;
+use crate::app::{EMPTY_SLOT, Side};
 use crate::models::slot_row;
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::Deserialize;
@@ -108,18 +108,15 @@ pub struct OptimizationConfig {
     /// Output layouts csv file
     pub output: Option<PathBuf>,
 
-    /// Mirror every layout to the `a`-on-left orientation and dedup hand-swapped
-    /// twins on save, rewriting the output file. Default: `true`.
-    #[serde(default = "default_true")]
-    pub canonicalize: bool,
+    /// Hand the letter `a` is pinned to when saving: layouts are mirrored to that
+    /// orientation and hand-swapped twins deduped, rewriting the output file.
+    /// `any` keeps layouts verbatim. Default: `left`.
+    #[serde(default)]
+    pub a_side: Side,
 }
 
 fn default_mutation_count() -> usize {
     10
-}
-
-fn default_true() -> bool {
-    true
 }
 
 impl OptimizationConfig {

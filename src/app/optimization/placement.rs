@@ -365,7 +365,7 @@ mod tests {
             mutation_count: 10,
             input: None,
             output: None,
-            canonicalize: true,
+            a_side: crate::app::Side::Left,
         }
     }
 

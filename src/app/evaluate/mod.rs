@@ -37,11 +37,5 @@ pub fn evaluate(
             .unwrap_or(std::cmp::Ordering::Equal)
     });
 
-    write_layouts(
-        &scored,
-        cfg.print,
-        cfg.output.as_deref(),
-        true,
-        cfg.canonicalize,
-    )
+    write_layouts(&scored, cfg.print, cfg.output.as_deref(), true, cfg.a_side)
 }

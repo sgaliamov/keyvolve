@@ -1,3 +1,4 @@
+use crate::app::Side;
 use serde::Deserialize;
 use std::path::PathBuf;
 
@@ -18,18 +19,15 @@ pub struct EvaluateConfig {
     #[serde(default = "default_print")]
     pub print: usize,
 
-    /// Mirror every layout to the `a`-on-left orientation and dedup hand-swapped
-    /// twins on save. Default: `true`.
-    #[serde(default = "default_true")]
-    pub canonicalize: bool,
+    /// Hand the letter `a` is pinned to when saving (layouts mirrored to that
+    /// orientation, hand-swapped twins deduped). `any` keeps layouts verbatim.
+    /// Default: `left`.
+    #[serde(default)]
+    pub a_side: Side,
 }
 
 fn default_print() -> usize {
     10
-}
-
-fn default_true() -> bool {
-    true
 }
 
 impl Default for EvaluateConfig {
@@ -39,7 +37,7 @@ impl Default for EvaluateConfig {
             input: PathBuf::default(),
             output: None,
             print: default_print(),
-            canonicalize: true,
+            a_side: Side::default(),
         }
     }
 }
