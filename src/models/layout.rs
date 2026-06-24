@@ -159,6 +159,27 @@ mod layout_test {
     }
 
     #[test]
+    fn right_block_anchors_slot_15_to_29() {
+        // Right hand starts at slot 15 (top-left, inner) and ends at slot 29 (bottom-right, outer).
+        let line = "abcde, fghij, klmno, pqrst, _____, ____z";
+        let keys = line_to_keys(line);
+
+        assert_eq!(keys[&'a'], 0); // left top-left
+        assert_eq!(keys[&'o'], 14); // left bottom-right
+        assert_eq!(keys[&'p'], 15); // right top-left (start)
+        assert_eq!(keys[&'t'], 19); // right top-right — locks inner→outer direction
+        assert_eq!(keys[&'z'], 29); // right bottom-right (end)
+    }
+
+    #[test]
+    fn display_round_trips_filled_bottom_right() {
+        // Letter on slot 29 survives render at the bottom-right.
+        let line = "abcde, fghij, klmno, pqrst, _____, ____z";
+
+        assert_eq!(Layout::new(line).to_string(), line);
+    }
+
+    #[test]
     fn mirrored_is_an_involution() {
         let layout = Layout::new("zydpx, ralem, vbjuq, whtc_, fnosi, kg___");
 
