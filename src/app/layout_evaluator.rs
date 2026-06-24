@@ -205,7 +205,7 @@ impl LayoutEvaluator {
             result.left_count + result.right_count,
             self.config.alternation_penalty,
         );
-        // Same-hand row changes only: same row = 0, adjacent row = 1, top↔bottom jump = 2.
+        // Same-hand row changes only: same row = 0, adjacent row = 1, top ↔ bottom jump = 2.
         result.fitness *= linear_rate_penalty(
             result.row_switch_cost,
             result.left_count + result.right_count,
