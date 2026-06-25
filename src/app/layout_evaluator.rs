@@ -8,10 +8,6 @@ use serde::Deserialize;
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct LayoutEvaluatorConfig {
-    /// Per-switch effort multiplier; `1.0` means no penalty, `1.5` means +50%.
-    // todo: drop?
-    pub bigram_switch_penalty: f64,
-
     /// Max multiplier for extreme hand imbalance.
     pub balance_penalty: f64,
 
@@ -28,7 +24,6 @@ pub struct LayoutEvaluatorConfig {
 impl Default for LayoutEvaluatorConfig {
     fn default() -> Self {
         Self {
-            bigram_switch_penalty: 1.5,
             balance_penalty: 2.0,
             alternation_penalty: 0.25,
             row_switch_penalty: 0.25,
@@ -156,13 +151,9 @@ impl LayoutEvaluator {
             )
         } else {
             // Hands alternate: key `a` was already counted in the previous press.
-            // Charge the self-effort of key `b` (like the first-letter cost),
-            // scaled by `bigram_switch_penalty` so `1.0` means no extra cost.
-            (
-                self.lookup(kb, kb) * self.config.bigram_switch_penalty * self.pinky_mul(kb),
-                1,
-                0,
-            )
+            // Charge `b` as an independent press (self-effort, like the first letter).
+            // The switch is recorded; corpus-wide pressure lives in `alternation_penalty`.
+            (self.lookup(kb, kb) * self.pinky_mul(kb), 1, 0)
         };
 
         ScoreResult {
@@ -345,40 +336,10 @@ mod tests {
         assert_eq!(score.right_count, 1);
         assert_eq!(score.bigram_switches, 1);
         assert_eq!(score.row_switch_cost, 0);
-        assert_close(score.effort, 2.5);
+        assert_close(score.effort, 2.0);
         assert_close(score.fitness, 0.0);
         assert_close(score.left_effort, 1.0);
-        assert_close(score.right_effort, 1.5);
-    }
-
-    #[test]
-    fn score_word_zero_bigram_switch_penalty_removes_switch_cost() {
-        let keyboard = Keyboard::new(
-            json!({
-                "efforts": [1.0, 2.0],
-                "pairs": {
-                    "0": {"0": 0, "1": 1},
-                    "1": {"1": 0, "0": 1}
-                }
-            })
-            .to_string(),
-        );
-        let evaluator = LayoutEvaluator::new(
-            &keyboard,
-            vec![],
-            LayoutEvaluatorConfig {
-                bigram_switch_penalty: 0.0,
-                ..test_config()
-            },
-        );
-
-        let score = evaluator.score_word("ac", &test_keys());
-
-        assert_close(score.effort, 1.0);
-        assert_close(score.fitness, 0.0);
-        assert_eq!(score.bigram_switches, 1);
-        assert_eq!(score.row_switch_cost, 0);
-        assert_close(score.right_effort, 0.0);
+        assert_close(score.right_effort, 1.0);
     }
 
     #[test]
@@ -419,9 +380,9 @@ mod tests {
         assert_eq!(score.bigram_switches, 1);
         assert_eq!(score.row_switch_cost, 0);
         assert_close(score.left_effort, 4.0);
-        assert_close(score.right_effort, 1.5);
-        assert_close(score.effort, 5.5);
-        assert_close(score.fitness, 40.40);
+        assert_close(score.right_effort, 1.0);
+        assert_close(score.effort, 5.0);
+        assert_close(score.fitness, 44.44);
     }
 
     #[test]
@@ -490,7 +451,7 @@ mod tests {
 
         let score = evaluator.score_corpus(&test_keys());
 
-        assert_close(score.fitness, 34.63);
+        assert_close(score.fitness, 38.10);
     }
 
     #[test]
@@ -577,7 +538,6 @@ mod tests {
 
     fn test_config() -> LayoutEvaluatorConfig {
         LayoutEvaluatorConfig {
-            bigram_switch_penalty: 1.5,
             balance_penalty: 2.0,
             alternation_penalty: 0.0,
             row_switch_penalty: 0.0,
