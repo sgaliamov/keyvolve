@@ -200,9 +200,11 @@ impl LayoutEvaluator {
             self.config.alternation_penalty,
         );
         // Same-hand row changes only: same row = 0, adjacent row = 1, top ↔ bottom jump = 2.
+        // Rate measured over same-hand presses only — hand switches carry no row cost,
+        // so excluding them keeps the rate undiluted by alternation.
         result.fitness *= linear_rate_penalty(
             result.row_switch_cost,
-            result.left_count + result.right_count,
+            (result.left_count + result.right_count).saturating_sub(result.bigram_switches),
             self.config.row_switch_penalty,
         );
         result.fitness = 1. / result.fitness * 100.; // lower mean effort → higher fitness; 100 ≈ ideal
@@ -469,6 +471,26 @@ mod tests {
 
         assert_eq!(score.row_switch_cost, 1);
         assert_close(score.fitness, 22.22);
+    }
+
+    #[test]
+    fn score_corpus_excludes_hand_switches_from_row_switch_rate() {
+        // "adc": a→d same-hand row switch (cost 1), d→c hand switch (cost 0).
+        // Denominator drops the switch press, so the row-switch rate stays undiluted.
+        let evaluator = LayoutEvaluator::new(
+            &row_switch_test_keyboard(),
+            vec!["adc".to_string()],
+            LayoutEvaluatorConfig {
+                row_switch_penalty: 0.5,
+                ..test_config()
+            },
+        );
+
+        let score = evaluator.score_corpus(&test_keys());
+
+        assert_eq!(score.bigram_switches, 1);
+        assert_eq!(score.row_switch_cost, 1);
+        assert_close(score.fitness, 33.33);
     }
 
     #[test]
