@@ -147,7 +147,7 @@ impl LayoutEvaluator {
             (
                 self.lookup(ka, kb) * self.pinky_mul(kb),
                 0,
-                row_switch_cost(ka, kb),
+                row_distance(ka, kb),
             )
         } else {
             // Hands alternate: key `a` was already counted in the previous press.
@@ -240,7 +240,7 @@ fn is_pinky(slot: u8) -> bool {
 
 /// Weighted same-hand row-switch cost. Adjacent-row move = 1, jump-over-row = 2.
 #[inline]
-fn row_switch_cost(from: u8, to: u8) -> u64 {
+fn row_distance(from: u8, to: u8) -> u64 {
     slot_row(from).abs_diff(slot_row(to)).into()
 }
 
