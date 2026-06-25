@@ -9,6 +9,7 @@ use serde::Deserialize;
 #[serde(rename_all = "camelCase")]
 pub struct LayoutEvaluatorConfig {
     /// Per-switch effort multiplier; `1.0` means no penalty, `1.5` means +50%.
+    // todo: drop?
     pub bigram_switch_penalty: f64,
 
     /// Max multiplier for extreme hand imbalance.

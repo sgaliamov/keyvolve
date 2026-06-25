@@ -133,14 +133,31 @@ impl OptimizationConfig {
             .is_none_or(|slots| slots.contains(&slot))
     }
 
-    /// True when every placed char sits on a permitted slot: frozen chars at their
-    /// pins, constrained chars within `allowed`, nothing on blocked slots.
-    /// Guards against genomes from external sources (seed csv, dump) that were
-    /// produced under different constraints.
+    /// True when every placed char sits on a permitted slot (frozen chars at their
+    /// pins, constrained chars within `allowed`, nothing on blocked slots) AND every
+    /// roll pair occupies roll-neighbor slots.
+    /// Guards against genomes from external sources (seed csv, dump) and starved
+    /// fallback placements that were produced under or drifted from the constraints.
     pub fn is_genome_valid(&self, genome: &[char]) -> bool {
         genome.iter().enumerate().all(|(i, &ch)| {
             let slot = i as u8;
             ch == EMPTY_SLOT || (!self.blocked.contains(&slot) && self.is_slot_allowed(ch, slot))
+        }) && self.rolls_satisfied(genome)
+    }
+
+    /// True when every roll pair present in `genome` sits on roll-neighbor slots.
+    /// Pairs with a not-yet-placed char are skipped (mid-placement tolerance).
+    /// Catches split pairs that the layered placement could not seat as neighbors
+    /// and foreign genomes injected under different roll constraints.
+    pub fn rolls_satisfied(&self, genome: &[char]) -> bool {
+        self.rolls.iter().all(|&[a, b]| {
+            match (
+                genome.iter().position(|&c| c == a),
+                genome.iter().position(|&c| c == b),
+            ) {
+                (Some(ia), Some(ib)) => are_roll_neighbors(ia as u8, ib as u8),
+                _ => true,
+            }
         })
     }
 
@@ -233,6 +250,43 @@ mod tests {
 
         g[29] = EMPTY_SLOT; // empty blocked slot is fine
         assert!(cfg.is_genome_valid(&g));
+    }
+
+    #[test]
+    fn rolls_satisfied_true_for_neighbors() {
+        let cfg = OptimizationConfig {
+            rolls: vec![['t', 'h']],
+            ..Default::default()
+        };
+        let mut g = vec![EMPTY_SLOT; 30];
+        g[3] = 't';
+        g[4] = 'h'; // same row, adjacent col → neighbors
+        assert!(cfg.rolls_satisfied(&g));
+        assert!(cfg.is_genome_valid(&g));
+    }
+
+    #[test]
+    fn rolls_satisfied_false_for_split_pair() {
+        let cfg = OptimizationConfig {
+            rolls: vec![['t', 'h']],
+            ..Default::default()
+        };
+        let mut g = vec![EMPTY_SLOT; 30];
+        g[0] = 't';
+        g[4] = 'h'; // col dist 4 → not neighbors
+        assert!(!cfg.rolls_satisfied(&g));
+        assert!(!cfg.is_genome_valid(&g)); // guard rejects split roll
+    }
+
+    #[test]
+    fn rolls_satisfied_skips_absent_char() {
+        let cfg = OptimizationConfig {
+            rolls: vec![['t', 'h']],
+            ..Default::default()
+        };
+        let mut g = vec![EMPTY_SLOT; 30];
+        g[0] = 't'; // 'h' absent → nothing to violate yet
+        assert!(cfg.rolls_satisfied(&g));
     }
 
     #[test]
