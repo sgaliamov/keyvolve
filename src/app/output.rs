@@ -199,7 +199,7 @@ mod tests {
 
     // a-right layout (`a` in keys_5 → slot 23) plus a score row.
     fn a_right() -> (Layout, ScoreResult) {
-        let line = "_mub_, lreop, wfydx, _htc_, kinas, qgvzj, 5378.69, 0.96, 15.0, 7.0, 47%, 100, 49%, 8.0, 52%, 200, 50%, 17, 34%, 12, 24%";
+        let line = "_mub_, lreop, wfydx, _htc_, kinas, qgvzj, 5378.69, 0.96, 24%, 34%, 47%, 52%, 49%, 50%, 15.0, 7.0, 8.0, 100, 200, 17, 12";
         (Layout::new(line), ScoreResult::from_csv(line).unwrap())
     }
 

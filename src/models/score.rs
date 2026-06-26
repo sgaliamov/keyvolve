@@ -72,32 +72,32 @@ impl ScoreResult {
     /// Serialize as a CSV row (no header).
     pub fn to_csv(&self) -> String {
         format!(
-            "{:.4}, {:.2}, {:.2}, {:.2}, {:.2}%, {}, {:.2}%, {:.2}, {:.2}%, {}, {:.2}%, {}, {:.2}%, {}, {:.2}%",
+            "{:.4},{:.2},{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2},{:.2},{:.2},{},{},{},{}",
             self.fitness,
             if self.right_count == 0 {
                 0.0
             } else {
                 self.left_count as f64 / self.right_count as f64
             },
+            self.row_switch_ratio() * 100.0,
+            self.switch_ratio() * 100.0,
+            self.left_effort_ratio() * 100.0,
+            self.right_effort_ratio() * 100.0,
+            self.left_count_ratio() * 100.0,
+            self.right_count_ratio() * 100.0,
             self.effort,
             self.left_effort,
-            self.left_effort_ratio() * 100.0,
-            self.left_count,
-            self.left_count_ratio() * 100.0,
             self.right_effort,
-            self.right_effort_ratio() * 100.0,
+            self.left_count,
             self.right_count,
-            self.right_count_ratio() * 100.0,
             self.bigram_switches,
-            self.switch_ratio() * 100.0,
             self.row_switch_cost,
-            self.row_switch_ratio() * 100.0
         )
     }
 
     /// CSV header matching [`to_csv`] column order.
     pub fn csv_header() -> &'static str {
-        "fitness, count_ratio, effort, left_effort, left_effort_ratio, left_count, left_count_ratio, right_effort, right_effort_ratio, right_count, right_count_ratio, bigram_switches, switch_ratio, row_switch_cost, row_switch_ratio"
+        "fitness, count_ratio, row_switch_ratio, switch_ratio, left_effort_ratio, right_effort_ratio, left_count_ratio, right_count_ratio, effort, left_effort, right_effort, left_count, right_count, bigram_switches, row_switch_cost"
     }
 
     /// Hand-swapped score: left/right counts and efforts trade places. Symmetric
@@ -120,13 +120,13 @@ impl ScoreResult {
         let c: Vec<&str> = line.split(',').skip(6).map(str::trim).collect();
         Some(ScoreResult {
             fitness: c.first()?.parse().ok()?,
-            effort: c.get(2)?.parse().ok()?,
-            left_effort: c.get(3)?.parse().ok()?,
-            left_count: c.get(5)?.parse().ok()?,
-            right_effort: c.get(7)?.parse().ok()?,
-            right_count: c.get(9)?.parse().ok()?,
-            bigram_switches: c.get(11)?.parse().ok()?,
-            row_switch_cost: c.get(13)?.parse().ok()?,
+            effort: c.get(8)?.parse().ok()?,
+            left_effort: c.get(9)?.parse().ok()?,
+            right_effort: c.get(10)?.parse().ok()?,
+            left_count: c.get(11)?.parse().ok()?,
+            right_count: c.get(12)?.parse().ok()?,
+            bigram_switches: c.get(13)?.parse().ok()?,
+            row_switch_cost: c.get(14)?.parse().ok()?,
         })
     }
 }
