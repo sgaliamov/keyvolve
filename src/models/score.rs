@@ -135,24 +135,26 @@ impl std::fmt::Display for ScoreResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "φ {:.4} | L/R {:.2} | ε {:.2} | L {:.2} ({}, {:.1}%) | R {:.2} ({}, {:.1}%) | ⇄ {} ({:.2}%) | ↕ {} ({:.2}%)",
+            "φ {:.4} | L/R {:.2} | ↕ {:.2}% | ⇄ {:.2}% | Lε {:.1}% | Rε {:.1}% | L# {:.1}% | R# {:.1}% | ε {:.2} | Lε {:.2} | Rε {:.2} | L# {} | R# {} | ⇄ {} | ↕ {}",
             self.fitness,
             if self.right_count == 0 {
                 0.0
             } else {
                 self.left_count as f64 / self.right_count as f64
             },
+            self.row_switch_ratio() * 100.0,
+            self.switch_ratio() * 100.0,
+            self.left_effort_ratio() * 100.0,
+            self.right_effort_ratio() * 100.0,
+            self.left_count_ratio() * 100.0,
+            self.right_count_ratio() * 100.0,
             self.effort,
             self.left_effort,
-            self.left_count,
-            self.left_effort_ratio() * 100.0,
             self.right_effort,
+            self.left_count,
             self.right_count,
-            self.right_effort_ratio() * 100.0,
             self.bigram_switches,
-            self.switch_ratio() * 100.0,
             self.row_switch_cost,
-            self.row_switch_ratio() * 100.0,
         )
     }
 }
