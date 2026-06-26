@@ -43,6 +43,16 @@ impl ScoreResult {
         )
     }
 
+    /// Hand imbalance as a percent: how far the left/right same-hand count ratio
+    /// strays from parity. 0% = balanced. Asymmetric by direction.
+    pub fn count_imbalance(&self) -> f64 {
+        if self.right_count == 0 {
+            0.0
+        } else {
+            (self.left_count as f64 / self.right_count as f64 - 1.0).abs() * 100.0
+        }
+    }
+
     /// Left share of same-hand effort.
     pub fn left_effort_ratio(&self) -> f64 {
         ratio(self.left_effort, self.left_effort + self.right_effort)
@@ -54,7 +64,7 @@ impl ScoreResult {
     }
 
     /// Share of hand switches among all bigram transitions.
-    pub fn switch_ratio(&self) -> f64 {
+    pub fn bigram_switch_ratio(&self) -> f64 {
         ratio(
             self.bigram_switches as f64,
             self.left_count as f64 + self.right_count as f64,
@@ -72,15 +82,11 @@ impl ScoreResult {
     /// Serialize as a CSV row (no header).
     pub fn to_csv(&self) -> String {
         format!(
-            "{:.4},{:.2},{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2},{:.2},{:.2},{},{},{},{}",
+            "{:.4},{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2},{:.2},{:.2},{},{},{},{}",
             self.fitness,
-            if self.right_count == 0 {
-                0.0
-            } else {
-                self.left_count as f64 / self.right_count as f64
-            },
+            self.count_imbalance(),
             self.row_switch_ratio() * 100.0,
-            self.switch_ratio() * 100.0,
+            self.bigram_switch_ratio() * 100.0,
             self.left_effort_ratio() * 100.0,
             self.right_effort_ratio() * 100.0,
             self.left_count_ratio() * 100.0,
@@ -97,7 +103,7 @@ impl ScoreResult {
 
     /// CSV header matching [`to_csv`] column order.
     pub fn csv_header() -> &'static str {
-        "fitness, count_ratio, row_switch_ratio, switch_ratio, left_effort_ratio, right_effort_ratio, left_count_ratio, right_count_ratio, effort, left_effort, right_effort, left_count, right_count, bigram_switches, row_switch_cost"
+        "fitness, count_imbalance, row_switch_ratio, switch_ratio, left_effort_ratio, right_effort_ratio, left_count_ratio, right_count_ratio, effort, left_effort, right_effort, left_count, right_count, bigram_switches, row_switch_cost"
     }
 
     /// Hand-swapped score: left/right counts and efforts trade places. Symmetric
@@ -135,15 +141,11 @@ impl std::fmt::Display for ScoreResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "φ {:.4} | L/R {:.2} | ↕ {:.2}% | ⇄ {:.2}% | Lε {:.1}% | Rε {:.1}% | L# {:.1}% | R# {:.1}% | ε {:.2} | Lε {:.2} | Rε {:.2} | L# {} | R# {} | ⇄ {} | ↕ {}",
+            "φ {:.4} | Δ {:.2}% | ↕ {:.2}% | ⇄ {:.2}% | Lε {:.1}% | Rε {:.1}% | L# {:.1}% | R# {:.1}% | ε {:.2} | Lε {:.2} | Rε {:.2} | L# {} | R# {} | ⇄ {} | ↕ {}",
             self.fitness,
-            if self.right_count == 0 {
-                0.0
-            } else {
-                self.left_count as f64 / self.right_count as f64
-            },
+            self.count_imbalance(),
             self.row_switch_ratio() * 100.0,
-            self.switch_ratio() * 100.0,
+            self.bigram_switch_ratio() * 100.0,
             self.left_effort_ratio() * 100.0,
             self.right_effort_ratio() * 100.0,
             self.left_count_ratio() * 100.0,
