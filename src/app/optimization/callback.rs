@@ -21,12 +21,11 @@ pub fn callback(ctx: &GaContext) -> bool {
     let name = Layout::from_keys(&best.genome).to_string();
 
     let ratio_str = best.state.as_ref().map_or(String::new(), |s| {
-        let ratio = if s.right_count == 0 {
-            0.0
-        } else {
-            s.left_count as f64 / s.right_count as f64
-        };
-        format!(" | ⇄ {:.2} | ↕ {:.2}%", ratio, s.row_switch_ratio() * 100.0)
+        format!(
+            " | Δ {:.2}% | ↕ {:.2}%",
+            s.count_imbalance(),
+            s.row_switch_ratio() * 100.0
+        )
     });
 
     let min_div = ctx

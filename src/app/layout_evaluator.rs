@@ -11,8 +11,8 @@ pub struct LayoutEvaluatorConfig {
     /// Max multiplier for extreme hand imbalance.
     pub balance_penalty: f64,
 
-    /// Coefficient `k` for corpus-level alternation-rate penalty.
-    pub alternation_penalty: f64,
+    /// Coefficient `k` for corpus-level hand-switch-rate penalty.
+    pub bigram_switch_penalty: f64,
 
     /// Coefficient `k` for weighted same-hand row-switch penalty.
     pub row_switch_penalty: f64,
@@ -25,7 +25,7 @@ impl Default for LayoutEvaluatorConfig {
     fn default() -> Self {
         Self {
             balance_penalty: 2.0,
-            alternation_penalty: 0.25,
+            bigram_switch_penalty: 0.25,
             row_switch_penalty: 0.25,
             pinky_multiplier: 1.1,
         }
@@ -152,7 +152,7 @@ impl LayoutEvaluator {
         } else {
             // Hands alternate: key `a` was already counted in the previous press.
             // Charge `b` as an independent press (self-effort, like the first letter).
-            // The switch is recorded; corpus-wide pressure lives in `alternation_penalty`.
+            // The switch is recorded; corpus-wide pressure lives in `bigram_switch_penalty`.
             (self.lookup(kb, kb) * self.pinky_mul(kb), 1, 0)
         };
 
@@ -197,7 +197,7 @@ impl LayoutEvaluator {
         result.fitness *= linear_rate_penalty(
             result.bigram_switches,
             result.left_count + result.right_count,
-            self.config.alternation_penalty,
+            self.config.bigram_switch_penalty,
         );
         // Same-hand row changes only: same row = 0, adjacent row = 1, top ↔ bottom jump = 2.
         // Rate measured over same-hand presses only — hand switches carry no row cost,
@@ -432,7 +432,7 @@ mod tests {
     }
 
     #[test]
-    fn score_corpus_applies_configured_alternation_penalty() {
+    fn score_corpus_applies_configured_bigram_switch_penalty() {
         let evaluator = LayoutEvaluator::new(
             &Keyboard::new(
                 json!({
@@ -446,7 +446,7 @@ mod tests {
             ),
             vec!["ab".to_string(), "ac".to_string()],
             LayoutEvaluatorConfig {
-                alternation_penalty: 0.5,
+                bigram_switch_penalty: 0.5,
                 ..test_config()
             },
         );
@@ -561,7 +561,7 @@ mod tests {
     fn test_config() -> LayoutEvaluatorConfig {
         LayoutEvaluatorConfig {
             balance_penalty: 2.0,
-            alternation_penalty: 0.0,
+            bigram_switch_penalty: 0.0,
             row_switch_penalty: 0.0,
             pinky_multiplier: 1.0,
         }

@@ -17,7 +17,7 @@ Scores candidate layouts against a bigram-weighted corpus, then evolves them tow
 
 ### Scoring
 - Bigram effort table precomputed from `keyboard.json`: per-key effort groups + pair costs + symmetry (left-hand pairs mirrored to right automatically).
-- Per-bigram penalties: same-hand switch multiplier, corpus-level hand-balance penalty, alternation-rate penalty.
+- Per-bigram penalties: same-hand switch multiplier, corpus-level hand-balance penalty, hand-switch-rate penalty.
 - Corpus: synthesised fake-word file (built from real text via `Synthesise` mode), not raw text — keeps evaluation fast.
 
 ### GA engine (darwin crate)
