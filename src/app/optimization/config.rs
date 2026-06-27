@@ -49,7 +49,7 @@ pub fn are_roll_neighbors(a: u8, b: u8) -> bool {
     let a_hand = a / 15;
     let b_hand = b / 15;
     let col_dist = slot_col(a).abs_diff(slot_col(b));
-    a_hand == b_hand && matches!(col_dist, 1 | 2) && slot_row(a).abs_diff(slot_row(b)) <= 1
+    a_hand == b_hand && matches!(col_dist, 1..=3) && slot_row(a).abs_diff(slot_row(b)) <= 1
 }
 
 /// Deserialize `["th", "st"]` → `[[t,h],[s,t]]`.
