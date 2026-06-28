@@ -19,11 +19,11 @@ pub struct EvaluateConfig {
     #[serde(default = "default_print")]
     pub print: usize,
 
-    /// Hand the letter `a` is pinned to when saving (layouts mirrored to that
+    /// Hand the letter `z` is pinned to when saving (layouts mirrored to that
     /// orientation, hand-swapped twins deduped). `any` keeps layouts verbatim.
     /// Default: `left`.
     #[serde(default)]
-    pub a_side: Side,
+    pub z_side: Side,
 }
 
 fn default_print() -> usize {
@@ -37,7 +37,7 @@ impl Default for EvaluateConfig {
             input: PathBuf::default(),
             output: None,
             print: default_print(),
-            a_side: Side::default(),
+            z_side: Side::default(),
         }
     }
 }

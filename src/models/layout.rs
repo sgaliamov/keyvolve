@@ -54,10 +54,10 @@ impl Layout {
         }
     }
 
-    /// `true` when `a` sits on the left hand (slot 0–14); `false` if on the right
-    /// or absent. Drives canonicalization to the `a`-left orientation on save.
-    pub fn a_is_left(&self) -> bool {
-        self.keys.get(&'a').is_some_and(|&p| p < 15)
+    /// `true` when `z` sits on the left hand (slot 0–14); `false` if on the right
+    /// or absent. Drives canonicalization to the `z`-left orientation on save.
+    pub fn z_is_left(&self) -> bool {
+        self.keys.get(&'z').is_some_and(|&p| p < 15)
     }
 
     pub fn load(path: impl AsRef<Path>) -> Vec<Layout> {
@@ -189,10 +189,7 @@ mod layout_test {
         let line = "zydpx,ralem,vbjuq,whtc_,fnosi,kg___,not used tail";
         let layout = Layout::new(line);
 
-        assert_eq!(
-            layout.to_string(),
-            "zydpx,ralem,vbjuq,whtc_,fnosi,kg___"
-        );
+        assert_eq!(layout.to_string(), "zydpx,ralem,vbjuq,whtc_,fnosi,kg___");
     }
 
     #[test]
@@ -224,12 +221,12 @@ mod layout_test {
     }
 
     #[test]
-    fn mirrored_swaps_a_hand() {
-        // `a` at slot 6 (left); mirroring moves it to the right hand.
+    fn mirrored_swaps_z_hand() {
+        // `z` at slot 0 (left); mirroring moves it to the right hand.
         let layout = Layout::new("zydpx, ralem, vbjuq, whtc_, fnosi, kg___");
 
-        assert!(layout.a_is_left());
-        assert!(!layout.mirrored().a_is_left());
+        assert!(layout.z_is_left());
+        assert!(!layout.mirrored().z_is_left());
     }
 
     #[test]

@@ -73,7 +73,7 @@
     "-input": "data/seed.csv",
     "output": "data/layouts.csv",
     "print": 10,
-    "aSide": "left"
+    "zSide": "left"
   },
 
   "evaluator": {
