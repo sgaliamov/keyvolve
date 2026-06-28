@@ -45,11 +45,12 @@ fn slot_col(slot: u8) -> u8 {
 }
 
 /// True when two slots are on the same hand, 1–2 columns apart, and within one row of each other.
+/// Same-column (vertical) pairs are rejected — a roll needs distinct fingers.
 pub fn are_roll_neighbors(a: u8, b: u8) -> bool {
     let a_hand = a / 15;
     let b_hand = b / 15;
     let col_dist = slot_col(a).abs_diff(slot_col(b));
-    a_hand == b_hand && matches!(col_dist, 1..=2) && slot_row(a).abs_diff(slot_row(b)) <= 1
+    a_hand == b_hand && (1..=2).contains(&col_dist) && slot_row(a).abs_diff(slot_row(b)) <= 1
 }
 
 /// Deserialize `["th", "st"]` → `[[t,h],[s,t]]`.
@@ -397,6 +398,14 @@ mod tests {
     fn are_roll_neighbors_cross_hand_rejected() {
         // slot 4 (left index) and slot 15 (right index) → different hands
         assert!(!are_roll_neighbors(4, 15));
+    }
+
+    #[test]
+    fn are_roll_neighbors_vertical_rejected() {
+        // slot 4 (row 0, col 4) and slot 9 (row 1, col 4) → same column → not a roll
+        assert!(!are_roll_neighbors(4, 9));
+        // slot 0 (row 0, col 0) and slot 5 (row 1, col 0) → same column → not a roll
+        assert!(!are_roll_neighbors(0, 5));
     }
 
     #[test]
