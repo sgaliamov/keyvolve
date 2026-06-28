@@ -108,7 +108,7 @@ fn write_plain(
     if is_new {
         writeln!(
             file,
-            "keys_1, keys_2, keys_3, keys_4, keys_5, keys_6, {}",
+            "keys_1, keys_2, keys_3, keys_4, keys_5, keys_6, name, {}",
             ScoreResult::csv_header()
         )
         .into_diagnostic()
@@ -116,7 +116,7 @@ fn write_plain(
     }
 
     for (layout, score, _) in layouts {
-        writeln!(file, "{layout}, {}", score.to_csv())
+        writeln!(file, "{layout}, {}, {}", layout.name, score.to_csv())
             .into_diagnostic()
             .wrap_err("Failed to write layout row")?;
     }
@@ -145,7 +145,7 @@ fn to_side(layout: &Layout, score: &ScoreResult, side: Side) -> (Layout, ScoreRe
 fn dedup(rows: impl Iterator<Item = (Layout, ScoreResult)>) -> Vec<String> {
     let mut seen = FxHashSet::default();
     rows.filter(|(layout, _)| seen.insert(layout.to_string()))
-        .map(|(layout, score)| format!("{layout}, {}", score.to_csv()))
+        .map(|(layout, score)| format!("{layout}, {}, {}", layout.name, score.to_csv()))
         .collect()
 }
 
@@ -177,7 +177,7 @@ fn write_csv(path: &Path, rows: &[String]) -> Result<()> {
 
     writeln!(
         file,
-        "keys_1, keys_2, keys_3, keys_4, keys_5, keys_6, {}",
+        "keys_1, keys_2, keys_3, keys_4, keys_5, keys_6, name, {}",
         ScoreResult::csv_header()
     )
     .into_diagnostic()

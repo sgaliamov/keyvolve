@@ -120,10 +120,16 @@ impl ScoreResult {
     }
 
     /// Parse the raw (non-derived) fields from a persisted CSV row, skipping the
-    /// six key columns. Derived ratios are recomputed by [`to_csv`], so they are
-    /// ignored here. Returns `None` on a malformed row.
+    /// six key columns plus the optional `name` column. Derived ratios are
+    /// recomputed by [`to_csv`], so they are ignored here. Returns `None` on a
+    /// malformed row.
     pub fn from_csv(line: &str) -> Option<Self> {
-        let c: Vec<&str> = line.split(',').skip(6).map(str::trim).collect();
+        let skip = if super::name_field(line).is_some() {
+            7
+        } else {
+            6
+        };
+        let c: Vec<&str> = line.split(',').skip(skip).map(str::trim).collect();
         Some(ScoreResult {
             fitness: c.first()?.parse().ok()?,
             effort: c.get(8)?.parse().ok()?,
@@ -235,16 +241,20 @@ mod tests {
             left_effort: 4.0,
             right_effort: 6.0,
         };
-        let line = format!("k1, k2, k3, k4, k5, k6, {}", s.to_csv());
-        let parsed = ScoreResult::from_csv(&line).unwrap();
+        let check = |line: &str| {
+            let parsed = ScoreResult::from_csv(line).unwrap();
+            assert_eq!(parsed.fitness, 5.0);
+            assert_eq!(parsed.effort, 10.0);
+            assert_eq!(parsed.left_count, 3);
+            assert_eq!(parsed.right_count, 5);
+            assert_eq!(parsed.left_effort, 4.0);
+            assert_eq!(parsed.right_effort, 6.0);
+            assert_eq!(parsed.bigram_switches, 2);
+            assert_eq!(parsed.row_switch_cost, 1);
+        };
 
-        assert_eq!(parsed.fitness, 5.0);
-        assert_eq!(parsed.effort, 10.0);
-        assert_eq!(parsed.left_count, 3);
-        assert_eq!(parsed.right_count, 5);
-        assert_eq!(parsed.left_effort, 4.0);
-        assert_eq!(parsed.right_effort, 6.0);
-        assert_eq!(parsed.bigram_switches, 2);
-        assert_eq!(parsed.row_switch_cost, 1);
+        // Old headerless rows (fitness right after keys) and new rows (name column).
+        check(&format!("k1, k2, k3, k4, k5, k6, {}", s.to_csv()));
+        check(&format!("k1, k2, k3, k4, k5, k6, homerow, {}", s.to_csv()));
     }
 }

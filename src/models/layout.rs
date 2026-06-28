@@ -12,34 +12,46 @@ pub type Keys = FxHashMap<char, u8>;
 #[derive(Clone)]
 pub struct Layout {
     pub keys: Keys,
+    /// Display name: explicit from the input CSV `name` column, else home-row letters.
+    pub name: String,
 }
 
 impl Layout {
-    // Constructor: Create Layout from line
+    /// Build from a layout/CSV line. Name = the `name` column when present,
+    /// otherwise the home-row letters.
     pub fn new(line: &str) -> Self {
         let keys = line_to_keys(line);
-        Layout { keys }
+        let name = name_field(line)
+            .map(str::to_string)
+            .unwrap_or_else(|| home_row_name(&keys));
+        Layout { keys, name }
     }
 
+    /// Build from a 30-slot char array; name derived from the home row.
     pub fn from_keys(keys: &[char]) -> Self {
-        let keys = keys
+        let keys: Keys = keys
             .iter()
             .enumerate()
             .filter(|(_, c)| c.is_alphabetic())
             .map(|(i, &c)| (c, i as u8))
             .collect();
-        Layout { keys }
+        let name = home_row_name(&keys);
+        Layout { keys, name }
     }
 
     /// Hand-swapped twin: every key reflected left↔right. Involution.
     /// Fitness is hand-symmetric, so a layout and its mirror score identically.
+    /// Name travels with the layout unchanged.
     pub fn mirrored(&self) -> Layout {
         let keys = self
             .keys
             .iter()
             .map(|(&c, &p)| (c, mirror_slot(p as usize) as u8))
             .collect();
-        Layout { keys }
+        Layout {
+            keys,
+            name: self.name.clone(),
+        }
     }
 
     /// `true` when `a` sits on the left hand (slot 0–14); `false` if on the right
@@ -129,6 +141,31 @@ pub fn line_to_keys(line: &str) -> Keys {
         .collect()
 }
 
+/// Physical home-row slots — left 5–9, right 20–24.
+const HOME_ROW: [usize; 10] = [5, 6, 7, 8, 9, 20, 21, 22, 23, 24];
+
+/// Explicit name from the CSV column after the six key groups. `None` when absent
+/// or numeric — old headerless rows store fitness there, not a name.
+pub fn name_field(line: &str) -> Option<&str> {
+    line.split(',')
+        .nth(6)
+        .map(str::trim)
+        .filter(|s| !s.is_empty() && s.parse::<f64>().is_err())
+}
+
+/// Home-row letters (slots 5–9, 20–24), empties skipped — the auto-name fallback.
+fn home_row_name(keys: &Keys) -> String {
+    let mut slots = ['_'; 30];
+    for (&c, &p) in keys {
+        slots[p as usize] = c;
+    }
+    HOME_ROW
+        .into_iter()
+        .map(|i| slots[i])
+        .filter(|c| c.is_alphabetic())
+        .collect()
+}
+
 #[cfg(test)]
 mod layout_test {
     use super::*;
@@ -193,5 +230,33 @@ mod layout_test {
 
         assert!(layout.a_is_left());
         assert!(!layout.mirrored().a_is_left());
+    }
+
+    #[test]
+    fn new_derives_home_row_name_when_absent() {
+        let layout = Layout::new("abcde, fghij, klmno, pqrst, uvwxy, _____");
+
+        assert_eq!(layout.name, "fghijuvwxy");
+    }
+
+    #[test]
+    fn new_uses_explicit_name_column() {
+        let layout = Layout::new("abcde, fghij, klmno, pqrst, uvwxy, _____, dvorak, 12.5");
+
+        assert_eq!(layout.name, "dvorak");
+    }
+
+    #[test]
+    fn from_keys_derives_home_row_name() {
+        let slots: Vec<char> = "abcdefghijklmnopqrstuvwxy_____".chars().collect();
+
+        assert_eq!(Layout::from_keys(&slots).name, "fghijuvwxy");
+    }
+
+    #[test]
+    fn mirrored_keeps_name() {
+        let layout = Layout::new("abcde, fghij, klmno, pqrst, uvwxy, _____, dvorak, 12.5");
+
+        assert_eq!(layout.mirrored().name, "dvorak");
     }
 }
