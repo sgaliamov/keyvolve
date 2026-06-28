@@ -62,8 +62,8 @@
     },
     "-rolls": ["er", "oe", "ai", "au", "it", "th", "ej", "xz"],
     "-left": ["a", "i", "n"],
-    "--left": ["t", "h"],
-    "-right": ["e", "r"]
+    "left": ["t", "h"],
+    "right": ["e", "r"]
   },
 
   "evaluate": {
