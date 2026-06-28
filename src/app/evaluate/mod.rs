@@ -1,12 +1,10 @@
 pub mod config;
-
-pub use config::*;
-
 use crate::{
     app::{LayoutEvaluator, write_layouts},
     models::Layout,
 };
 use cliffa::cli::AppHandle;
+pub use config::*;
 use miette::Result;
 use rayon::prelude::*;
 use tracing::info;
