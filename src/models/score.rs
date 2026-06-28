@@ -103,7 +103,7 @@ impl ScoreResult {
 
     /// CSV header matching [`to_csv`] column order.
     pub fn csv_header() -> &'static str {
-        "fitness, count_imbalance, row_switch_ratio, switch_ratio, left_effort_ratio, right_effort_ratio, left_count_ratio, right_count_ratio, effort, left_effort, right_effort, left_count, right_count, bigram_switches, row_switch_cost"
+        "fitness,count_imbalance,row_switch_ratio,switch_ratio,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,effort,left_effort,right_effort,left_count,right_count,bigram_switches,row_switch_cost"
     }
 
     /// Hand-swapped score: left/right counts and efforts trade places. Symmetric

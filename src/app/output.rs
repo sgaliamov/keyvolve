@@ -108,7 +108,7 @@ fn write_plain(
     if is_new {
         writeln!(
             file,
-            "keys_1, keys_2, keys_3, keys_4, keys_5, keys_6, name, {}",
+            "keys_1,keys_2,keys_3,keys_4,keys_5,keys_6,name,{}",
             ScoreResult::csv_header()
         )
         .into_diagnostic()
@@ -116,7 +116,7 @@ fn write_plain(
     }
 
     for (layout, score, _) in layouts {
-        writeln!(file, "{layout}, {}, {}", layout.name, score.to_csv())
+        writeln!(file, "{layout},{},{}", layout.name, score.to_csv())
             .into_diagnostic()
             .wrap_err("Failed to write layout row")?;
     }

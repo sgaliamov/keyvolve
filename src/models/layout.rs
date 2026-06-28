@@ -94,12 +94,12 @@ impl fmt::Display for Layout {
         let left = slots[..15]
             .chunks(5)
             .map(|c| c.iter().collect::<String>())
-            .join(", ");
+            .join(",");
         let right = slots[15..]
             .chunks(5)
             .map(|c| c.iter().collect::<String>())
-            .join(", ");
-        write!(f, "{left}, {right}")
+            .join(",");
+        write!(f, "{left},{right}")
     }
 }
 
@@ -186,12 +186,12 @@ mod layout_test {
 
     #[test]
     fn test_name() {
-        let line = "zydpx, ralem, vbjuq, whtc_, fnosi,kg___,not used tail";
+        let line = "zydpx,ralem,vbjuq,whtc_,fnosi,kg___,not used tail";
         let layout = Layout::new(line);
 
         assert_eq!(
             layout.to_string(),
-            "zydpx, ralem, vbjuq, whtc_, fnosi, kg___"
+            "zydpx,ralem,vbjuq,whtc_,fnosi,kg___"
         );
     }
 
@@ -211,7 +211,7 @@ mod layout_test {
     #[test]
     fn display_round_trips_filled_bottom_right() {
         // Letter on slot 29 survives render at the bottom-right.
-        let line = "abcde, fghij, klmno, pqrst, _____, ____z";
+        let line = "abcde,fghij,klmno,pqrst,_____,____z";
 
         assert_eq!(Layout::new(line).to_string(), line);
     }
