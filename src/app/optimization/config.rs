@@ -1,4 +1,4 @@
-use crate::app::{EMPTY_SLOT, Side};
+use crate::app::EMPTY_SLOT;
 use crate::models::slot_row;
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::Deserialize;
@@ -49,7 +49,7 @@ pub fn are_roll_neighbors(a: u8, b: u8) -> bool {
     let a_hand = a / 15;
     let b_hand = b / 15;
     let col_dist = slot_col(a).abs_diff(slot_col(b));
-    a_hand == b_hand && matches!(col_dist, 1..=3) && slot_row(a).abs_diff(slot_row(b)) <= 1
+    a_hand == b_hand && matches!(col_dist, 1..=2) && slot_row(a).abs_diff(slot_row(b)) <= 1
 }
 
 /// Deserialize `["th", "st"]` → `[[t,h],[s,t]]`.
@@ -92,6 +92,16 @@ pub struct OptimizationConfig {
     #[serde(default, deserialize_with = "de_letter_slot_map")]
     pub allowed: FxHashMap<char, FxHashSet<u8>>,
 
+    /// Letters confined to the left hand (slots 0–14). Not mirrored, unlike `allowed`.
+    /// Format: `["a", "s", "x"]`.
+    #[serde(default)]
+    pub left: FxHashSet<char>,
+
+    /// Letters confined to the right hand (slots 15–29). Not mirrored, unlike `allowed`.
+    /// Format: `["o", "e", "r"]`.
+    #[serde(default)]
+    pub right: FxHashSet<char>,
+
     /// Char pairs that should occupy roll-neighbor slots (same hand, adjacent column, ±1 row).
     /// Defined as left-hand positions; right hand is symmetric. Both `[a,b]` and `[b,a]` checked.
     /// Format: `["th", "st"]`.
@@ -107,12 +117,6 @@ pub struct OptimizationConfig {
 
     /// Output layouts csv file
     pub output: Option<PathBuf>,
-
-    /// Hand the letter `a` is pinned to when saving: layouts are mirrored to that
-    /// orientation and hand-swapped twins deduped, rewriting the output file.
-    /// `any` keeps layouts verbatim. Default: `left`.
-    #[serde(default)]
-    pub a_side: Side,
 }
 
 fn default_mutation_count() -> usize {
@@ -122,10 +126,17 @@ fn default_mutation_count() -> usize {
 impl OptimizationConfig {
     /// Check whether placing `ch` at `slot` is permitted.
     /// Letters with no `allowed` entry are unconstrained.
-    /// Frozen chars always stay at their pinned slot and ignore `allowed` constraints.
+    /// Frozen chars always stay at their pinned slot, ignoring `allowed`/side constraints.
+    /// `left`/`right` letters are confined to that hand (slots 0–14 / 15–29).
     pub fn is_slot_allowed(&self, ch: char, slot: u8) -> bool {
         if let Some(&frozen_slot) = self.frozen.get(&ch) {
             return slot == frozen_slot;
+        }
+        if self.left.contains(&ch) && slot >= 15 {
+            return false;
+        }
+        if self.right.contains(&ch) && slot < 15 {
+            return false;
         }
 
         self.allowed
@@ -228,6 +239,68 @@ mod tests {
         assert!(cfg.is_slot_allowed('a', 4));
         assert!(!cfg.is_slot_allowed('a', 0));
         assert!(!cfg.is_slot_allowed('a', 19));
+    }
+
+    #[test]
+    fn is_slot_valid_left_side_confines_to_left() {
+        let mut cfg = OptimizationConfig::default();
+        cfg.left.insert('a');
+        assert!(cfg.is_slot_allowed('a', 0));
+        assert!(cfg.is_slot_allowed('a', 14));
+        assert!(!cfg.is_slot_allowed('a', 15));
+        assert!(!cfg.is_slot_allowed('a', 29));
+    }
+
+    #[test]
+    fn is_slot_valid_right_side_confines_to_right() {
+        let mut cfg = OptimizationConfig::default();
+        cfg.right.insert('o');
+        assert!(cfg.is_slot_allowed('o', 15));
+        assert!(cfg.is_slot_allowed('o', 29));
+        assert!(!cfg.is_slot_allowed('o', 0));
+        assert!(!cfg.is_slot_allowed('o', 14));
+    }
+
+    #[test]
+    fn is_slot_valid_side_intersects_allowed() {
+        // 'a' allowed at 0 & 19 (mirror), but pinned left → only slot 0 survives.
+        let mut cfg = OptimizationConfig::default();
+        cfg.left.insert('a');
+        cfg.allowed.insert('a', expand_half(&[0]));
+        assert!(cfg.is_slot_allowed('a', 0));
+        assert!(!cfg.is_slot_allowed('a', 19)); // allowed slot, wrong hand
+    }
+
+    #[test]
+    fn is_slot_valid_frozen_overrides_side() {
+        // frozen pin wins even when side says otherwise.
+        let mut cfg = OptimizationConfig::default();
+        cfg.left.insert('a');
+        cfg.frozen.insert('a', 20); // right hand
+        assert!(cfg.is_slot_allowed('a', 20));
+        assert!(!cfg.is_slot_allowed('a', 0));
+    }
+
+    #[test]
+    fn genome_validity_rejects_wrong_side() {
+        let mut cfg = OptimizationConfig::default();
+        cfg.right.insert('o');
+        let mut g = vec![EMPTY_SLOT; 30];
+        g[20] = 'o';
+        assert!(cfg.is_genome_valid(&g));
+        g[20] = EMPTY_SLOT;
+        g[5] = 'o'; // left hand → violates right pin
+        assert!(!cfg.is_genome_valid(&g));
+    }
+
+    #[test]
+    fn deserialize_side_maps() {
+        let json = r#"{"text": "x", "left": ["a","s"], "right": ["o","e"]}"#;
+        let cfg: OptimizationConfig = serde_json::from_str(json).unwrap();
+        assert!(cfg.left.contains(&'a'));
+        assert!(cfg.left.contains(&'s'));
+        assert!(cfg.right.contains(&'o'));
+        assert!(cfg.right.contains(&'e'));
     }
 
     #[test]

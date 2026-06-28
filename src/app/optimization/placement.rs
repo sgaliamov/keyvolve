@@ -362,10 +362,11 @@ mod tests {
                 })
                 .collect(),
             allowed: FxHashMap::default(),
+            left: FxHashSet::default(),
+            right: FxHashSet::default(),
             mutation_count: 10,
             input: None,
             output: None,
-            a_side: crate::app::Side::Left,
         }
     }
 

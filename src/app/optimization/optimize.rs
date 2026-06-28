@@ -1,4 +1,4 @@
-use crate::app::{LayoutEvaluator, OptimizationConfig, write_layouts};
+use crate::app::{LayoutEvaluator, OptimizationConfig, Side, write_layouts};
 use crate::models::{Layout, ScoreResult};
 use cliffa::cli::AppHandle;
 use darwin::{GeneticAlgorithm, Individual, NoopCrossover};
@@ -29,7 +29,6 @@ pub fn optimize(
     );
 
     let output_path = opt_cfg.output.clone();
-    let a_side = opt_cfg.a_side;
 
     GeneticAlgorithm::set_state(
         &mut ga,
@@ -54,7 +53,7 @@ pub fn optimize(
         .iter()
         .map(|(pool, ind)| to_output_row(*pool, ind))
         .collect();
-    write_layouts(&rows, rows.len(), output_path.as_deref(), false, a_side)
+    write_layouts(&rows, rows.len(), output_path.as_deref(), false, Side::Any)
 }
 
 /// Sorted chars at home-row slots — group identity.
