@@ -11,6 +11,9 @@ pub struct LayoutEvaluatorConfig {
     /// Max multiplier for extreme hand imbalance.
     pub balance_penalty: f64,
 
+    /// Max multiplier for extreme same-hand roll imbalance.
+    pub roll_balance_penalty: f64,
+
     /// Coefficient `k` for corpus-level hand-switch-rate penalty.
     pub bigram_switch_penalty: f64,
 
@@ -25,6 +28,7 @@ impl Default for LayoutEvaluatorConfig {
     fn default() -> Self {
         Self {
             balance_penalty: 2.0,
+            roll_balance_penalty: 2.0,
             bigram_switch_penalty: 0.25,
             row_switch_penalty: 0.25,
             pinky_multiplier: 1.1,
@@ -197,6 +201,12 @@ impl LayoutEvaluator {
             result.left_count as f64,
             result.right_count as f64,
             self.config.balance_penalty,
+        );
+        // Penalize lopsided same-hand rolls the same way as hand usage.
+        result.fitness *= balance_factor(
+            result.left_rolls as f64,
+            result.right_rolls as f64,
+            self.config.roll_balance_penalty,
         );
         result.fitness *= linear_rate_penalty(
             result.bigram_switches,
@@ -396,6 +406,25 @@ mod tests {
     }
 
     #[test]
+    fn score_corpus_applies_configured_roll_balance_penalty() {
+        let evaluator = LayoutEvaluator::new(
+            &test_keyboard(),
+            vec!["ab".to_string()],
+            LayoutEvaluatorConfig {
+                roll_balance_penalty: 2.0,
+                ..test_config()
+            },
+        );
+
+        let score = evaluator.score_corpus(&test_keys());
+
+        assert_eq!(score.left_rolls, 1);
+        assert_eq!(score.right_rolls, 0);
+        // effort 3.0 / 2 presses = 1.5; ×count-balance 2.0 ×roll-balance 2.0 = 6.0; 100/6.
+        assert_close(score.fitness, 16.67);
+    }
+
+    #[test]
     fn balance_factor_returns_two_for_zero_hand_usage() {
         assert_close(balance_factor(0.0, 3.0, 2.0), 2.0);
         assert_close(balance_factor(3.0, 0.0, 2.0), 2.0);
@@ -569,6 +598,7 @@ mod tests {
     fn test_config() -> LayoutEvaluatorConfig {
         LayoutEvaluatorConfig {
             balance_penalty: 2.0,
+            roll_balance_penalty: 1.0,
             bigram_switch_penalty: 0.0,
             row_switch_penalty: 0.0,
             pinky_multiplier: 1.0,
