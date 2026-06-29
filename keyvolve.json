@@ -31,7 +31,7 @@
     "-input": "data/seed.csv",
     "output": "data/layouts.csv",
     "mutationCount": 10,
-    "blocked": [0, 14, 25, 19],
+    "-blocked": [0, 14, 25, 19],
     "_": {
       "r": [1, 2, 5, 6, 7, 8],
       "s": [1, 2, 5, 6, 7, 8],
@@ -62,8 +62,8 @@
     },
     "-rolls": ["er", "oe", "ai", "au", "it", "th", "ej", "xz"],
     "-left": ["a", "i", "n"],
-    "left": ["t", "h"],
-    "right": ["e", "r"]
+    "--left": ["t", "h"],
+    "-right": ["e", "r", "o"]
   },
 
   "evaluate": {
