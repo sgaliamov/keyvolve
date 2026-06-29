@@ -142,8 +142,9 @@ impl LayoutEvaluator {
         let kb = *keys.get(&b).expect("key not found in layout");
         let a_left = ka < 15;
         let b_left = kb < 15;
+        let same_hand = a_left == b_left;
 
-        let (effort, bigram_switches, row_switch_cost) = if a_left == b_left {
+        let (effort, bigram_switches, row_switch_cost) = if same_hand {
             (
                 self.lookup(ka, kb) * self.pinky_mul(kb),
                 0,
@@ -163,6 +164,9 @@ impl LayoutEvaluator {
             row_switch_cost,
             left_count: b_left as u64,
             right_count: !b_left as u64,
+            // Same-hand bigram lands wholly on one hand; alternating pairs add to neither.
+            left_rolls: (same_hand && a_left) as u64,
+            right_rolls: (same_hand && !a_left) as u64,
             left_effort: if b_left { effort } else { 0. },
             right_effort: if !b_left { effort } else { 0. },
         }
@@ -304,6 +308,8 @@ mod tests {
 
         assert_eq!(score.left_count, 2);
         assert_eq!(score.right_count, 0);
+        assert_eq!(score.left_rolls, 1);
+        assert_eq!(score.right_rolls, 0);
         assert_eq!(score.bigram_switches, 0);
         assert_eq!(score.row_switch_cost, 0);
         assert_close(score.effort, 3.0);
@@ -336,6 +342,8 @@ mod tests {
 
         assert_eq!(score.left_count, 1);
         assert_eq!(score.right_count, 1);
+        assert_eq!(score.left_rolls, 0);
+        assert_eq!(score.right_rolls, 0);
         assert_eq!(score.bigram_switches, 1);
         assert_eq!(score.row_switch_cost, 0);
         assert_close(score.effort, 2.0);

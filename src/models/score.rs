@@ -13,6 +13,12 @@ pub struct ScoreResult {
     /// Number of consecutive same-hand bigrams on the right.
     pub right_count: u64,
 
+    /// Same-hand bigrams fully on the left (both keys left).
+    pub left_rolls: u64,
+
+    /// Same-hand bigrams fully on the right (both keys right).
+    pub right_rolls: u64,
+
     /// Number of hand switches.
     pub bigram_switches: u64,
 
@@ -53,6 +59,16 @@ impl ScoreResult {
         }
     }
 
+    /// Same-hand bigram imbalance as a percent: how far the left/right roll count
+    /// ratio strays from parity. 0% = balanced. Asymmetric by direction.
+    pub fn roll_imbalance(&self) -> f64 {
+        if self.right_rolls == 0 {
+            0.0
+        } else {
+            (self.left_rolls as f64 / self.right_rolls as f64 - 1.0).abs() * 100.0
+        }
+    }
+
     /// Left share of same-hand effort.
     pub fn left_effort_ratio(&self) -> f64 {
         ratio(self.left_effort, self.left_effort + self.right_effort)
@@ -82,7 +98,7 @@ impl ScoreResult {
     /// Serialize as a CSV row (no header).
     pub fn to_csv(&self) -> String {
         format!(
-            "{:.4},{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2},{:.2},{:.2},{},{},{},{}",
+            "{:.4},{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2},{:.2},{:.2},{},{},{},{},{},{},{:.2}%",
             self.fitness,
             self.count_imbalance(),
             self.row_switch_ratio() * 100.0,
@@ -98,12 +114,15 @@ impl ScoreResult {
             self.right_count,
             self.bigram_switches,
             self.row_switch_cost,
+            self.left_rolls,
+            self.right_rolls,
+            self.roll_imbalance(),
         )
     }
 
     /// CSV header matching [`to_csv`] column order.
     pub fn csv_header() -> &'static str {
-        "fitness,count_imbalance,row_switch_ratio,switch_ratio,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,effort,left_effort,right_effort,left_count,right_count,bigram_switches,row_switch_cost"
+        "fitness,count_imbalance,row_switch_ratio,switch_ratio,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,effort,left_effort,right_effort,left_count,right_count,bigram_switches,row_switch_cost,left_rolls,right_rolls,roll_imbalance"
     }
 
     /// Hand-swapped score: left/right counts and efforts trade places. Symmetric
@@ -113,6 +132,8 @@ impl ScoreResult {
         ScoreResult {
             left_count: self.right_count,
             right_count: self.left_count,
+            left_rolls: self.right_rolls,
+            right_rolls: self.left_rolls,
             left_effort: self.right_effort,
             right_effort: self.left_effort,
             ..self.clone()
@@ -139,6 +160,9 @@ impl ScoreResult {
             right_count: c.get(12)?.parse().ok()?,
             bigram_switches: c.get(13)?.parse().ok()?,
             row_switch_cost: c.get(14)?.parse().ok()?,
+            // Appended later; old rows lack these columns, so default to 0.
+            left_rolls: c.get(15).and_then(|s| s.parse().ok()).unwrap_or(0),
+            right_rolls: c.get(16).and_then(|s| s.parse().ok()).unwrap_or(0),
         })
     }
 }
@@ -147,7 +171,7 @@ impl std::fmt::Display for ScoreResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "φ {:.4} | Δ {:.2}% | ↕ {:.2}% | ⇄ {:.2}% | Lε {:.1}% | Rε {:.1}% | L# {:.1}% | R# {:.1}% | ε {:.2} | Lε {:.2} | Rε {:.2} | L# {} | R# {} | ⇄ {} | ↕ {}",
+            "φ {:.4} | Δ {:.2}% | ↕ {:.2}% | ⇄ {:.2}% | Lε {:.1}% | Rε {:.1}% | L# {:.1}% | R# {:.1}% | ε {:.2} | Lε {:.2} | Rε {:.2} | L# {} | R# {} | ⇄ {} | ↕ {} | L⟳ {} | R⟳ {} | ⟳Δ {:.2}%",
             self.fitness,
             self.count_imbalance(),
             self.row_switch_ratio() * 100.0,
@@ -163,6 +187,9 @@ impl std::fmt::Display for ScoreResult {
             self.right_count,
             self.bigram_switches,
             self.row_switch_cost,
+            self.left_rolls,
+            self.right_rolls,
+            self.roll_imbalance(),
         )
     }
 }
@@ -181,6 +208,8 @@ impl std::ops::Add for ScoreResult {
             fitness: self.fitness + other.fitness,
             left_count: self.left_count + other.left_count,
             right_count: self.right_count + other.right_count,
+            left_rolls: self.left_rolls + other.left_rolls,
+            right_rolls: self.right_rolls + other.right_rolls,
             bigram_switches: self.bigram_switches + other.bigram_switches,
             row_switch_cost: self.row_switch_cost + other.row_switch_cost,
             left_effort: self.left_effort + other.left_effort,
@@ -200,6 +229,8 @@ impl std::ops::Mul<u64> for ScoreResult {
             fitness: self.fitness * f,
             left_count: self.left_count * n,
             right_count: self.right_count * n,
+            left_rolls: self.left_rolls * n,
+            right_rolls: self.right_rolls * n,
             bigram_switches: self.bigram_switches * n,
             row_switch_cost: self.row_switch_cost * n,
             left_effort: self.left_effort * f,
@@ -217,6 +248,8 @@ mod tests {
         let s = ScoreResult {
             left_count: 3,
             right_count: 5,
+            left_rolls: 4,
+            right_rolls: 7,
             left_effort: 1.0,
             right_effort: 2.0,
             ..Default::default()
@@ -225,8 +258,36 @@ mod tests {
 
         assert_eq!(m.left_count, 5);
         assert_eq!(m.right_count, 3);
+        assert_eq!(m.left_rolls, 7);
+        assert_eq!(m.right_rolls, 4);
         assert_eq!(m.left_effort, 2.0);
         assert_eq!(m.right_effort, 1.0);
+    }
+
+    #[test]
+    fn roll_imbalance_measures_left_right_roll_skew() {
+        let balanced = ScoreResult {
+            left_rolls: 5,
+            right_rolls: 5,
+            ..Default::default()
+        };
+        assert_eq!(balanced.roll_imbalance(), 0.0);
+
+        // 6/3 - 1 = 1 → 100%.
+        let skewed = ScoreResult {
+            left_rolls: 6,
+            right_rolls: 3,
+            ..Default::default()
+        };
+        assert!((skewed.roll_imbalance() - 100.0).abs() < 1e-9);
+
+        // Asymmetric guard: no right rolls → 0%.
+        let zero_right = ScoreResult {
+            left_rolls: 4,
+            right_rolls: 0,
+            ..Default::default()
+        };
+        assert_eq!(zero_right.roll_imbalance(), 0.0);
     }
 
     #[test]
@@ -236,6 +297,8 @@ mod tests {
             fitness: 5.0,
             left_count: 3,
             right_count: 5,
+            left_rolls: 7,
+            right_rolls: 9,
             bigram_switches: 2,
             row_switch_cost: 1,
             left_effort: 4.0,
@@ -247,6 +310,8 @@ mod tests {
             assert_eq!(parsed.effort, 10.0);
             assert_eq!(parsed.left_count, 3);
             assert_eq!(parsed.right_count, 5);
+            assert_eq!(parsed.left_rolls, 7);
+            assert_eq!(parsed.right_rolls, 9);
             assert_eq!(parsed.left_effort, 4.0);
             assert_eq!(parsed.right_effort, 6.0);
             assert_eq!(parsed.bigram_switches, 2);
@@ -256,5 +321,17 @@ mod tests {
         // Old headerless rows (fitness right after keys) and new rows (name column).
         check(&format!("k1, k2, k3, k4, k5, k6, {}", s.to_csv()));
         check(&format!("k1, k2, k3, k4, k5, k6, homerow, {}", s.to_csv()));
+    }
+
+    #[test]
+    fn from_csv_defaults_rolls_to_zero_on_legacy_rows() {
+        // Pre-rolls row: 15 score columns, no trailing roll fields.
+        let line = "k1, k2, k3, k4, k5, k6, 5.0000,0.00%,0.00%,0.00%,40.00%,60.00%,37.50%,62.50%,10.00,4.00,6.00,3,5,2,1";
+        let parsed = ScoreResult::from_csv(line).unwrap();
+
+        assert_eq!(parsed.left_count, 3);
+        assert_eq!(parsed.row_switch_cost, 1);
+        assert_eq!(parsed.left_rolls, 0);
+        assert_eq!(parsed.right_rolls, 0);
     }
 }
