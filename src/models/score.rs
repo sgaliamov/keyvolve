@@ -98,8 +98,9 @@ impl ScoreResult {
     /// Serialize as a CSV row (no header).
     pub fn to_csv(&self) -> String {
         format!(
-            "{:.4},{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2},{:.2},{:.2},{},{},{},{},{},{},{:.2}%",
+            "{:.4},{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2},{:.2},{:.2},{},{},{},{},{},{}",
             self.fitness,
+            self.roll_imbalance(),
             self.count_imbalance(),
             self.row_switch_ratio() * 100.0,
             self.bigram_switch_ratio() * 100.0,
@@ -116,13 +117,12 @@ impl ScoreResult {
             self.row_switch_cost,
             self.left_rolls,
             self.right_rolls,
-            self.roll_imbalance(),
         )
     }
 
     /// CSV header matching [`to_csv`] column order.
     pub fn csv_header() -> &'static str {
-        "fitness,count_imbalance,row_switch_ratio,switch_ratio,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,effort,left_effort,right_effort,left_count,right_count,bigram_switches,row_switch_cost,left_rolls,right_rolls,roll_imbalance"
+        "fitness,roll_imbalance,count_imbalance,row_switch_ratio,switch_ratio,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,effort,left_effort,right_effort,left_count,right_count,bigram_switches,row_switch_cost,left_rolls,right_rolls"
     }
 
     /// Hand-swapped score: left/right counts and efforts trade places. Symmetric
@@ -153,16 +153,15 @@ impl ScoreResult {
         let c: Vec<&str> = line.split(',').skip(skip).map(str::trim).collect();
         Some(ScoreResult {
             fitness: c.first()?.parse().ok()?,
-            effort: c.get(8)?.parse().ok()?,
-            left_effort: c.get(9)?.parse().ok()?,
-            right_effort: c.get(10)?.parse().ok()?,
-            left_count: c.get(11)?.parse().ok()?,
-            right_count: c.get(12)?.parse().ok()?,
-            bigram_switches: c.get(13)?.parse().ok()?,
-            row_switch_cost: c.get(14)?.parse().ok()?,
-            // Appended later; old rows lack these columns, so default to 0.
-            left_rolls: c.get(15).and_then(|s| s.parse().ok()).unwrap_or(0),
-            right_rolls: c.get(16).and_then(|s| s.parse().ok()).unwrap_or(0),
+            effort: c.get(9)?.parse().ok()?,
+            left_effort: c.get(10)?.parse().ok()?,
+            right_effort: c.get(11)?.parse().ok()?,
+            left_count: c.get(12)?.parse().ok()?,
+            right_count: c.get(13)?.parse().ok()?,
+            bigram_switches: c.get(14)?.parse().ok()?,
+            row_switch_cost: c.get(15)?.parse().ok()?,
+            left_rolls: c.get(16)?.parse().ok()?,
+            right_rolls: c.get(17)?.parse().ok()?,
         })
     }
 }
@@ -171,8 +170,9 @@ impl std::fmt::Display for ScoreResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "φ {:.4} | Δ {:.2}% | ↕ {:.2}% | ⇄ {:.2}% | Lε {:.1}% | Rε {:.1}% | L# {:.1}% | R# {:.1}% | ε {:.2} | Lε {:.2} | Rε {:.2} | L# {} | R# {} | ⇄ {} | ↕ {} | L⟳ {} | R⟳ {} | ⟳Δ {:.2}%",
+            "φ {:.4} | ⟳Δ {:.2}% | Δ {:.2}% | ↕ {:.2}% | ⇄ {:.2}% | Lε {:.1}% | Rε {:.1}% | L# {:.1}% | R# {:.1}% | ε {:.2} | Lε {:.2} | Rε {:.2} | L# {} | R# {} | ⇄ {} | ↕ {} | L⟳ {} | R⟳ {}",
             self.fitness,
+            self.roll_imbalance(),
             self.count_imbalance(),
             self.row_switch_ratio() * 100.0,
             self.bigram_switch_ratio() * 100.0,
@@ -189,7 +189,6 @@ impl std::fmt::Display for ScoreResult {
             self.row_switch_cost,
             self.left_rolls,
             self.right_rolls,
-            self.roll_imbalance(),
         )
     }
 }
@@ -321,17 +320,5 @@ mod tests {
         // Old headerless rows (fitness right after keys) and new rows (name column).
         check(&format!("k1, k2, k3, k4, k5, k6, {}", s.to_csv()));
         check(&format!("k1, k2, k3, k4, k5, k6, homerow, {}", s.to_csv()));
-    }
-
-    #[test]
-    fn from_csv_defaults_rolls_to_zero_on_legacy_rows() {
-        // Pre-rolls row: 15 score columns, no trailing roll fields.
-        let line = "k1, k2, k3, k4, k5, k6, 5.0000,0.00%,0.00%,0.00%,40.00%,60.00%,37.50%,62.50%,10.00,4.00,6.00,3,5,2,1";
-        let parsed = ScoreResult::from_csv(line).unwrap();
-
-        assert_eq!(parsed.left_count, 3);
-        assert_eq!(parsed.row_switch_cost, 1);
-        assert_eq!(parsed.left_rolls, 0);
-        assert_eq!(parsed.right_rolls, 0);
     }
 }

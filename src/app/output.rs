@@ -199,7 +199,7 @@ mod tests {
 
     // z-right layout (`z` in keys_6 → slot 28) plus a score row.
     fn z_right() -> (Layout, ScoreResult) {
-        let line = "_mub_, lreop, wfydx, _htc_, kinas, qgvzj, 5378.69, 0.96, 24%, 34%, 47%, 52%, 49%, 50%, 15.0, 7.0, 8.0, 100, 200, 17, 12";
+        let line = "_mub_, lreop, wfydx, _htc_, kinas, qgvzj, 5378.69, 0.00%, 0.96, 24%, 34%, 47%, 52%, 49%, 50%, 15.0, 7.0, 8.0, 100, 200, 17, 12, 30, 40";
         (Layout::new(line), ScoreResult::from_csv(line).unwrap())
     }
 
@@ -214,6 +214,8 @@ mod tests {
         // L/R counts trade places under the mirror.
         assert_eq!(score.left_count, 200);
         assert_eq!(score.right_count, 100);
+        assert_eq!(score.left_rolls, 40);
+        assert_eq!(score.right_rolls, 30);
     }
 
     #[test]
