@@ -145,7 +145,7 @@ fn to_side(layout: &Layout, score: &ScoreResult, side: Side) -> (Layout, ScoreRe
 fn dedup(rows: impl Iterator<Item = (Layout, ScoreResult)>) -> Vec<String> {
     let mut seen = FxHashSet::default();
     rows.filter(|(layout, _)| seen.insert(layout.to_string()))
-        .map(|(layout, score)| format!("{layout}, {}, {}", layout.name, score.to_csv()))
+        .map(|(layout, score)| format!("{layout},{},{}", layout.name, score.to_csv()))
         .collect()
 }
 
@@ -177,7 +177,7 @@ fn write_csv(path: &Path, rows: &[String]) -> Result<()> {
 
     writeln!(
         file,
-        "keys_1, keys_2, keys_3, keys_4, keys_5, keys_6, name, {}",
+        "keys_1,keys_2,keys_3,keys_4,keys_5,keys_6,name,{}",
         ScoreResult::csv_header()
     )
     .into_diagnostic()
@@ -199,7 +199,7 @@ mod tests {
 
     // z-right layout (`z` in keys_6 → slot 28) plus a score row.
     fn z_right() -> (Layout, ScoreResult) {
-        let line = "_mub_, lreop, wfydx, _htc_, kinas, qgvzj, 5378.69, 0.00%, 0.96, 24%, 34%, 47%, 52%, 49%, 50%, 15.0, 7.0, 8.0, 100, 200, 17, 12, 30, 40";
+        let line = "_mub_,lreop,wfydx,_htc_,kinas,qgvzj,5378.69,0.00%,0.96,24%,34%,47%,52%,49%,50%,15.0,7.0,8.0,100,200,17,12,30,40";
         (Layout::new(line), ScoreResult::from_csv(line).unwrap())
     }
 
