@@ -1,4 +1,4 @@
-keys_1, keys_2, keys_3, keys_4, keys_5, keys_6, name, fitness,count_imbalance,row_switch_ratio,switch_ratio,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,effort,left_effort,right_effort,left_count,right_count,bigram_switches,row_switch_cost
+keys_1, keys_2, keys_3, keys_4, keys_5, keys_6, name, fitness,hands_imbalance,row_switch_ratio,switch_ratio,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,effort,left_effort,right_effort,left_count,right_count,bigram_switches,row_switch_cost
 _uspq,hertv,zxwd_,kfoc_,mnail,_bygj, base, 23.6912,1.48%,21.10%,35.19%,48.15%,51.85%,50.37%,49.63%,9529162.50,4588258.80,4940903.70,2511131,2474561,1754677,1051801
 _mofj,hretv,zxkd_,qwcg_,unais,_lpyb, current, 23.5267,2.19%,19.41%,36.80%,46.44%,53.56%,50.54%,49.46%,9509695.30,4416508.10,5093187.20,2519882,2465810,1834559,967670
 _cth_,sanik,zxvgj,_bum_,poerl,qdyfw, first, 22.8873,4.12%,24.27%,34.26%,48.99%,51.01%,51.01%,48.99%,9694108.10,4749247.00,4944861.10,2543165,2442527,1708281,1210229

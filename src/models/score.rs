@@ -51,7 +51,7 @@ impl ScoreResult {
 
     /// Hand imbalance as a percent: how far the left/right same-hand count ratio
     /// strays from parity. 0% = balanced. Asymmetric by direction.
-    pub fn count_imbalance(&self) -> f64 {
+    pub fn hands_imbalance(&self) -> f64 {
         if self.right_count == 0 {
             0.0
         } else {
@@ -101,7 +101,7 @@ impl ScoreResult {
             "{:.4},{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2},{:.2},{:.2},{},{},{},{},{},{}",
             self.fitness,
             self.roll_imbalance(),
-            self.count_imbalance(),
+            self.hands_imbalance(),
             self.row_switch_ratio() * 100.0,
             self.bigram_switch_ratio() * 100.0,
             self.left_effort_ratio() * 100.0,
@@ -122,7 +122,7 @@ impl ScoreResult {
 
     /// CSV header matching [`to_csv`] column order.
     pub fn csv_header() -> &'static str {
-        "fitness,roll_imbalance,count_imbalance,row_switch_ratio,switch_ratio,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,effort,left_effort,right_effort,left_count,right_count,bigram_switches,row_switch_cost,left_rolls,right_rolls"
+        "fitness,roll_imbalance,hands_imbalance,row_switch_ratio,switch_ratio,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,effort,left_effort,right_effort,left_count,right_count,bigram_switches,row_switch_cost,left_rolls,right_rolls"
     }
 
     /// Hand-swapped score: left/right counts and efforts trade places. Symmetric
@@ -173,7 +173,7 @@ impl std::fmt::Display for ScoreResult {
             "φ {:.4} | ⟳Δ {:.2}% | Δ {:.2}% | ↕ {:.2}% | ⇄ {:.2}% | Lε {:.1}% | Rε {:.1}% | L# {:.1}% | R# {:.1}% | ε {:.2} | Lε {:.2} | Rε {:.2} | L# {} | R# {} | ⇄ {} | ↕ {} | L⟳ {} | R⟳ {}",
             self.fitness,
             self.roll_imbalance(),
-            self.count_imbalance(),
+            self.hands_imbalance(),
             self.row_switch_ratio() * 100.0,
             self.bigram_switch_ratio() * 100.0,
             self.left_effort_ratio() * 100.0,

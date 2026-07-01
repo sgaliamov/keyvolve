@@ -197,22 +197,45 @@ impl LayoutEvaluator {
         // independent of corpus size, so layouts compare equally across input lengths.
         let presses = (result.left_count + result.right_count).max(1) as f64;
         result.fitness = result.effort / presses;
-        result.fitness *= balance_factor(
-            result.left_count as f64,
-            result.right_count as f64,
-            self.config.balance_penalty,
-        );
-        // Penalize lopsided same-hand rolls the same way as hand usage.
-        result.fitness *= balance_factor(
-            result.left_rolls as f64,
-            result.right_rolls as f64,
-            self.config.roll_balance_penalty,
-        );
+
+        let rolls_ratio = if result.left_rolls > result.right_rolls && result.right_rolls != 0 {
+            result.left_rolls as f64 / result.right_rolls as f64
+        } else if result.left_rolls != 0 {
+            result.right_rolls as f64 / result.left_rolls as f64
+        } else {
+            1.0
+        };
+
+        let hands_ratio = if result.left_count > result.right_count && result.right_count != 0 {
+            result.left_count as f64 / result.right_count as f64
+        } else if result.left_count != 0 {
+            result.right_count as f64 / result.left_count as f64
+        } else {
+            1.0
+        };
+
+        result.fitness *= hands_ratio;
+        result.fitness *= rolls_ratio;
+
+        // result.fitness *= balance_factor(
+        //     result.left_count as f64,
+        //     result.right_count as f64,
+        //     self.config.balance_penalty,
+        // );
+
+        // // Penalize lopsided same-hand rolls the same way as hand usage.
+        // result.fitness *= balance_factor(
+        //     result.left_rolls as f64,
+        //     result.right_rolls as f64,
+        //     self.config.roll_balance_penalty,
+        // );
+
         result.fitness *= linear_rate_penalty(
             result.bigram_switches,
             result.left_count + result.right_count,
             self.config.bigram_switch_penalty,
         );
+
         // Same-hand row changes only: same row = 0, adjacent row = 1, top ↔ bottom jump = 2.
         // Rate measured over same-hand presses only — hand switches carry no row cost,
         // so excluding them keeps the rate undiluted by alternation.
@@ -221,6 +244,7 @@ impl LayoutEvaluator {
             (result.left_count + result.right_count).saturating_sub(result.bigram_switches),
             self.config.row_switch_penalty,
         );
+
         result.fitness = 1. / result.fitness * 100.; // lower mean effort → higher fitness; 100 ≈ ideal
 
         result

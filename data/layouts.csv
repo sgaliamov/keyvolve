@@ -1,6 +1,6 @@
-keys_1, keys_2, keys_3, keys_4, keys_5, keys_6, name, fitness,roll_imbalance,count_imbalance,row_switch_ratio,switch_ratio,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,effort,left_effort,right_effort,left_count,right_count,bigram_switches,row_switch_cost,left_rolls,right_rolls
-_mofj,diang,zybl_,qpsu_,vtreh,_cwkx, diangvtreh, 24.5806,0.40%,1.93%,21.59%,35.15%,50.52%,49.48%,49.51%,50.49%,9526226.20,4812518.40,4713707.80,2468565,2517127,1752301,1076342,1118904,1114487
-_gofj,dianm,zybl_,qpsu_,vtreh,_cwkx, a, 24.5537,0.40%,1.93%,22.21%,35.15%,50.29%,49.71%,49.51%,50.49%,9482458.10,4768750.30,4713707.80,2468565,2517127,1752301,1107137,1118904,1114487
-_uspq,hertv,zxwd_,kfoc_,mnail,_bygj, base, 24.3751,6.02%,1.48%,21.10%,35.19%,48.15%,51.85%,50.37%,49.63%,9529162.50,4588258.80,4940903.70,2511131,2474561,1754677,1051801,1080869,1150146
-_undg,hitsc,xzvw_,jfop_,mreal,_bykq, era, 24.2750,4.41%,0.27%,17.94%,36.98%,52.08%,47.92%,50.07%,49.93%,9666749.40,5034068.90,4632680.50,2496177,2489515,1843941,894449,1046717,1095034
-_mofj,hsatw,zybl_,qpug_,dneir,_cvkx, eri, 23.2945,10.38%,0.63%,18.93%,37.49%,49.59%,50.41%,50.16%,49.84%,9586267.40,4753489.50,4832777.90,2500624,2485068,1869345,943698,1000259,1116088
+keys_1,keys_2,keys_3,keys_4,keys_5,keys_6,name,fitness,roll_imbalance,hands_imbalance,row_switch_ratio,switch_ratio,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,effort,left_effort,right_effort,left_count,right_count,bigram_switches,row_switch_cost,left_rolls,right_rolls
+_pofj,sianm,zgyb_,qdlu_,vrteh,_cwkx,hetrvmnais,24.2026,0.31%,0.03%,18.38%,38.06%,50.84%,49.16%,50.01%,49.99%,9535496.00,4848318.20,4687177.80,2493168,2492524,1897471,916475,1042508,1045713
+_gofj,dianm,zybl_,qpsu_,vtreh,_cwkx,a,23.9972,0.40%,1.93%,22.21%,35.15%,50.29%,49.71%,49.51%,50.49%,9482458.10,4768750.30,4713707.80,2468565,2517127,1752301,1107137,1118904,1114487
+_undg,hitsc,xzvw_,jfop_,mreal,_bykq,era,23.2898,4.41%,0.27%,17.94%,36.98%,52.08%,47.92%,50.07%,49.93%,9666749.40,5034068.90,4632680.50,2496177,2489515,1843941,894449,1046717,1095034
+_uspq,hertv,zxwd_,kfoc_,mnail,_bygj,base,22.8563,6.02%,1.48%,21.10%,35.19%,48.15%,51.85%,50.37%,49.63%,9529162.50,4588258.80,4940903.70,2511131,2474561,1754677,1051801,1080869,1150146
+_mofj,hsatw,zybl_,qpug_,dneir,_cvkx,eri,21.5717,10.38%,0.63%,18.93%,37.49%,49.59%,50.41%,50.16%,49.84%,9586267.40,4753489.50,4832777.90,2500624,2485068,1869345,943698,1000259,1116088
