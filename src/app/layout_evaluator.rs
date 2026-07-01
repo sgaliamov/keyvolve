@@ -8,12 +8,6 @@ use serde::Deserialize;
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct LayoutEvaluatorConfig {
-    /// Max multiplier for extreme hand imbalance.
-    pub balance_penalty: f64,
-
-    /// Max multiplier for extreme same-hand roll imbalance.
-    pub roll_balance_penalty: f64,
-
     /// Coefficient `k` for corpus-level hand-switch-rate penalty.
     pub bigram_switch_penalty: f64,
 
@@ -27,8 +21,6 @@ pub struct LayoutEvaluatorConfig {
 impl Default for LayoutEvaluatorConfig {
     fn default() -> Self {
         Self {
-            balance_penalty: 2.0,
-            roll_balance_penalty: 2.0,
             bigram_switch_penalty: 0.25,
             row_switch_penalty: 0.25,
             pinky_multiplier: 1.1,
@@ -198,37 +190,8 @@ impl LayoutEvaluator {
         let presses = (result.left_count + result.right_count).max(1) as f64;
         result.fitness = result.effort / presses;
 
-        let rolls_ratio = if result.left_rolls > result.right_rolls && result.right_rolls != 0 {
-            result.left_rolls as f64 / result.right_rolls as f64
-        } else if result.left_rolls != 0 {
-            result.right_rolls as f64 / result.left_rolls as f64
-        } else {
-            1.0
-        };
-
-        let hands_ratio = if result.left_count > result.right_count && result.right_count != 0 {
-            result.left_count as f64 / result.right_count as f64
-        } else if result.left_count != 0 {
-            result.right_count as f64 / result.left_count as f64
-        } else {
-            1.0
-        };
-
-        result.fitness *= hands_ratio;
-        result.fitness *= rolls_ratio;
-
-        // result.fitness *= balance_factor(
-        //     result.left_count as f64,
-        //     result.right_count as f64,
-        //     self.config.balance_penalty,
-        // );
-
-        // // Penalize lopsided same-hand rolls the same way as hand usage.
-        // result.fitness *= balance_factor(
-        //     result.left_rolls as f64,
-        //     result.right_rolls as f64,
-        //     self.config.roll_balance_penalty,
-        // );
+        result.fitness *= imbalance_ratio(result.left_count, result.right_count);
+        result.fitness *= imbalance_ratio(result.left_rolls, result.right_rolls);
 
         result.fitness *= linear_rate_penalty(
             result.bigram_switches,
@@ -284,22 +247,13 @@ fn row_distance(from: u8, to: u8) -> u64 {
     slot_row(from).abs_diff(slot_row(to)).into()
 }
 
-/// Multiplier ≥ 1 penalizing imbalanced effort. At 50/50 → 1.0, approaches `max` at extremes.
-fn balance_factor(left: f64, right: f64, max: f64) -> f64 {
-    fn ratio(left: f64, right: f64) -> f64 {
-        if left > right {
-            left / right
-        } else {
-            right / left
-        }
+/// Hand-imbalance multiplier `max(a, b) / min(a, b)`: `1.0` when balanced or when
+/// either side is `0` (an empty hand carries no imbalance to penalize).
+fn imbalance_ratio(a: u64, b: u64) -> f64 {
+    match (a.max(b), a.min(b)) {
+        (_, 0) => 1.0,
+        (hi, lo) => hi as f64 / lo as f64,
     }
-
-    if left == 0. || right == 0. {
-        return max;
-    }
-
-    let ratio = ratio(left, right);
-    max - ((max - 1.) / ((ratio - 1.).powi(2) + 1.))
 }
 
 /// Linear corpus-level penalty `1 + k * (count / (presses - 1))`.
@@ -409,77 +363,6 @@ mod tests {
     }
 
     #[test]
-    fn score_corpus_applies_balance_penalty_to_aggregated_effort() {
-        let evaluator = LayoutEvaluator::new(
-            &test_keyboard(),
-            vec!["ab".to_string(), "ac".to_string()],
-            test_config(),
-        );
-        let keys = test_keys();
-
-        let score = evaluator.score_corpus(&keys);
-
-        assert_eq!(score.left_count, 3);
-        assert_eq!(score.right_count, 1);
-        assert_eq!(score.bigram_switches, 1);
-        assert_eq!(score.row_switch_cost, 0);
-        assert_close(score.left_effort, 4.0);
-        assert_close(score.right_effort, 1.0);
-        assert_close(score.effort, 5.0);
-        assert_close(score.fitness, 44.44);
-    }
-
-    #[test]
-    fn score_corpus_applies_configured_roll_balance_penalty() {
-        let evaluator = LayoutEvaluator::new(
-            &test_keyboard(),
-            vec!["ab".to_string()],
-            LayoutEvaluatorConfig {
-                roll_balance_penalty: 2.0,
-                ..test_config()
-            },
-        );
-
-        let score = evaluator.score_corpus(&test_keys());
-
-        assert_eq!(score.left_rolls, 1);
-        assert_eq!(score.right_rolls, 0);
-        // effort 3.0 / 2 presses = 1.5; ×count-balance 2.0 ×roll-balance 2.0 = 6.0; 100/6.
-        assert_close(score.fitness, 16.67);
-    }
-
-    #[test]
-    fn balance_factor_returns_two_for_zero_hand_usage() {
-        assert_close(balance_factor(0.0, 3.0, 2.0), 2.0);
-        assert_close(balance_factor(3.0, 0.0, 2.0), 2.0);
-        assert_close(balance_factor(0.0, 0.0, 2.0), 2.0);
-    }
-
-    #[test]
-    fn balance_factor_returns_one_for_even_usage() {
-        assert_close(balance_factor(1.0, 1.0, 2.0), 1.0);
-        assert_close(balance_factor(5.0, 5.0, 2.0), 1.0);
-    }
-
-    #[test]
-    fn balance_factor_is_symmetric_between_hands() {
-        assert_close(balance_factor(3.0, 1.0, 2.0), balance_factor(1.0, 3.0, 2.0));
-    }
-
-    #[test]
-    fn balance_factor_grows_with_hand_imbalance() {
-        assert!(balance_factor(3.0, 2.0, 2.0) < balance_factor(3.0, 1.0, 2.0));
-        assert!(balance_factor(3.0, 1.0, 2.0) < balance_factor(10.0, 1.0, 2.0));
-    }
-
-    #[test]
-    fn balance_factor_respects_configured_max_penalty() {
-        assert_close(balance_factor(1.0, 1.0, 3.0), 1.0);
-        assert_close(balance_factor(0.0, 1.0, 3.0), 3.0);
-        assert!(balance_factor(3.0, 1.0, 2.0) < balance_factor(3.0, 1.0, 3.0));
-    }
-
-    #[test]
     fn linear_rate_penalty_returns_one_without_transitions() {
         assert_close(linear_rate_penalty(0, 0, 0.5), 1.0);
         assert_close(linear_rate_penalty(0, 1, 0.5), 1.0);
@@ -514,7 +397,9 @@ mod tests {
 
         let score = evaluator.score_corpus(&test_keys());
 
-        assert_close(score.fitness, 38.10);
+        assert_eq!(score.bigram_switches, 1);
+        // base 5.0/4 = 1.25; ×count-ratio 3.0 ×bigram-penalty (1 + 0.5·1/3) = 4.375; 100/4.375.
+        assert_close(score.fitness, 22.86);
     }
 
     #[test]
@@ -531,7 +416,9 @@ mod tests {
         let score = evaluator.score_corpus(&test_keys());
 
         assert_eq!(score.row_switch_cost, 1);
-        assert_close(score.fitness, 22.22);
+        // Single-hand corpus: both imbalance ratios neutral (1.0).
+        // base 3.0/2 = 1.5; ×row-penalty (1 + 0.5·1/1) = 2.25; 100/2.25.
+        assert_close(score.fitness, 44.44);
     }
 
     #[test]
@@ -551,7 +438,23 @@ mod tests {
 
         assert_eq!(score.bigram_switches, 1);
         assert_eq!(score.row_switch_cost, 1);
-        assert_close(score.fitness, 33.33);
+        // base 4.0/3; ×count-ratio 2.0 ×row-penalty (1 + 0.5·1/1, over 2 same-hand presses) = 4.0; 100/4.
+        assert_close(score.fitness, 25.00);
+    }
+
+    #[test]
+    fn imbalance_ratio_is_neutral_when_balanced_or_one_sided() {
+        assert_close(imbalance_ratio(0, 0), 1.0);
+        assert_close(imbalance_ratio(5, 0), 1.0);
+        assert_close(imbalance_ratio(0, 5), 1.0);
+        assert_close(imbalance_ratio(3, 3), 1.0);
+    }
+
+    #[test]
+    fn imbalance_ratio_grows_with_imbalance() {
+        assert_close(imbalance_ratio(3, 1), 3.0);
+        assert_close(imbalance_ratio(1, 3), 3.0);
+        assert!(imbalance_ratio(3, 2) < imbalance_ratio(3, 1));
     }
 
     #[test]
@@ -621,8 +524,6 @@ mod tests {
 
     fn test_config() -> LayoutEvaluatorConfig {
         LayoutEvaluatorConfig {
-            balance_penalty: 2.0,
-            roll_balance_penalty: 1.0,
             bigram_switch_penalty: 0.0,
             row_switch_penalty: 0.0,
             pinky_multiplier: 1.0,
