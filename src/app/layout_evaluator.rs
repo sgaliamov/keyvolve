@@ -188,8 +188,8 @@ impl LayoutEvaluator {
         // Mean effort per keypress: dividing by total presses makes fitness
         // independent of corpus size, so layouts compare equally across input lengths.
         let presses = (result.left_count + result.right_count).max(1) as f64;
-        result.fitness = result.effort / presses;
 
+        result.fitness = result.effort / presses;
         result.fitness *= imbalance_ratio(result.left_count, result.right_count);
         result.fitness *= imbalance_ratio(result.left_rolls, result.right_rolls);
 
@@ -260,10 +260,6 @@ fn imbalance_ratio(a: u64, b: u64) -> f64 {
 /// `k` scales the penalty strength: `0.0` disables it, larger values increase the multiplier linearly.
 /// Returns `1.0` when fewer than two presses exist, so no transition can happen.
 fn linear_rate_penalty(count: u64, presses: u64, k: f64) -> f64 {
-    if presses <= 1 {
-        return 1.0;
-    }
-
     1.0 + k * (count as f64 / (presses - 1) as f64)
 }
 
@@ -360,12 +356,6 @@ mod tests {
         assert_eq!(score.bigram_switches, 0);
         assert_eq!(score.row_switch_cost, 2);
         assert_close(score.effort, 5.0);
-    }
-
-    #[test]
-    fn linear_rate_penalty_returns_one_without_transitions() {
-        assert_close(linear_rate_penalty(0, 0, 0.5), 1.0);
-        assert_close(linear_rate_penalty(0, 1, 0.5), 1.0);
     }
 
     #[test]

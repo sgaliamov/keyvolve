@@ -53,6 +53,7 @@ pub fn optimize(
         .iter()
         .map(|(pool, ind)| to_output_row(*pool, ind))
         .collect();
+
     write_layouts(&rows, rows.len(), output_path.as_deref(), false, Side::Any)
 }
 
