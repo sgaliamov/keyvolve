@@ -8,6 +8,13 @@
     "print": 50
   },
 
+  "frequencies": {
+    "input": "C:\\Users\\Admin/work",
+    "masks": ["*.cs"],
+    "output": "data/stats/frequencies.csv",
+    "print": 50
+  },
+
   "synthesise": {
     "text": "data/samples/merged.txt",
     "output": "data/synthesised/markov",

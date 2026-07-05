@@ -1,4 +1,4 @@
-use crate::app::{evaluate, merge, synthesise};
+use crate::app::{evaluate, frequencies, merge, synthesise};
 use crate::{
     Config, Mode,
     app::{CorpusCounts, EMPTY_SLOT, LayoutEvaluator, LayoutEvaluatorConfig, optimize},
@@ -22,6 +22,9 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
         }
         Mode::Synthesise => {
             synthesise::synthesise(cfg.synthesise)?;
+        }
+        Mode::Frequencies => {
+            frequencies::frequencies(cfg.frequencies, app)?;
         }
         mode => {
             let keyboard = Keyboard::load(cfg.keyboard)?;
@@ -54,7 +57,7 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
                     ga.seed = seed;
                     optimize(evaluator, ga, opt, app)?;
                 }
-                Mode::Synthesise | Mode::Merge => unreachable!(),
+                Mode::Synthesise | Mode::Merge | Mode::Frequencies => unreachable!(),
             }
         }
     }
