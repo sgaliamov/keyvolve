@@ -19,7 +19,7 @@ pub fn frequencies(cfg: FrequenciesConfig, app: AppHandle) -> Result<()> {
         .input
         .wrap_err("Frequencies mode requires `frequencies.input` folder")?;
 
-    let paths = collect_files(&input, &cfg.masks)?;
+    let paths = collect_files(&input, &cfg.masks);
     info!(folder = %input.display(), count = paths.len(), "Counting key frequencies");
 
     let mut counts: FxHashMap<char, u64> = FxHashMap::default();
@@ -28,7 +28,7 @@ pub fn frequencies(cfg: FrequenciesConfig, app: AppHandle) -> Result<()> {
             info!("Frequencies interrupted");
             return Ok(());
         }
-        count_file(path, &mut counts)?;
+        count_file(path, &mut counts);
     }
 
     let rows = sorted_rows(&counts);
@@ -138,15 +138,20 @@ fn mask_match(mask: &str, name: &str) -> bool {
 }
 
 /// Recursively collect files under `dir` whose names match any mask (all when empty).
-fn collect_files(dir: &Path, masks: &[String]) -> Result<Vec<PathBuf>> {
+/// Unreadable folders are skipped with a warning.
+fn collect_files(dir: &Path, masks: &[String]) -> Vec<PathBuf> {
     let matches = |name: &str| masks.is_empty() || masks.iter().any(|m| mask_match(m, name));
     let mut files = Vec::new();
     let mut stack = vec![dir.to_path_buf()];
 
     while let Some(dir) = stack.pop() {
-        let entries = fs::read_dir(&dir)
-            .into_diagnostic()
-            .wrap_err_with(|| format!("Failed to read folder {}", dir.display()))?;
+        let entries = match fs::read_dir(&dir) {
+            Ok(entries) => entries,
+            Err(e) => {
+                tracing::warn!(folder = %dir.display(), error = %e, "Skipping unreadable folder");
+                continue;
+            }
+        };
         for entry in entries.filter_map(|e| e.ok()) {
             let path = entry.path();
             if path.is_dir() {
@@ -162,20 +167,23 @@ fn collect_files(dir: &Path, masks: &[String]) -> Result<Vec<PathBuf>> {
     }
 
     files.sort();
-    Ok(files)
+    files
 }
 
 /// Fold one file's bytes into `counts` (non-ASCII bytes fall out via `base_key`).
-fn count_file(path: &Path, counts: &mut FxHashMap<char, u64>) -> Result<()> {
-    let bytes = fs::read(path)
-        .into_diagnostic()
-        .wrap_err_with(|| format!("Failed to read {}", path.display()))?;
+/// Unreadable files are skipped with a warning.
+fn count_file(path: &Path, counts: &mut FxHashMap<char, u64>) {
+    let bytes = match fs::read(path) {
+        Ok(bytes) => bytes,
+        Err(e) => {
+            tracing::warn!(file = %path.display(), error = %e, "Skipping unreadable file");
+            return;
+        }
+    };
 
     for key in bytes.iter().filter_map(|&b| base_key(b as char)) {
         *counts.entry(key).or_insert(0) += 1;
     }
-
-    Ok(())
 }
 
 /// Rows sorted by count descending: `(key, count, frequency)`.
@@ -290,7 +298,7 @@ mod tests {
         fs::write(&path, "Aa! 1:;").unwrap();
 
         let mut counts = FxHashMap::default();
-        count_file(&path, &mut counts).unwrap();
+        count_file(&path, &mut counts);
         fs::remove_file(&path).ok();
 
         assert_eq!(counts[&'a'], 2); // A + a
