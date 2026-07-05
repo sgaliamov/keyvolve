@@ -29,6 +29,7 @@ pub fn optimize(
     );
 
     let output_path = opt_cfg.output.clone();
+    let max_groups = opt_cfg.max_groups;
 
     GeneticAlgorithm::set_state(
         &mut ga,
@@ -47,7 +48,7 @@ pub fn optimize(
 
     let pools = &pools;
 
-    let top = top_by_home_row(pools, 10);
+    let top = top_by_home_row(pools, max_groups);
 
     let rows: Vec<_> = top
         .iter()

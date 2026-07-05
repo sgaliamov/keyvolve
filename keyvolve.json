@@ -38,6 +38,7 @@
     "-input": "data/seed.csv",
     "output": "data/layouts.csv",
     "mutationCount": 10,
+    "maxGroups": 1,
     "blocked": [0, 14, 19, 25],
     "-frozen": {
       "h": 5,

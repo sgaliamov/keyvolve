@@ -113,6 +113,10 @@ pub struct OptimizationConfig {
     #[serde(default = "default_mutation_count")]
     pub mutation_count: usize,
 
+    /// Max home-row groups kept in final output. Default: 10.
+    #[serde(default = "default_max_groups")]
+    pub max_groups: usize,
+
     /// Input layouts csv file, used as optimization seed.
     pub input: Option<PathBuf>,
 
@@ -121,6 +125,10 @@ pub struct OptimizationConfig {
 }
 
 fn default_mutation_count() -> usize {
+    10
+}
+
+fn default_max_groups() -> usize {
     10
 }
 
