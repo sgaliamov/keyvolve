@@ -39,18 +39,6 @@
     "output": "data/layouts.csv",
     "mutationCount": 10,
     "blocked": [0, 14, 19, 25],
-    "_": {
-      "r": [1, 2, 5, 6, 7, 8],
-      "s": [1, 2, 5, 6, 7, 8],
-      "j": [4, 10, 11],
-      "q": [4, 10, 11],
-      "h": [1, 2, 3],
-      "a": [1, 2, 6, 7, 8],
-      "i": [1, 2, 6, 7, 8],
-      "o": [1, 2, 6, 7, 8],
-      "n": [1, 2, 6, 7, 8],
-      "v": [12, 13, 14]
-    },
     "-frozen": {
       "h": 5,
       "i": 6,
@@ -68,8 +56,7 @@
       "e": [6, 7, 8]
     },
     "-rolls": ["er", "oe", "ai", "au", "it", "th", "ej", "xz"],
-    "-left": ["a", "i", "n"],
-    "--left": ["t", "h"],
+    "-left": ["t", "h"],
     "-right": ["e", "r", "o"]
   },
 
@@ -85,7 +72,7 @@
 
   "evaluator": {
     "rowSwitchPenalty": 0.0,
-    "bigramSwitchPenalty": 8.0,
+    "bigramSwitchPenalty": 0.0,
     "pinkyMultiplier": 1.0
   },
 
