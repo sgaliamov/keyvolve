@@ -73,12 +73,12 @@
     "-input": "data/seed.csv",
     "output": "data/layouts.csv",
     "print": 10,
-    "zSide": "left"
+    "eSide": "left"
   },
 
   "evaluator": {
     "rowSwitchPenalty": 0.0,
-    "bigramSwitchPenalty": 0.0,
+    "bigramSwitchPenalty": 2.0,
     "pinkyMultiplier": 1.0
   },
 
