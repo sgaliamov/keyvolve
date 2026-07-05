@@ -9,8 +9,8 @@
   },
 
   "frequencies": {
-    "input": "C:\\Users\\Admin/work",
-    "masks": ["*.cs"],
+    "input": "C:/Users/Admin/projects",
+    "masks": ["*.py"],
     "output": "data/stats/frequencies.csv",
     "print": 50
   },
@@ -72,7 +72,7 @@
 
   "evaluator": {
     "rowSwitchPenalty": 0.0,
-    "bigramSwitchPenalty": 2.0,
+    "bigramSwitchPenalty": 3.0,
     "pinkyMultiplier": 1.0
   },
 
