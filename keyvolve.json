@@ -77,8 +77,8 @@
   },
 
   "evaluator": {
-    "rowSwitchPenalty": 10.0,
-    "bigramSwitchPenalty": 0.0,
+    "rowSwitchPenalty": 0.0,
+    "bigramSwitchPenalty": 8.0,
     "pinkyMultiplier": 1.0
   },
 
