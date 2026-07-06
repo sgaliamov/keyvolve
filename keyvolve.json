@@ -55,7 +55,7 @@
     "allowed": {
       "h": [1, 2, 3, 6, 7, 8, 11, 12, 13]
     },
-    "-rolls": ["er", "oe", "ai", "au", "it", "th", "ej", "xz"],
+    "rolls": ["er"],
     "-left": ["t", "h"],
     "-right": ["e", "r", "o"]
   },
@@ -71,7 +71,7 @@
   },
 
   "evaluator": {
-    "rowSwitchPenalty": 0.7,
+    "rowSwitchPenalty": 2.0,
     "bigramSwitchPenalty": 3.5,
     "pinkyMultiplier": 1.0
   },
