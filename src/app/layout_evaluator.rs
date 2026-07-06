@@ -8,11 +8,11 @@ use serde::Deserialize;
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct LayoutEvaluatorConfig {
-    /// Coefficient `k` for corpus-level hand-switch-rate penalty.
-    pub bigram_switch_penalty: f64,
+    /// Extra effort charged per hand switch, in pairs-table effort units; `0.0` disables.
+    pub switch_cost: f64,
 
-    /// Coefficient `k` for weighted same-hand row-switch penalty.
-    pub row_switch_penalty: f64,
+    /// Extra effort charged per same-hand row step (adjacent = 1, jump = 2); `0.0` disables.
+    pub row_cost: f64,
 
     /// Extra effort multiplier applied to every pinky key press; `1.0` disables it.
     pub pinky_multiplier: f64,
@@ -21,8 +21,8 @@ pub struct LayoutEvaluatorConfig {
 impl Default for LayoutEvaluatorConfig {
     fn default() -> Self {
         Self {
-            bigram_switch_penalty: 0.25,
-            row_switch_penalty: 0.25,
+            switch_cost: 4.0,
+            row_cost: 0.0,
             pinky_multiplier: 1.1,
         }
     }
@@ -149,7 +149,7 @@ impl LayoutEvaluator {
         } else {
             // Hands alternate: key `a` was already counted in the previous press.
             // Charge `b` as an independent press (self-effort, like the first letter).
-            // The switch is recorded; corpus-wide pressure lives in `bigram_switch_penalty`.
+            // The switch is recorded; its price lives in `switch_cost` at corpus level.
             (self.lookup(kb, kb) * self.pinky_mul(kb), 1, 0)
         };
 
@@ -168,7 +168,7 @@ impl LayoutEvaluator {
         }
     }
 
-    /// Score the corpus, applying a hand-balance factor to total effort.
+    /// Score the corpus: physical effort plus flat per-event surcharges, balance-scaled.
     pub fn score_corpus(&self, keys: &Keys) -> ScoreResult {
         let seeds = self
             .counts
@@ -185,29 +185,18 @@ impl LayoutEvaluator {
             .chain(bigrams)
             .fold(ScoreResult::default(), |acc, x| acc + x);
 
+        // Flat surcharges in effort units: each hand switch and each same-hand row step
+        // (jump counts double) costs like extra key presses. Comparable to the pairs table.
+        let surcharge = self.config.switch_cost * result.bigram_switches as f64
+            + self.config.row_cost * result.row_switch_cost as f64;
+
         // Mean effort per keypress: dividing by total presses makes fitness
         // independent of corpus size, so layouts compare equally across input lengths.
         let presses = (result.left_count + result.right_count).max(1) as f64;
 
-        result.fitness = result.effort / presses;
+        result.fitness = (result.effort + surcharge) / presses;
         result.fitness *= imbalance_ratio(result.left_count, result.right_count);
         result.fitness *= imbalance_ratio(result.left_rolls, result.right_rolls);
-
-        result.fitness *= linear_rate_penalty(
-            result.bigram_switches,
-            result.left_count + result.right_count,
-            self.config.bigram_switch_penalty,
-        );
-
-        // Same-hand row changes only: same row = 0, adjacent row = 1, top ↔ bottom jump = 2.
-        // Rate measured over same-hand presses only — hand switches carry no row cost,
-        // so excluding them keeps the rate undiluted by alternation.
-        result.fitness *= linear_rate_penalty(
-            result.row_switch_cost,
-            (result.left_count + result.right_count).saturating_sub(result.bigram_switches),
-            self.config.row_switch_penalty,
-        );
-
         result.fitness = 1. / result.fitness * 100.; // lower mean effort → higher fitness; 100 ≈ ideal
 
         result
@@ -254,13 +243,6 @@ fn imbalance_ratio(a: u64, b: u64) -> f64 {
         (_, 0) => 1.0,
         (hi, lo) => hi as f64 / lo as f64,
     }
-}
-
-/// Linear corpus-level penalty `1 + k * (count / (presses - 1))`.
-/// `k` scales the penalty strength: `0.0` disables it, larger values increase the multiplier linearly.
-/// Returns `1.0` when fewer than two presses exist, so no transition can happen.
-fn linear_rate_penalty(count: u64, presses: u64, k: f64) -> f64 {
-    1.0 + k * (count as f64 / (presses - 1) as f64)
 }
 
 #[cfg(test)]
@@ -359,14 +341,7 @@ mod tests {
     }
 
     #[test]
-    fn linear_rate_penalty_scales_with_transition_rate() {
-        assert_close(linear_rate_penalty(0, 3, 0.5), 1.0);
-        assert_close(linear_rate_penalty(1, 3, 0.5), 1.25);
-        assert_close(linear_rate_penalty(2, 3, 0.5), 1.5);
-    }
-
-    #[test]
-    fn score_corpus_applies_configured_bigram_switch_penalty() {
+    fn score_corpus_applies_configured_switch_cost() {
         let evaluator = LayoutEvaluator::new(
             &Keyboard::new(
                 json!({
@@ -380,7 +355,7 @@ mod tests {
             ),
             vec!["ab".to_string(), "ac".to_string()],
             LayoutEvaluatorConfig {
-                bigram_switch_penalty: 0.5,
+                switch_cost: 3.0,
                 ..test_config()
             },
         );
@@ -388,17 +363,17 @@ mod tests {
         let score = evaluator.score_corpus(&test_keys());
 
         assert_eq!(score.bigram_switches, 1);
-        // base 5.0/4 = 1.25; ×count-ratio 3.0 ×bigram-penalty (1 + 0.5·1/3) = 4.375; 100/4.375.
-        assert_close(score.fitness, 22.86);
+        // (effort 5.0 + 3.0·1 switch)/4 = 2.0; ×count-ratio 3.0 = 6.0; 100/6.
+        assert_close(score.fitness, 16.67);
     }
 
     #[test]
-    fn score_corpus_applies_configured_row_switch_penalty() {
+    fn score_corpus_applies_configured_row_cost() {
         let evaluator = LayoutEvaluator::new(
             &row_switch_test_keyboard(),
             vec!["ad".to_string()],
             LayoutEvaluatorConfig {
-                row_switch_penalty: 0.5,
+                row_cost: 1.0,
                 ..test_config()
             },
         );
@@ -407,29 +382,8 @@ mod tests {
 
         assert_eq!(score.row_switch_cost, 1);
         // Single-hand corpus: both imbalance ratios neutral (1.0).
-        // base 3.0/2 = 1.5; ×row-penalty (1 + 0.5·1/1) = 2.25; 100/2.25.
-        assert_close(score.fitness, 44.44);
-    }
-
-    #[test]
-    fn score_corpus_excludes_hand_switches_from_row_switch_rate() {
-        // "adc": a→d same-hand row switch (cost 1), d→c hand switch (cost 0).
-        // Denominator drops the switch press, so the row-switch rate stays undiluted.
-        let evaluator = LayoutEvaluator::new(
-            &row_switch_test_keyboard(),
-            vec!["adc".to_string()],
-            LayoutEvaluatorConfig {
-                row_switch_penalty: 0.5,
-                ..test_config()
-            },
-        );
-
-        let score = evaluator.score_corpus(&test_keys());
-
-        assert_eq!(score.bigram_switches, 1);
-        assert_eq!(score.row_switch_cost, 1);
-        // base 4.0/3; ×count-ratio 2.0 ×row-penalty (1 + 0.5·1/1, over 2 same-hand presses) = 4.0; 100/4.
-        assert_close(score.fitness, 25.00);
+        // (effort 3.0 + 1.0·1 row step)/2 = 2.0; 100/2.
+        assert_close(score.fitness, 50.00);
     }
 
     #[test]
@@ -514,8 +468,8 @@ mod tests {
 
     fn test_config() -> LayoutEvaluatorConfig {
         LayoutEvaluatorConfig {
-            bigram_switch_penalty: 0.0,
-            row_switch_penalty: 0.0,
+            switch_cost: 0.0,
+            row_cost: 0.0,
             pinky_multiplier: 1.0,
         }
     }
