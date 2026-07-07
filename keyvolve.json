@@ -72,7 +72,7 @@
 
   "evaluator": {
     "rowCost": 1.0,
-    "switchCost": 4.0,
+    "switchCost": 6.0,
     "pinkyMultiplier": 1.0
   },
 
