@@ -32,7 +32,7 @@ Keyboard layout optimizer. Uses `darwin` (island-model GA, local crate) to evolv
 - `keyboard.json` — effort groups + bigram pair costs + penalty coefficients.
 - `layouts.csv` — semicolon-layout + fitness columns; header on first line.
 - `data/synthesised` — fake-word corpus used during optimization.
-- Config entry point: `keyvolve.json` → deserialized into `Config`.
+- Config entry point: `keyvolve.yaml` → deserialized into `Config`.
 
 
 # Response style

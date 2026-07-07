@@ -1,0 +1,75 @@
+keyboard: data/keyboard.json
+
+merge:
+  input: data/samples
+  output: data/samples/merged.txt
+  shuffle: false
+  print: 50
+
+frequencies:
+  input: "C:/Users/Admin/"
+  masks: ["*.js", "*.ts", "*.cs", "*.cpp", "*.h", "*.rs", "*.py"]
+  output: data/stats/frequencies.csv
+  print: 10
+
+synthesise:
+  text: data/samples/merged.txt
+  output: data/synthesised/markov
+  method: markov
+  digraph:
+    target: 64000
+    maxWordLen: 5
+  sample:
+    target: 100000
+  markov:
+    target: 64000
+    maxWordLen: 15
+    attempts: 256
+
+optimization:
+  text: data/synthesised/sample-1000000
+  # input: data/seed.csv
+  output: data/layouts.csv
+  mutationCount: 10
+  maxGroups: 1
+  blocked: [0, 14, 19, 25]
+  # frozen:
+  #   h: 5
+  #   i: 6
+  #   a: 7
+  #   t: 8
+  #   c: 9
+  #   m: 20
+  #   n: 21
+  #   e: 22
+  #   o: 23
+  #   r: 24
+  allowed:
+    h: [1, 2, 3, 6, 7, 8, 11, 12, 13]
+  rolls: ["er"]
+  # left: [t, h]
+  # right: [e, r, o]
+
+evaluate:
+  text: 'data\synthesised\sample-1000000'
+  # text: 'data\samples\merged.txt'
+  input: data/layouts.csv
+  # input: data/seed.csv
+  output: data/layouts.csv
+  print: 10
+  eSide: left
+
+evaluator:
+  rowCost: 1.0
+  switchCost: 7.0
+  pinkyMultiplier: 1.0
+
+ga:
+  mutationRatio: 0.6
+  populationSize: 200
+  pools: 250
+  randomRatio: 0.25
+  seedMutation: 10
+  dump: data/dump.bin
+  dumpRatio: 0.8
+  keepDump: false

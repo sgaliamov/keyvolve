@@ -56,7 +56,7 @@ Scores candidate layouts against a bigram-weighted corpus, then evolves them tow
 - `data/keyboard.json` — effort groups, bigram pair costs, penalty coefficients.
 - `data/layouts.csv` — semicolon-layout + fitness; header on first line.
 - `data/synthesised` — fake-word corpus used during optimization.
-- `keyvolve.json` — top-level config (mode, GA params, constraints, paths).
+- `keyvolve.yaml` — top-level config (mode, GA params, constraints, paths).
 
 ## Crates
 - **`darwin/`** — generic GA engine, no domain knowledge.

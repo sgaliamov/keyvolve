@@ -151,7 +151,7 @@ mod tests {
         }
     }
 
-    /// Stress test against the real `keyvolve.json` constraints: every placed
+    /// Stress test against the real `keyvolve.yaml` constraints: every placed
     /// char must satisfy `is_slot_allowed` after generation AND after mutation.
     #[test]
     fn real_config_respects_allowed() {

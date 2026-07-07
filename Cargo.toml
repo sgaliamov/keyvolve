@@ -10,10 +10,10 @@ itertools = "0.14.0" # Itertools library.
 miette = {version = "7.6.0", features = [
   "fancy",
 ]}# Uniformed errors and fancy output.
-rand = "0.10.1" # Randomness.
+rand = "0.10.2" # Randomness.
 rayon = "1.12.0" # Parallel iterators.
-regex = "1.12.3" # To parse dates for example.
-rustc-hash = "2.1.2"
+regex = "1.12.4" # To parse dates for example.
+rustc-hash = "2.1.3"
 serde = {version = "1.0.228", features = [
   "derive",
 #   "rc",
