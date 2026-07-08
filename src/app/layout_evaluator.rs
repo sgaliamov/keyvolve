@@ -13,9 +13,6 @@ pub struct LayoutEvaluatorConfig {
 
     /// Extra effort charged per same-hand row step (adjacent = 1, jump = 2); `0.0` disables.
     pub row_cost: f64,
-
-    /// Extra effort multiplier applied to every pinky key press; `1.0` disables it.
-    pub pinky_multiplier: f64,
 }
 
 impl Default for LayoutEvaluatorConfig {
@@ -23,7 +20,6 @@ impl Default for LayoutEvaluatorConfig {
         Self {
             switch_cost: 4.0,
             row_cost: 0.0,
-            pinky_multiplier: 1.1,
         }
     }
 }
@@ -120,7 +116,7 @@ impl LayoutEvaluator {
     fn score_first(&self, c: char, keys: &Keys) -> ScoreResult {
         let key = *keys.get(&c).expect("key not found in layout");
         let left = key < 15;
-        let effort = self.lookup(key, key) * self.pinky_mul(key);
+        let effort = self.lookup(key, key);
         ScoreResult {
             effort,
             left_count: left as u64,
@@ -141,16 +137,12 @@ impl LayoutEvaluator {
         let same_hand = a_left == b_left;
 
         let (effort, bigram_switches, row_switch_cost) = if same_hand {
-            (
-                self.lookup(ka, kb) * self.pinky_mul(kb),
-                0,
-                row_distance(ka, kb),
-            )
+            (self.lookup(ka, kb), 0, row_distance(ka, kb))
         } else {
             // Hands alternate: key `a` was already counted in the previous press.
             // Charge `b` as an independent press (self-effort, like the first letter).
             // The switch is recorded; its price lives in `switch_cost` at corpus level.
-            (self.lookup(kb, kb) * self.pinky_mul(kb), 1, 0)
+            (self.lookup(kb, kb), 1, 0)
         };
 
         ScoreResult {
@@ -206,27 +198,6 @@ impl LayoutEvaluator {
     #[inline]
     fn lookup(&self, from: u8, to: u8) -> f64 {
         *self.pairs.get(&(from, to)).unwrap()
-    }
-
-    /// Returns `config.pinky_multiplier` when `slot` is a pinky key, else `1.0`.
-    #[inline]
-    fn pinky_mul(&self, slot: u8) -> f64 {
-        if is_pinky(slot) {
-            self.config.pinky_multiplier
-        } else {
-            1.0
-        }
-    }
-}
-
-/// Returns `true` when `slot` is on the pinky finger.
-/// Left pinky: col 0 (slots 0, 5, 10). Right pinky: col 4 (slots 19, 24, 29).
-#[inline]
-fn is_pinky(slot: u8) -> bool {
-    if slot < 15 {
-        slot.is_multiple_of(5)
-    } else {
-        slot % 5 == 4
     }
 }
 
@@ -401,37 +372,6 @@ mod tests {
         assert!(imbalance_ratio(3, 2) < imbalance_ratio(3, 1));
     }
 
-    #[test]
-    fn score_word_applies_pinky_multiplier_to_pinky_keys() {
-        let evaluator = LayoutEvaluator::new(
-            &test_keyboard(),
-            vec![],
-            LayoutEvaluatorConfig {
-                pinky_multiplier: 1.5,
-                ..test_config()
-            },
-        );
-        // 'a' → slot 0 (left pinky). Both presses in "aa" are pinky → 1.5× each.
-        let score = evaluator.score_word("aa", &test_keys());
-        assert_close(score.effort, 3.0); // 2 × 1.0 × 1.5
-    }
-
-    #[test]
-    fn score_word_no_pinky_multiplier_on_non_pinky_keys() {
-        let evaluator = LayoutEvaluator::new(
-            &test_keyboard(),
-            vec![],
-            LayoutEvaluatorConfig {
-                pinky_multiplier: 1.5,
-                ..test_config()
-            },
-        );
-        // 'b' → slot 1 (not pinky). "bb": lookup(1,1) + lookup(1,1), no multiplier.
-        let keys = FxHashMap::from_iter([('b', 1u8)]);
-        let score = evaluator.score_word("bb", &keys);
-        assert_close(score.effort, 6.0); // 2 × efforts[2] = 2 × 3.0
-    }
-
     /// Build minimal keyboard for evaluator tests using production JSON parsing.
     fn test_keyboard() -> Keyboard {
         Keyboard::new(
@@ -470,7 +410,6 @@ mod tests {
         LayoutEvaluatorConfig {
             switch_cost: 0.0,
             row_cost: 0.0,
-            pinky_multiplier: 1.0,
         }
     }
 

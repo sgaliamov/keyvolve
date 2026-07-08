@@ -44,9 +44,9 @@ optimization:
   #   e: 22
   #   o: 23
   #   r: 24
-  allowed:
-    h: [1, 2, 3, 6, 7, 8, 11, 12, 13]
-  rolls: ["er"]
+  # allowed:
+  #   h: [1, 2, 3, 6, 7, 8, 11, 12, 13]
+  # rolls: ["er"]
   # left: [t, h]
   # right: [e, r, o]
 
@@ -60,9 +60,8 @@ evaluate:
   eSide: left
 
 evaluator:
-  rowCost: 1.0
-  switchCost: 7.0
-  pinkyMultiplier: 1.0
+  rowCost: 9.0
+  switchCost: 1.0
 
 ga:
   mutationRatio: 0.6
