@@ -29,6 +29,7 @@ synthesise:
 optimization:
   text: data/synthesised/sample-1000000
   # input: data/seed.csv
+  # input: data/layouts.csv
   output: data/layouts.csv
   mutationCount: 10
   maxGroups: 1
@@ -60,8 +61,8 @@ evaluate:
   eSide: left
 
 evaluator:
-  rowCost: 9.0
-  switchCost: 1.0
+  rowCost: 5.0
+  switchCost: 10.0
 
 ga:
   mutationRatio: 0.6
