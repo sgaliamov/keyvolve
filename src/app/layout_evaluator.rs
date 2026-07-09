@@ -114,7 +114,7 @@ impl LayoutEvaluator {
 
     /// Seed cost for a word's first character: self-effort baseline, one key press.
     fn score_first(&self, c: char, keys: &Keys) -> ScoreResult {
-        let key = *keys.get(&c).expect("key not found in layout");
+        let key = slot(keys, c);
         let left = key < 15;
         let effort = self.lookup(key, key);
         ScoreResult {
@@ -130,8 +130,8 @@ impl LayoutEvaluator {
     /// Cost of one adjacent character pair within a word. Effort charged on the
     /// "to" key, since "from" was already counted by the previous press.
     fn score_bigram(&self, a: char, b: char, keys: &Keys) -> ScoreResult {
-        let ka = *keys.get(&a).expect("key not found in layout");
-        let kb = *keys.get(&b).expect("key not found in layout");
+        let ka = slot(keys, a);
+        let kb = slot(keys, b);
         let a_left = ka < 15;
         let b_left = kb < 15;
         let same_hand = a_left == b_left;
@@ -197,8 +197,19 @@ impl LayoutEvaluator {
     /// Look up precomputed bigram effort. Right-hand pairs were expanded at init by `Keyboard::expand_pairs`.
     #[inline]
     fn lookup(&self, from: u8, to: u8) -> f64 {
-        *self.pairs.get(&(from, to)).unwrap()
+        *self
+            .pairs
+            .get(&(from, to))
+            .unwrap_or_else(|| panic!("no pair effort for keys ({from}, {to})"))
     }
+}
+
+/// Slot for `c`; panic names the offending char so corpus/layout mismatches are debuggable.
+#[inline]
+fn slot(keys: &Keys, c: char) -> u8 {
+    *keys
+        .get(&c)
+        .unwrap_or_else(|| panic!("char {c:?} (U+{:04X}) not in layout: {keys:?}", c as u32))
 }
 
 /// Weighted same-hand row-switch cost. Adjacent-row move = 1, jump-over-row = 2.

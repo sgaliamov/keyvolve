@@ -56,7 +56,7 @@ evaluate:
 
 evaluator:
   rowCost: 8
-  switchCost: 21.0
+  switchCost: 22.0
 
 ga:
   mutationRatio: 0.6
