@@ -7,8 +7,8 @@ merge:
   print: 50
 
 frequencies:
-  input: "C:/Users/Admin/"
-  masks: ["*.js", "*.ts", "*.cs", "*.cpp", "*.h", "*.rs", "*.py"]
+  input: 'C:/Users/Admin/'
+  masks: ['*.js', '*.ts', '*.cs', '*.cpp', '*.h', '*.rs', '*.py']
   output: data/stats/frequencies.csv
   print: 10
 
@@ -36,19 +36,11 @@ optimization:
   blocked: [0, 14, 19, 25]
   # frozen:
   #   h: 5
-  #   i: 6
-  #   a: 7
-  #   t: 8
-  #   c: 9
-  #   m: 20
-  #   n: 21
-  #   e: 22
-  #   o: 23
-  #   r: 24
-  # allowed:
-  #   h: [1, 2, 3]
-  #   t: [1, 2, 3]
-  # rolls: ["er"]
+  allowed:
+    h: [1, 2, 3, 6, 7, 8, 12, 13]
+    r: [1, 2, 3, 6, 7, 8]
+    s: [1, 2, 3, 6, 7, 8]
+  rolls: ['er']
   # left: [t, h]
   # right: [e, r, o]
 
