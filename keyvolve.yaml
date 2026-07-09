@@ -38,6 +38,7 @@ optimization:
   #   h: 5
   allowed:
     h: [1, 2, 3, 6, 7, 8, 12, 13]
+    t: [1, 2, 3, 6, 7, 8, 12, 13]
     r: [1, 2, 3, 6, 7, 8]
     s: [1, 2, 3, 6, 7, 8]
   rolls: ['er']
@@ -55,7 +56,7 @@ evaluate:
 
 evaluator:
   rowCost: 8
-  switchCost: 30
+  switchCost: 23.5
 
 ga:
   mutationRatio: 0.6
