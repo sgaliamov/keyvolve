@@ -55,8 +55,8 @@ evaluate:
   eSide: left
 
 evaluator:
-  rowCost: 8
-  switchCost: 22.0
+  rowCost: 20
+  switchCost: 10
 
 ga:
   mutationRatio: 0.6
