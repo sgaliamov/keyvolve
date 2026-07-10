@@ -45,10 +45,10 @@ optimization:
     n: [1, 2, 3, 6, 7, 8]
     r: [1, 2, 3, 6, 7, 8]
     s: [1, 2, 3, 6, 7, 8]
-    h: [1, 2, 3, 5, 6, 7, 8, 12, 13]
-  rolls: ['er', 'th']
-  left: [e, o]
-  right: [a, i]
+    h: [1, 2, 3, 6, 7, 8, 12, 13]
+  # rolls: ['er', 'th']
+  # left: [e, o]
+  # right: [a, i]
 
 evaluate:
   text: 'data\synthesised\sample-1000000'
@@ -60,8 +60,8 @@ evaluate:
   eSide: left
 
 evaluator:
-  rowCost: 8
-  switchCost: 13
+  rowCost: 190
+  switchCost: 140
 
 ga:
   mutationRatio: 0.6
