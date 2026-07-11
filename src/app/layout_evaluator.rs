@@ -301,6 +301,17 @@ mod tests {
     }
 
     #[test]
+    fn score_word_yields_average_hand_streaks() {
+        let evaluator = LayoutEvaluator::new(&test_keyboard(), vec![], test_config());
+
+        // "abc" hands L L R: left run of 2, right run of 1.
+        let score = evaluator.score_word("abc", &test_keys());
+
+        assert_close(score.left_streak(), 2.0);
+        assert_close(score.right_streak(), 1.0);
+    }
+
+    #[test]
     fn score_word_counts_adjacent_same_hand_row_switch() {
         let evaluator = LayoutEvaluator::new(&row_switch_test_keyboard(), vec![], test_config());
 

@@ -95,10 +95,21 @@ impl ScoreResult {
         )
     }
 
+    /// Average left-hand streak: consecutive presses before leaving the hand.
+    /// A run of length k yields k presses and k−1 rolls, so streak = presses / runs.
+    pub fn left_streak(&self) -> f64 {
+        streak(self.left_count, self.left_rolls)
+    }
+
+    /// Average right-hand streak: consecutive presses before leaving the hand.
+    pub fn right_streak(&self) -> f64 {
+        streak(self.right_count, self.right_rolls)
+    }
+
     /// Serialize as a CSV row (no header).
     pub fn to_csv(&self) -> String {
         format!(
-            "{:.4},{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2},{:.2},{:.2},{},{},{},{},{},{}",
+            "{:.4},{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2},{:.2},{:.2},{},{},{},{},{},{},{:.2},{:.2}",
             self.fitness,
             self.roll_imbalance(),
             self.hands_imbalance(),
@@ -117,12 +128,14 @@ impl ScoreResult {
             self.row_switch_cost,
             self.left_rolls,
             self.right_rolls,
+            self.left_streak(),
+            self.right_streak(),
         )
     }
 
     /// CSV header matching [`to_csv`] column order.
     pub fn csv_header() -> &'static str {
-        "fitness,roll_imbalance,hands_imbalance,row_switch_ratio,switch_ratio,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,effort,left_effort,right_effort,left_count,right_count,bigram_switches,row_switch_cost,left_rolls,right_rolls"
+        "fitness,roll_imbalance,hands_imbalance,row_switch_ratio,switch_ratio,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,effort,left_effort,right_effort,left_count,right_count,bigram_switches,row_switch_cost,left_rolls,right_rolls,left_streak,right_streak"
     }
 
     /// Hand-swapped score: left/right counts and efforts trade places. Symmetric
@@ -170,7 +183,7 @@ impl std::fmt::Display for ScoreResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "φ {:.4} | ⟳Δ {:.2}% | Δ {:.2}% | ↕ {:.2}% | ⇄ {:.2}% | Lε {:.1}% | Rε {:.1}% | L# {:.1}% | R# {:.1}% | ε {:.2} | Lε {:.2} | Rε {:.2} | L# {} | R# {} | ⇄ {} | ↕ {} | L⟳ {} | R⟳ {}",
+            "φ {:.4} | ⟳Δ {:.2}% | Δ {:.2}% | ↕ {:.2}% | ⇄ {:.2}% | Lε {:.1}% | Rε {:.1}% | L# {:.1}% | R# {:.1}% | ε {:.2} | Lε {:.2} | Rε {:.2} | L# {} | R# {} | ⇄ {} | ↕ {} | L⟳ {} | R⟳ {} | L→ {:.2} | R→ {:.2}",
             self.fitness,
             self.roll_imbalance(),
             self.hands_imbalance(),
@@ -189,6 +202,8 @@ impl std::fmt::Display for ScoreResult {
             self.row_switch_cost,
             self.left_rolls,
             self.right_rolls,
+            self.left_streak(),
+            self.right_streak(),
         )
     }
 }
@@ -196,6 +211,16 @@ impl std::fmt::Display for ScoreResult {
 /// Safe ratio helper.
 fn ratio(value: f64, total: f64) -> f64 {
     if total == 0.0 { 0.0 } else { value / total }
+}
+
+/// Average run length from presses and same-hand transitions. Every press starts
+/// a run or continues one; continuations are exactly the rolls, so
+/// runs = count − rolls and streak = count / runs. `0.0` for an unused hand.
+fn streak(count: u64, rolls: u64) -> f64 {
+    match count.saturating_sub(rolls) {
+        0 => 0.0,
+        runs => count as f64 / runs as f64,
+    }
 }
 
 impl std::ops::Add for ScoreResult {
@@ -261,6 +286,24 @@ mod tests {
         assert_eq!(m.right_rolls, 4);
         assert_eq!(m.left_effort, 2.0);
         assert_eq!(m.right_effort, 1.0);
+    }
+
+    #[test]
+    fn streak_averages_run_lengths() {
+        // Corpus "flask" + "jaded": left runs "flas" (4) and "aded" (4) → avg 4.0;
+        // right runs "k" and "j" singles → avg 1.0.
+        let s = ScoreResult {
+            left_count: 8,
+            left_rolls: 6,
+            right_count: 2,
+            right_rolls: 0,
+            ..Default::default()
+        };
+        assert_eq!(s.left_streak(), 4.0);
+        assert_eq!(s.right_streak(), 1.0);
+
+        // Unused hand → 0.0, no division blowup.
+        assert_eq!(ScoreResult::default().left_streak(), 0.0);
     }
 
     #[test]
