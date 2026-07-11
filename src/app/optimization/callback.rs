@@ -22,10 +22,12 @@ pub fn callback(ctx: &GaContext) -> bool {
 
     let ratio_str = best.state.as_ref().map_or(String::new(), |s| {
         format!(
-            " | Δ {:.2}% | ⟳Δ {:.2}% | ↕ {:.2}%",
-            s.hands_imbalance(),
+            " | ⟳Δ {:.2}% | Δ {:.2}% | ↕ {:.2}% | ⇄ {:.2}% | →Δ {:.2}",
             s.roll_imbalance(),
-            s.row_switch_ratio() * 100.0
+            s.hands_imbalance(),
+            s.row_switch_ratio() * 100.0,
+            s.bigram_switch_ratio() * 100.0,
+            s.streak_ratio(),
         )
     });
 
