@@ -18,7 +18,7 @@ pub struct LayoutEvaluatorConfig {
 impl Default for LayoutEvaluatorConfig {
     fn default() -> Self {
         Self {
-            switch_cost: 4.0,
+            switch_cost: 0.0,
             row_cost: 0.0,
         }
     }
