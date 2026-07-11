@@ -187,8 +187,9 @@ impl LayoutEvaluator {
         let presses = (result.left_count + result.right_count).max(1) as f64;
 
         result.fitness = (result.effort + surcharge) / presses;
-        result.fitness *= imbalance_ratio(result.left_count, result.right_count);
-        result.fitness *= imbalance_ratio(result.left_rolls, result.right_rolls);
+        result.fitness *= imbalance_ratio(result.left_count as f64, result.right_count as f64);
+        result.fitness *= imbalance_ratio(result.left_rolls as f64, result.right_rolls as f64);
+        result.fitness *= imbalance_ratio(result.left_streak(), result.right_streak());
         result.fitness = 1. / result.fitness * 100.; // lower mean effort → higher fitness; 100 ≈ ideal
 
         result
@@ -220,10 +221,10 @@ fn row_distance(from: u8, to: u8) -> u64 {
 
 /// Hand-imbalance multiplier `max(a, b) / min(a, b)`: `1.0` when balanced or when
 /// either side is `0` (an empty hand carries no imbalance to penalize).
-fn imbalance_ratio(a: u64, b: u64) -> f64 {
+fn imbalance_ratio(a: f64, b: f64) -> f64 {
     match (a.max(b), a.min(b)) {
-        (_, 0) => 1.0,
-        (hi, lo) => hi as f64 / lo as f64,
+        (_, lo) if lo == 0.0 => 1.0,
+        (hi, lo) => hi / lo,
     }
 }
 
@@ -356,8 +357,8 @@ mod tests {
         let score = evaluator.score_corpus(&test_keys());
 
         assert_eq!(score.bigram_switches, 1);
-        // (effort 5.0 + 3.0·1 switch)/4 = 2.0; ×count-ratio 3.0 = 6.0; 100/6.
-        assert_close(score.fitness, 16.67);
+        // (effort 5.0 + 3.0·1 switch)/4 = 2.0; ×count-ratio 3.0 ×streak-ratio 1.5 = 9.0; 100/9.
+        assert_close(score.fitness, 11.11);
     }
 
     #[test]
@@ -381,17 +382,17 @@ mod tests {
 
     #[test]
     fn imbalance_ratio_is_neutral_when_balanced_or_one_sided() {
-        assert_close(imbalance_ratio(0, 0), 1.0);
-        assert_close(imbalance_ratio(5, 0), 1.0);
-        assert_close(imbalance_ratio(0, 5), 1.0);
-        assert_close(imbalance_ratio(3, 3), 1.0);
+        assert_close(imbalance_ratio(0., 0.), 1.0);
+        assert_close(imbalance_ratio(5., 0.), 1.0);
+        assert_close(imbalance_ratio(0., 5.), 1.0);
+        assert_close(imbalance_ratio(3., 3.), 1.0);
     }
 
     #[test]
     fn imbalance_ratio_grows_with_imbalance() {
-        assert_close(imbalance_ratio(3, 1), 3.0);
-        assert_close(imbalance_ratio(1, 3), 3.0);
-        assert!(imbalance_ratio(3, 2) < imbalance_ratio(3, 1));
+        assert_close(imbalance_ratio(3., 1.), 3.0);
+        assert_close(imbalance_ratio(1., 3.), 3.0);
+        assert!(imbalance_ratio(3., 2.) < imbalance_ratio(3., 1.));
     }
 
     /// Build minimal keyboard for evaluator tests using production JSON parsing.
