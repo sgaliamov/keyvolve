@@ -60,7 +60,7 @@ evaluate:
   eSide: left
 
 evaluator:
-  rowCost: 190
+  rowCost: 205
   switchCost: 140
 
 ga:
