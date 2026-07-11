@@ -190,6 +190,9 @@ impl LayoutEvaluator {
         result.fitness *= imbalance_ratio(result.left_count as f64, result.right_count as f64);
         result.fitness *= imbalance_ratio(result.left_rolls as f64, result.right_rolls as f64);
         result.fitness *= imbalance_ratio(result.left_streak(), result.right_streak());
+        // Reward long runs on both hands: the shorter streak divides the penalized
+        // effort, so stretching either hand's runs raises fitness (min keeps both honest).
+        result.fitness /= result.left_streak().min(result.right_streak()).max(1.0);
         result.fitness = 1. / result.fitness * 100.; // lower mean effort → higher fitness; 100 ≈ ideal
 
         result

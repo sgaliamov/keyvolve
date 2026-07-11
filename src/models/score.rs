@@ -112,6 +112,14 @@ impl ScoreResult {
         ratio(self.left_streak(), self.right_streak())
     }
 
+    /// Overall average streak: all presses over all runs, both hands.
+    pub fn mean_streak(&self) -> f64 {
+        streak(
+            self.left_count + self.right_count,
+            self.left_rolls + self.right_rolls,
+        )
+    }
+
     /// Serialize as a CSV row (no header).
     pub fn to_csv(&self) -> String {
         format!(
