@@ -26,7 +26,7 @@ pub fn callback(ctx: &GaContext) -> bool {
             s.roll_imbalance(),
             s.hands_imbalance(),
             s.row_switch_ratio() * 100.0,
-            s.bigram_switch_ratio() * 100.0,
+            s.hand_switch_ratio() * 100.0,
             s.streak_ratio(),
             s.mean_streak(),
         )

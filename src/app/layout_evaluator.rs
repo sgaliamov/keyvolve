@@ -148,7 +148,7 @@ impl LayoutEvaluator {
         let b_left = kb < 15;
         let same_hand = a_left == b_left;
 
-        let (effort, bigram_switches, row_cost) = if same_hand {
+        let (effort, hand_switches, row_cost) = if same_hand {
             (self.lookup(ka, kb), 0, row_distance(ka, kb))
         } else {
             // Hands alternate: key `a` was already counted in the previous press.
@@ -160,7 +160,7 @@ impl LayoutEvaluator {
         ScoreResult {
             effort,
             fitness: 0.0,
-            bigram_switches,
+            hand_switches,
             // Row steps only occur same-hand; charge them to that hand.
             left_row_switch_cost: if b_left { row_cost } else { 0 },
             right_row_switch_cost: if !b_left { row_cost } else { 0 },
@@ -193,7 +193,7 @@ impl LayoutEvaluator {
 
         // Flat surcharges in effort units: each hand switch and each same-hand row step
         // (jump counts double) costs like extra key presses. Comparable to the pairs table.
-        let surcharge = self.config.switch_cost * result.bigram_switches as f64
+        let surcharge = self.config.switch_cost * result.hand_switches as f64
             + self.config.row_cost * result.row_switch_cost() as f64;
 
         // Mean effort per keypress: dividing by total presses makes fitness
@@ -267,7 +267,7 @@ mod tests {
         assert_close(score.fitness, 0.0);
         assert_eq!(score.left_count, 0);
         assert_eq!(score.right_count, 0);
-        assert_eq!(score.bigram_switches, 0);
+        assert_eq!(score.hand_switches, 0);
         assert_eq!(score.row_switch_cost(), 0);
         assert_close(score.left_effort, 0.0);
         assert_close(score.right_effort, 0.0);
@@ -283,7 +283,7 @@ mod tests {
         assert_eq!(score.right_count, 0);
         assert_eq!(score.left_rolls, 1);
         assert_eq!(score.right_rolls, 0);
-        assert_eq!(score.bigram_switches, 0);
+        assert_eq!(score.hand_switches, 0);
         assert_eq!(score.row_switch_cost(), 0);
         assert_close(score.effort, 3.0);
         assert_close(score.fitness, 0.0);
@@ -299,7 +299,7 @@ mod tests {
 
         assert_eq!(score.left_count, 2);
         assert_eq!(score.right_count, 0);
-        assert_eq!(score.bigram_switches, 0);
+        assert_eq!(score.hand_switches, 0);
         assert_eq!(score.row_switch_cost(), 0);
         assert_close(score.effort, 2.0);
         assert_close(score.fitness, 0.0);
@@ -317,7 +317,7 @@ mod tests {
         assert_eq!(score.right_count, 1);
         assert_eq!(score.left_rolls, 0);
         assert_eq!(score.right_rolls, 0);
-        assert_eq!(score.bigram_switches, 1);
+        assert_eq!(score.hand_switches, 1);
         assert_eq!(score.row_switch_cost(), 0);
         assert_close(score.effort, 2.0);
         assert_close(score.fitness, 0.0);
@@ -342,7 +342,7 @@ mod tests {
 
         let score = evaluator.score_word("ad", &test_keys());
 
-        assert_eq!(score.bigram_switches, 0);
+        assert_eq!(score.hand_switches, 0);
         assert_eq!(score.row_switch_cost(), 1);
         assert_close(score.effort, 3.0);
     }
@@ -353,7 +353,7 @@ mod tests {
 
         let score = evaluator.score_word("ae", &test_keys());
 
-        assert_eq!(score.bigram_switches, 0);
+        assert_eq!(score.hand_switches, 0);
         assert_eq!(score.row_switch_cost(), 2);
         assert_close(score.effort, 5.0);
     }
@@ -380,7 +380,7 @@ mod tests {
 
         let score = evaluator.score_corpus(&test_keys());
 
-        assert_eq!(score.bigram_switches, 1);
+        assert_eq!(score.hand_switches, 1);
         // (effort 5.0 + 3.0·1 switch)/4 = 2.0; ×count-ratio 3.0 ×streak-ratio 1.5 = 9.0; 1e6/9.
         assert_close(score.fitness, 111_111.11);
     }
