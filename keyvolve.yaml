@@ -66,8 +66,7 @@ evaluate:
 evaluator:
   fitnessScale: 1
 #   rowCost: 50
-  # switchCost: 100
-
+  switchCost: 29
 ga:
   mutationRatio: 0.6
   populationSize: 200
