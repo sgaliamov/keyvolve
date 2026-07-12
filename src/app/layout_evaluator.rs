@@ -13,6 +13,9 @@ pub struct LayoutEvaluatorConfig {
 
     /// Extra effort charged per same-hand row step (adjacent = 1, jump = 2); `0.0` disables.
     pub row_cost: f64,
+
+    /// Multiplier applied to the inverted fitness; sets the "ideal" score magnitude.
+    pub fitness_scale: f64,
 }
 
 impl Default for LayoutEvaluatorConfig {
@@ -20,6 +23,7 @@ impl Default for LayoutEvaluatorConfig {
         Self {
             switch_cost: 0.0,
             row_cost: 0.0,
+            fitness_scale: 1_000_000.,
         }
     }
 }
@@ -188,14 +192,20 @@ impl LayoutEvaluator {
         // independent of corpus size, so layouts compare equally across input lengths.
         let presses = (result.left_count + result.right_count).max(1) as f64;
 
-        result.fitness = (result.effort + surcharge) / presses;
-        result.fitness *= imbalance_ratio(result.left_count as f64, result.right_count as f64);
-        // result.fitness *= imbalance_ratio(result.left_rolls as f64, result.right_rolls as f64);
-        result.fitness *= imbalance_ratio(result.left_streak(), result.right_streak());
-        // Reward long runs on both hands: the shorter streak divides the penalized
-        // effort, so stretching either hand's runs raises fitness (min keeps both honest).
-        result.fitness /= result.left_streak().min(result.right_streak()).max(1.0);
-        result.fitness = 1. / result.fitness * 100.; // lower mean effort → higher fitness; 100 ≈ ideal
+        // Penalty is purely dimensionless: imbalance ratios scale mean effort up,
+        // the shorter hand streak divides it — long runs on both hands raise fitness.
+        // Raw row-step cost is already priced by the `row_cost` surcharge above.
+        let r = &result;
+        let penalty = imbalance_ratio(r.left_count as f64, r.right_count as f64)
+            * imbalance_ratio(r.left_streak(), r.right_streak())
+            * imbalance_ratio(
+                r.left_row_switch_cost as f64,
+                r.right_row_switch_cost as f64,
+            )
+            / r.left_streak().min(r.right_streak()).max(1.0);
+
+        // Mean penalized effort per keypress, inverted: higher = better, `fitness_scale` ≈ ideal.
+        result.fitness = self.config.fitness_scale * presses / ((result.effort + surcharge) * penalty);
 
         result
     }
@@ -228,7 +238,7 @@ fn row_distance(from: u8, to: u8) -> u64 {
 /// either side is `0` (an empty hand carries no imbalance to penalize).
 fn imbalance_ratio(a: f64, b: f64) -> f64 {
     match (a.max(b), a.min(b)) {
-        (_, lo) if lo == 0.0 => 1.0,
+        (_, 0.0) => 1.0,
         (hi, lo) => hi / lo,
     }
 }
@@ -362,8 +372,8 @@ mod tests {
         let score = evaluator.score_corpus(&test_keys());
 
         assert_eq!(score.bigram_switches, 1);
-        // (effort 5.0 + 3.0·1 switch)/4 = 2.0; ×count-ratio 3.0 ×streak-ratio 1.5 = 9.0; 100/9.
-        assert_close(score.fitness, 11.11);
+        // (effort 5.0 + 3.0·1 switch)/4 = 2.0; ×count-ratio 3.0 ×streak-ratio 1.5 = 9.0; 1e6/9.
+        assert_close(score.fitness, 111_111.11);
     }
 
     #[test]
@@ -381,8 +391,8 @@ mod tests {
 
         assert_eq!(score.row_switch_cost(), 1);
         // Single-hand corpus: both imbalance ratios neutral (1.0).
-        // (effort 3.0 + 1.0·1 row step)/2 = 2.0; 100/2.
-        assert_close(score.fitness, 50.00);
+        // (effort 3.0 + 1.0·1 row step)/2 = 2.0; 1e6/2.
+        assert_close(score.fitness, 500_000.0);
     }
 
     #[test]
@@ -438,6 +448,7 @@ mod tests {
         LayoutEvaluatorConfig {
             switch_cost: 0.0,
             row_cost: 0.0,
+            fitness_scale: 1_000_000.,
         }
     }
 

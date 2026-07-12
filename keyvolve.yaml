@@ -37,7 +37,7 @@ optimization:
   # frozen:
   #   h: 5
   allowed:
-    e: [1, 2, 3, 6, 7, 8]
+    e: [6, 7, 8]
     t: [1, 2, 3, 6, 7, 8, 13]
     a: [1, 2, 3, 6, 7, 8]
     i: [1, 2, 3, 6, 7, 8]
@@ -45,8 +45,12 @@ optimization:
     n: [1, 2, 3, 6, 7, 8]
     r: [1, 2, 3, 6, 7, 8]
     s: [1, 2, 3, 6, 7, 8]
-    h: [1, 2, 3, 6, 7, 8, 12, 13]
-  # rolls: ['er', 'th']
+    h: [1, 2, 3, 5, 6, 7, 8, 12, 13]
+    # j: [5, 11, 12, 14]
+    # x: [5, 11, 12, 14]
+    # z: [5, 11, 12, 14]
+    # q: [5, 11, 12, 14]
+  rolls: ['er', 'th']
   # left: [e, o]
   # right: [a, i]
 
@@ -59,9 +63,9 @@ evaluate:
   print: 10
   eSide: left
 
-evaluator:
-  rowCost: 8
-  switchCost: 13
+# evaluator:
+#   rowCost: 50
+#   switchCost: 0
 
 ga:
   mutationRatio: 0.6
