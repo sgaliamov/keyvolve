@@ -9,13 +9,21 @@ use serde::Deserialize;
 #[serde(rename_all = "camelCase")]
 pub struct LayoutEvaluatorConfig {
     /// Extra effort charged per hand switch, in pairs-table effort units; `0.0` disables.
+    #[serde(default)]
     pub switch_cost: f64,
 
     /// Extra effort charged per same-hand row step (adjacent = 1, jump = 2); `0.0` disables.
+    #[serde(default)]
     pub row_cost: f64,
 
     /// Multiplier applied to the inverted fitness; sets the "ideal" score magnitude.
+    #[serde(default = "default_fitness_scale")]
     pub fitness_scale: f64,
+}
+
+/// Serde default for [`LayoutEvaluatorConfig::fitness_scale`].
+fn default_fitness_scale() -> f64 {
+    1_000_000.
 }
 
 impl Default for LayoutEvaluatorConfig {
@@ -23,7 +31,7 @@ impl Default for LayoutEvaluatorConfig {
         Self {
             switch_cost: 0.0,
             row_cost: 0.0,
-            fitness_scale: 1_000_000.,
+            fitness_scale: default_fitness_scale(),
         }
     }
 }
@@ -205,7 +213,8 @@ impl LayoutEvaluator {
             / r.left_streak().min(r.right_streak()).max(1.0);
 
         // Mean penalized effort per keypress, inverted: higher = better, `fitness_scale` ≈ ideal.
-        result.fitness = self.config.fitness_scale * presses / ((result.effort + surcharge) * penalty);
+        result.fitness =
+            self.config.fitness_scale * presses / ((result.effort + surcharge) * penalty);
 
         result
     }
