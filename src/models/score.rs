@@ -62,6 +62,17 @@ impl ScoreResult {
         }
     }
 
+    /// Row-switch cost imbalance as a percent: how far the left/right row-switch
+    /// cost ratio strays from parity. 0% = balanced. Asymmetric by direction.
+    pub fn row_switch_imbalance(&self) -> f64 {
+        if self.right_row_switch_cost == 0 {
+            0.0
+        } else {
+            (self.left_row_switch_cost as f64 / self.right_row_switch_cost as f64 - 1.0).abs()
+                * 100.0
+        }
+    }
+
     /// Same-hand bigram imbalance as a percent: how far the left/right roll count
     /// ratio strays from parity. 0% = balanced. Asymmetric by direction.
     pub fn roll_imbalance(&self) -> f64 {
@@ -131,10 +142,11 @@ impl ScoreResult {
     /// Serialize as a CSV row (no header).
     pub fn to_csv(&self) -> String {
         format!(
-            "{:.4},{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2},{:.2},{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2},{:.2},{:.2},{},{},{},{},{},{},{},{:.2},{:.2}",
+            "{:.4},{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2},{:.2},{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2},{:.2},{:.2},{},{},{},{},{},{},{},{:.2},{:.2}",
             self.fitness,
             self.roll_imbalance(),
             self.hands_imbalance(),
+            self.row_switch_imbalance(),
             self.row_switch_ratio() * 100.0,
             self.bigram_switch_ratio() * 100.0,
             self.streak_ratio(),
@@ -160,7 +172,7 @@ impl ScoreResult {
 
     /// CSV header matching [`to_csv`] column order.
     pub fn csv_header() -> &'static str {
-        "fitness,roll_imbalance,hands_imbalance,row_switch_ratio,switch_ratio,streak_ratio,mean_streak,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,effort,left_effort,right_effort,left_count,right_count,bigram_switches,left_row_switch_cost,right_row_switch_cost,left_rolls,right_rolls,left_streak,right_streak"
+        "fitness,roll_imbalance,hands_imbalance,row_switch_imbalance,row_switch_ratio,switch_ratio,streak_ratio,mean_streak,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,effort,left_effort,right_effort,left_count,right_count,bigram_switches,left_row_switch_cost,right_row_switch_cost,left_rolls,right_rolls,left_streak,right_streak"
     }
 
     /// Hand-swapped score: left/right counts and efforts trade places. Symmetric
@@ -193,16 +205,16 @@ impl ScoreResult {
         let c: Vec<&str> = line.split(',').skip(skip).map(str::trim).collect();
         Some(ScoreResult {
             fitness: c.first()?.parse().ok()?,
-            effort: c.get(11)?.parse().ok()?,
-            left_effort: c.get(12)?.parse().ok()?,
-            right_effort: c.get(13)?.parse().ok()?,
-            left_count: c.get(14)?.parse().ok()?,
-            right_count: c.get(15)?.parse().ok()?,
-            bigram_switches: c.get(16)?.parse().ok()?,
-            left_row_switch_cost: c.get(17)?.parse().ok()?,
-            right_row_switch_cost: c.get(18)?.parse().ok()?,
-            left_rolls: c.get(19)?.parse().ok()?,
-            right_rolls: c.get(20)?.parse().ok()?,
+            effort: c.get(12)?.parse().ok()?,
+            left_effort: c.get(13)?.parse().ok()?,
+            right_effort: c.get(14)?.parse().ok()?,
+            left_count: c.get(15)?.parse().ok()?,
+            right_count: c.get(16)?.parse().ok()?,
+            bigram_switches: c.get(17)?.parse().ok()?,
+            left_row_switch_cost: c.get(18)?.parse().ok()?,
+            right_row_switch_cost: c.get(19)?.parse().ok()?,
+            left_rolls: c.get(20)?.parse().ok()?,
+            right_rolls: c.get(21)?.parse().ok()?,
         })
     }
 }
@@ -211,10 +223,11 @@ impl std::fmt::Display for ScoreResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "φ {:.4} | ⟳Δ {:.2}% | Δ {:.2}% | ↕ {:.2}% | ⇄ {:.2}% | →Δ {:.2} | → {:.2} | Lε {:.1}% | Rε {:.1}% | L# {:.1}% | R# {:.1}% | ε {:.2} | Lε {:.2} | Rε {:.2} | L# {} | R# {} | ⇄ {} | L↕ {} | R↕ {} | L⟳ {} | R⟳ {} | L→ {:.2} | R→ {:.2}",
+            "φ {:.4} | ⟳Δ {:.2}% | Δ {:.2}% | ↕Δ {:.2}% | ↕ {:.2}% | ⇄ {:.2}% | →Δ {:.2} | → {:.2} | Lε {:.1}% | Rε {:.1}% | L# {:.1}% | R# {:.1}% | ε {:.2} | Lε {:.2} | Rε {:.2} | L# {} | R# {} | ⇄ {} | L↕ {} | R↕ {} | L⟳ {} | R⟳ {} | L→ {:.2} | R→ {:.2}",
             self.fitness,
             self.roll_imbalance(),
             self.hands_imbalance(),
+            self.row_switch_imbalance(),
             self.row_switch_ratio() * 100.0,
             self.bigram_switch_ratio() * 100.0,
             self.streak_ratio(),

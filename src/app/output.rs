@@ -199,7 +199,7 @@ mod tests {
 
     // e-left layout (`e` in keys_2 → slot 7) plus a score row.
     fn e_left() -> (Layout, ScoreResult) {
-        let line = "_mub_,lreop,wfydx,_htc_,kinas,qgvzj,5378.69,0.00%,0.96,24%,34%,1.10,1.85,47%,52%,49%,50%,15.0,7.0,8.0,100,200,17,7,5,30,40";
+        let line = "_mub_,lreop,wfydx,_htc_,kinas,qgvzj,5378.69,0.00%,0.96,40%,24%,34%,1.10,1.85,47%,52%,49%,50%,15.0,7.0,8.0,100,200,17,7,5,30,40";
         (Layout::new(line), ScoreResult::from_csv(line).unwrap())
     }
 
