@@ -46,10 +46,10 @@ optimization:
     r: [1, 2, 3, 6, 7, 8]
     s: [1, 2, 3, 6, 7, 8]
     h: [1, 2, 3, 5, 6, 7, 8, 12, 13]
-    # j: [5, 11, 12, 14]
-    # x: [5, 11, 12, 14]
-    # z: [5, 11, 12, 14]
-    # q: [5, 11, 12, 14]
+    j: [5, 11, 12, 14]
+    x: [5, 11, 12, 14]
+    z: [5, 11, 12, 14]
+    q: [5, 11, 12, 14]
   rolls: ['er', 'th']
   # left: [e, o]
   # right: [a, i]
@@ -63,10 +63,10 @@ evaluate:
   print: 10
   eSide: left
 
-# evaluator:
+evaluator:
+  fitnessScale: 1
+  switchCost: 100
 #   rowCost: 50
-#   switchCost: 0
-#   fitnessScale: 1000000
 
 ga:
   mutationRatio: 0.6

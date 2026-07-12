@@ -161,7 +161,10 @@ impl OptimizationConfig {
     pub fn is_genome_valid(&self, genome: &[char]) -> bool {
         genome.iter().enumerate().all(|(i, &ch)| {
             let slot = i as u8;
-            ch == EMPTY_SLOT || (!self.blocked.contains(&slot) && self.is_slot_allowed(ch, slot))
+            // Frozen outranks blocked: a pin on a blocked slot is still valid.
+            ch == EMPTY_SLOT
+                || self.frozen.get(&ch) == Some(&slot)
+                || (!self.blocked.contains(&slot) && self.is_slot_allowed(ch, slot))
         }) && self.rolls_satisfied(genome)
     }
 
@@ -332,6 +335,20 @@ mod tests {
 
         g[29] = EMPTY_SLOT; // empty blocked slot is fine
         assert!(cfg.is_genome_valid(&g));
+    }
+
+    #[test]
+    fn frozen_pin_outranks_blocked() {
+        let mut cfg = OptimizationConfig::default();
+        cfg.frozen.insert('f', 29);
+        cfg.blocked.insert(29);
+
+        let mut g = vec![EMPTY_SLOT; 30];
+        g[29] = 'f'; // pinned on blocked slot — frozen wins
+        assert!(cfg.is_genome_valid(&g));
+
+        g[29] = 'x'; // non-frozen char on blocked slot still invalid
+        assert!(!cfg.is_genome_valid(&g));
     }
 
     #[test]
