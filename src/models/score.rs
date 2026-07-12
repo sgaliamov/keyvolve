@@ -144,13 +144,13 @@ impl ScoreResult {
         format!(
             "{:.4},{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2},{:.2},{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2},{:.2},{:.2},{},{},{},{},{},{},{},{:.2},{:.2}",
             self.fitness,
-            self.roll_imbalance(),
-            self.hands_imbalance(),
-            self.row_switch_imbalance(),
             self.row_switch_ratio() * 100.0,
+            self.row_switch_imbalance(),
             self.hand_switch_ratio() * 100.0,
-            self.streak_ratio(),
+            self.hands_imbalance(),
+            self.roll_imbalance(),
             self.mean_streak(),
+            self.streak_ratio(),
             self.left_effort_ratio() * 100.0,
             self.right_effort_ratio() * 100.0,
             self.left_count_ratio() * 100.0,
@@ -172,7 +172,7 @@ impl ScoreResult {
 
     /// CSV header matching [`to_csv`] column order.
     pub fn csv_header() -> &'static str {
-        "fitness,roll_imbalance,hands_imbalance,row_switch_imbalance,row_switch_ratio,hand_switch_ratio,streak_ratio,mean_streak,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,effort,left_effort,right_effort,left_count,right_count,hand_switches,left_row_switch_cost,right_row_switch_cost,left_rolls,right_rolls,left_streak,right_streak"
+        "fitness,row_switch_ratio,row_switch_imbalance,hand_switch_ratio,hands_imbalance,roll_imbalance,mean_streak,streak_ratio,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,effort,left_effort,right_effort,left_count,right_count,hand_switches,left_row_switch_cost,right_row_switch_cost,left_rolls,right_rolls,left_streak,right_streak"
     }
 
     /// Hand-swapped score: left/right counts and efforts trade places. Symmetric
