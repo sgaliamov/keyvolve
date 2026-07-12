@@ -22,8 +22,11 @@ pub struct ScoreResult {
     /// Number of hand switches.
     pub bigram_switches: u64,
 
-    /// Weighted row-switch cost: adjacent-row move = 1, jump-over-row = 2.
-    pub row_switch_cost: u64,
+    /// Weighted row-switch cost on the left hand: adjacent-row move = 1, jump-over-row = 2.
+    pub left_row_switch_cost: u64,
+
+    /// Weighted row-switch cost on the right hand.
+    pub right_row_switch_cost: u64,
 
     /// Effort accumulated on the left hand.
     pub left_effort: f64,
@@ -87,10 +90,15 @@ impl ScoreResult {
         )
     }
 
+    /// Total weighted row-switch cost, both hands.
+    pub fn row_switch_cost(&self) -> u64 {
+        self.left_row_switch_cost + self.right_row_switch_cost
+    }
+
     /// Share of same-hand transitions that switch rows, weighted by jump severity.
     pub fn row_switch_ratio(&self) -> f64 {
         ratio(
-            self.row_switch_cost as f64,
+            self.row_switch_cost() as f64,
             self.left_count.saturating_sub(1) as f64 + self.right_count.saturating_sub(1) as f64,
         )
     }
@@ -123,13 +131,14 @@ impl ScoreResult {
     /// Serialize as a CSV row (no header).
     pub fn to_csv(&self) -> String {
         format!(
-            "{:.4},{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2},{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2},{:.2},{:.2},{},{},{},{},{},{},{:.2},{:.2}",
+            "{:.4},{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2},{:.2},{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2},{:.2},{:.2},{},{},{},{},{},{},{},{:.2},{:.2}",
             self.fitness,
             self.roll_imbalance(),
             self.hands_imbalance(),
             self.row_switch_ratio() * 100.0,
             self.bigram_switch_ratio() * 100.0,
             self.streak_ratio(),
+            self.mean_streak(),
             self.left_effort_ratio() * 100.0,
             self.right_effort_ratio() * 100.0,
             self.left_count_ratio() * 100.0,
@@ -140,7 +149,8 @@ impl ScoreResult {
             self.left_count,
             self.right_count,
             self.bigram_switches,
-            self.row_switch_cost,
+            self.left_row_switch_cost,
+            self.right_row_switch_cost,
             self.left_rolls,
             self.right_rolls,
             self.left_streak(),
@@ -150,7 +160,7 @@ impl ScoreResult {
 
     /// CSV header matching [`to_csv`] column order.
     pub fn csv_header() -> &'static str {
-        "fitness,roll_imbalance,hands_imbalance,row_switch_ratio,switch_ratio,streak_ratio,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,effort,left_effort,right_effort,left_count,right_count,bigram_switches,row_switch_cost,left_rolls,right_rolls,left_streak,right_streak"
+        "fitness,roll_imbalance,hands_imbalance,row_switch_ratio,switch_ratio,streak_ratio,mean_streak,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,effort,left_effort,right_effort,left_count,right_count,bigram_switches,left_row_switch_cost,right_row_switch_cost,left_rolls,right_rolls,left_streak,right_streak"
     }
 
     /// Hand-swapped score: left/right counts and efforts trade places. Symmetric
@@ -162,6 +172,8 @@ impl ScoreResult {
             right_count: self.left_count,
             left_rolls: self.right_rolls,
             right_rolls: self.left_rolls,
+            left_row_switch_cost: self.right_row_switch_cost,
+            right_row_switch_cost: self.left_row_switch_cost,
             left_effort: self.right_effort,
             right_effort: self.left_effort,
             ..self.clone()
@@ -181,15 +193,16 @@ impl ScoreResult {
         let c: Vec<&str> = line.split(',').skip(skip).map(str::trim).collect();
         Some(ScoreResult {
             fitness: c.first()?.parse().ok()?,
-            effort: c.get(10)?.parse().ok()?,
-            left_effort: c.get(11)?.parse().ok()?,
-            right_effort: c.get(12)?.parse().ok()?,
-            left_count: c.get(13)?.parse().ok()?,
-            right_count: c.get(14)?.parse().ok()?,
-            bigram_switches: c.get(15)?.parse().ok()?,
-            row_switch_cost: c.get(16)?.parse().ok()?,
-            left_rolls: c.get(17)?.parse().ok()?,
-            right_rolls: c.get(18)?.parse().ok()?,
+            effort: c.get(11)?.parse().ok()?,
+            left_effort: c.get(12)?.parse().ok()?,
+            right_effort: c.get(13)?.parse().ok()?,
+            left_count: c.get(14)?.parse().ok()?,
+            right_count: c.get(15)?.parse().ok()?,
+            bigram_switches: c.get(16)?.parse().ok()?,
+            left_row_switch_cost: c.get(17)?.parse().ok()?,
+            right_row_switch_cost: c.get(18)?.parse().ok()?,
+            left_rolls: c.get(19)?.parse().ok()?,
+            right_rolls: c.get(20)?.parse().ok()?,
         })
     }
 }
@@ -198,13 +211,14 @@ impl std::fmt::Display for ScoreResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "φ {:.4} | ⟳Δ {:.2}% | Δ {:.2}% | ↕ {:.2}% | ⇄ {:.2}% | →Δ {:.2} | Lε {:.1}% | Rε {:.1}% | L# {:.1}% | R# {:.1}% | ε {:.2} | Lε {:.2} | Rε {:.2} | L# {} | R# {} | ⇄ {} | ↕ {} | L⟳ {} | R⟳ {} | L→ {:.2} | R→ {:.2}",
+            "φ {:.4} | ⟳Δ {:.2}% | Δ {:.2}% | ↕ {:.2}% | ⇄ {:.2}% | →Δ {:.2} | → {:.2} | Lε {:.1}% | Rε {:.1}% | L# {:.1}% | R# {:.1}% | ε {:.2} | Lε {:.2} | Rε {:.2} | L# {} | R# {} | ⇄ {} | L↕ {} | R↕ {} | L⟳ {} | R⟳ {} | L→ {:.2} | R→ {:.2}",
             self.fitness,
             self.roll_imbalance(),
             self.hands_imbalance(),
             self.row_switch_ratio() * 100.0,
             self.bigram_switch_ratio() * 100.0,
             self.streak_ratio(),
+            self.mean_streak(),
             self.left_effort_ratio() * 100.0,
             self.right_effort_ratio() * 100.0,
             self.left_count_ratio() * 100.0,
@@ -215,7 +229,8 @@ impl std::fmt::Display for ScoreResult {
             self.left_count,
             self.right_count,
             self.bigram_switches,
-            self.row_switch_cost,
+            self.left_row_switch_cost,
+            self.right_row_switch_cost,
             self.left_rolls,
             self.right_rolls,
             self.left_streak(),
@@ -251,7 +266,8 @@ impl std::ops::Add for ScoreResult {
             left_rolls: self.left_rolls + other.left_rolls,
             right_rolls: self.right_rolls + other.right_rolls,
             bigram_switches: self.bigram_switches + other.bigram_switches,
-            row_switch_cost: self.row_switch_cost + other.row_switch_cost,
+            left_row_switch_cost: self.left_row_switch_cost + other.left_row_switch_cost,
+            right_row_switch_cost: self.right_row_switch_cost + other.right_row_switch_cost,
             left_effort: self.left_effort + other.left_effort,
             right_effort: self.right_effort + other.right_effort,
         }
@@ -272,7 +288,8 @@ impl std::ops::Mul<u64> for ScoreResult {
             left_rolls: self.left_rolls * n,
             right_rolls: self.right_rolls * n,
             bigram_switches: self.bigram_switches * n,
-            row_switch_cost: self.row_switch_cost * n,
+            left_row_switch_cost: self.left_row_switch_cost * n,
+            right_row_switch_cost: self.right_row_switch_cost * n,
             left_effort: self.left_effort * f,
             right_effort: self.right_effort * f,
         }
@@ -360,7 +377,8 @@ mod tests {
             left_rolls: 7,
             right_rolls: 9,
             bigram_switches: 2,
-            row_switch_cost: 1,
+            left_row_switch_cost: 1,
+            right_row_switch_cost: 3,
             left_effort: 4.0,
             right_effort: 6.0,
         };
@@ -375,7 +393,8 @@ mod tests {
             assert_eq!(parsed.left_effort, 4.0);
             assert_eq!(parsed.right_effort, 6.0);
             assert_eq!(parsed.bigram_switches, 2);
-            assert_eq!(parsed.row_switch_cost, 1);
+            assert_eq!(parsed.left_row_switch_cost, 1);
+            assert_eq!(parsed.right_row_switch_cost, 3);
         };
 
         // Old headerless rows (fitness right after keys) and new rows (name column).
