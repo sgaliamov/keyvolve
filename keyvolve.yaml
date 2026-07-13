@@ -32,8 +32,8 @@ optimization:
   # input: data/layouts.csv
   output: data/layouts.csv
   mutationCount: 10
-  maxGroups: 1
-  # blocked: [0, 14, 19, 25]
+  maxGroups: 100
+  blocked: [0, 14, 19, 25]
   # frozen:
   #   h: 5
   allowed:
@@ -46,10 +46,10 @@ optimization:
     r: [1, 2, 3, 6, 7, 8]
     s: [1, 2, 3, 6, 7, 8]
     h: [1, 2, 3, 5, 6, 7, 8, 12, 13]
-  #   j: [5, 10, 11, 14]
-  #   x: [5, 10, 11, 14]
-  #   z: [5, 10, 11, 14]
-  #   q: [5, 10, 11, 14]
+    j: [5, 10, 11, 14]
+    x: [5, 10, 11, 14]
+    z: [5, 10, 11, 14]
+    q: [5, 10, 11, 14]
   # rolls: ['er', 'th']
   # left: [e, o]
   # right: [a, i]
@@ -65,7 +65,7 @@ evaluate:
 
 evaluator:
   fitnessScale: 1
-  rowCost: 10
+  rowCost: 7
   switchCost: 10
 ga:
   mutationRatio: 0.6
