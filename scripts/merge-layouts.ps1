@@ -16,6 +16,6 @@ Get-ChildItem $Pattern |
         [pscustomobject]$row
     } |
     Select-Object $cols |
-    Export-Csv $Out -NoTypeInformation
+    Export-Csv $Out -NoTypeInformation -UseQuotes Never
 
 Write-Host "wrote $Out"

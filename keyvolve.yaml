@@ -49,8 +49,8 @@ optimization:
     h: [1, 2, 3, 5, 6, 7, 8, 12, 13]
     j: [5, 10, 11, 14]
     x: [5, 10, 11, 14]
-    z: [5, 10, 11, 14]
-    q: [5, 10, 11, 14]
+    z: [10, 11, 14]
+    q: [10, 11, 14]
   # rolls: ['er', 'th']
   # left: [e, o]
   # right: [a, i]
@@ -65,8 +65,8 @@ evaluate:
   eSide: left
 
 evaluator:
-  fitnessScale: 1
-  rowCost: 7
+  fitnessScale: 10000
+  rowCost: 10
   switchCost: 10
 
 ga:
