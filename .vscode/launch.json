@@ -18,7 +18,7 @@
         },
         {
           "name": "MODE",
-          "value": "synthesise"
+          "value": "optimize"
         }
       ],
       "cwd": "${workspaceFolder}"

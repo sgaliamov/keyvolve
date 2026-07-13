@@ -181,6 +181,7 @@ impl LayoutEvaluator {
             .first_chars
             .iter()
             .map(|(&c, &n)| self.score_first(c, keys) * n);
+
         let bigrams = self
             .counts
             .bigrams

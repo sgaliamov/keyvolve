@@ -14,20 +14,20 @@ frequencies:
 
 synthesise:
   text: data/samples/merged.txt
-  output: data/synthesised/markov
-  method: markov
+  output: data/synthesised/sample-10000000.txt
+  method: sample
   digraph:
     target: 64000
     maxWordLen: 5
   sample:
-    target: 100000
+    target: 10000000
   markov:
     target: 64000
     maxWordLen: 15
     attempts: 256
 
 optimization:
-  text: data/synthesised/sample-1000000
+  text: data/synthesised/sample-5000000.txt
   # input: data/seed.csv
   # input: data/layouts.csv
   output: data/layouts.csv
@@ -67,6 +67,7 @@ evaluator:
   fitnessScale: 1
   rowCost: 7
   switchCost: 10
+
 ga:
   mutationRatio: 0.6
   populationSize: 200
