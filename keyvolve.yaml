@@ -58,9 +58,10 @@ optimization:
 evaluate:
   # text: 'data\synthesised\sample-1000000'
   text: 'data\samples\merged.txt'
-  input: data/layouts.csv
-  # input: data/seed.csv
-  output: data/layouts.csv
+  # input: data/layouts.csv
+  input: data/seed.csv
+  output: data/seed.csv
+  # output: data/layouts.csv
   print: 10
   eSide: left
 
