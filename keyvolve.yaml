@@ -51,7 +51,7 @@ optimization:
     x: [5, 10, 11, 14]
     z: [10, 11, 14]
     q: [10, 11, 14]
-  # rolls: ['er', 'th']
+  rolls: ['er', 'th']
   # left: [e, o]
   # right: [a, i]
 
@@ -66,8 +66,8 @@ evaluate:
 
 evaluator:
   fitnessScale: 10000
-  rowCost: 10
-  switchCost: 10
+  rowCost: 7
+  switchCost: 1
 
 ga:
   mutationRatio: 0.6
