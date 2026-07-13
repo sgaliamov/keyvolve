@@ -1,4 +1,4 @@
-use crate::app::{evaluate, frequencies, merge, synthesise};
+use crate::app::{evaluate, frequencies, merge, synthesise, synthesise::read_stats_cache};
 use crate::{
     Config, Mode,
     app::{CorpusCounts, EMPTY_SLOT, LayoutEvaluator, LayoutEvaluatorConfig, optimize},
@@ -29,12 +29,14 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
         mode => {
             let keyboard = Keyboard::load(cfg.keyboard)?;
             let evaluator_cfg = cfg.evaluator;
+            let stats = cfg.stats;
             let opt = cfg.optimization;
 
             match mode {
                 Mode::Evaluate => {
                     let eval = cfg.evaluate;
-                    let evaluator = build_evaluator(&keyboard, &eval.text, evaluator_cfg)?;
+                    let evaluator =
+                        build_evaluator(&keyboard, &eval.text, stats.as_deref(), evaluator_cfg)?;
                     let layouts_path = eval.input.clone();
                     let mut eval = eval;
                     if eval.output.is_none() {
@@ -45,7 +47,8 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
                     evaluate::evaluate(evaluator, layouts, &eval, app)?
                 }
                 Mode::Optimize => {
-                    let evaluator = build_evaluator(&keyboard, &opt.text, evaluator_cfg)?;
+                    let evaluator =
+                        build_evaluator(&keyboard, &opt.text, stats.as_deref(), evaluator_cfg)?;
                     let mut ga = cfg.ga;
                     ga.ranges = vec![vec![(EMPTY_SLOT, 'z'); 30]];
                     let mut seed: Vec<_> = vec![];
@@ -65,13 +68,24 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
     Ok(())
 }
 
-/// Build evaluator from keyboard, corpus file, and optimization penalties.
+/// Build evaluator from keyboard and corpus. Prefers cached stats JSON when
+/// configured; falls back to streaming the corpus text.
 fn build_evaluator(
     keyboard: &Keyboard,
     text_path: impl AsRef<Path>,
+    stats: Option<&Path>,
     config: LayoutEvaluatorConfig,
 ) -> Result<LayoutEvaluator> {
-    let counts = load_counts(text_path)?;
+    let counts = match stats {
+        Some(path) => {
+            info!(stats = %path.display(), "Building corpus counts from cached stats");
+            CorpusCounts::from(&read_stats_cache(path)?)
+        }
+        None => {
+            info!(text = %text_path.as_ref().display(), "Streaming corpus counts from text");
+            load_counts(text_path)?
+        }
+    };
     Ok(LayoutEvaluator::from_counts(keyboard, counts, config))
 }
 

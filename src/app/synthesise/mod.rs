@@ -13,7 +13,9 @@ pub use counter::CorpusStatsCounter;
 use digraph_method::synthesise_digraph;
 use miette::Result;
 use sample_method::synthesise_sample_words;
-pub use shared::{CachedSourceStats, filter_stats_bigrams, stats_cache_path, write_stats_cache};
+pub use shared::{
+    CachedSourceStats, filter_stats_bigrams, read_stats_cache, stats_cache_path, write_stats_cache,
+};
 
 /// Run the configured synthesise pipeline.
 pub fn synthesise(cfg: SynthesiseConfig) -> Result<()> {

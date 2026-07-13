@@ -1,4 +1,5 @@
 keyboard: data/keyboard.json
+stats: data/stats/merged.source-stats.json
 
 merge:
   input: data/samples

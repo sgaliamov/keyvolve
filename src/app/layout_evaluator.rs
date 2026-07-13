@@ -1,3 +1,4 @@
+use crate::app::synthesise::CachedSourceStats;
 use crate::models::{Keyboard, Keys, ScoreResult, slot_row};
 #[cfg(test)]
 use itertools::Itertools;
@@ -58,6 +59,31 @@ impl CorpusCounts {
         for c in chars {
             *self.bigrams.entry((prev, c)).or_default() += 1;
             prev = c;
+        }
+    }
+}
+
+/// Rebuild approximate counts from cached normalized stats. Fitness is
+/// scale-invariant, so scaling frequencies by corpus size preserves ranking.
+impl From<&CachedSourceStats> for CorpusCounts {
+    fn from(cached: &CachedSourceStats) -> Self {
+        let words = cached.word_count as f64;
+        // Bigrams per word ≈ average word length − 1.
+        let bigram_total = words * (cached.stats.average_word_length - 1.0).max(0.0);
+
+        CorpusCounts {
+            first_chars: cached
+                .stats
+                .first_letters
+                .iter()
+                .map(|(&c, &f)| (c, (f * words).round() as u64))
+                .collect(),
+            bigrams: cached
+                .stats
+                .bigrams
+                .iter()
+                .map(|(&[a, b], &f)| ((a, b), (f * bigram_total).round() as u64))
+                .collect(),
         }
     }
 }
@@ -418,6 +444,28 @@ mod tests {
         assert_close(imbalance_ratio(3., 1.), 3.0);
         assert_close(imbalance_ratio(1., 3.), 3.0);
         assert!(imbalance_ratio(3., 2.) < imbalance_ratio(3., 1.));
+    }
+
+    #[test]
+    fn counts_from_cached_stats_match_direct_counts() {
+        use crate::app::synthesise::CorpusStatsCounter;
+
+        let words = ["abc", "cab", "aa", "bca", "cc"];
+        let mut direct = CorpusCounts::default();
+        let mut counter = CorpusStatsCounter::default();
+        for w in words {
+            direct.add(w);
+            counter.add_word(w);
+        }
+
+        let cached = CachedSourceStats {
+            stats: counter.finish(),
+            word_count: words.len(),
+        };
+        let rebuilt = CorpusCounts::from(&cached);
+
+        assert_eq!(rebuilt.first_chars, direct.first_chars);
+        assert_eq!(rebuilt.bigrams, direct.bigrams);
     }
 
     /// Build minimal keyboard for evaluator tests using production JSON parsing.
