@@ -55,8 +55,8 @@ optimization:
   # right: [a, i]
 
 evaluate:
-  text: 'data\synthesised\sample-1000000'
-  # text: 'data\samples\merged.txt'
+  # text: 'data\synthesised\sample-1000000'
+  text: 'data\samples\merged.txt'
   input: data/layouts.csv
   # input: data/seed.csv
   output: data/layouts.csv
