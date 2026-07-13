@@ -2,7 +2,7 @@
 # Usage: ./scripts/merge-layouts.ps1 [-Pattern <glob>] [-Out <path>]
 param(
     [string]$Pattern = "data/layouts*.csv",
-    [string]$Out = "data/layouts.csv"
+    [string]$Out = "data/m-layouts.csv"
 )
 
 $cols = @('keys_1', 'keys_2', 'keys_3', 'keys_4', 'keys_5', 'keys_6', 'name')
