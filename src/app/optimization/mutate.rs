@@ -5,13 +5,13 @@ use rand::seq::SliceRandom;
 const MUTATION_ATTEMPTS: usize = 3;
 
 /// Mutate by unplacing N random units and re-placing under the same constraint flow as the generator.
-/// Returns 10 independent mutants, each derived from a fresh clone of the parent genome.
+/// Returns `opt.mutation_count` independent mutants, each derived from a fresh clone of the parent genome.
 pub fn mutate(ind: &KeysIndividual, ctx: &GaContext) -> Vec<KeysGenome> {
     let state = ctx.state.as_ref().expect("state must be set");
     let opt = &state.optimization;
     let cache = &state.cache;
 
-    (0..10)
+    (0..opt.mutation_count)
         .map(|_| {
             let mut rng = rand::rng();
             for _ in 0..MUTATION_ATTEMPTS {

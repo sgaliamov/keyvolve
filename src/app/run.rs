@@ -1,11 +1,14 @@
-use crate::app::{evaluate, merge, synthesise};
+use crate::app::{evaluate, frequencies, merge, synthesise, synthesise::read_stats_cache};
 use crate::{
     Config, Mode,
-    app::{EMPTY_SLOT, LayoutEvaluator, optimize},
+    app::{CorpusCounts, EMPTY_SLOT, LayoutEvaluator, LayoutEvaluatorConfig, optimize},
     models::{Keyboard, Layout},
 };
 use cliffa::cli::AppHandle;
 use miette::{Context, IntoDiagnostic, Result};
+use std::fs::File;
+use std::io::{BufRead, BufReader};
+use std::path::Path;
 use tracing::{info, trace};
 
 /// Entry point called by the CLI builder after argument parsing.
@@ -15,41 +18,41 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
 
     match cfg.mode {
         Mode::Merge => {
-            merge::merge(cfg.merge)?;
+            merge::merge(cfg.merge, app)?;
         }
         Mode::Synthesise => {
             synthesise::synthesise(cfg.synthesise)?;
         }
+        Mode::Frequencies => {
+            frequencies::frequencies(cfg.frequencies, app)?;
+        }
         mode => {
-            let words = std::fs::read_to_string(cfg.text.unwrap())
-                .into_diagnostic()
-                .wrap_err("Failed to read text file")?
-                .split_whitespace()
-                .map(|s| s.to_string())
-                .collect::<Vec<_>>();
-
-            let keyboard = Keyboard::load(cfg.keyboard.unwrap())?;
+            let keyboard = Keyboard::load(cfg.keyboard)?;
+            let evaluator_cfg = cfg.evaluator;
+            let stats = cfg.stats;
             let opt = cfg.optimization;
-            let evaluator = LayoutEvaluator::new(
-                &keyboard,
-                words,
-                opt.bigram_switch_penalty,
-                opt.balance_penalty,
-                opt.alternation_penalty,
-            );
 
             match mode {
                 Mode::Evaluate => {
-                    let layouts_path = cfg.layouts.wrap_err("Missing layouts path in config")?;
+                    let eval = cfg.evaluate;
+                    let evaluator =
+                        build_evaluator(&keyboard, &eval.text, stats.as_deref(), evaluator_cfg)?;
+                    let layouts_path = eval.input.clone();
+                    let mut eval = eval;
+                    if eval.output.is_none() {
+                        eval.output = Some(layouts_path.clone());
+                    }
                     let layouts = Layout::load(&layouts_path);
                     info!("Loaded {} layouts", layouts.len());
-                    evaluate(evaluator, layouts, &layouts_path, app)?
+                    evaluate::evaluate(evaluator, layouts, &eval, app)?
                 }
                 Mode::Optimize => {
+                    let evaluator =
+                        build_evaluator(&keyboard, &opt.text, stats.as_deref(), evaluator_cfg)?;
                     let mut ga = cfg.ga;
                     ga.ranges = vec![vec![(EMPTY_SLOT, 'z'); 30]];
                     let mut seed: Vec<_> = vec![];
-                    if let Some(layouts_path) = cfg.layouts {
+                    if let Some(layouts_path) = opt.input.clone() {
                         let loaded = Layout::load(&layouts_path);
                         info!("Loaded {} seed layouts from file", loaded.len());
                         seed.extend(loaded.into_iter().map(layout_to_genome));
@@ -57,12 +60,53 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
                     ga.seed = seed;
                     optimize(evaluator, ga, opt, app)?;
                 }
-                Mode::Synthesise | Mode::Merge => unreachable!(),
+                Mode::Synthesise | Mode::Merge | Mode::Frequencies => unreachable!(),
             }
         }
     }
 
     Ok(())
+}
+
+/// Build evaluator from keyboard and corpus. Prefers cached stats JSON when
+/// configured; falls back to streaming the corpus text.
+fn build_evaluator(
+    keyboard: &Keyboard,
+    text_path: impl AsRef<Path>,
+    stats: Option<&Path>,
+    config: LayoutEvaluatorConfig,
+) -> Result<LayoutEvaluator> {
+    let counts = match stats {
+        Some(path) => {
+            info!(stats = %path.display(), "Building corpus counts from cached stats");
+            CorpusCounts::from(&read_stats_cache(path)?)
+        }
+        None => {
+            info!(text = %text_path.as_ref().display(), "Streaming corpus counts from text");
+            load_counts(text_path)?
+        }
+    };
+    Ok(LayoutEvaluator::from_counts(keyboard, counts, config))
+}
+
+/// Stream whitespace-separated corpus words into compact frequency counts.
+/// Reads line-by-line so multi-GB corpora never materialize in memory.
+fn load_counts(text_path: impl AsRef<Path>) -> Result<CorpusCounts> {
+    let file = File::open(&text_path)
+        .into_diagnostic()
+        .wrap_err("Failed to read text file")?;
+
+    let mut counts = CorpusCounts::default();
+    for line in BufReader::new(file).lines() {
+        let line = line
+            .into_diagnostic()
+            .wrap_err("Failed to read text file")?;
+        for word in line.split_whitespace() {
+            counts.add(word);
+        }
+    }
+
+    Ok(counts)
 }
 
 /// Convert a `Layout` into a 30-slot genome; empty slots filled with `EMPTY_SLOT`.

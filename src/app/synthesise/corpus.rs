@@ -81,7 +81,7 @@ mod tests {
             (['c', 'a'], 2),
             (['b', 'd'], 1),
         ]);
-        let words = build_corpus(&input, default_max_word_len());
+        let words = build_corpus(&input, default_digraph_max_word_len());
         let text = words.join("\n");
         let counts = counter::count_bigrams(Cursor::new(text));
 
@@ -123,7 +123,7 @@ mod tests {
             })
             .collect();
 
-        let words = build_corpus(&input, default_max_word_len());
+        let words = build_corpus(&input, default_digraph_max_word_len());
         assert!(!words.is_empty());
 
         let text = words.join("\n");
@@ -152,7 +152,7 @@ mod tests {
         let input: Vec<([char; 2], usize)> = ('a'..='e')
             .flat_map(|a| ('a'..='e').map(move |b| ([a, b], 5)))
             .collect();
-        let max = default_max_word_len();
+        let max = default_digraph_max_word_len();
         let words = build_corpus(&input, max);
         for w in &words {
             assert!(w.len() <= max, "word too long: {}", w);

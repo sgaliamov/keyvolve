@@ -1,36 +1,50 @@
-use crate::app::OptimizationConfig;
+use crate::app::evaluate::EvaluateConfig;
+use crate::app::frequencies::FrequenciesConfig;
 use crate::app::merge::MergeConfig;
 use crate::app::synthesise::SynthesiseConfig;
+use crate::app::{LayoutEvaluatorConfig, OptimizationConfig};
 use serde::Deserialize;
-use std::path::PathBuf;
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
     /// keyboard json settings
-    pub keyboard: Option<PathBuf>,
-
-    /// Input layouts csv file, can be used as a seed
-    pub layouts: Option<PathBuf>,
-
-    /// sample text file
-    pub text: Option<PathBuf>,
+    pub keyboard: std::path::PathBuf,
 
     /// darwin config for the genetic algorithm
     pub ga: darwin::Config<char>,
 
     /// mode of operation: optimize, evaluate, or synthesise
+    #[serde(default)]
     pub mode: Mode,
 
     /// settings for `Mode::Synthesise`
     #[serde(default)]
     pub synthesise: SynthesiseConfig,
 
+    /// settings for `Mode::Evaluate`
+    #[serde(default)]
+    pub evaluate: EvaluateConfig,
+
+    /// Layout scoring settings shared by evaluation and optimization.
+    #[serde(default)]
+    pub evaluator: LayoutEvaluatorConfig,
+
+    /// Optional cached corpus stats JSON; when set, evaluation and optimization
+    /// build counts from it instead of streaming the corpus text.
+    #[serde(default)]
+    pub stats: Option<std::path::PathBuf>,
+
     /// settings for `Mode::Merge`
     #[serde(default)]
     pub merge: MergeConfig,
 
-    /// frozen/blocked key constraints for `Mode::Optimize`
+    /// settings for `Mode::Frequencies`
+    #[serde(default)]
+    pub frequencies: FrequenciesConfig,
+
+    /// Optimization settings, including optional seed layouts input.
+    #[serde(default)]
     pub optimization: OptimizationConfig,
 }
 
@@ -49,4 +63,7 @@ pub enum Mode {
 
     /// Merge all `.txt` files in a folder into one cleaned file.
     Merge,
+
+    /// Count per-key char frequencies (incl. punctuation) across files in a folder.
+    Frequencies,
 }

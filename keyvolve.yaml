@@ -1,0 +1,81 @@
+keyboard: data/keyboard.json
+stats: data/stats/merged.source-stats.json
+
+merge:
+  input: data/samples
+  output: data/samples/merged.txt
+  shuffle: false
+  print: 50
+
+frequencies:
+  input: 'C:/Users/Admin/'
+  masks: ['*.js', '*.ts', '*.cs', '*.cpp', '*.h', '*.rs', '*.py']
+  output: data/stats/frequencies.csv
+  print: 10
+
+synthesise:
+  text: data/samples/merged.txt
+  output: data/synthesised/sample-10000000.txt
+  method: sample
+  digraph:
+    target: 64000
+    maxWordLen: 5
+  sample:
+    target: 10000000
+  markov:
+    target: 64000
+    maxWordLen: 15
+    attempts: 256
+
+optimization:
+  text: data/synthesised/sample-5000000.txt
+  # input: data/seed.csv
+  # input: data/layouts.csv
+  output: data/layouts.csv
+  mutationCount: 10
+  maxGroups: 100
+  blocked: [0, 14, 19, 25]
+  # frozen:
+  #   h: 5
+  allowed:
+    e: [6, 7, 8]
+    t: [1, 2, 3, 6, 7, 8, 13]
+    a: [1, 2, 3, 6, 7, 8]
+    i: [1, 2, 3, 6, 7, 8]
+    o: [1, 2, 3, 6, 7, 8]
+    n: [1, 2, 3, 6, 7, 8]
+    r: [1, 2, 3, 6, 7, 8]
+    s: [1, 2, 3, 6, 7, 8]
+    h: [1, 2, 3, 5, 6, 7, 8, 12, 13]
+    j: [5, 10, 11, 14]
+    x: [5, 10, 11, 14]
+    z: [10, 11, 14]
+    q: [10, 11, 14]
+  rolls: ['er', 'th']
+  # left: [e, o]
+  # right: [a, i]
+
+evaluate:
+  # text: 'data\synthesised\sample-1000000'
+  text: 'data\samples\merged.txt'
+  input: data/layouts.csv
+  output: data/layouts.csv
+  # input: data/seed.csv
+  # output: data/seed.csv
+  print: 10
+  eSide: left
+
+evaluator:
+  fitnessScale: 10000
+  rowCost: 7
+  switchCost: 1
+
+ga:
+  mutationRatio: 0.6
+  populationSize: 200
+  pools: 250
+  randomRatio: 0.25
+  seedMutation: 10
+  dump: data/dump.bin
+  dumpRatio: 0.8
+  keepDump: false

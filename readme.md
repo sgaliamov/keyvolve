@@ -17,7 +17,7 @@ Scores candidate layouts against a bigram-weighted corpus, then evolves them tow
 
 ### Scoring
 - Bigram effort table precomputed from `keyboard.json`: per-key effort groups + pair costs + symmetry (left-hand pairs mirrored to right automatically).
-- Per-bigram penalties: same-hand switch multiplier, corpus-level hand-balance penalty, alternation-rate penalty.
+- Per-bigram penalties: same-hand switch multiplier, corpus-level hand-balance penalty, hand-switch-rate penalty.
 - Corpus: synthesised fake-word file (built from real text via `Synthesise` mode), not raw text — keeps evaluation fast.
 
 ### GA engine (darwin crate)
@@ -41,11 +41,22 @@ Scores candidate layouts against a bigram-weighted corpus, then evolves them tow
 | `synthesise` | Build digraph CSV + fake-word corpus from raw text |
 | `merge`      | Merge/clean `.txt` files into one corpus           |
 
+## Mode-specific config
+
+### `evaluate`
+- `evaluate.input` — layouts CSV to score. Falls back to top-level `layouts` for compatibility.
+- `evaluate.output` — destination CSV for scored layouts. Omitted → overwrite `evaluate.input`.
+- `evaluate.print` — number of best layouts printed to stdout. Default: `10`.
+
+### `merge`
+- `merge.input` — folder containing `.txt` files.
+- `merge.output` — merged cleaned corpus file.
+
 ## Data files
 - `data/keyboard.json` — effort groups, bigram pair costs, penalty coefficients.
 - `data/layouts.csv` — semicolon-layout + fitness; header on first line.
 - `data/synthesised` — fake-word corpus used during optimization.
-- `keyvolve.json` — top-level config (mode, GA params, constraints, paths).
+- `keyvolve.yaml` — top-level config (mode, GA params, constraints, paths).
 
 ## Crates
 - **`darwin/`** — generic GA engine, no domain knowledge.
