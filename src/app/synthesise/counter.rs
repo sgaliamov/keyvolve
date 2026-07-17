@@ -60,42 +60,6 @@ mod char_map_serde {
     }
 }
 
-/// Count all `a-z` digraph pairs from a buffered reader, skipping cross-whitespace pairs.
-pub fn count_bigrams(reader: impl std::io::BufRead) -> FxHashMap<[char; 2], u64> {
-    let mut counts: FxHashMap<[char; 2], u64> = FxHashMap::default();
-    let mut prev: Option<char> = None;
-
-    for line in reader.lines().map_while(Result::ok) {
-        for ch in line.chars() {
-            if ch.is_ascii_alphabetic() {
-                let lc = ch.to_ascii_lowercase();
-                if let Some(p) = prev {
-                    *counts.entry([p, lc]).or_insert(0) += 1;
-                }
-                prev = Some(lc);
-            } else {
-                prev = None;
-            }
-        }
-        prev = None;
-    }
-
-    counts
-}
-
-/// Count `a-z` letter frequencies from a buffered reader.
-pub fn count_letters(reader: impl std::io::BufRead) -> FxHashMap<char, u64> {
-    let mut counts: FxHashMap<char, u64> = FxHashMap::default();
-    for line in reader.lines().map_while(Result::ok) {
-        for ch in line.chars() {
-            if ch.is_ascii_alphabetic() {
-                *counts.entry(ch.to_ascii_lowercase()).or_insert(0) += 1;
-            }
-        }
-    }
-    counts
-}
-
 /// Corpus metrics used by synthesise mode.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CorpusStats {
@@ -140,6 +104,7 @@ pub struct CorpusScore {
 }
 
 /// Build normalized stats from a word slice.
+#[cfg(test)]
 pub fn calculate_stats(words: &[String]) -> CorpusStats {
     let mut counter = CorpusStatsCounter::default();
     for word in words {
@@ -273,29 +238,6 @@ fn relative_error(expected: f64, actual: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Cursor;
-
-    #[test]
-    fn digraphs_counts_pairs_and_breaks_on_whitespace() {
-        let counts = count_bigrams(Cursor::new("ab BC ba ba aa"));
-        assert_eq!(counts[&['a', 'b']], 1);
-        assert_eq!(counts[&['b', 'c']], 1);
-        assert_eq!(counts[&['b', 'a']], 2);
-        assert_eq!(counts[&['a', 'a']], 1);
-        assert!(!counts.contains_key(&['b', 'b']));
-    }
-
-    #[test]
-    fn digraphs_boundary_and_punctuation_break_chain() {
-        let counts = count_bigrams(Cursor::new("ab\nbc"));
-        assert_eq!(counts[&['a', 'b']], 1);
-        assert_eq!(counts[&['b', 'c']], 1);
-        assert!(!counts.contains_key(&['b', 'b']));
-
-        let counts = count_bigrams(Cursor::new("a.b"));
-        assert!(counts.is_empty());
-        assert!(count_bigrams(Cursor::new("")).is_empty());
-    }
 
     #[test]
     fn calculate_stats_counts_requested_metrics() {
