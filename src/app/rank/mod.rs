@@ -1,0 +1,125 @@
+pub mod config;
+mod output;
+mod select;
+mod state;
+
+use crate::models::Keyboard;
+use cliffa::cli::AppHandle;
+pub use config::*;
+use miette::{Context, Result};
+pub use output::*;
+use rand::{RngExt, SeedableRng, rngs::StdRng};
+pub use select::*;
+pub use state::*;
+use std::io::{BufRead, Write};
+use std::path::Path;
+
+/// Interactive pair-ranking mode: repeatedly asks the user which of two
+/// bigram pairs is easier to type, refining Glicko-lite ratings for all 210
+/// ordered left-hand pairs. Resumable; writes ranked keyboard JSON + CSV report.
+pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) -> Result<()> {
+    let keyboard = Keyboard::load(keyboard_path).wrap_err("Rank mode needs a keyboard file")?;
+    let session = cfg.session_path();
+    let mut state = RankState::load_or_new(&session)?;
+    let mut rng = match cfg.seed {
+        Some(seed) => StdRng::seed_from_u64(seed),
+        None => StdRng::from_rng(&mut rand::rng()),
+    };
+
+    println!("Rank mode: type the pair on your QWERTY keyboard, pick the EASIER one.");
+    println!("Answers: 1 / 2 = winner, = tie, u undo, s stats, q quit (state is saved).");
+
+    let stdin = std::io::stdin();
+    let mut lines = stdin.lock().lines();
+
+    while !app.should_finish() {
+        let total = state.items.len();
+        let settled = state.settled_count(cfg.min_matches, cfg.max_deviation);
+        if settled == total {
+            println!("All {total} pairs settled — answer more or press q to finish.");
+        }
+
+        let (mut a, mut b, kind) = pick(&state, &cfg, &mut rng);
+        // Random presentation order kills position bias.
+        if rng.random_bool(0.5) {
+            std::mem::swap(&mut a, &mut b);
+        }
+
+        print!(
+            "[{settled}/{total} settled, {} answered]  (1) {}   (2) {}  > ",
+            state.history.len(),
+            state.items[a].label(),
+            state.items[b].label(),
+        );
+        std::io::stdout().flush().ok();
+
+        let Some(Ok(line)) = lines.next() else { break };
+        let score = match line.trim() {
+            "1" => 1.0,
+            "2" => 0.0,
+            "=" => 0.5,
+            "u" => {
+                let msg = if state.undo() {
+                    "Undone."
+                } else {
+                    "Nothing to undo."
+                };
+                println!("{msg}");
+                state.save(&session)?;
+                continue;
+            }
+            "s" => {
+                print_stats(&state, &cfg);
+                continue;
+            }
+            "q" => break,
+            _ => {
+                println!("? 1, 2, =, u, s or q");
+                continue;
+            }
+        };
+
+        if kind == PickKind::Audit && contradicts(&state, a, b, score) {
+            println!("Contradiction with earlier answers — both pairs re-opened.");
+            state.reopen(a, b);
+        }
+        state.answer(a, b, score);
+        state.save(&session)?;
+    }
+
+    state.save(&session)?;
+    write_outputs(&cfg, &state, &keyboard)?;
+    Ok(())
+}
+
+/// Write ranked keyboard JSON and CSV report from current ratings.
+fn write_outputs(cfg: &RankConfig, state: &RankState, keyboard: &Keyboard) -> Result<()> {
+    let buckets = bucketize(state, cfg);
+    let json = cfg.output_path();
+    let csv = cfg.report_path();
+    write_keyboard_json(&json, state, &buckets, keyboard)?;
+    write_report_csv(&csv, state, &buckets, keyboard)?;
+    println!("Wrote {} and {}", json.display(), csv.display());
+    Ok(())
+}
+
+/// Print progress summary: best/worst pairs and confidence.
+fn print_stats(state: &RankState, cfg: &RankConfig) {
+    let mut order: Vec<&Item> = state.items.iter().collect();
+    order.sort_by(|x, y| y.rating.total_cmp(&x.rating));
+    let show = |items: &[&Item]| {
+        items
+            .iter()
+            .map(|i| format!("{} ({:.0}±{:.0})", i.label(), i.rating, i.deviation))
+            .collect::<Vec<_>>()
+            .join("  ")
+    };
+    println!("best:  {}", show(&order[..5.min(order.len())]));
+    println!("worst: {}", show(&order[order.len().saturating_sub(5)..]));
+    println!(
+        "settled {}/{}, answers {}",
+        state.settled_count(cfg.min_matches, cfg.max_deviation),
+        state.items.len(),
+        state.history.len(),
+    );
+}

@@ -1,6 +1,7 @@
 use crate::app::evaluate::EvaluateConfig;
 use crate::app::frequencies::FrequenciesConfig;
 use crate::app::merge::MergeConfig;
+use crate::app::rank::RankConfig;
 use crate::app::synthesise::SynthesiseConfig;
 use crate::app::{LayoutEvaluatorConfig, OptimizationConfig};
 use serde::Deserialize;
@@ -46,6 +47,10 @@ pub struct Config {
     /// Optimization settings, including optional seed layouts input.
     #[serde(default)]
     pub optimization: OptimizationConfig,
+
+    /// settings for `Mode::Rank`
+    #[serde(default)]
+    pub rank: RankConfig,
 }
 
 #[derive(Debug, Default, Clone, Deserialize, PartialEq)]
@@ -66,4 +71,7 @@ pub enum Mode {
 
     /// Count per-key char frequencies (incl. punctuation) across files in a folder.
     Frequencies,
+
+    /// Interactively rank bigram pairs to calibrate keyboard efforts.
+    Rank,
 }

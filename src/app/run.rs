@@ -1,4 +1,4 @@
-use crate::app::{evaluate, frequencies, merge, synthesise, synthesise::read_stats_cache};
+use crate::app::{evaluate, frequencies, merge, rank, synthesise, synthesise::read_stats_cache};
 use crate::{
     Config, Mode,
     app::{CorpusCounts, EMPTY_SLOT, LayoutEvaluator, LayoutEvaluatorConfig, optimize},
@@ -25,6 +25,9 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
         }
         Mode::Frequencies => {
             frequencies::frequencies(cfg.frequencies, app)?;
+        }
+        Mode::Rank => {
+            rank::rank(cfg.rank, &cfg.keyboard, app)?;
         }
         mode => {
             let keyboard = Keyboard::load(cfg.keyboard)?;
@@ -60,7 +63,7 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
                     ga.seed = seed;
                     optimize(evaluator, ga, opt, app)?;
                 }
-                Mode::Synthesise | Mode::Merge | Mode::Frequencies => unreachable!(),
+                Mode::Synthesise | Mode::Merge | Mode::Frequencies | Mode::Rank => unreachable!(),
             }
         }
     }
