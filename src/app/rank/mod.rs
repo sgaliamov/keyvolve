@@ -44,12 +44,22 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
         if rng.random_bool(0.5) {
             std::mem::swap(&mut a, &mut b);
         }
+        // Options on opposite hands (random which) — compare without shared-hand bias.
+        let right = rng.random_bool(0.5);
+        let label = |i: usize, right: bool| {
+            let item = &state.items[i];
+            if right {
+                item.label_right()
+            } else {
+                item.label()
+            }
+        };
 
         print!(
             "[{settled}/{total} settled, {} answered]  (1) {}   (2) {}  > ",
             state.history.len(),
-            state.items[a].label(),
-            state.items[b].label(),
+            label(a, right),
+            label(b, !right),
         );
         std::io::stdout().flush().ok();
 

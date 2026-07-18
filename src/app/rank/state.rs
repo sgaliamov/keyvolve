@@ -10,6 +10,11 @@ pub const QWERTY: [char; 15] = [
     'q', 'w', 'e', 'r', 't', 'a', 's', 'd', 'f', 'g', 'z', 'x', 'c', 'v', 'b',
 ];
 
+/// QWERTY reference chars for right-hand slots 15–29 (rows top→bottom).
+pub const QWERTY_RIGHT: [char; 15] = [
+    'y', 'u', 'i', 'o', 'p', 'h', 'j', 'k', 'l', ';', 'n', 'm', ',', '.', '/',
+];
+
 /// Initial rating for every pair.
 pub const START_RATING: f64 = 1500.0;
 /// Initial rating deviation (uncertainty).
@@ -35,6 +40,12 @@ impl Item {
     /// QWERTY reference label, e.g. slots (8, 3) → "FR".
     pub fn label(&self) -> String {
         let ch = |s: u8| QWERTY[s as usize].to_ascii_uppercase();
+        format!("{}{}", ch(self.from), ch(self.to))
+    }
+
+    /// Right-hand mirrored label (column symmetry), e.g. slots (8, 3) → "JU".
+    pub fn label_right(&self) -> String {
+        let ch = |s: u8| QWERTY_RIGHT[((s / 5) * 5 + (4 - s % 5)) as usize].to_ascii_uppercase();
         format!("{}{}", ch(self.from), ch(self.to))
     }
 
@@ -228,6 +239,7 @@ mod tests {
             matches: 0,
         };
         assert_eq!(item.label(), "FR");
+        assert_eq!(item.label_right(), "JU");
     }
 
     #[test]
