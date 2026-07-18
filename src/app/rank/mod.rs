@@ -27,7 +27,7 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
     };
 
     println!("Rank mode: type the pair on your QWERTY keyboard, pick the EASIER one.");
-    println!("Answers: 1 / 2 = winner, = tie, u undo, s stats, q quit (state is saved).");
+    println!("Answers: 1 / 2 = winner, = tie, n skip, u undo, s stats, q quit (state is saved).");
     if state.finished {
         println!("Ranking finished earlier — verification mode: checking saved ranking.");
     }
@@ -58,7 +58,13 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
         let (label_a, label_b) = (label(a), label(b));
 
         // Re-prompt the same question until valid input; invalid lines are ignored.
-        let score = loop {
+        // `Skip` moves on without recording an answer.
+        enum Reply {
+            Score(f64),
+            Skip,
+            Quit,
+        }
+        let reply = loop {
             print!(
                 "[{settled}/{total} settled, {} answered]  (1) {label_a}   (2) {label_b}  > ",
                 state.history.len(),
@@ -66,13 +72,14 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
             std::io::stdout().flush().ok();
 
             let Some(Ok(line)) = lines.next() else {
-                break None;
+                break Reply::Quit;
             };
             // React to the last typed character — stray input before it is ignored.
             match line.trim().chars().last() {
-                Some('1') => break Some(1.0),
-                Some('2') => break Some(0.0),
-                Some('=') => break Some(0.5),
+                Some('1') => break Reply::Score(1.0),
+                Some('2') => break Reply::Score(0.0),
+                Some('=') => break Reply::Score(0.5),
+                Some('n') => break Reply::Skip,
                 Some('u') => {
                     let msg = if state.undo() {
                         "Undone."
@@ -83,12 +90,16 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
                     state.save(&session)?;
                 }
                 Some('s') => print_stats(&state, &cfg),
-                Some('q') => break None,
-                Some('?') => println!("? 1, 2, =, u, s or q"),
+                Some('q') => break Reply::Quit,
+                Some('?') => println!("? 1, 2, =, n, u, s or q"),
                 _ => continue,
             }
         };
-        let Some(score) = score else { break };
+        let score = match reply {
+            Reply::Score(score) => score,
+            Reply::Skip => continue,
+            Reply::Quit => break,
+        };
 
         if kind == PickKind::Audit {
             if contradicts(&state, a, b, score) {
