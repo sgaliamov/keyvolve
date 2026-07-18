@@ -68,11 +68,12 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
             let Some(Ok(line)) = lines.next() else {
                 break None;
             };
-            match line.trim() {
-                "1" => break Some(1.0),
-                "2" => break Some(0.0),
-                "=" => break Some(0.5),
-                "u" => {
+            // React to the last typed character — stray input before it is ignored.
+            match line.trim().chars().last() {
+                Some('1') => break Some(1.0),
+                Some('2') => break Some(0.0),
+                Some('=') => break Some(0.5),
+                Some('u') => {
                     let msg = if state.undo() {
                         "Undone."
                     } else {
@@ -81,9 +82,9 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
                     println!("{msg}");
                     state.save(&session)?;
                 }
-                "s" => print_stats(&state, &cfg),
-                "q" => break None,
-                "?" => println!("? 1, 2, =, u, s or q"),
+                Some('s') => print_stats(&state, &cfg),
+                Some('q') => break None,
+                Some('?') => println!("? 1, 2, =, u, s or q"),
                 _ => continue,
             }
         };
