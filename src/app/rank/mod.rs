@@ -50,50 +50,43 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
         if rng.random_bool(0.5) {
             std::mem::swap(&mut a, &mut b);
         }
-        // Options on opposite hands (random which) — compare without shared-hand bias.
-        let right = rng.random_bool(0.5);
-        let label = |i: usize, right: bool| {
+        // Show both hands for each option, e.g. "QW | PO".
+        let label = |i: usize| {
             let item = &state.items[i];
-            if right {
-                item.label_right()
-            } else {
-                item.label()
+            format!("{} | {}", item.label(), item.label_right())
+        };
+        let (label_a, label_b) = (label(a), label(b));
+
+        // Re-prompt the same question until valid input; invalid lines are ignored.
+        let score = loop {
+            print!(
+                "[{settled}/{total} settled, {} answered]  (1) {label_a}   (2) {label_b}  > ",
+                state.history.len(),
+            );
+            std::io::stdout().flush().ok();
+
+            let Some(Ok(line)) = lines.next() else {
+                break None;
+            };
+            match line.trim() {
+                "1" => break Some(1.0),
+                "2" => break Some(0.0),
+                "=" => break Some(0.5),
+                "u" => {
+                    let msg = if state.undo() {
+                        "Undone."
+                    } else {
+                        "Nothing to undo."
+                    };
+                    println!("{msg}");
+                    state.save(&session)?;
+                }
+                "s" => print_stats(&state, &cfg),
+                "q" => break None,
+                _ => println!("? 1, 2, =, u, s or q"),
             }
         };
-
-        print!(
-            "[{settled}/{total} settled, {} answered]  (1) {}   (2) {}  > ",
-            state.history.len(),
-            label(a, right),
-            label(b, !right),
-        );
-        std::io::stdout().flush().ok();
-
-        let Some(Ok(line)) = lines.next() else { break };
-        let score = match line.trim() {
-            "1" => 1.0,
-            "2" => 0.0,
-            "=" => 0.5,
-            "u" => {
-                let msg = if state.undo() {
-                    "Undone."
-                } else {
-                    "Nothing to undo."
-                };
-                println!("{msg}");
-                state.save(&session)?;
-                continue;
-            }
-            "s" => {
-                print_stats(&state, &cfg);
-                continue;
-            }
-            "q" => break,
-            _ => {
-                println!("? 1, 2, =, u, s or q");
-                continue;
-            }
-        };
+        let Some(score) = score else { break };
 
         if kind == PickKind::Audit {
             if contradicts(&state, a, b, score) {
