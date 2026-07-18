@@ -28,6 +28,12 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
 
     println!("Rank mode: type the pair on your QWERTY keyboard, pick the EASIER one.");
     println!("Answers: 1 / 2 = winner, = tie, u undo, s stats, q quit (state is saved).");
+    if state.finished {
+        println!("Ranking finished earlier — verification mode: checking saved ranking.");
+    }
+
+    // Verification counters for this run.
+    let (mut confirmed, mut contradicted) = (0u32, 0u32);
 
     let stdin = std::io::stdin();
     let mut lines = stdin.lock().lines();
@@ -35,7 +41,7 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
     while !app.should_finish() {
         let total = state.items.len();
         let settled = state.settled_count(cfg.min_matches, cfg.max_deviation);
-        if settled == total {
+        if settled == total && !state.finished {
             println!("All {total} pairs settled — answer more or press q to finish.");
         }
 
@@ -89,15 +95,29 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
             }
         };
 
-        if kind == PickKind::Audit && contradicts(&state, a, b, score) {
-            println!("Contradiction with earlier answers — both pairs re-opened.");
-            state.reopen(a, b);
+        if kind == PickKind::Audit {
+            if contradicts(&state, a, b, score) {
+                println!("Contradiction with earlier answers — both pairs re-opened.");
+                state.reopen(a, b);
+                state.finished = false;
+                contradicted += 1;
+            } else {
+                confirmed += 1;
+            }
         }
         state.answer(a, b, score);
         state.save(&session)?;
     }
 
+    // A run that ends with everything settled marks the ranking as finished;
+    // raw results are kept so the next run verifies it.
+    if state.settled_count(cfg.min_matches, cfg.max_deviation) == state.items.len() {
+        state.finished = true;
+    }
     state.save(&session)?;
+    if confirmed + contradicted > 0 {
+        println!("Verification: {confirmed} confirmed, {contradicted} contradicted.");
+    }
     write_outputs(&cfg, &state, &keyboard)?;
     Ok(())
 }

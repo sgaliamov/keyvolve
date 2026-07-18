@@ -73,6 +73,9 @@ pub struct Answer {
 pub struct RankState {
     pub items: Vec<Item>,
     pub history: Vec<Answer>,
+    /// Set when a run ends with every pair settled; next run verifies the ranking.
+    #[serde(default)]
+    pub finished: bool,
 }
 
 impl RankState {
@@ -92,6 +95,7 @@ impl RankState {
         Self {
             items,
             history: vec![],
+            finished: false,
         }
     }
 

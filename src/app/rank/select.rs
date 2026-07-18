@@ -16,14 +16,14 @@ const AUDIT_GAP: f64 = 200.0;
 const POOL: usize = 10;
 
 /// Pick the next question: `(a, b, kind)` — item indexes into `state.items`.
+/// In verify mode (finished session) every question is an audit check.
 pub fn pick(
     state: &RankState,
     cfg: &RankConfig,
     rng: &mut impl RngExt,
 ) -> (usize, usize, PickKind) {
-    if rng.random_bool(cfg.audit_rate.clamp(0.0, 1.0))
-        && let Some(pair) = pick_audit(state, cfg, rng)
-    {
+    let audit = state.finished || rng.random_bool(cfg.audit_rate.clamp(0.0, 1.0));
+    if audit && let Some(pair) = pick_audit(state, cfg, rng) {
         return (pair.0, pair.1, PickKind::Audit);
     }
     let (a, b) = pick_explore(state, rng);
@@ -130,5 +130,25 @@ mod tests {
         state.items[1].rating = 1000.0;
         assert!(!contradicts(&state, 0, 1, 1.0)); // higher wins — consistent
         assert!(contradicts(&state, 0, 1, 0.0)); // higher loses — contradiction
+    }
+
+    #[test]
+    fn finished_state_forces_audit_picks() {
+        let mut state = RankState::new();
+        for (i, item) in state.items.iter_mut().enumerate() {
+            item.matches = 100;
+            item.deviation = 50.0;
+            item.rating = 1000.0 + i as f64 * 10.0;
+        }
+        state.finished = true;
+        let mut rng = StdRng::seed_from_u64(3);
+        let cfg = RankConfig {
+            audit_rate: 0.0,
+            ..Default::default()
+        };
+        for _ in 0..10 {
+            let (_, _, kind) = pick(&state, &cfg, &mut rng);
+            assert_eq!(kind, PickKind::Audit);
+        }
     }
 }
