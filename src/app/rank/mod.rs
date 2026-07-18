@@ -53,7 +53,7 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
         // Show both hands for each option, e.g. "QW | PO".
         let label = |i: usize| {
             let item = &state.items[i];
-            format!("{} | {}", item.label(), item.label_right())
+            format!("{}({})", item.label(), item.label_right())
         };
         let (label_a, label_b) = (label(a), label(b));
 
@@ -83,7 +83,8 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
                 }
                 "s" => print_stats(&state, &cfg),
                 "q" => break None,
-                _ => println!("? 1, 2, =, u, s or q"),
+                "?" => println!("? 1, 2, =, u, s or q"),
+                _ => continue,
             }
         };
         let Some(score) = score else { break };
