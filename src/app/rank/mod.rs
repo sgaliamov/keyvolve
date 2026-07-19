@@ -153,9 +153,10 @@ fn print_stats(state: &RankState, cfg: &RankConfig) {
     println!("best:  {}", show(&order[..5.min(order.len())]));
     println!("worst: {}", show(&order[order.len().saturating_sub(5)..]));
     println!(
-        "settled {}/{}, answers {}",
+        "settled {}/{}, answers {}, ~{} steps left",
         state.settled_count(cfg.min_matches, cfg.max_deviation),
         state.items.len(),
         state.history.len(),
+        state.steps_left(cfg.min_matches, cfg.max_deviation),
     );
 }

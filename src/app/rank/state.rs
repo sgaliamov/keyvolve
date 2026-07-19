@@ -175,6 +175,27 @@ impl RankState {
             .filter(|i| i.settled(min_matches, max_deviation))
             .count()
     }
+
+    /// Estimated answers left until everything settles.
+    /// Per item: matches still needed to reach `min_matches` AND to decay
+    /// deviation below `max_deviation`; each answer advances two items.
+    pub fn steps_left(&self, min_matches: u32, max_deviation: f64) -> u64 {
+        let needed: u64 = self
+            .items
+            .iter()
+            .map(|i| {
+                let by_matches = min_matches.saturating_sub(i.matches) as u64;
+                let by_dev = if i.deviation <= max_deviation {
+                    0
+                } else {
+                    // dev·DEV_DECAY^k ≤ max → k = ⌈log_decay(max/dev)⌉
+                    (max_deviation / i.deviation).log(DEV_DECAY).ceil() as u64
+                };
+                by_matches.max(by_dev)
+            })
+            .sum();
+        needed.div_ceil(2) // each answer touches two items
+    }
 }
 
 impl Default for RankState {
@@ -254,5 +275,19 @@ mod tests {
         }
         state.reopen(0, 1);
         assert!(state.items[0].deviation >= START_DEV * 0.6);
+    }
+
+    #[test]
+    fn steps_left_shrinks_and_reaches_zero() {
+        let mut state = RankState::new();
+        let before = state.steps_left(6, 120.0);
+        assert!(before >= 210 * 6 / 2); // fresh: at least min_matches bound
+        state.answer(0, 1, 1.0);
+        assert!(state.steps_left(6, 120.0) < before);
+        for item in &mut state.items {
+            item.matches = 100;
+            item.deviation = 50.0;
+        }
+        assert_eq!(state.steps_left(6, 120.0), 0);
     }
 }
