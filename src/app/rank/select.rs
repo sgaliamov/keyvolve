@@ -1,5 +1,6 @@
 use crate::app::rank::{RankConfig, RankState};
 use rand::RngExt;
+use rand::seq::SliceRandom;
 
 /// How the pair was chosen — affects contradiction handling.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -55,7 +56,10 @@ fn pick_audit(
 /// Explore: most uncertain item vs a close-rated opponent (informative match).
 fn pick_explore(state: &RankState, rng: &mut impl RngExt) -> (usize, usize) {
     // Candidate: random among the POOL least-played / most-uncertain items.
+    // Pre-shuffle so stable sort breaks ties randomly, not by enumeration order.
     let mut order: Vec<usize> = (0..state.items.len()).collect();
+    order.shuffle(rng);
+    let mut others = order.clone();
     order.sort_by(|&x, &y| {
         let (ix, iy) = (&state.items[x], &state.items[y]);
         ix.matches
@@ -65,7 +69,7 @@ fn pick_explore(state: &RankState, rng: &mut impl RngExt) -> (usize, usize) {
     let a = order[rng.random_range(0..POOL.min(order.len()))];
 
     // Opponent: random among the POOL closest by rating.
-    let mut others: Vec<usize> = (0..state.items.len()).filter(|&i| i != a).collect();
+    others.retain(|&i| i != a);
     let ra = state.items[a].rating;
     others.sort_by(|&x, &y| {
         (state.items[x].rating - ra)
