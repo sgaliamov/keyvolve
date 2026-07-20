@@ -49,7 +49,14 @@ fn pick_audit(
         .copied()
         .filter(|&i| i != a && (state.items[i].rating - state.items[a].rating).abs() >= AUDIT_GAP)
         .collect();
-    let b = *far.get(rng.random_range(0..far.len().max(1)))?;
+    // Prefer an opponent sharing a key with the candidate; fall back to any far one.
+    let shared: Vec<usize> = far
+        .iter()
+        .copied()
+        .filter(|&i| shares_key(state, a, i))
+        .collect();
+    let pool = if shared.is_empty() { &far } else { &shared };
+    let b = *pool.get(rng.random_range(0..pool.len().max(1)))?;
     Some((a, b))
 }
 
@@ -68,8 +75,9 @@ fn pick_explore(state: &RankState, rng: &mut impl RngExt) -> (usize, usize) {
     });
     let a = order[rng.random_range(0..POOL.min(order.len()))];
 
-    // Opponent: random among the POOL closest by rating.
-    others.retain(|&i| i != a);
+    // Opponent: shares a key with the candidate (easier to compare), random
+    // among the POOL closest by rating.
+    others.retain(|&i| i != a && shares_key(state, a, i));
     let ra = state.items[a].rating;
     others.sort_by(|&x, &y| {
         (state.items[x].rating - ra)
@@ -78,6 +86,12 @@ fn pick_explore(state: &RankState, rng: &mut impl RngExt) -> (usize, usize) {
     });
     let b = others[rng.random_range(0..POOL.min(others.len()))];
     (a, b)
+}
+
+/// True when the two items share a physical key (from or to slot).
+fn shares_key(state: &RankState, a: usize, b: usize) -> bool {
+    let (x, y) = (&state.items[a], &state.items[b]);
+    x.from == y.from || x.from == y.to || x.to == y.from || x.to == y.to
 }
 
 /// True when a settled-pair answer contradicts current ratings.
@@ -125,6 +139,16 @@ mod tests {
         let (a, b, kind) = pick(&state, &cfg, &mut rng);
         assert_eq!(kind, PickKind::Audit);
         assert!((state.items[a].rating - state.items[b].rating).abs() >= 200.0);
+    }
+
+    #[test]
+    fn explore_pairs_share_a_key() {
+        let state = RankState::new();
+        let mut rng = StdRng::seed_from_u64(7);
+        for _ in 0..50 {
+            let (a, b) = pick_explore(&state, &mut rng);
+            assert!(shares_key(&state, a, b));
+        }
     }
 
     #[test]

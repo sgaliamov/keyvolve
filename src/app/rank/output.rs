@@ -179,9 +179,9 @@ mod tests {
         let state = ranked_state();
         let cfg = RankConfig::default();
         let b = bucketize(&state, &cfg);
-        assert_eq!(b.efforts.len(), 15);
+        assert_eq!(b.efforts.len(), cfg.groups);
         assert_eq!(b.groups[0], 0); // best rating → best bucket
-        assert_eq!(b.groups[209], 14); // worst rating → worst bucket
+        assert_eq!(b.groups[209], cfg.groups - 1); // worst rating → worst bucket
         assert!(b.efforts.windows(2).all(|w| w[0] < w[1]));
         // Higher rating never lands in a worse bucket.
         assert!(b.groups.windows(2).all(|w| w[0] <= w[1]));
@@ -199,7 +199,7 @@ mod tests {
         let json = dir.join("keyboard.json");
         write_keyboard_json(&json, &state, &buckets, &keyboard).unwrap();
         let loaded = Keyboard::load(&json).unwrap();
-        assert_eq!(loaded.efforts.len(), 15);
+        assert_eq!(loaded.efforts.len(), cfg.groups);
         assert_eq!(loaded.pairs.len(), 30); // left + mirrored right
         assert!(loaded.pairs[&0].len() == 15);
 
