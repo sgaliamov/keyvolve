@@ -52,8 +52,10 @@ rank:
   session: data/rank-session.json
   auditRate: 0
   minMatches: 10
+  maxMatches: 30
   maxDeviation: 170
   groups: 20
+  bucketTolerance: 1
 
 evaluate:
   # text: 'data\synthesised\sample-1000000'

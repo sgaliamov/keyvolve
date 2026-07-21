@@ -1,6 +1,8 @@
+use super::fit::{expected_score, information_score};
 use crate::app::rank::{RankConfig, RankState};
 use rand::RngExt;
 use rand::seq::SliceRandom;
+use std::collections::BTreeMap;
 
 /// How the pair was chosen — affects contradiction handling.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -37,8 +39,35 @@ fn pick_audit(
     cfg: &RankConfig,
     rng: &mut impl RngExt,
 ) -> Option<(usize, usize)> {
+    let settled_flags = state.settled_flags(cfg);
+    // Recheck direct comparisons least compatible with the global model.
+    let mut residuals = BTreeMap::<(usize, usize), (f64, usize)>::new();
+    for answer in &state.history {
+        if !shares_key(state, answer.a, answer.b)
+            || !settled_flags[answer.a]
+            || !settled_flags[answer.b]
+        {
+            continue;
+        }
+        let predicted = expected_score(state.items[answer.a].rating, state.items[answer.b].rating);
+        let key = (answer.a.min(answer.b), answer.a.max(answer.b));
+        let entry = residuals.entry(key).or_default();
+        entry.0 += (answer.score - predicted).abs();
+        entry.1 += 1;
+    }
+    let mut ranked = residuals
+        .into_iter()
+        .map(|(pair, (total, count))| (pair, total / count as f64))
+        .collect::<Vec<_>>();
+    ranked.shuffle(rng);
+    ranked.sort_by(|(_, a), (_, b)| b.total_cmp(a));
+    if !ranked.is_empty() {
+        return Some(ranked[rng.random_range(0..POOL.min(ranked.len()))].0);
+    }
+
+    // Legacy/fresh fallback when no comparable residual exists.
     let settled: Vec<usize> = (0..state.items.len())
-        .filter(|&i| state.items[i].settled(cfg.min_matches, cfg.max_deviation))
+        .filter(|&i| settled_flags[i])
         .collect();
     if settled.len() < 2 {
         return None;
@@ -60,36 +89,55 @@ fn pick_audit(
     Some((a, b))
 }
 
-/// Explore: item with most remaining work vs a close-rated opponent that
-/// still needs matches too — every answer then refines two unsettled items.
+/// Explore: maximize expected Fisher information while both items need work.
 fn pick_explore(state: &RankState, cfg: &RankConfig, rng: &mut impl RngExt) -> (usize, usize) {
-    let steps = |i: usize| state.items[i].steps_needed(cfg.min_matches, cfg.max_deviation);
-    // Candidate: random among the POOL items with most answers still needed.
-    // Pre-shuffle so stable sort breaks ties randomly, not by enumeration order.
-    let mut order: Vec<usize> = (0..state.items.len()).collect();
-    order.shuffle(rng);
-    let mut others = order.clone();
-    order.sort_by_key(|&i| std::cmp::Reverse(steps(i)));
-    // Pool never spills into already-settled items while unsettled ones exist.
-    let pool = |sorted: &[usize]| {
-        let unsettled = sorted.iter().take_while(|&&i| steps(i) > 0).count();
-        POOL.min(sorted.len()).min(unsettled.max(1))
-    };
-    let a = order[rng.random_range(0..pool(&order))];
-
-    // Opponent: shares a key with the candidate (easier to compare); unsettled
-    // first so the answer advances both items, then closest by rating.
-    others.retain(|&i| i != a && shares_key(state, a, i));
-    let ra = state.items[a].rating;
-    others.sort_by(|&x, &y| {
-        let unsettled = |i: usize| steps(i) > 0;
-        let gap = |i: usize| (state.items[i].rating - ra).abs();
-        unsettled(y)
-            .cmp(&unsettled(x))
-            .then(gap(x).total_cmp(&gap(y)))
-    });
-    let b = others[rng.random_range(0..pool(&others))];
+    let settled = state.settled_flags(cfg);
+    let unsettled = (0..state.items.len())
+        .filter(|&i| !settled[i])
+        .collect::<Vec<_>>();
+    let n = state.items.len();
+    let mut comparisons = vec![0usize; n * n];
+    for answer in &state.history {
+        comparisons[answer.a * n + answer.b] += 1;
+        comparisons[answer.b * n + answer.a] += 1;
+    }
+    let mut pairs = informative_pairs(state, &unsettled, true, &comparisons);
+    if pairs.is_empty() {
+        pairs = informative_pairs(state, &unsettled, false, &comparisons);
+    }
+    pairs.shuffle(rng);
+    let top = POOL.min(pairs.len());
+    pairs.select_nth_unstable_by(top - 1, |(_, _, a), (_, _, b)| b.total_cmp(a));
+    let &(a, b, _) = &pairs[rng.random_range(0..top)];
     (a, b)
+}
+
+/// Candidate shared-key comparisons, preferring two unfinished items.
+fn informative_pairs(
+    state: &RankState,
+    unsettled: &[usize],
+    both_unsettled: bool,
+    comparisons: &[usize],
+) -> Vec<(usize, usize, f64)> {
+    let n = state.items.len();
+    let opponent = |i: usize| !both_unsettled || unsettled.contains(&i);
+    unsettled
+        .iter()
+        .flat_map(|&a| {
+            (0..state.items.len())
+                .filter(move |&b| {
+                    a != b && (!both_unsettled || a < b) && opponent(b) && shares_key(state, a, b)
+                })
+                .map(move |b| {
+                    let (x, y) = (&state.items[a], &state.items[b]);
+                    let repeats = comparisons[a * n + b] as f64;
+                    let information =
+                        information_score(x.rating, y.rating, state.difference_deviation(a, b))
+                            / (1.0 + repeats * 0.25);
+                    (a, b, information)
+                })
+        })
+        .collect()
 }
 
 /// True when the two items share a physical key (from or to slot).
@@ -107,7 +155,8 @@ pub fn contradicts(state: &RankState, a: usize, b: usize, score: f64) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::{SeedableRng, rngs::StdRng};
+    use crate::app::rank::{Answer, bucketize};
+    use rand::{RngExt, SeedableRng, rngs::StdRng};
 
     #[test]
     fn explore_prefers_unplayed_items() {
@@ -146,6 +195,29 @@ mod tests {
     }
 
     #[test]
+    fn audit_targets_contradictory_history() {
+        let mut state = RankState::new();
+        for item in &mut state.items {
+            item.matches = 100;
+            item.deviation = 50.0;
+        }
+        state.items[0].rating = 2_000.0;
+        state.items[1].rating = 1_000.0;
+        state.history.push(Answer {
+            a: 0,
+            b: 1,
+            score: 0.0,
+            prev_a: (1_500.0, 350.0, 0),
+            prev_b: (1_500.0, 350.0, 0),
+            prev_pending_a: 0,
+            prev_pending_b: 0,
+        });
+        let cfg = RankConfig::default();
+        let mut rng = StdRng::seed_from_u64(5);
+        assert_eq!(pick_audit(&state, &cfg, &mut rng), Some((0, 1)));
+    }
+
+    #[test]
     fn explore_pairs_share_a_key() {
         let state = RankState::new();
         let cfg = RankConfig::default();
@@ -169,8 +241,8 @@ mod tests {
         for _ in 0..20 {
             let (a, b) = pick_explore(&state, &cfg, &mut rng);
             // Both sides of the question still need answers.
-            assert!(state.items[a].steps_needed(cfg.min_matches, cfg.max_deviation) > 0);
-            assert!(state.items[b].steps_needed(cfg.min_matches, cfg.max_deviation) > 0);
+            assert!(!state.item_settled(a, &cfg));
+            assert!(!state.item_settled(b, &cfg));
         }
     }
 
@@ -201,5 +273,106 @@ mod tests {
             let (_, _, kind) = pick(&state, &cfg, &mut rng);
             assert_eq!(kind, PickKind::Audit);
         }
+    }
+
+    #[test]
+    #[ignore = "statistical simulation benchmark"]
+    fn simulation_benchmark() {
+        // Accuracy grows with the confirmation cap; thresholds per cap.
+        for (max_matches, min_accuracy) in [(15, 0.5), (30, 0.65)] {
+            for seed in [17, 29, 43] {
+                let (answers, bucket_accuracy, rho) = simulate(seed, max_matches);
+                println!(
+                    "cap={max_matches}: answers={answers}, adjacent-bucket={bucket_accuracy:.1}%, rho={rho:.3}",
+                    bucket_accuracy = bucket_accuracy * 100.0,
+                );
+                assert!(answers <= 3_200);
+                assert!(bucket_accuracy > min_accuracy);
+                assert!(rho > 0.75);
+            }
+        }
+    }
+
+    fn simulate(seed: u64, max_matches: u32) -> (usize, f64, f64) {
+        let mut rng = StdRng::seed_from_u64(seed);
+        let hidden = (0..210)
+            .map(|_| rng.random_range(1_000.0..2_000.0))
+            .collect::<Vec<_>>();
+        let cfg = RankConfig {
+            max_matches,
+            ..Default::default()
+        };
+        let mut state = RankState::new();
+
+        while state.settled_count(&cfg) < state.items.len() && state.history.len() < 3_200 {
+            let (a, b, kind) = pick(&state, &cfg, &mut rng);
+            assert_eq!(kind, PickKind::Explore);
+            let score = f64::from(rng.random_bool(expected_score(hidden[a], hidden[b])));
+            let snap = |i: usize| {
+                let item = &state.items[i];
+                (item.rating, item.deviation, item.matches)
+            };
+            state.history.push(Answer {
+                a,
+                b,
+                score,
+                prev_a: snap(a),
+                prev_b: snap(b),
+                prev_pending_a: 0,
+                prev_pending_b: 0,
+            });
+            state.items[a].matches += 1;
+            state.items[b].matches += 1;
+            // Batch for benchmark speed; production refits after every answer.
+            if state.history.len().is_multiple_of(50) {
+                state.refit();
+            }
+        }
+        state.refit();
+
+        let estimated = bucketize(&state, &cfg).groups;
+        let mut truth = state.clone();
+        for (item, &rating) in truth.items.iter_mut().zip(&hidden) {
+            item.rating = rating;
+        }
+        let expected = bucketize(&truth, &cfg).groups;
+        let bucket_accuracy = estimated
+            .iter()
+            .zip(expected)
+            .filter(|(a, b)| a.abs_diff(*b) <= 1)
+            .count() as f64
+            / state.items.len() as f64;
+        (
+            state.history.len(),
+            bucket_accuracy,
+            spearman(&hidden, &state),
+        )
+    }
+
+    fn spearman(hidden: &[f64], state: &RankState) -> f64 {
+        let ranks = |values: &[f64]| {
+            let mut order = (0..values.len()).collect::<Vec<_>>();
+            order.sort_by(|&a, &b| values[a].total_cmp(&values[b]));
+            let mut ranks = vec![0usize; values.len()];
+            for (rank, index) in order.into_iter().enumerate() {
+                ranks[index] = rank;
+            }
+            ranks
+        };
+        let actual = ranks(hidden);
+        let fitted = ranks(
+            &state
+                .items
+                .iter()
+                .map(|item| item.rating)
+                .collect::<Vec<_>>(),
+        );
+        let n = hidden.len() as f64;
+        let squared = actual
+            .iter()
+            .zip(fitted)
+            .map(|(&a, b)| (a as f64 - b as f64).powi(2))
+            .sum::<f64>();
+        1.0 - 6.0 * squared / (n * (n * n - 1.0))
     }
 }

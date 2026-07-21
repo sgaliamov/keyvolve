@@ -1,6 +1,10 @@
+use super::fit::fit_bradley_terry;
+use crate::app::rank::RankConfig;
 use miette::{Context, IntoDiagnostic, Result};
 use serde::{Deserialize, Serialize};
-use std::path::Path;
+use std::fs::OpenOptions;
+use std::io::Write;
+use std::path::{Path, PathBuf};
 
 /// Slots per hand; ranking covers the left hand only (right inferred by symmetry).
 pub const HAND_SLOTS: u8 = 15;
@@ -19,14 +23,12 @@ pub const QWERTY_RIGHT: [char; 15] = [
 pub const START_RATING: f64 = 1500.0;
 /// Initial rating deviation (uncertainty).
 pub const START_DEV: f64 = 350.0;
-/// Deviation floor — confidence never becomes absolute.
-pub const MIN_DEV: f64 = 40.0;
-/// Per-match deviation decay factor.
-const DEV_DECAY: f64 = 0.93;
-/// Base K-factor at full deviation.
-const K_BASE: f64 = 64.0;
+/// Current on-disk session schema.
+const SESSION_VERSION: u32 = 2;
+/// Normal 95% confidence interval multiplier.
+const CONFIDENCE_Z: f64 = 1.96;
 
-/// One ordered left-hand bigram pair with its Glicko-lite rating.
+/// One ordered left-hand bigram pair with its Bradley–Terry rating.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Item {
     pub from: u8,
@@ -48,23 +50,6 @@ impl Item {
         let ch = |s: u8| QWERTY_RIGHT[((s / 5) * 5 + (4 - s % 5)) as usize].to_ascii_uppercase();
         format!("{}{}", ch(self.from), ch(self.to))
     }
-
-    /// Settled = enough matches and low uncertainty.
-    pub fn settled(&self, min_matches: u32, max_deviation: f64) -> bool {
-        self.matches >= min_matches && self.deviation <= max_deviation
-    }
-
-    /// Answers still needed for this item to settle.
-    pub fn steps_needed(&self, min_matches: u32, max_deviation: f64) -> u64 {
-        let by_matches = min_matches.saturating_sub(self.matches) as u64;
-        let by_dev = if self.deviation <= max_deviation {
-            0
-        } else {
-            // dev·DEV_DECAY^k ≤ max → k = ⌈log_decay(max/dev)⌉
-            (max_deviation / self.deviation).log(DEV_DECAY).ceil() as u64
-        };
-        by_matches.max(by_dev)
-    }
 }
 
 /// One recorded answer with pre-update snapshots for undo.
@@ -78,66 +63,125 @@ pub struct Answer {
     /// (rating, deviation, matches) of `a`/`b` before the update.
     pub prev_a: (f64, f64, u32),
     pub prev_b: (f64, f64, u32),
+    /// Pending verification confirmations before this answer (v2+).
+    #[serde(default)]
+    pub prev_pending_a: u8,
+    #[serde(default)]
+    pub prev_pending_b: u8,
 }
 
 /// Full ranking session state, persisted after every answer.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RankState {
+    /// On-disk schema version; missing means legacy v1.
+    #[serde(default = "legacy_version")]
+    pub version: u32,
     pub items: Vec<Item>,
     pub history: Vec<Answer>,
     /// Set when a run ends with every pair settled; next run verifies the ranking.
     #[serde(default)]
     pub finished: bool,
+    /// Extra confirmations requested after contradictory verification answers.
+    #[serde(default)]
+    pending: Vec<u8>,
+    /// Derived Bradley–Terry posterior covariance (squared Elo points).
+    #[serde(skip)]
+    covariance: Vec<f64>,
 }
 
 impl RankState {
     /// Fresh state with all 210 ordered pairs (from ≠ to) at default rating.
     pub fn new() -> Self {
-        let items = (0..HAND_SLOTS)
-            .flat_map(|from| (0..HAND_SLOTS).map(move |to| (from, to)))
-            .filter(|(from, to)| from != to)
-            .map(|(from, to)| Item {
-                from,
-                to,
-                rating: START_RATING,
-                deviation: START_DEV,
-                matches: 0,
-            })
-            .collect();
         Self {
-            items,
+            version: SESSION_VERSION,
+            items: fresh_items(),
             history: vec![],
             finished: false,
+            pending: vec![0; pair_count()],
+            covariance: prior_covariance(pair_count()),
         }
     }
 
-    /// Load session from file, or start fresh when absent.
+    /// Load and losslessly migrate a session, falling back to its rolling backup.
     pub fn load_or_new(path: &Path) -> Result<Self> {
-        if !path.exists() {
-            return Ok(Self::new());
+        let primary_error = if path.exists() {
+            match Self::load(path) {
+                Ok(state) => return Ok(state),
+                Err(error) => Some(error),
+            }
+        } else {
+            None
+        };
+
+        for recovery in [appended_path(path, ".tmp"), backup_path(path)] {
+            if !recovery.exists() {
+                continue;
+            }
+            if let Ok(state) = Self::load(&recovery) {
+                eprintln!(
+                    "Warning: recovered session {} from {}.",
+                    path.display(),
+                    recovery.display()
+                );
+                if path.exists() {
+                    std::fs::remove_file(path).into_diagnostic()?;
+                }
+                state.save(path)?;
+                return Ok(state);
+            }
         }
-        let json = std::fs::read_to_string(path)
-            .into_diagnostic()
-            .wrap_err_with(|| format!("Failed to read session file: {}", path.display()))?;
-        serde_json::from_str(&json)
-            .into_diagnostic()
-            .wrap_err("Failed to parse session file")
+
+        match primary_error {
+            Some(error) => Err(error).wrap_err("No valid temporary or backup session found"),
+            None => Ok(Self::new()),
+        }
     }
 
-    /// Persist session to file (parent dirs created).
+    /// Persist session using a synced temporary file and rolling `.bak` copy.
     pub fn save(&self, path: &Path) -> Result<()> {
+        self.validate()?;
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent).into_diagnostic()?;
         }
-        let json = serde_json::to_string(self).into_diagnostic()?;
-        std::fs::write(path, json)
+        let json = serde_json::to_vec(self).into_diagnostic()?;
+        serde_json::from_slice::<serde_json::Value>(&json)
             .into_diagnostic()
-            .wrap_err_with(|| format!("Failed to write session file: {}", path.display()))
+            .wrap_err("Refusing to persist invalid session JSON")?;
+
+        let temporary = appended_path(path, ".tmp");
+        let backup = backup_path(path);
+        let mut file = OpenOptions::new()
+            .create(true)
+            .truncate(true)
+            .write(true)
+            .open(&temporary)
+            .into_diagnostic()?;
+        file.write_all(&json).into_diagnostic()?;
+        file.sync_all().into_diagnostic()?;
+        drop(file);
+
+        if path.exists() {
+            if backup.exists() {
+                std::fs::remove_file(&backup).into_diagnostic()?;
+            }
+            std::fs::rename(path, &backup).into_diagnostic()?;
+        }
+        if let Err(error) = std::fs::rename(&temporary, path) {
+            if backup.exists() {
+                let _ = std::fs::copy(&backup, path);
+            }
+            return Err(error)
+                .into_diagnostic()
+                .wrap_err_with(|| format!("Failed to replace session file: {}", path.display()));
+        }
+        Ok(())
     }
 
-    /// Apply an answer: Glicko-lite update of both items, record history.
+    /// Record an answer, then deterministically refit all derived model state.
     /// `score` is for `a`: 1.0 win, 0.0 loss, 0.5 tie.
     pub fn answer(&mut self, a: usize, b: usize, score: f64) {
+        assert!(a < self.items.len() && b < self.items.len() && a != b);
+        assert!(matches!(score, 0.0 | 0.5 | 1.0));
         let snap = |i: &Item| (i.rating, i.deviation, i.matches);
         self.history.push(Answer {
             a,
@@ -145,59 +189,233 @@ impl RankState {
             score,
             prev_a: snap(&self.items[a]),
             prev_b: snap(&self.items[b]),
+            prev_pending_a: self.pending[a],
+            prev_pending_b: self.pending[b],
         });
-
-        let (ra, rb) = (self.items[a].rating, self.items[b].rating);
-        let expected = 1.0 / (1.0 + 10f64.powf((rb - ra) / 400.0));
-        let update = |item: &mut Item, delta: f64| {
-            item.rating += K_BASE * (item.deviation / START_DEV) * delta;
-            item.deviation = (item.deviation * DEV_DECAY).max(MIN_DEV);
-            item.matches += 1;
-        };
-        update(&mut self.items[a], score - expected);
-        update(&mut self.items[b], expected - score);
+        self.pending[a] = self.pending[a].saturating_sub(1);
+        self.pending[b] = self.pending[b].saturating_sub(1);
+        self.refit();
     }
 
-    /// Revert the most recent answer. Returns false when history is empty.
+    /// Remove the most recent raw answer and rebuild derived state.
     pub fn undo(&mut self) -> bool {
         let Some(ans) = self.history.pop() else {
             return false;
         };
-        let restore = |item: &mut Item, (rating, deviation, matches): (f64, f64, u32)| {
-            item.rating = rating;
-            item.deviation = deviation;
-            item.matches = matches;
-        };
-        restore(&mut self.items[ans.a], ans.prev_a);
-        restore(&mut self.items[ans.b], ans.prev_b);
+        self.pending[ans.a] = ans.prev_pending_a;
+        self.pending[ans.b] = ans.prev_pending_b;
+        self.refit();
         true
     }
 
-    /// Re-open a pair after a contradictory audit answer: bump uncertainty.
+    /// Require two more confirmations for items in a contradictory audit.
     pub fn reopen(&mut self, a: usize, b: usize) {
         for i in [a, b] {
-            self.items[i].deviation = self.items[i].deviation.max(START_DEV * 0.6);
+            self.pending[i] = self.pending[i].max(2);
         }
     }
 
-    /// Count of settled items.
-    pub fn settled_count(&self, min_matches: u32, max_deviation: f64) -> usize {
-        self.items
-            .iter()
-            .filter(|i| i.settled(min_matches, max_deviation))
-            .count()
+    /// True when an item has stable 20-bucket membership or reached the cap.
+    pub fn item_settled(&self, index: usize, cfg: &RankConfig) -> bool {
+        self.settled_flags(cfg)[index]
     }
 
-    /// Estimated answers left until everything settles.
-    /// Each answer advances two items.
-    pub fn steps_left(&self, min_matches: u32, max_deviation: f64) -> u64 {
+    /// Confidence-settled flags for every item, computed with one rating sort.
+    pub fn settled_flags(&self, cfg: &RankConfig) -> Vec<bool> {
+        let stable = self.bucket_stability(cfg.groups, cfg.bucket_tolerance);
+        self.items
+            .iter()
+            .enumerate()
+            .map(|(index, item)| {
+                self.pending[index] == 0
+                    && (item.matches >= cfg.max_matches
+                        || (item.matches >= cfg.min_matches
+                            && item.deviation <= cfg.max_deviation
+                            && stable[index]))
+            })
+            .collect()
+    }
+
+    /// Count of confidence-settled items.
+    pub fn settled_count(&self, cfg: &RankConfig) -> usize {
+        self.settled_flags(cfg).into_iter().filter(|&x| x).count()
+    }
+
+    /// Lower-bound answer estimate; confidence-boundary items may need more.
+    pub fn steps_left(&self, cfg: &RankConfig) -> u64 {
+        let settled = self.settled_flags(cfg);
         let needed: u64 = self
             .items
             .iter()
-            .map(|i| i.steps_needed(min_matches, max_deviation))
+            .enumerate()
+            .map(|(index, item)| {
+                if settled[index] {
+                    0
+                } else {
+                    u64::from(cfg.min_matches.saturating_sub(item.matches).max(1))
+                }
+            })
             .sum();
-        needed.div_ceil(2) // each answer touches two items
+        needed.div_ceil(2)
     }
+
+    /// Posterior standard deviation of the rating difference `a - b`.
+    pub fn difference_deviation(&self, a: usize, b: usize) -> f64 {
+        let n = self.items.len();
+        if self.covariance.len() != n * n {
+            return (self.items[a].deviation.powi(2) + self.items[b].deviation.powi(2)).sqrt();
+        }
+        (self.covariance[a * n + a] + self.covariance[b * n + b] - 2.0 * self.covariance[a * n + b])
+            .max(0.0)
+            .sqrt()
+    }
+
+    /// Refit Bradley–Terry ratings, marginal uncertainty, and match counts.
+    pub fn refit(&mut self) {
+        if self.history.is_empty() {
+            self.items = fresh_items();
+            self.covariance = prior_covariance(self.items.len());
+            self.version = SESSION_VERSION;
+            return;
+        }
+        let initial = self
+            .items
+            .iter()
+            .map(|item| item.rating)
+            .collect::<Vec<_>>();
+        let fit = fit_bradley_terry(&self.history, self.items.len(), &initial);
+        let mut matches = vec![0u32; self.items.len()];
+        for answer in &self.history {
+            matches[answer.a] += 1;
+            matches[answer.b] += 1;
+        }
+        for (index, item) in self.items.iter_mut().enumerate() {
+            item.rating = fit.ratings[index];
+            item.deviation = fit.deviations[index];
+            item.matches = matches[index];
+        }
+        self.covariance = fit.covariance;
+        self.version = SESSION_VERSION;
+    }
+
+    fn bucket_stability(&self, groups: usize, tolerance: usize) -> Vec<bool> {
+        let n = self.items.len();
+        let groups = groups.clamp(1, n);
+        let mut order = (0..n).collect::<Vec<_>>();
+        order.sort_by(|&a, &b| self.items[b].rating.total_cmp(&self.items[a].rating));
+        let mut first = vec![n; groups];
+        let mut last = vec![0; groups];
+        for position in 0..n {
+            let group = position * groups / n;
+            first[group] = first[group].min(position);
+            last[group] = position;
+        }
+        let mut stable = vec![false; n];
+        for (position, &index) in order.iter().enumerate() {
+            let group = position * groups / n;
+            let upper_group = group.saturating_sub(tolerance);
+            let lower_group = group.saturating_add(tolerance).min(groups - 1);
+            let item = &self.items[index];
+            let below_upper = first[upper_group] == 0 || {
+                let boundary = order[first[upper_group] - 1];
+                self.items[boundary].rating - item.rating
+                    > CONFIDENCE_Z * self.difference_deviation(boundary, index)
+            };
+            let above_lower = last[lower_group] + 1 == n || {
+                let boundary = order[last[lower_group] + 1];
+                item.rating - self.items[boundary].rating
+                    > CONFIDENCE_Z * self.difference_deviation(index, boundary)
+            };
+            stable[index] = below_upper && above_lower;
+        }
+        stable
+    }
+
+    fn load(path: &Path) -> Result<Self> {
+        let json = std::fs::read_to_string(path)
+            .into_diagnostic()
+            .wrap_err_with(|| format!("Failed to read session file: {}", path.display()))?;
+        let mut state: Self = serde_json::from_str(&json)
+            .into_diagnostic()
+            .wrap_err("Failed to parse session file")?;
+        if state.pending.is_empty() {
+            state.pending = vec![0; state.items.len()];
+        }
+        state.validate()?;
+        state.refit();
+        Ok(state)
+    }
+
+    fn validate(&self) -> Result<()> {
+        if self.version > SESSION_VERSION {
+            return Err(miette::miette!(
+                "Session version {} is newer than supported version {SESSION_VERSION}",
+                self.version
+            ));
+        }
+        let expected = fresh_items();
+        if self.items.len() != expected.len() || self.pending.len() != expected.len() {
+            return Err(miette::miette!("Rank session has invalid item count"));
+        }
+        if self.items.iter().zip(&expected).any(|(item, expected)| {
+            item.from != expected.from
+                || item.to != expected.to
+                || !item.rating.is_finite()
+                || !item.deviation.is_finite()
+                || item.deviation <= 0.0
+        }) {
+            return Err(miette::miette!("Rank session item order is incompatible"));
+        }
+        if self.history.iter().any(|answer| {
+            answer.a >= self.items.len()
+                || answer.b >= self.items.len()
+                || answer.a == answer.b
+                || !matches!(answer.score, 0.0 | 0.5 | 1.0)
+        }) {
+            return Err(miette::miette!("Rank session contains an invalid answer"));
+        }
+        Ok(())
+    }
+}
+
+fn legacy_version() -> u32 {
+    1
+}
+
+fn pair_count() -> usize {
+    (HAND_SLOTS as usize) * (HAND_SLOTS as usize - 1)
+}
+
+fn fresh_items() -> Vec<Item> {
+    (0..HAND_SLOTS)
+        .flat_map(|from| (0..HAND_SLOTS).map(move |to| (from, to)))
+        .filter(|(from, to)| from != to)
+        .map(|(from, to)| Item {
+            from,
+            to,
+            rating: START_RATING,
+            deviation: START_DEV,
+            matches: 0,
+        })
+        .collect()
+}
+
+fn prior_covariance(n: usize) -> Vec<f64> {
+    let mut covariance = vec![0.0; n * n];
+    for i in 0..n {
+        covariance[i * n + i] = START_DEV * START_DEV;
+    }
+    covariance
+}
+
+fn backup_path(path: &Path) -> PathBuf {
+    appended_path(path, ".bak")
+}
+
+fn appended_path(path: &Path, suffix: &str) -> PathBuf {
+    let mut value = path.as_os_str().to_os_string();
+    value.push(suffix);
+    value.into()
 }
 
 impl Default for RankState {
@@ -248,11 +466,78 @@ mod tests {
     fn session_roundtrip() {
         let mut state = RankState::new();
         state.answer(0, 1, 1.0);
-        let dir = std::env::temp_dir().join("keyvolve-rank-test");
+        let dir = std::env::temp_dir().join("keyvolve-rank-roundtrip-test");
+        std::fs::remove_dir_all(&dir).ok();
         let path = dir.join("session.json");
         state.save(&path).unwrap();
         let loaded = RankState::load_or_new(&path).unwrap();
-        assert_eq!(state, loaded);
+        assert_eq!(state.history, loaded.history);
+        assert_eq!(state.pending, loaded.pending);
+        for (a, b) in state.items.iter().zip(loaded.items) {
+            assert!((a.rating - b.rating).abs() < 1e-8);
+            assert!((a.deviation - b.deviation).abs() < 1e-8);
+            assert_eq!(a.matches, b.matches);
+        }
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn legacy_session_migrates_without_losing_answers() {
+        let mut state = RankState::new();
+        state.answer(0, 1, 1.0);
+        let mut json = serde_json::to_value(&state).unwrap();
+        let object = json.as_object_mut().unwrap();
+        object.remove("version");
+        object.remove("pending");
+        for answer in object["history"].as_array_mut().unwrap() {
+            let answer = answer.as_object_mut().unwrap();
+            answer.remove("prev_pending_a");
+            answer.remove("prev_pending_b");
+        }
+        let dir = std::env::temp_dir().join("keyvolve-rank-migration-test");
+        std::fs::remove_dir_all(&dir).ok();
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("session.json");
+        std::fs::write(&path, serde_json::to_vec(&json).unwrap()).unwrap();
+
+        let loaded = RankState::load_or_new(&path).unwrap();
+        assert_eq!(loaded.version, SESSION_VERSION);
+        assert_eq!(loaded.history.len(), 1);
+        assert!(loaded.items[0].rating > loaded.items[1].rating);
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn corrupt_primary_recovers_rolling_backup() {
+        let dir = std::env::temp_dir().join("keyvolve-rank-recovery-test");
+        std::fs::remove_dir_all(&dir).ok();
+        let path = dir.join("session.json");
+        let mut state = RankState::new();
+        state.save(&path).unwrap();
+        state.answer(0, 1, 1.0);
+        state.save(&path).unwrap();
+        std::fs::write(&path, "not json").unwrap();
+
+        let recovered = RankState::load_or_new(&path).unwrap();
+        assert!(recovered.history.is_empty());
+        assert!(RankState::load(&path).is_ok());
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn missing_primary_recovers_synced_temporary_file() {
+        let dir = std::env::temp_dir().join("keyvolve-rank-temp-recovery-test");
+        std::fs::remove_dir_all(&dir).ok();
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("session.json");
+        let temporary = appended_path(&path, ".tmp");
+        let mut state = RankState::new();
+        state.answer(0, 1, 1.0);
+        std::fs::write(&temporary, serde_json::to_vec(&state).unwrap()).unwrap();
+
+        let recovered = RankState::load_or_new(&path).unwrap();
+        assert_eq!(recovered.history.len(), 1);
+        assert!(path.exists());
         std::fs::remove_dir_all(&dir).ok();
     }
 
@@ -270,26 +555,57 @@ mod tests {
     }
 
     #[test]
-    fn reopen_bumps_deviation() {
+    fn reopen_requires_more_confirmations() {
         let mut state = RankState::new();
-        for _ in 0..50 {
-            state.answer(0, 1, 1.0);
-        }
+        state.items[0].matches = 100;
+        state.items[1].matches = 100;
         state.reopen(0, 1);
-        assert!(state.items[0].deviation >= START_DEV * 0.6);
+        let cfg = RankConfig::default();
+        assert!(!state.item_settled(0, &cfg));
+        assert!(!state.item_settled(1, &cfg));
+    }
+
+    #[test]
+    fn bucket_confidence_stops_clear_items_but_not_ties() {
+        let cfg = RankConfig::default();
+        let mut state = RankState::new();
+        for (index, item) in state.items.iter_mut().enumerate() {
+            item.rating = 30_000.0 - index as f64 * 100.0;
+            item.deviation = 1.0;
+            item.matches = cfg.min_matches;
+        }
+        state.covariance = prior_covariance(state.items.len());
+        for i in 0..state.items.len() {
+            state.covariance[i * state.items.len() + i] = 1.0;
+        }
+        assert_eq!(state.settled_count(&cfg), state.items.len());
+
+        for item in &mut state.items {
+            item.rating = START_RATING;
+        }
+        assert_eq!(state.settled_count(&cfg), 0);
+        for item in &mut state.items {
+            item.matches = cfg.max_matches;
+        }
+        assert_eq!(state.settled_count(&cfg), state.items.len());
     }
 
     #[test]
     fn steps_left_shrinks_and_reaches_zero() {
         let mut state = RankState::new();
-        let before = state.steps_left(6, 120.0);
+        let cfg = RankConfig {
+            min_matches: 6,
+            max_deviation: 120.0,
+            ..Default::default()
+        };
+        let before = state.steps_left(&cfg);
         assert!(before >= 210 * 6 / 2); // fresh: at least min_matches bound
         state.answer(0, 1, 1.0);
-        assert!(state.steps_left(6, 120.0) < before);
+        assert!(state.steps_left(&cfg) < before);
         for item in &mut state.items {
             item.matches = 100;
             item.deviation = 50.0;
         }
-        assert_eq!(state.steps_left(6, 120.0), 0);
+        assert_eq!(state.steps_left(&cfg), 0);
     }
 }

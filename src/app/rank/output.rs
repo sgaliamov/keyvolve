@@ -98,11 +98,15 @@ pub fn write_report_csv(
             let _ = writeln!(out, "{cells}");
         }
 
-        // Analytical grids: raw rating and matches (diagonal blank).
+        // Analytical grids: fitted rating, uncertainty, and matches (diagonal blank).
         for (name, cell) in [
             (
                 "rating",
                 &(|i: usize| format!("{:.0}", state.items[i].rating)) as &dyn Fn(usize) -> String,
+            ),
+            (
+                "deviation",
+                &(|i: usize| format!("{:.0}", state.items[i].deviation)),
             ),
             ("matches", &(|i: usize| state.items[i].matches.to_string())),
         ] {

@@ -1,4 +1,5 @@
 pub mod config;
+mod fit;
 mod output;
 mod select;
 mod state;
@@ -15,12 +16,16 @@ use std::io::{BufRead, Write};
 use std::path::Path;
 
 /// Interactive pair-ranking mode: repeatedly asks the user which of two
-/// bigram pairs is easier to type, refining Glicko-lite ratings for all 210
+/// bigram pairs is easier to type, fitting Bradley–Terry ratings for all 210
 /// ordered left-hand pairs. Resumable; writes ranked keyboard JSON + CSV report.
 pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) -> Result<()> {
     let keyboard = Keyboard::load(keyboard_path).wrap_err("Rank mode needs a keyboard file")?;
     let session = cfg.session_path();
     let mut state = RankState::load_or_new(&session)?;
+    if state.finished && state.settled_count(&cfg) < state.items.len() {
+        state.finished = false;
+        println!("Saved ranking needs more confidence under the current model — resuming ranking.");
+    }
     let mut rng = match cfg.seed {
         Some(seed) => StdRng::seed_from_u64(seed),
         None => StdRng::from_rng(&mut rand::rng()),
@@ -40,7 +45,7 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
 
     while !app.should_finish() {
         let total = state.items.len();
-        let settled = state.settled_count(cfg.min_matches, cfg.max_deviation);
+        let settled = state.settled_count(&cfg);
         if settled == total && !state.finished {
             state.finished = true;
             state.save(&session)?;
@@ -103,10 +108,10 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
             Reply::Quit => break,
         };
 
+        let contradiction = kind == PickKind::Audit && contradicts(&state, a, b, score);
         if kind == PickKind::Audit {
-            if contradicts(&state, a, b, score) {
+            if contradiction {
                 println!("Contradiction with earlier answers — both pairs re-opened.");
-                state.reopen(a, b);
                 state.finished = false;
                 contradicted += 1;
             } else {
@@ -114,12 +119,15 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
             }
         }
         state.answer(a, b, score);
+        if contradiction {
+            state.reopen(a, b);
+        }
         state.save(&session)?;
     }
 
     // A run that ends with everything settled marks the ranking as finished;
     // raw results are kept so the next run verifies it.
-    if state.settled_count(cfg.min_matches, cfg.max_deviation) == state.items.len() {
+    if state.settled_count(&cfg) == state.items.len() {
         state.finished = true;
     }
     state.save(&session)?;
@@ -155,10 +163,10 @@ fn print_stats(state: &RankState, cfg: &RankConfig) {
     println!("best:  {}", show(&order[..5.min(order.len())]));
     println!("worst: {}", show(&order[order.len().saturating_sub(5)..]));
     println!(
-        "settled {}/{}, answers {}, ~{} steps left",
-        state.settled_count(cfg.min_matches, cfg.max_deviation),
+        "settled {}/{}, answers {}, at least ~{} answers left",
+        state.settled_count(cfg),
         state.items.len(),
         state.history.len(),
-        state.steps_left(cfg.min_matches, cfg.max_deviation),
+        state.steps_left(cfg),
     );
 }

@@ -9,6 +9,10 @@ fn default_min_matches() -> u32 {
     10
 }
 
+fn default_max_matches() -> u32 {
+    30
+}
+
 fn default_max_deviation() -> f64 {
     170.0
 }
@@ -23,6 +27,10 @@ fn default_effort_max() -> f64 {
 
 fn default_groups() -> usize {
     20
+}
+
+fn default_bucket_tolerance() -> usize {
+    1
 }
 
 /// Settings for the interactive pair-ranking mode.
@@ -46,6 +54,10 @@ pub struct RankConfig {
     #[serde(default = "default_min_matches")]
     pub min_matches: u32,
 
+    /// Hard confirmation cap for items sitting exactly on a bucket boundary.
+    #[serde(default = "default_max_matches")]
+    pub max_matches: u32,
+
     /// Rating deviation below which an item counts as settled.
     #[serde(default = "default_max_deviation")]
     pub max_deviation: f64,
@@ -61,6 +73,10 @@ pub struct RankConfig {
     /// Number of effort buckets in the output.
     #[serde(default = "default_groups")]
     pub groups: usize,
+
+    /// Allowed neighboring-bucket movement when declaring rank confidence.
+    #[serde(default = "default_bucket_tolerance")]
+    pub bucket_tolerance: usize,
 
     /// Optional RNG seed for reproducible question order.
     pub seed: Option<u64>,
@@ -97,10 +113,12 @@ impl Default for RankConfig {
             session: None,
             audit_rate: default_audit_rate(),
             min_matches: default_min_matches(),
+            max_matches: default_max_matches(),
             max_deviation: default_max_deviation(),
             effort_min: default_effort_min(),
             effort_max: default_effort_max(),
             groups: default_groups(),
+            bucket_tolerance: default_bucket_tolerance(),
             seed: None,
         }
     }
