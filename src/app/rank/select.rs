@@ -27,7 +27,7 @@ pub fn pick(
     if audit && let Some(pair) = pick_audit(state, cfg, rng) {
         return (pair.0, pair.1, PickKind::Audit);
     }
-    let (a, b) = pick_explore(state, rng);
+    let (a, b) = pick_explore(state, cfg, rng);
     (a, b, PickKind::Explore)
 }
 
@@ -60,31 +60,35 @@ fn pick_audit(
     Some((a, b))
 }
 
-/// Explore: most uncertain item vs a close-rated opponent (informative match).
-fn pick_explore(state: &RankState, rng: &mut impl RngExt) -> (usize, usize) {
-    // Candidate: random among the POOL least-played / most-uncertain items.
+/// Explore: item with most remaining work vs a close-rated opponent that
+/// still needs matches too — every answer then refines two unsettled items.
+fn pick_explore(state: &RankState, cfg: &RankConfig, rng: &mut impl RngExt) -> (usize, usize) {
+    let steps = |i: usize| state.items[i].steps_needed(cfg.min_matches, cfg.max_deviation);
+    // Candidate: random among the POOL items with most answers still needed.
     // Pre-shuffle so stable sort breaks ties randomly, not by enumeration order.
     let mut order: Vec<usize> = (0..state.items.len()).collect();
     order.shuffle(rng);
     let mut others = order.clone();
-    order.sort_by(|&x, &y| {
-        let (ix, iy) = (&state.items[x], &state.items[y]);
-        ix.matches
-            .cmp(&iy.matches)
-            .then(iy.deviation.total_cmp(&ix.deviation))
-    });
-    let a = order[rng.random_range(0..POOL.min(order.len()))];
+    order.sort_by_key(|&i| std::cmp::Reverse(steps(i)));
+    // Pool never spills into already-settled items while unsettled ones exist.
+    let pool = |sorted: &[usize]| {
+        let unsettled = sorted.iter().take_while(|&&i| steps(i) > 0).count();
+        POOL.min(sorted.len()).min(unsettled.max(1))
+    };
+    let a = order[rng.random_range(0..pool(&order))];
 
-    // Opponent: shares a key with the candidate (easier to compare), random
-    // among the POOL closest by rating.
+    // Opponent: shares a key with the candidate (easier to compare); unsettled
+    // first so the answer advances both items, then closest by rating.
     others.retain(|&i| i != a && shares_key(state, a, i));
     let ra = state.items[a].rating;
     others.sort_by(|&x, &y| {
-        (state.items[x].rating - ra)
-            .abs()
-            .total_cmp(&(state.items[y].rating - ra).abs())
+        let unsettled = |i: usize| steps(i) > 0;
+        let gap = |i: usize| (state.items[i].rating - ra).abs();
+        unsettled(y)
+            .cmp(&unsettled(x))
+            .then(gap(x).total_cmp(&gap(y)))
     });
-    let b = others[rng.random_range(0..POOL.min(others.len()))];
+    let b = others[rng.random_range(0..pool(&others))];
     (a, b)
 }
 
@@ -144,10 +148,29 @@ mod tests {
     #[test]
     fn explore_pairs_share_a_key() {
         let state = RankState::new();
+        let cfg = RankConfig::default();
         let mut rng = StdRng::seed_from_u64(7);
         for _ in 0..50 {
-            let (a, b) = pick_explore(&state, &mut rng);
+            let (a, b) = pick_explore(&state, &cfg, &mut rng);
             assert!(shares_key(&state, a, b));
+        }
+    }
+
+    #[test]
+    fn explore_prefers_unsettled_opponents() {
+        let mut state = RankState::new();
+        // Everything settled except items 0 and 1 (which share key 0).
+        for item in state.items.iter_mut().skip(2) {
+            item.matches = 100;
+            item.deviation = 50.0;
+        }
+        let cfg = RankConfig::default();
+        let mut rng = StdRng::seed_from_u64(11);
+        for _ in 0..20 {
+            let (a, b) = pick_explore(&state, &cfg, &mut rng);
+            // Both sides of the question still need answers.
+            assert!(state.items[a].steps_needed(cfg.min_matches, cfg.max_deviation) > 0);
+            assert!(state.items[b].steps_needed(cfg.min_matches, cfg.max_deviation) > 0);
         }
     }
 

@@ -53,6 +53,18 @@ impl Item {
     pub fn settled(&self, min_matches: u32, max_deviation: f64) -> bool {
         self.matches >= min_matches && self.deviation <= max_deviation
     }
+
+    /// Answers still needed for this item to settle.
+    pub fn steps_needed(&self, min_matches: u32, max_deviation: f64) -> u64 {
+        let by_matches = min_matches.saturating_sub(self.matches) as u64;
+        let by_dev = if self.deviation <= max_deviation {
+            0
+        } else {
+            // dev·DEV_DECAY^k ≤ max → k = ⌈log_decay(max/dev)⌉
+            (max_deviation / self.deviation).log(DEV_DECAY).ceil() as u64
+        };
+        by_matches.max(by_dev)
+    }
 }
 
 /// One recorded answer with pre-update snapshots for undo.
@@ -177,22 +189,12 @@ impl RankState {
     }
 
     /// Estimated answers left until everything settles.
-    /// Per item: matches still needed to reach `min_matches` AND to decay
-    /// deviation below `max_deviation`; each answer advances two items.
+    /// Each answer advances two items.
     pub fn steps_left(&self, min_matches: u32, max_deviation: f64) -> u64 {
         let needed: u64 = self
             .items
             .iter()
-            .map(|i| {
-                let by_matches = min_matches.saturating_sub(i.matches) as u64;
-                let by_dev = if i.deviation <= max_deviation {
-                    0
-                } else {
-                    // dev·DEV_DECAY^k ≤ max → k = ⌈log_decay(max/dev)⌉
-                    (max_deviation / i.deviation).log(DEV_DECAY).ceil() as u64
-                };
-                by_matches.max(by_dev)
-            })
+            .map(|i| i.steps_needed(min_matches, max_deviation))
             .sum();
         needed.div_ceil(2) // each answer touches two items
     }
