@@ -9,7 +9,7 @@ use std::collections::BTreeMap;
 pub enum PickKind {
     /// Uncertain pair — normal rating refinement.
     Explore,
-    /// Settled, far-apart pair — transitivity/consistency check.
+    /// Settled pair — transitivity/consistency check.
     Audit,
 }
 
@@ -17,6 +17,9 @@ pub enum PickKind {
 const AUDIT_GAP: f64 = 200.0;
 /// Candidate pool size for random tie-breaking.
 const POOL: usize = 10;
+/// Confidence required before one answer can contradict the fitted order.
+const CONTRADICTION_Z: f64 = 1.96;
+const MIN_RESIDUAL_VARIANCE: f64 = 1e-6;
 
 /// Pick the next question: `(a, b, kind)` — item indexes into `state.items`.
 /// In verify mode (finished session) every question is an audit check.
@@ -24,16 +27,18 @@ pub fn pick(
     state: &RankState,
     cfg: &RankConfig,
     rng: &mut impl RngExt,
-) -> (usize, usize, PickKind) {
+) -> Option<(usize, usize, PickKind)> {
     let audit = state.finished || rng.random_bool(cfg.audit_rate.clamp(0.0, 1.0));
     if audit && let Some(pair) = pick_audit(state, cfg, rng) {
-        return (pair.0, pair.1, PickKind::Audit);
+        return Some((pair.0, pair.1, PickKind::Audit));
     }
-    let (a, b) = pick_explore(state, cfg, rng);
-    (a, b, PickKind::Explore)
+    if let Some((a, b)) = pick_explore(state, cfg, rng) {
+        return Some((a, b, PickKind::Explore));
+    }
+    pick_audit(state, cfg, rng).map(|(a, b)| (a, b, PickKind::Audit))
 }
 
-/// Audit: two settled items with a clear rating gap. None when unavailable.
+/// Audit: two settled shared-key items, preferring residuals then clear gaps.
 fn pick_audit(
     state: &RankState,
     cfg: &RankConfig,
@@ -52,7 +57,7 @@ fn pick_audit(
         let predicted = expected_score(state.items[answer.a].rating, state.items[answer.b].rating);
         let key = (answer.a.min(answer.b), answer.a.max(answer.b));
         let entry = residuals.entry(key).or_default();
-        entry.0 += (answer.score - predicted).abs();
+        entry.0 += pearson_residual(answer.score, predicted);
         entry.1 += 1;
     }
     let mut ranked = residuals
@@ -69,28 +74,37 @@ fn pick_audit(
     let settled: Vec<usize> = (0..state.items.len())
         .filter(|&i| settled_flags[i])
         .collect();
-    if settled.len() < 2 {
-        return None;
-    }
-    let a = settled[rng.random_range(0..settled.len())];
-    let far: Vec<usize> = settled
+    let mut pairs = settled
         .iter()
-        .copied()
-        .filter(|&i| i != a && (state.items[i].rating - state.items[a].rating).abs() >= AUDIT_GAP)
-        .collect();
-    // Prefer an opponent sharing a key with the candidate; fall back to any far one.
-    let shared: Vec<usize> = far
+        .enumerate()
+        .flat_map(|(position, &a)| {
+            settled[position + 1..]
+                .iter()
+                .copied()
+                .filter(move |&b| shares_key(state, a, b))
+                .map(move |b| {
+                    let gap = (state.items[a].rating - state.items[b].rating).abs();
+                    (a, b, gap)
+                })
+        })
+        .collect::<Vec<_>>();
+    pairs.shuffle(rng);
+    pairs.sort_by(|(_, _, a), (_, _, b)| b.total_cmp(a));
+    let far = pairs
         .iter()
-        .copied()
-        .filter(|&i| shares_key(state, a, i))
-        .collect();
-    let pool = if shared.is_empty() { &far } else { &shared };
-    let b = *pool.get(rng.random_range(0..pool.len().max(1)))?;
+        .take_while(|(_, _, gap)| *gap >= AUDIT_GAP)
+        .count();
+    let top = POOL.min(if far == 0 { pairs.len() } else { far });
+    let &(a, b, _) = pairs.get(rng.random_range(0..top.max(1)))?;
     Some((a, b))
 }
 
 /// Explore: maximize expected Fisher information while both items need work.
-fn pick_explore(state: &RankState, cfg: &RankConfig, rng: &mut impl RngExt) -> (usize, usize) {
+fn pick_explore(
+    state: &RankState,
+    cfg: &RankConfig,
+    rng: &mut impl RngExt,
+) -> Option<(usize, usize)> {
     let settled = state.settled_flags(cfg);
     let unsettled = (0..state.items.len())
         .filter(|&i| !settled[i])
@@ -107,9 +121,12 @@ fn pick_explore(state: &RankState, cfg: &RankConfig, rng: &mut impl RngExt) -> (
     }
     pairs.shuffle(rng);
     let top = POOL.min(pairs.len());
+    if top == 0 {
+        return None;
+    }
     pairs.select_nth_unstable_by(top - 1, |(_, _, a), (_, _, b)| b.total_cmp(a));
     let &(a, b, _) = &pairs[rng.random_range(0..top)];
-    (a, b)
+    Some((a, b))
 }
 
 /// Candidate shared-key comparisons, preferring two unfinished items.
@@ -146,10 +163,19 @@ fn shares_key(state: &RankState, a: usize, b: usize) -> bool {
     x.from == y.from || x.from == y.to || x.to == y.from || x.to == y.to
 }
 
-/// True when a settled-pair answer contradicts current ratings.
+/// Squared Pearson residual; expected value is one for a calibrated binary fit.
+fn pearson_residual(score: f64, predicted: f64) -> f64 {
+    let variance = (predicted * (1.0 - predicted)).max(MIN_RESIDUAL_VARIANCE);
+    (score - predicted).powi(2) / variance
+}
+
+/// True when an answer contradicts a confidently ordered pair.
 pub fn contradicts(state: &RankState, a: usize, b: usize, score: f64) -> bool {
     let gap = state.items[a].rating - state.items[b].rating;
-    (score > 0.5 && gap < 0.0) || (score < 0.5 && gap > 0.0)
+    if gap.abs() <= CONTRADICTION_Z * state.difference_deviation(a, b) {
+        return false;
+    }
+    score == 0.5 || (score > 0.5 && gap < 0.0) || (score < 0.5 && gap > 0.0)
 }
 
 #[cfg(test)]
@@ -171,7 +197,9 @@ mod tests {
             audit_rate: 0.0,
             ..Default::default()
         };
-        let picked: Vec<_> = (0..20).map(|_| pick(&state, &cfg, &mut rng)).collect();
+        let picked: Vec<_> = (0..20)
+            .map(|_| pick(&state, &cfg, &mut rng).unwrap())
+            .collect();
         assert!(picked.iter().any(|&(a, b, _)| a == 0 || b == 0));
         assert!(picked.iter().all(|&(_, _, k)| k == PickKind::Explore));
     }
@@ -189,9 +217,10 @@ mod tests {
             audit_rate: 1.0,
             ..Default::default()
         };
-        let (a, b, kind) = pick(&state, &cfg, &mut rng);
+        let (a, b, kind) = pick(&state, &cfg, &mut rng).unwrap();
         assert_eq!(kind, PickKind::Audit);
         assert!((state.items[a].rating - state.items[b].rating).abs() >= 200.0);
+        assert!(shares_key(&state, a, b));
     }
 
     #[test]
@@ -223,7 +252,7 @@ mod tests {
         let cfg = RankConfig::default();
         let mut rng = StdRng::seed_from_u64(7);
         for _ in 0..50 {
-            let (a, b) = pick_explore(&state, &cfg, &mut rng);
+            let (a, b) = pick_explore(&state, &cfg, &mut rng).unwrap();
             assert!(shares_key(&state, a, b));
         }
     }
@@ -238,11 +267,12 @@ mod tests {
         }
         let cfg = RankConfig::default();
         let mut rng = StdRng::seed_from_u64(11);
+        let settled = state.settled_flags(&cfg);
         for _ in 0..20 {
-            let (a, b) = pick_explore(&state, &cfg, &mut rng);
+            let (a, b) = pick_explore(&state, &cfg, &mut rng).unwrap();
             // Both sides of the question still need answers.
-            assert!(!state.item_settled(a, &cfg));
-            assert!(!state.item_settled(b, &cfg));
+            assert!(!settled[a]);
+            assert!(!settled[b]);
         }
     }
 
@@ -253,6 +283,16 @@ mod tests {
         state.items[1].rating = 1000.0;
         assert!(!contradicts(&state, 0, 1, 1.0)); // higher wins — consistent
         assert!(contradicts(&state, 0, 1, 0.0)); // higher loses — contradiction
+        assert!(contradicts(&state, 0, 1, 0.5)); // confident gap ties — contradiction
+
+        state.items[0].rating = 1501.0;
+        state.items[1].rating = 1500.0;
+        assert!(!contradicts(&state, 0, 1, 0.0)); // uncertain order — ordinary noise
+    }
+
+    #[test]
+    fn pearson_residual_prioritizes_surprising_upsets() {
+        assert!(pearson_residual(0.0, 0.9) > pearson_residual(0.0, 0.5));
     }
 
     #[test]
@@ -270,18 +310,33 @@ mod tests {
             ..Default::default()
         };
         for _ in 0..10 {
-            let (_, _, kind) = pick(&state, &cfg, &mut rng);
+            let (_, _, kind) = pick(&state, &cfg, &mut rng).unwrap();
             assert_eq!(kind, PickKind::Audit);
         }
     }
 
     #[test]
+    fn finished_equal_state_has_shared_audit_fallback() {
+        let mut state = RankState::new();
+        let cfg = RankConfig::default();
+        for item in &mut state.items {
+            item.matches = cfg.max_matches;
+        }
+        state.finished = true;
+        let mut rng = StdRng::seed_from_u64(13);
+
+        let (a, b, kind) = pick(&state, &cfg, &mut rng).unwrap();
+        assert_eq!(kind, PickKind::Audit);
+        assert!(shares_key(&state, a, b));
+    }
+
+    #[test]
     #[ignore = "statistical simulation benchmark"]
     fn simulation_benchmark() {
-        // Accuracy grows with the confirmation cap; thresholds per cap.
+        // Batched refits keep the broad statistical benchmark fast.
         for (max_matches, min_accuracy) in [(15, 0.5), (30, 0.65)] {
             for seed in [17, 29, 43] {
-                let (answers, bucket_accuracy, rho) = simulate(seed, max_matches);
+                let (answers, bucket_accuracy, rho) = simulate(seed, max_matches, 50);
                 println!(
                     "cap={max_matches}: answers={answers}, adjacent-bucket={bucket_accuracy:.1}%, rho={rho:.3}",
                     bucket_accuracy = bucket_accuracy * 100.0,
@@ -293,42 +348,62 @@ mod tests {
         }
     }
 
-    fn simulate(seed: u64, max_matches: u32) -> (usize, f64, f64) {
+    #[test]
+    #[ignore = "production-path simulation benchmark"]
+    fn production_path_simulation_smoke() {
+        let (answers, bucket_accuracy, rho) = simulate(59, 1, 1);
+        println!(
+            "exact: answers={answers}, adjacent-bucket={bucket_accuracy:.1}%, rho={rho:.3}",
+            bucket_accuracy = bucket_accuracy * 100.0,
+        );
+        assert!(answers <= 210);
+        assert!(bucket_accuracy.is_finite());
+        assert!(rho.is_finite());
+    }
+
+    fn simulate(seed: u64, max_matches: u32, refit_every: usize) -> (usize, f64, f64) {
+        assert!(refit_every > 0);
         let mut rng = StdRng::seed_from_u64(seed);
         let hidden = (0..210)
             .map(|_| rng.random_range(1_000.0..2_000.0))
             .collect::<Vec<_>>();
         let cfg = RankConfig {
+            min_matches: max_matches.min(10),
             max_matches,
             ..Default::default()
         };
+        cfg.validate().unwrap();
         let mut state = RankState::new();
 
         while state.settled_count(&cfg) < state.items.len() && state.history.len() < 3_200 {
-            let (a, b, kind) = pick(&state, &cfg, &mut rng);
+            let (a, b, kind) = pick(&state, &cfg, &mut rng).unwrap();
             assert_eq!(kind, PickKind::Explore);
             let score = f64::from(rng.random_bool(expected_score(hidden[a], hidden[b])));
-            let snap = |i: usize| {
-                let item = &state.items[i];
-                (item.rating, item.deviation, item.matches)
-            };
-            state.history.push(Answer {
-                a,
-                b,
-                score,
-                prev_a: snap(a),
-                prev_b: snap(b),
-                prev_pending_a: 0,
-                prev_pending_b: 0,
-            });
-            state.items[a].matches += 1;
-            state.items[b].matches += 1;
-            // Batch for benchmark speed; production refits after every answer.
-            if state.history.len().is_multiple_of(50) {
-                state.refit();
+            if refit_every == 1 {
+                state.answer(a, b, score).unwrap();
+            } else {
+                let snap = |i: usize| {
+                    let item = &state.items[i];
+                    (item.rating, item.deviation, item.matches)
+                };
+                state.history.push(Answer {
+                    a,
+                    b,
+                    score,
+                    prev_a: snap(a),
+                    prev_b: snap(b),
+                    prev_pending_a: 0,
+                    prev_pending_b: 0,
+                });
+                state.items[a].matches += 1;
+                state.items[b].matches += 1;
+                if state.history.len().is_multiple_of(refit_every) {
+                    state.refit();
+                }
             }
         }
         state.refit();
+        assert_eq!(state.settled_count(&cfg), state.items.len());
 
         let estimated = bucketize(&state, &cfg).groups;
         let mut truth = state.clone();

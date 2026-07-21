@@ -1,5 +1,8 @@
+use miette::Result;
 use serde::Deserialize;
 use std::path::PathBuf;
+
+const RANKED_PAIR_COUNT: usize = 210;
 
 fn default_audit_rate() -> f64 {
     0.0
@@ -46,7 +49,7 @@ pub struct RankConfig {
     /// Session state file for pause/resume; defaults to `data/rank-session.json`.
     pub session: Option<PathBuf>,
 
-    /// Probability of an audit question (re-check of a settled, far-apart pair).
+    /// Probability of an audit question (consistency re-check of settled pairs).
     #[serde(default = "default_audit_rate")]
     pub audit_rate: f64,
 
@@ -83,6 +86,45 @@ pub struct RankConfig {
 }
 
 impl RankConfig {
+    /// Reject settings that break ranking, confidence, or output semantics.
+    pub fn validate(&self) -> Result<()> {
+        if !self.audit_rate.is_finite() || !(0.0..=1.0).contains(&self.audit_rate) {
+            return Err(miette::miette!("rank.auditRate must be between 0 and 1"));
+        }
+        if self.min_matches == 0 {
+            return Err(miette::miette!("rank.minMatches must be greater than 0"));
+        }
+        if self.max_matches < self.min_matches {
+            return Err(miette::miette!(
+                "rank.maxMatches must be at least rank.minMatches"
+            ));
+        }
+        if !self.max_deviation.is_finite() || self.max_deviation <= 0.0 {
+            return Err(miette::miette!(
+                "rank.maxDeviation must be finite and greater than 0"
+            ));
+        }
+        if !self.effort_min.is_finite()
+            || !self.effort_max.is_finite()
+            || self.effort_min >= self.effort_max
+        {
+            return Err(miette::miette!(
+                "rank effortMin and effortMax must be finite, with effortMin < effortMax"
+            ));
+        }
+        if !(1..=RANKED_PAIR_COUNT).contains(&self.groups) {
+            return Err(miette::miette!(
+                "rank.groups must be between 1 and {RANKED_PAIR_COUNT}"
+            ));
+        }
+        if self.bucket_tolerance >= self.groups {
+            return Err(miette::miette!(
+                "rank.bucketTolerance must be smaller than rank.groups"
+            ));
+        }
+        Ok(())
+    }
+
     /// Resolved session path.
     pub fn session_path(&self) -> PathBuf {
         self.session
@@ -121,5 +163,35 @@ impl Default for RankConfig {
             bucket_tolerance: default_bucket_tolerance(),
             seed: None,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_config_is_valid() {
+        assert!(RankConfig::default().validate().is_ok());
+    }
+
+    #[test]
+    fn rejects_invalid_match_bounds() {
+        let cfg = RankConfig {
+            min_matches: 10,
+            max_matches: 9,
+            ..Default::default()
+        };
+        assert!(cfg.validate().is_err());
+    }
+
+    #[test]
+    fn rejects_invalid_bucket_settings() {
+        let cfg = RankConfig {
+            groups: 20,
+            bucket_tolerance: 20,
+            ..Default::default()
+        };
+        assert!(cfg.validate().is_err());
     }
 }

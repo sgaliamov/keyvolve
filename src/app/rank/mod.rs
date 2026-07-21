@@ -19,6 +19,7 @@ use std::path::Path;
 /// bigram pairs is easier to type, fitting Bradley–Terry ratings for all 210
 /// ordered left-hand pairs. Resumable; writes ranked keyboard JSON + CSV report.
 pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) -> Result<()> {
+    cfg.validate()?;
     let keyboard = Keyboard::load(keyboard_path).wrap_err("Rank mode needs a keyboard file")?;
     let session = cfg.session_path();
     let mut state = RankState::load_or_new(&session)?;
@@ -52,7 +53,11 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
             println!("All {total} pairs settled — entering verification mode.");
         }
 
-        let (mut a, mut b, kind) = pick(&state, &cfg, &mut rng);
+        let Some((mut a, mut b, kind)) = pick(&state, &cfg, &mut rng) else {
+            return Err(miette::miette!(
+                "No valid shared-key comparison is available for the current rank state"
+            ));
+        };
         // Random presentation order kills position bias.
         if rng.random_bool(0.5) {
             std::mem::swap(&mut a, &mut b);
@@ -69,6 +74,7 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
         enum Reply {
             Score(f64),
             Skip,
+            Repick,
             Quit,
         }
         let reply = loop {
@@ -88,13 +94,15 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
                 Some('=') => break Reply::Score(0.5),
                 Some('n') => break Reply::Skip,
                 Some('u') => {
-                    let msg = if state.undo() {
-                        "Undone."
-                    } else {
-                        "Nothing to undo."
-                    };
-                    println!("{msg}");
-                    state.save(&session)?;
+                    if state.undo() {
+                        if state.settled_count(&cfg) < state.items.len() {
+                            state.finished = false;
+                        }
+                        println!("Undone.");
+                        state.save(&session)?;
+                        break Reply::Repick;
+                    }
+                    println!("Nothing to undo.");
                 }
                 Some('s') => print_stats(&state, &cfg),
                 Some('q') => break Reply::Quit,
@@ -105,6 +113,7 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
         let score = match reply {
             Reply::Score(score) => score,
             Reply::Skip => continue,
+            Reply::Repick => continue,
             Reply::Quit => break,
         };
 
@@ -118,7 +127,7 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
                 confirmed += 1;
             }
         }
-        state.answer(a, b, score);
+        state.answer(a, b, score)?;
         if contradiction {
             state.reopen(a, b);
         }

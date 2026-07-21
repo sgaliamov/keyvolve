@@ -243,6 +243,18 @@ mod tests {
     }
 
     #[test]
+    fn fit_is_independent_of_warm_start() {
+        let answers = (0..20)
+            .flat_map(|_| [answer(0, 1, 1.0), answer(1, 2, 1.0)])
+            .collect::<Vec<_>>();
+        let centered = fit_bradley_terry(&answers, 3, &[]);
+        let extreme = fit_bradley_terry(&answers, 3, &[10_000.0, -5_000.0, 4_000.0]);
+        for (a, b) in centered.ratings.iter().zip(extreme.ratings) {
+            assert!((a - b).abs() < 1e-8);
+        }
+    }
+
+    #[test]
     fn fit_recovers_order_and_reduces_uncertainty() {
         let answers = (0..20)
             .flat_map(|_| [answer(0, 1, 1.0), answer(1, 2, 1.0)])

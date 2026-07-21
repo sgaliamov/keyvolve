@@ -104,36 +104,42 @@ impl RankState {
 
     /// Load and losslessly migrate a session, falling back to its rolling backup.
     pub fn load_or_new(path: &Path) -> Result<Self> {
-        let primary_error = if path.exists() {
+        let mut failures = vec![];
+        if path.exists() {
             match Self::load(path) {
                 Ok(state) => return Ok(state),
-                Err(error) => Some(error),
+                Err(error) => failures.push(format!("{}: {error:?}", path.display())),
             }
-        } else {
-            None
-        };
+        }
 
         for recovery in [appended_path(path, ".tmp"), backup_path(path)] {
             if !recovery.exists() {
                 continue;
             }
-            if let Ok(state) = Self::load(&recovery) {
-                eprintln!(
-                    "Warning: recovered session {} from {}.",
-                    path.display(),
-                    recovery.display()
-                );
-                if path.exists() {
-                    std::fs::remove_file(path).into_diagnostic()?;
+            match Self::load(&recovery) {
+                Ok(state) => {
+                    eprintln!(
+                        "Warning: recovered session {} from {}.",
+                        path.display(),
+                        recovery.display()
+                    );
+                    if path.exists() {
+                        std::fs::remove_file(path).into_diagnostic()?;
+                    }
+                    state.save(path)?;
+                    return Ok(state);
                 }
-                state.save(path)?;
-                return Ok(state);
+                Err(error) => failures.push(format!("{}: {error:?}", recovery.display())),
             }
         }
 
-        match primary_error {
-            Some(error) => Err(error).wrap_err("No valid temporary or backup session found"),
-            None => Ok(Self::new()),
+        if failures.is_empty() {
+            Ok(Self::new())
+        } else {
+            Err(miette::miette!(
+                "No valid rank session found; refusing to start over:\n{}",
+                failures.join("\n")
+            ))
         }
     }
 
@@ -179,9 +185,13 @@ impl RankState {
 
     /// Record an answer, then deterministically refit all derived model state.
     /// `score` is for `a`: 1.0 win, 0.0 loss, 0.5 tie.
-    pub fn answer(&mut self, a: usize, b: usize, score: f64) {
-        assert!(a < self.items.len() && b < self.items.len() && a != b);
-        assert!(matches!(score, 0.0 | 0.5 | 1.0));
+    pub fn answer(&mut self, a: usize, b: usize, score: f64) -> Result<()> {
+        if a >= self.items.len() || b >= self.items.len() || a == b {
+            return Err(miette::miette!("Rank answer contains invalid item indexes"));
+        }
+        if !matches!(score, 0.0 | 0.5 | 1.0) {
+            return Err(miette::miette!("Rank answer contains an invalid score"));
+        }
         let snap = |i: &Item| (i.rating, i.deviation, i.matches);
         self.history.push(Answer {
             a,
@@ -195,6 +205,7 @@ impl RankState {
         self.pending[a] = self.pending[a].saturating_sub(1);
         self.pending[b] = self.pending[b].saturating_sub(1);
         self.refit();
+        Ok(())
     }
 
     /// Remove the most recent raw answer and rebuild derived state.
@@ -213,11 +224,6 @@ impl RankState {
         for i in [a, b] {
             self.pending[i] = self.pending[i].max(2);
         }
-    }
-
-    /// True when an item has stable 20-bucket membership or reached the cap.
-    pub fn item_settled(&self, index: usize, cfg: &RankConfig) -> bool {
-        self.settled_flags(cfg)[index]
     }
 
     /// Confidence-settled flags for every item, computed with one rating sort.
@@ -339,6 +345,11 @@ impl RankState {
             .into_diagnostic()
             .wrap_err("Failed to parse session file")?;
         if state.pending.is_empty() {
+            if state.version >= SESSION_VERSION {
+                return Err(miette::miette!(
+                    "Rank session is missing v2 verification state"
+                ));
+            }
             state.pending = vec![0; state.items.len()];
         }
         state.validate()?;
@@ -438,7 +449,7 @@ mod tests {
     #[test]
     fn winner_gains_loser_drops_and_deviation_shrinks() {
         let mut state = RankState::new();
-        state.answer(0, 1, 1.0);
+        state.answer(0, 1, 1.0).unwrap();
         assert!(state.items[0].rating > START_RATING);
         assert!(state.items[1].rating < START_RATING);
         assert!(state.items[0].deviation < START_DEV);
@@ -448,15 +459,24 @@ mod tests {
     #[test]
     fn tie_keeps_equal_ratings_equal() {
         let mut state = RankState::new();
-        state.answer(0, 1, 0.5);
+        state.answer(0, 1, 0.5).unwrap();
         assert_eq!(state.items[0].rating, state.items[1].rating);
+    }
+
+    #[test]
+    fn invalid_answer_is_rejected_without_mutation() {
+        let mut state = RankState::new();
+        let before = state.clone();
+        assert!(state.answer(0, 0, 1.0).is_err());
+        assert!(state.answer(0, 1, f64::NAN).is_err());
+        assert_eq!(state, before);
     }
 
     #[test]
     fn undo_restores_previous_state() {
         let mut state = RankState::new();
         let before = state.clone();
-        state.answer(3, 7, 1.0);
+        state.answer(3, 7, 1.0).unwrap();
         assert!(state.undo());
         assert_eq!(state, before);
         assert!(!state.undo());
@@ -465,7 +485,7 @@ mod tests {
     #[test]
     fn session_roundtrip() {
         let mut state = RankState::new();
-        state.answer(0, 1, 1.0);
+        state.answer(0, 1, 1.0).unwrap();
         let dir = std::env::temp_dir().join("keyvolve-rank-roundtrip-test");
         std::fs::remove_dir_all(&dir).ok();
         let path = dir.join("session.json");
@@ -484,7 +504,7 @@ mod tests {
     #[test]
     fn legacy_session_migrates_without_losing_answers() {
         let mut state = RankState::new();
-        state.answer(0, 1, 1.0);
+        state.answer(0, 1, 1.0).unwrap();
         let mut json = serde_json::to_value(&state).unwrap();
         let object = json.as_object_mut().unwrap();
         object.remove("version");
@@ -508,13 +528,28 @@ mod tests {
     }
 
     #[test]
+    fn v2_session_missing_pending_state_is_rejected() {
+        let state = RankState::new();
+        let mut json = serde_json::to_value(&state).unwrap();
+        json.as_object_mut().unwrap().remove("pending");
+        let dir = std::env::temp_dir().join("keyvolve-rank-invalid-v2-test");
+        std::fs::remove_dir_all(&dir).ok();
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("session.json");
+        std::fs::write(&path, serde_json::to_vec(&json).unwrap()).unwrap();
+
+        assert!(RankState::load_or_new(&path).is_err());
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
     fn corrupt_primary_recovers_rolling_backup() {
         let dir = std::env::temp_dir().join("keyvolve-rank-recovery-test");
         std::fs::remove_dir_all(&dir).ok();
         let path = dir.join("session.json");
         let mut state = RankState::new();
         state.save(&path).unwrap();
-        state.answer(0, 1, 1.0);
+        state.answer(0, 1, 1.0).unwrap();
         state.save(&path).unwrap();
         std::fs::write(&path, "not json").unwrap();
 
@@ -532,12 +567,25 @@ mod tests {
         let path = dir.join("session.json");
         let temporary = appended_path(&path, ".tmp");
         let mut state = RankState::new();
-        state.answer(0, 1, 1.0);
+        state.answer(0, 1, 1.0).unwrap();
         std::fs::write(&temporary, serde_json::to_vec(&state).unwrap()).unwrap();
 
         let recovered = RankState::load_or_new(&path).unwrap();
         assert_eq!(recovered.history.len(), 1);
         assert!(path.exists());
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn missing_primary_with_invalid_recovery_refuses_to_start_over() {
+        let dir = std::env::temp_dir().join("keyvolve-rank-invalid-recovery-test");
+        std::fs::remove_dir_all(&dir).ok();
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("session.json");
+        std::fs::write(appended_path(&path, ".tmp"), "partial json").unwrap();
+
+        assert!(RankState::load_or_new(&path).is_err());
+        assert!(!path.exists());
         std::fs::remove_dir_all(&dir).ok();
     }
 
@@ -561,8 +609,9 @@ mod tests {
         state.items[1].matches = 100;
         state.reopen(0, 1);
         let cfg = RankConfig::default();
-        assert!(!state.item_settled(0, &cfg));
-        assert!(!state.item_settled(1, &cfg));
+        let settled = state.settled_flags(&cfg);
+        assert!(!settled[0]);
+        assert!(!settled[1]);
     }
 
     #[test]
@@ -600,7 +649,7 @@ mod tests {
         };
         let before = state.steps_left(&cfg);
         assert!(before >= 210 * 6 / 2); // fresh: at least min_matches bound
-        state.answer(0, 1, 1.0);
+        state.answer(0, 1, 1.0).unwrap();
         assert!(state.steps_left(&cfg) < before);
         for item in &mut state.items {
             item.matches = 100;

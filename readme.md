@@ -40,6 +40,8 @@ Scores candidate layouts against a bigram-weighted corpus, then evolves them tow
 | `evaluate`   | Score one layout, print full breakdown             |
 | `synthesise` | Build digraph CSV + fake-word corpus from raw text |
 | `merge`      | Merge/clean `.txt` files into one corpus           |
+| `frequencies`| Count per-character frequencies across text files  |
+| `rank`       | Interactively calibrate ordered-pair effort groups  |
 
 ## Mode-specific config
 
@@ -51,6 +53,16 @@ Scores candidate layouts against a bigram-weighted corpus, then evolves them tow
 ### `merge`
 - `merge.input` — folder containing `.txt` files.
 - `merge.output` — merged cleaned corpus file.
+
+### `rank`
+- `rank.session` — resumable answer history. Saved atomically after each answer.
+- `rank.output` / `rank.report` — generated keyboard JSON and analytical CSV.
+- `rank.auditRate` — audit probability during refinement; finished sessions always audit.
+- `rank.minMatches` / `rank.maxMatches` — confidence floor and hard per-item cap.
+- `rank.maxDeviation` — maximum marginal rating uncertainty before confidence stopping.
+- `rank.groups` — output effort bucket count.
+- `rank.bucketTolerance` — neighboring buckets allowed by confidence stopping.
+- `rank.seed` — optional reproducible question-order seed.
 
 ## Data files
 - `data/keyboard.json` — effort groups, bigram pair costs, penalty coefficients.

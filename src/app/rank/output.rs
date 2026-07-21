@@ -60,7 +60,7 @@ pub fn write_keyboard_json(
     }
     out.push_str("  }\n}\n");
 
-    std::fs::write(path, out).into_diagnostic()
+    write_text(path, out)
 }
 
 /// Write CSV visual report: 15 blocks (one per starting key), each a 3×5 grid
@@ -134,7 +134,18 @@ pub fn write_report_csv(
         out.push('\n');
     }
 
-    std::fs::write(path, out).into_diagnostic()
+    write_text(path, out)
+}
+
+/// Create the destination directory and write one generated text file.
+fn write_text(path: &Path, text: String) -> Result<()> {
+    if let Some(parent) = path
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+    {
+        std::fs::create_dir_all(parent).into_diagnostic()?;
+    }
+    std::fs::write(path, text).into_diagnostic()
 }
 
 /// Full 15×15 group table: ranked pairs bucketed, diagonal mapped from the
@@ -200,14 +211,14 @@ mod tests {
 
         let dir = std::env::temp_dir().join("keyvolve-rank-out-test");
         std::fs::create_dir_all(&dir).unwrap();
-        let json = dir.join("keyboard.json");
+        let json = dir.join("generated/json/keyboard.json");
         write_keyboard_json(&json, &state, &buckets, &keyboard).unwrap();
         let loaded = Keyboard::load(&json).unwrap();
         assert_eq!(loaded.efforts.len(), cfg.groups);
         assert_eq!(loaded.pairs.len(), 30); // left + mirrored right
         assert!(loaded.pairs[&0].len() == 15);
 
-        let csv = dir.join("keyboard.csv");
+        let csv = dir.join("generated/reports/keyboard.csv");
         write_report_csv(&csv, &state, &buckets, &keyboard).unwrap();
         let text = std::fs::read_to_string(&csv).unwrap();
         assert_eq!(text.matches("from: ").count(), 15);
