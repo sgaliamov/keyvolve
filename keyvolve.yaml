@@ -52,6 +52,7 @@ rank:
   session: data/rank-session.json
   auditRate: 0.1
   minMatches: 6
+  groups: 20
 
 evaluate:
   # text: 'data\synthesised\sample-1000000'

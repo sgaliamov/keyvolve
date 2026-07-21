@@ -22,7 +22,7 @@ fn default_effort_max() -> f64 {
 }
 
 fn default_groups() -> usize {
-    16
+    20
 }
 
 /// Settings for the interactive pair-ranking mode.
