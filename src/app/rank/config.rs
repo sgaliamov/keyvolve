@@ -2,15 +2,15 @@ use serde::Deserialize;
 use std::path::PathBuf;
 
 fn default_audit_rate() -> f64 {
-    0.1
+    0.0
 }
 
 fn default_min_matches() -> u32 {
-    6
+    10
 }
 
 fn default_max_deviation() -> f64 {
-    120.0
+    170.0
 }
 
 fn default_effort_min() -> f64 {

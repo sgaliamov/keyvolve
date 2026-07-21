@@ -42,7 +42,9 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
         let total = state.items.len();
         let settled = state.settled_count(cfg.min_matches, cfg.max_deviation);
         if settled == total && !state.finished {
-            println!("All {total} pairs settled — answer more or press q to finish.");
+            state.finished = true;
+            state.save(&session)?;
+            println!("All {total} pairs settled — entering verification mode.");
         }
 
         let (mut a, mut b, kind) = pick(&state, &cfg, &mut rng);
