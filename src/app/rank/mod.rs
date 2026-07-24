@@ -136,7 +136,13 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
                     .map(|&i| state.items[i].label())
                     .collect::<Vec<_>>()
                     .join(" > ");
-                println!("Preference cycle detected: {path}");
+                println!("Preference cycle detected: {path} — re-opening those pairs.");
+                // Re-open every item on the cycle so its links get re-asked
+                // until the majority order becomes consistent again.
+                for pair in cycle.windows(2) {
+                    state.reopen(pair[0], pair[1]);
+                }
+                state.finished = false;
             }
         }
         if contradiction {
