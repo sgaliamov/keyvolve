@@ -2,7 +2,7 @@ use super::fit::{expected_score, information_score};
 use crate::app::rank::{RankConfig, RankState};
 use rand::RngExt;
 use rand::seq::SliceRandom;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 
 /// How the pair was chosen — affects contradiction handling.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -177,11 +177,86 @@ pub fn contradicts(state: &RankState, a: usize, b: usize, score: f64) -> bool {
     score == 0.5 || (score > 0.5 && gap < 0.0) || (score < 0.5 && gap > 0.0)
 }
 
+/// Shortest majority-preference cycle through `winner → loser`, if any.
+/// Nodes are item indexes; first and last entry are both `winner`.
+pub fn find_cycle(state: &RankState, winner: usize, loser: usize) -> Option<Vec<usize>> {
+    let edges = majority_edges(state);
+    // The fresh answer may not have flipped the head-to-head majority.
+    if !edges[winner].contains(&loser) {
+        return None;
+    }
+    // BFS from loser back to winner finds the shortest return path.
+    let mut previous = vec![usize::MAX; edges.len()];
+    previous[loser] = loser;
+    let mut queue = VecDeque::from([loser]);
+    while let Some(node) = queue.pop_front() {
+        for &next in &edges[node] {
+            if previous[next] != usize::MAX {
+                continue;
+            }
+            previous[next] = node;
+            if next == winner {
+                let mut path = vec![winner];
+                let mut node = winner;
+                while node != loser {
+                    node = previous[node];
+                    path.push(node);
+                }
+                path.push(winner);
+                path.reverse();
+                return Some(path);
+            }
+            queue.push_back(next);
+        }
+    }
+    None
+}
+
+/// Directed majority edges (winner → loser) from head-to-head history.
+fn majority_edges(state: &RankState) -> Vec<Vec<usize>> {
+    let mut totals = BTreeMap::<(usize, usize), (f64, usize)>::new();
+    for answer in &state.history {
+        let (lo, hi) = (answer.a.min(answer.b), answer.a.max(answer.b));
+        let score = if answer.a == lo {
+            answer.score
+        } else {
+            1.0 - answer.score
+        };
+        let entry = totals.entry((lo, hi)).or_default();
+        entry.0 += score;
+        entry.1 += 1;
+    }
+    let mut edges = vec![Vec::new(); state.items.len()];
+    for ((lo, hi), (wins, count)) in totals {
+        let half = count as f64 / 2.0;
+        if wins > half {
+            edges[lo].push(hi);
+        } else if wins < half {
+            edges[hi].push(lo);
+        }
+    }
+    edges
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::app::rank::{Answer, bucketize};
     use rand::{RngExt, SeedableRng, rngs::StdRng};
+
+    #[test]
+    fn cycle_detected_and_absent() {
+        let mut state = RankState::new();
+        state.answer(0, 1, 1.0).unwrap(); // 0 beats 1
+        state.answer(1, 2, 1.0).unwrap(); // 1 beats 2
+        assert_eq!(find_cycle(&state, 1, 2), None);
+        state.answer(2, 0, 1.0).unwrap(); // 2 beats 0 → cycle
+        assert_eq!(find_cycle(&state, 2, 0), Some(vec![2, 0, 1, 2]));
+        // Majority flips back: 0 beats 2 twice more → no edge, no cycle.
+        state.answer(0, 2, 1.0).unwrap();
+        state.answer(0, 2, 1.0).unwrap();
+        assert_eq!(find_cycle(&state, 2, 0), None);
+    }
 
     #[test]
     fn explore_prefers_unplayed_items() {

@@ -128,6 +128,17 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
             }
         }
         state.answer(a, b, score)?;
+        if score != 0.5 {
+            let (winner, loser) = if score > 0.5 { (a, b) } else { (b, a) };
+            if let Some(cycle) = find_cycle(&state, winner, loser) {
+                let path = cycle
+                    .iter()
+                    .map(|&i| state.items[i].label())
+                    .collect::<Vec<_>>()
+                    .join(" > ");
+                println!("Preference cycle detected: {path}");
+            }
+        }
         if contradiction {
             state.reopen(a, b);
         }
@@ -169,8 +180,8 @@ fn print_stats(state: &RankState, cfg: &RankConfig) {
             .collect::<Vec<_>>()
             .join("  ")
     };
-    println!("best:  {}", show(&order[..5.min(order.len())]));
-    println!("worst: {}", show(&order[order.len().saturating_sub(5)..]));
+    println!("best:  {}", show(&order[..10.min(order.len())]));
+    println!("worst: {}", show(&order[order.len().saturating_sub(10)..]));
     println!(
         "settled {}/{}, answers {}, at least ~{} answers left",
         state.settled_count(cfg),
