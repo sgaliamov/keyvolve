@@ -136,13 +136,19 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
                     .map(|&i| state.items[i].label())
                     .collect::<Vec<_>>()
                     .join(" > ");
-                println!("Preference cycle detected: {path} — re-opening those pairs.");
-                // Re-open every item on the cycle so its links get re-asked
-                // until the majority order becomes consistent again.
-                for pair in cycle.windows(2) {
-                    state.reopen(pair[0], pair[1]);
+                // Re-open only when every member was settled — otherwise the
+                // cycle is still being worked on and re-opening would reset
+                // pending forever (livelock). Bradley–Terry tolerates noise.
+                let flags = state.settled_flags(&cfg);
+                if cycle.iter().all(|&i| flags[i]) {
+                    println!("Preference cycle detected: {path} — re-opening those pairs.");
+                    for pair in cycle.windows(2) {
+                        state.reopen(pair[0], pair[1]);
+                    }
+                    state.finished = false;
+                } else {
+                    println!("Preference cycle noted: {path} — already re-ranking.");
                 }
-                state.finished = false;
             }
         }
         if contradiction {
