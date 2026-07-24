@@ -214,6 +214,34 @@ pub fn find_cycle(state: &RankState, winner: usize, loser: usize) -> Option<Vec<
 
 /// Directed majority edges (winner → loser) from head-to-head history.
 fn majority_edges(state: &RankState) -> Vec<Vec<usize>> {
+    let mut edges = vec![Vec::new(); state.items.len()];
+    for ((lo, hi), (wins, count)) in head_to_head(state) {
+        let half = count as f64 / 2.0;
+        if wins > half {
+            edges[lo].push(hi);
+        } else if wins < half {
+            edges[hi].push(lo);
+        }
+    }
+    edges
+}
+
+/// Cycle edge with the slimmest majority margin — cheapest to flip.
+pub fn weakest_edge(state: &RankState, cycle: &[usize]) -> (usize, usize) {
+    let totals = head_to_head(state);
+    let margin = |a: usize, b: usize| {
+        let (wins, count) = totals[&(a.min(b), a.max(b))];
+        (wins - count as f64 / 2.0).abs()
+    };
+    cycle
+        .windows(2)
+        .map(|pair| (pair[0], pair[1]))
+        .min_by(|&(a, b), &(c, d)| margin(a, b).total_cmp(&margin(c, d)))
+        .expect("cycle has at least one edge")
+}
+
+/// Per-pair `(wins for lower index, total count)` from raw history.
+fn head_to_head(state: &RankState) -> BTreeMap<(usize, usize), (f64, usize)> {
     let mut totals = BTreeMap::<(usize, usize), (f64, usize)>::new();
     for answer in &state.history {
         let (lo, hi) = (answer.a.min(answer.b), answer.a.max(answer.b));
@@ -226,16 +254,7 @@ fn majority_edges(state: &RankState) -> Vec<Vec<usize>> {
         entry.0 += score;
         entry.1 += 1;
     }
-    let mut edges = vec![Vec::new(); state.items.len()];
-    for ((lo, hi), (wins, count)) in totals {
-        let half = count as f64 / 2.0;
-        if wins > half {
-            edges[lo].push(hi);
-        } else if wins < half {
-            edges[hi].push(lo);
-        }
-    }
-    edges
+    totals
 }
 
 #[cfg(test)]
@@ -243,6 +262,19 @@ mod tests {
     use super::*;
     use crate::app::rank::{Answer, bucketize};
     use rand::{RngExt, SeedableRng, rngs::StdRng};
+
+    #[test]
+    fn weakest_edge_prefers_thin_majority() {
+        let mut state = RankState::new();
+        // 0>1 and 1>2 answered three times; 2>0 only once — thinnest margin.
+        for _ in 0..3 {
+            state.answer(0, 1, 1.0).unwrap();
+            state.answer(1, 2, 1.0).unwrap();
+        }
+        state.answer(2, 0, 1.0).unwrap();
+        let cycle = find_cycle(&state, 2, 0).unwrap();
+        assert_eq!(weakest_edge(&state, &cycle), (2, 0));
+    }
 
     #[test]
     fn cycle_detected_and_absent() {

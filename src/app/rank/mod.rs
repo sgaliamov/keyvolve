@@ -40,6 +40,8 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
 
     // Verification counters for this run.
     let (mut confirmed, mut contradicted) = (0u32, 0u32);
+    // While a preference cycle is active, questions target its weakest edge.
+    let mut active_cycle: Option<Vec<usize>> = None;
 
     let stdin = std::io::stdin();
     let mut lines = stdin.lock().lines();
@@ -53,10 +55,20 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
             println!("All {total} pairs settled — entering verification mode.");
         }
 
-        let Some((mut a, mut b, kind)) = pick(&state, &cfg, &mut rng) else {
-            return Err(miette::miette!(
-                "No valid shared-key comparison is available for the current rank state"
-            ));
+        let (mut a, mut b, kind) = match &active_cycle {
+            // Break the cycle at its cheapest-to-flip link.
+            Some(cycle) => {
+                let (a, b) = weakest_edge(&state, cycle);
+                (a, b, PickKind::Audit)
+            }
+            None => {
+                let Some(picked) = pick(&state, &cfg, &mut rng) else {
+                    return Err(miette::miette!(
+                        "No valid shared-key comparison is available for the current rank state"
+                    ));
+                };
+                picked
+            }
         };
         // Random presentation order kills position bias.
         if rng.random_bool(0.5) {
@@ -98,6 +110,7 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
                         if state.settled_count(&cfg) < state.items.len() {
                             state.finished = false;
                         }
+                        active_cycle = None;
                         println!("Undone.");
                         state.save(&session)?;
                         break Reply::Repick;
@@ -130,24 +143,34 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
         state.answer(a, b, score)?;
         if score != 0.5 {
             let (winner, loser) = if score > 0.5 { (a, b) } else { (b, a) };
-            if let Some(cycle) = find_cycle(&state, winner, loser) {
-                let path = cycle
-                    .iter()
-                    .map(|&i| state.items[i].label())
-                    .collect::<Vec<_>>()
-                    .join(" > ");
-                // Re-open only when every member was settled — otherwise the
-                // cycle is still being worked on and re-opening would reset
-                // pending forever (livelock). Bradley–Terry tolerates noise.
-                let flags = state.settled_flags(&cfg);
-                if cycle.iter().all(|&i| flags[i]) {
-                    println!("Preference cycle detected: {path} — re-opening those pairs.");
-                    for pair in cycle.windows(2) {
-                        state.reopen(pair[0], pair[1]);
+            // One answer may not flip the majority — check both directions.
+            let cycle =
+                find_cycle(&state, winner, loser).or_else(|| find_cycle(&state, loser, winner));
+            match cycle {
+                Some(cycle) => {
+                    let path = cycle
+                        .iter()
+                        .map(|&i| state.items[i].label())
+                        .collect::<Vec<_>>()
+                        .join(" > ");
+                    // Fresh discovery of a fully-settled cycle re-opens its
+                    // items; an already-active cycle just keeps being targeted.
+                    let flags = state.settled_flags(&cfg);
+                    if active_cycle.is_none() && cycle.iter().all(|&i| flags[i]) {
+                        println!("Preference cycle detected: {path} — re-opening those pairs.");
+                        for pair in cycle.windows(2) {
+                            state.reopen(pair[0], pair[1]);
+                        }
+                        state.finished = false;
+                    } else {
+                        println!("Preference cycle: {path} — targeting its weakest link.");
                     }
-                    state.finished = false;
-                } else {
-                    println!("Preference cycle noted: {path} — already re-ranking.");
+                    active_cycle = Some(cycle);
+                }
+                None => {
+                    if active_cycle.take().is_some() {
+                        println!("Preference cycle resolved.");
+                    }
                 }
             }
         }
@@ -163,6 +186,7 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
         state.finished = true;
     }
     state.save(&session)?;
+    print_stats(&state, &cfg);
     if confirmed + contradicted > 0 {
         println!("Verification: {confirmed} confirmed, {contradicted} contradicted.");
     }
