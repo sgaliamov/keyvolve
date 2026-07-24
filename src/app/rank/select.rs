@@ -38,7 +38,7 @@ pub fn pick(
     pick_audit(state, cfg, rng).map(|(a, b)| (a, b, PickKind::Audit))
 }
 
-/// Audit: two settled shared-key items, preferring residuals then clear gaps.
+/// Audit: two settled same-start items, preferring residuals then clear gaps.
 fn pick_audit(
     state: &RankState,
     cfg: &RankConfig,
@@ -129,7 +129,7 @@ fn pick_explore(
     Some((a, b))
 }
 
-/// Candidate shared-key comparisons, preferring two unfinished items.
+/// Candidate same-start comparisons, preferring two unfinished items.
 fn informative_pairs(
     state: &RankState,
     unsettled: &[usize],
@@ -157,10 +157,9 @@ fn informative_pairs(
         .collect()
 }
 
-/// True when the two items share a physical key (from or to slot).
+/// True when the two items start from the same physical key.
 fn shares_key(state: &RankState, a: usize, b: usize) -> bool {
-    let (x, y) = (&state.items[a], &state.items[b]);
-    x.from == y.from || x.from == y.to || x.to == y.from || x.to == y.to
+    state.items[a].from == state.items[b].from
 }
 
 /// Squared Pearson residual; expected value is one for a calibrated binary fit.
@@ -219,7 +218,8 @@ mod tests {
         };
         let (a, b, kind) = pick(&state, &cfg, &mut rng).unwrap();
         assert_eq!(kind, PickKind::Audit);
-        assert!((state.items[a].rating - state.items[b].rating).abs() >= 200.0);
+        // Same-start groups span 130 rating points here; expect a wide gap pick.
+        assert!((state.items[a].rating - state.items[b].rating).abs() >= 100.0);
         assert!(shares_key(&state, a, b));
     }
 
@@ -334,7 +334,9 @@ mod tests {
     #[ignore = "statistical simulation benchmark"]
     fn simulation_benchmark() {
         // Batched refits keep the broad statistical benchmark fast.
-        for (max_matches, min_accuracy) in [(15, 0.5), (30, 0.65)] {
+        // Same-start-only pairs disconnect from-groups; cross-group order rests
+        // on the prior, so accuracy sits below the old shared-key thresholds.
+        for (max_matches, min_accuracy) in [(15, 0.4), (30, 0.5)] {
             for seed in [17, 29, 43] {
                 let (answers, bucket_accuracy, rho) = simulate(seed, max_matches, 50);
                 println!(
