@@ -149,7 +149,7 @@ impl RankState {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent).into_diagnostic()?;
         }
-        let json = serde_json::to_vec(self).into_diagnostic()?;
+        let json = serde_json::to_vec_pretty(self).into_diagnostic()?;
         serde_json::from_slice::<serde_json::Value>(&json)
             .into_diagnostic()
             .wrap_err("Refusing to persist invalid session JSON")?;
