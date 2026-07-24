@@ -33,7 +33,9 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
     };
 
     println!("Rank mode: type the pair on your QWERTY keyboard, pick the EASIER one.");
-    println!("Answers: 1 / 2 = winner, = tie, n skip, u undo, s stats, q quit (state is saved).");
+    println!(
+        "Answers: 1 / 2 = winner, = tie, n skip, u undo, s stats, c clear, q quit (state is saved)."
+    );
     if state.finished {
         println!("Ranking finished earlier — verification mode: checking saved ranking.");
     }
@@ -118,8 +120,9 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
                     println!("Nothing to undo.");
                 }
                 Some('s') => print_stats(&state, &cfg),
+                Some('c') => print!("\x1b[2J\x1b[H"),
                 Some('q') => break Reply::Quit,
-                Some('?') => println!("? 1, 2, =, n, u, s or q"),
+                Some('?') => println!("? 1, 2, =, n, u, s, c or q"),
                 _ => continue,
             }
         };
