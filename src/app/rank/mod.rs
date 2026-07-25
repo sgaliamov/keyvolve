@@ -21,6 +21,8 @@ const CYAN: &str = "\x1b[36m";
 const DIM: &str = "\x1b[2m";
 const BOLD: &str = "\x1b[1m";
 const RESET: &str = "\x1b[0m";
+const LINE_UP: &str = "\x1b[1A\x1b[2K";
+const CLEAR: &str = "\x1b[2J\x1b[H";
 
 /// Interactive pair-ranking mode: repeatedly asks the user which of two
 /// bigram pairs is easier to type, fitting Bradley–Terry ratings for all 210
@@ -154,7 +156,7 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
                     println!("Nothing to undo.");
                 }
                 Some('S') => print_stats(&state, &cfg),
-                Some('C') => print!("\x1b[2J\x1b[H"),
+                Some('C') => print!("{CLEAR}"),
                 Some('Q') => break Reply::Quit,
                 Some('?') => println!(
                     "? ending letter / 1 / 2 = winner, = tie, N skip, U undo, S stats, C clear, Q quit"
@@ -198,7 +200,7 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
             _ => "=".into(),
         };
         println!(
-            "\x1b[1A\x1b[2K{DIM}[{settled}/{total}]{RESET} {pick}  {DIM}{}  {}{RESET}",
+            "{LINE_UP}{DIM}[{settled}/{total}]{RESET} {pick}  {DIM}{}  {}{RESET}",
             stat(a),
             stat(b)
         );
