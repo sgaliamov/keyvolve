@@ -118,6 +118,24 @@ pub fn write_report_csv(path: &Path, state: &RankState, buckets: &Buckets) -> Re
         out.push('\n');
     }
 
+    // Double-press efforts (QQ, WW, ...) derived from key strength.
+    let _ = writeln!(out, "doubles:");
+    let cells = |range: std::ops::Range<u8>| {
+        range
+            .map(|s| {
+                format!(
+                    "{},{:.2}",
+                    QWERTY[s as usize].to_ascii_uppercase(),
+                    buckets.efforts[grid[s as usize][s as usize]]
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(",")
+    };
+    for row in 0..3u8 {
+        let _ = writeln!(out, "{}", cells(row * 5..row * 5 + 5));
+    }
+
     write_text(path, out)
 }
 
