@@ -47,7 +47,7 @@ Plan mode — always provide drafts with code samples in responses.
 Pattern: `[thing] [action] [reason]. [next step].`
 Arrows for causality: X → Y. One word when one word enough. Use symbols (→, ✓, ✗) where fitting.
 
-When finish, give only one line summary for git commit message.
+When finish, offer to commit with one line message.
 
 **Auto-clarity exceptions** (write normal, resume caveman after):
 - Security warnings
