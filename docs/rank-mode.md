@@ -45,14 +45,41 @@ of the posterior); deviation is the width of that peak. Practical consequences:
   carries maximum information; an answer with an obvious winner teaches almost nothing.
 - **Confidence flows through the graph.** Playing against a well-anchored opponent
   shrinks your deviation more than playing against an uncertain one.
-- **It can grow.** A contradictory answer moves the optimum and flattens the peak —
-  deviation goes back up until new answers restore confidence.
+- **It (almost) never grows.** Every answer adds information — even a contradictory one
+  shrinks deviation. A contradiction hurts differently: it *compresses the rating gap*,
+  making the pair harder to tell apart despite the smaller deviations. That's why
+  settling checks bucket stability, not deviation alone.
 - **It never reaches zero.** The prior keeps a floor; typical values fall from the
   initial 350 to ~100 after 15 matches.
 
 For settling, what matters is the deviation of the *difference* between two bigrams,
 which also accounts for their correlation — two pairs that moved together are easier to
 tell apart than their individual deviations suggest.
+
+### Reading the fit quality line
+
+The stats screen (`S`) ends with a global health check of the whole ranking:
+
+```
+fit: log-loss 0.412, agreement 87%, spread/dev 14.2
+```
+
+- **log-loss** — average surprise of the model at your answers. For each answered pair
+  the fitted ratings predict a win probability; log-loss punishes confident wrong
+  predictions hardest. `0.693` = the model is no better than a coin flip; `0.3–0.5` =
+  a consistent, well-fitted session; rising over time = your answers contradict the
+  ratings more and more.
+- **agreement** — share of decisive answers (ties excluded) where the higher-rated
+  bigram actually won. `>85%` = clean signal; near `60%` = noisy or contradictory
+  answers; the model then compresses ratings and settling slows down.
+- **spread/dev** — rating range divided by mean deviation: how many "units of
+  uncertainty" fit between the best and worst bigram. High (`>10`) = the ranking is
+  well resolved and buckets are meaningful; low (`<5`) = items are still statistically
+  indistinguishable, keep answering.
+
+A healthy finished session has *wide* spread — big rating gaps are the goal, not a
+problem. Dense, bunched-up ratings with low deviations mean the answers were
+contradictory and the model gave up on separating items.
 
 ## Choosing the next question
 

@@ -274,4 +274,35 @@ mod tests {
         let fit = fit_bradley_terry(&[answer(0, 1, 0.5)], 2, &[]);
         assert!((fit.ratings[0] - fit.ratings[1]).abs() < 1e-8);
     }
+
+    #[test]
+    fn contradiction_shrinks_deviation_but_flattens_ratings() {
+        // Anchor 0 > 1 firmly, then 1 > 2 once: three consistent answers.
+        let mut answers = (0..10)
+            .flat_map(|_| [answer(0, 1, 1.0)])
+            .collect::<Vec<_>>();
+        answers.push(answer(1, 2, 1.0));
+        let before = fit_bradley_terry(&answers, 3, &[]);
+        // Contradiction: 2 beats 0 despite the implied 0 > 1 > 2 chain.
+        // Deviation still SHRINKS — every answer adds curvature, and pulling
+        // ratings together raises per-match weights. The damage shows up as a
+        // compressed rating spread instead.
+        answers.push(answer(2, 0, 1.0));
+        let after = fit_bradley_terry(&answers, 3, &[]);
+        assert!(
+            after
+                .deviations
+                .iter()
+                .zip(&before.deviations)
+                .all(|(now, was)| now <= was)
+        );
+        let spread = |fit: &BradleyTerryFit| {
+            fit.ratings
+                .iter()
+                .cloned()
+                .fold(f64::NEG_INFINITY, f64::max)
+                - fit.ratings.iter().cloned().fold(f64::INFINITY, f64::min)
+        };
+        assert!(spread(&after) < spread(&before));
+    }
 }

@@ -318,4 +318,35 @@ fn print_stats(state: &RankState, cfg: &RankConfig) {
         state.history.len(),
         state.steps_left(cfg),
     );
+    print_fit_quality(state);
+}
+
+/// Global fit quality: how well current ratings explain the recorded answers.
+/// See docs/rank-mode.md "Reading the fit quality line" for interpretation.
+fn print_fit_quality(state: &RankState) {
+    if state.history.is_empty() {
+        return;
+    }
+    let (loss, hits, decisive) = state.history.iter().fold((0.0, 0, 0), |(l, h, d), a| {
+        let p = fit::expected_score(state.items[a.a].rating, state.items[a.b].rating);
+        let l = l - (a.score * p.ln() + (1.0 - a.score) * (1.0 - p).ln());
+        match a.score {
+            1.0 => (l, h + usize::from(p > 0.5), d + 1),
+            0.0 => (l, h + usize::from(p < 0.5), d + 1),
+            _ => (l, h, d),
+        }
+    });
+    let (min, max) = state
+        .items
+        .iter()
+        .fold((f64::INFINITY, f64::NEG_INFINITY), |(lo, hi), i| {
+            (lo.min(i.rating), hi.max(i.rating))
+        });
+    let mean_dev = state.items.iter().map(|i| i.deviation).sum::<f64>() / state.items.len() as f64;
+    println!(
+        "{DIM}fit: log-loss{RESET} {:.3}{DIM}, agreement{RESET} {:.0}%{DIM}, spread/dev{RESET} {:.1}",
+        loss / state.history.len() as f64,
+        100.0 * hits as f64 / decisive.max(1) as f64,
+        (max - min) / mean_dev,
+    );
 }
