@@ -31,7 +31,8 @@ pub fn bucketize(state: &RankState, cfg: &RankConfig) -> Buckets {
     Buckets { efforts, groups }
 }
 
-/// Write ranked keyboard JSON (left-hand pairs; diagonal = row's best group).
+/// Write ranked keyboard JSON (left-hand pairs; a repeated key gets its row's
+/// best group).
 pub fn write_keyboard_json(path: &Path, state: &RankState, buckets: &Buckets) -> Result<()> {
     let grid = pair_groups(state, buckets);
 
@@ -131,9 +132,9 @@ fn write_text(path: &Path, text: String) -> Result<()> {
     std::fs::write(path, text).into_diagnostic()
 }
 
-/// Full 15×15 group table: ranked pairs bucketed, diagonal (double press) set
-/// to the best group of its row — a double is at least as easy as the easiest
-/// roll starting from the same key.
+/// Full 15×15 group table: ranked pairs bucketed; a double press (same key
+/// twice, e.g. QQ) gets the best group among pairs starting from that key —
+/// a double is at least as easy as the easiest roll from the same key.
 fn pair_groups(state: &RankState, buckets: &Buckets) -> Vec<Vec<usize>> {
     let mut grid = vec![vec![0usize; HAND_SLOTS as usize]; HAND_SLOTS as usize];
     for (idx, item) in state.items.iter().enumerate() {
