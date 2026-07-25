@@ -35,6 +35,25 @@ Each rating carries an **uncertainty** (deviation) that shrinks as the bigram co
 answers. A bigram is *settled* once its rating is confident enough: sufficient matches,
 low deviation, and a stable position in the final effort groups.
 
+### How deviation changes
+
+Deviation is not a simple per-match decay — it falls out of the full refit. After fitting,
+the model measures how *sharply peaked* the solution is around each rating (the curvature
+of the posterior); deviation is the width of that peak. Practical consequences:
+
+- **Informative answers shrink it most.** A question between near-equals (close ratings)
+  carries maximum information; an answer with an obvious winner teaches almost nothing.
+- **Confidence flows through the graph.** Playing against a well-anchored opponent
+  shrinks your deviation more than playing against an uncertain one.
+- **It can grow.** A contradictory answer moves the optimum and flattens the peak —
+  deviation goes back up until new answers restore confidence.
+- **It never reaches zero.** The prior keeps a floor; typical values fall from the
+  initial 350 to ~100 after 15 matches.
+
+For settling, what matters is the deviation of the *difference* between two bigrams,
+which also accounts for their correlation — two pairs that moved together are easier to
+tell apart than their individual deviations suggest.
+
 ## Choosing the next question
 
 Questions are not random. The picker maximizes learning per answer:
