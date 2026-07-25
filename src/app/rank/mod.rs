@@ -186,15 +186,31 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
         }
         state.answer(a, b, score)?;
         // Rewrite the prompt line in place: erase user's input, append the
-        // picked winner plus updated model stats for both options. Fixed
-        // column widths keep consecutive lines aligned.
+        // picked winner plus updated model stats for both options. Arrows show
+        // rating/deviation direction; fixed column widths keep lines aligned.
+        let last = state.history.last().expect("answer just recorded");
+        let prev = |i: usize| {
+            if i == last.a {
+                last.prev_a
+            } else {
+                last.prev_b
+            }
+        };
         let stat = |i: usize| {
             let it = &state.items[i];
+            let (prev_rating, prev_deviation, _) = prev(i);
+            let dir = |now: f64, before: f64| match now.total_cmp(&before) {
+                std::cmp::Ordering::Greater => "↑",
+                std::cmp::Ordering::Less => "↓",
+                std::cmp::Ordering::Equal => "·",
+            };
             format!(
-                "{} {:>4}±{:<3} m{:<2}",
+                "{} {:>4}{}±{:<3}{} m{:<2}",
                 it.label(),
                 format!("{:.0}", it.rating),
+                dir(it.rating, prev_rating),
                 format!("{:.0}", it.deviation),
+                dir(it.deviation, prev_deviation),
                 it.matches
             )
         };
