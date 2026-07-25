@@ -45,7 +45,7 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
 
     println!("{BOLD}Rank mode:{RESET} type the pair on your QWERTY keyboard, pick the EASIER one.");
     println!(
-        "{DIM}Answers: 1 / 2 = winner, = tie, n skip, u undo, s stats, c clear, q quit (state is saved).{RESET}"
+        "{DIM}Answers: ending letter / 1 / 2 = winner, = tie; Shift for commands: N skip, U undo, S stats, C clear, Q quit (state is saved).{RESET}"
     );
     if state.finished {
         println!(
@@ -95,6 +95,10 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
             format!("{}({})", item.label(), item.label_right())
         };
         let (label_a, label_b) = (label(a), label(b));
+        // Both options start from the same key, so the ending letter alone
+        // identifies the winner (e.g. TE vs TD → 'e' or 'd').
+        let last = |i: usize| QWERTY[state.items[i].to as usize].to_ascii_lowercase();
+        let (last_a, last_b) = (last(a), last(b));
 
         // Re-prompt the same question until valid input; invalid lines are ignored.
         // `Skip` moves on without recording an answer.
@@ -115,12 +119,16 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
                 break Reply::Quit;
             };
             // React to the last typed character — stray input before it is ignored.
+            // Lowercase ending letters answer directly; commands are uppercase
+            // (Shift) so they never clash with answers. 1/2/= still work.
             match line.trim().chars().last() {
                 Some('1') => break Reply::Score(1.0),
                 Some('2') => break Reply::Score(0.0),
                 Some('=') => break Reply::Score(0.5),
-                Some('n') => break Reply::Skip,
-                Some('u') => {
+                Some(ch) if ch == last_a => break Reply::Score(1.0),
+                Some(ch) if ch == last_b => break Reply::Score(0.0),
+                Some('N') => break Reply::Skip,
+                Some('U') => {
                     if state.undo() {
                         if state.settled_count(&cfg) < state.items.len() {
                             state.finished = false;
@@ -132,10 +140,12 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
                     }
                     println!("Nothing to undo.");
                 }
-                Some('s') => print_stats(&state, &cfg),
-                Some('c') => print!("\x1b[2J\x1b[H"),
-                Some('q') => break Reply::Quit,
-                Some('?') => println!("? 1, 2, =, n, u, s, c or q"),
+                Some('S') => print_stats(&state, &cfg),
+                Some('C') => print!("\x1b[2J\x1b[H"),
+                Some('Q') => break Reply::Quit,
+                Some('?') => println!(
+                    "? ending letter / 1 / 2 = winner, = tie, N skip, U undo, S stats, C clear, Q quit"
+                ),
                 _ => continue,
             }
         };
