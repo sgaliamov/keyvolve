@@ -180,6 +180,28 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
             }
         }
         state.answer(a, b, score)?;
+        // Rewrite the prompt line in place: erase user's input, append the
+        // picked winner plus updated model stats for both options.
+        let stat = |i: usize| {
+            let it = &state.items[i];
+            format!(
+                "{} {:.0}±{:.0} m{}",
+                it.label(),
+                it.rating,
+                it.deviation,
+                it.matches
+            )
+        };
+        let pick = match score {
+            s if s > 0.5 => format!("{BOLD}{label_a}{RESET}"),
+            s if s < 0.5 => format!("{BOLD}{label_b}{RESET}"),
+            _ => "=".into(),
+        };
+        println!(
+            "\x1b[1A\x1b[2K{DIM}[{settled}/{total}]{RESET} {pick}  {DIM}{}  {}{RESET}",
+            stat(a),
+            stat(b)
+        );
         if score != 0.5 {
             let (winner, loser) = if score > 0.5 { (a, b) } else { (b, a) };
             // One answer may not flip the majority — check both directions.
