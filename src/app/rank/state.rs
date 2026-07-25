@@ -669,4 +669,52 @@ mod tests {
         }
         assert_eq!(state.steps_left(&cfg), 0);
     }
+
+    /// Read-only diagnostic over the live session: why is each item unsettled?
+    /// Run with: cargo test -q scan_live_session_settled -- --ignored --nocapture
+    #[test]
+    #[ignore]
+    fn scan_live_session_settled_breakdown() {
+        let path = Path::new("data/rank-session.json");
+        if !path.exists() {
+            return;
+        }
+        let state = RankState::load(path).unwrap();
+        // Mirror keyvolve.yaml rank settings (no yaml parser in this crate's deps).
+        let cfg = RankConfig {
+            min_matches: 10,
+            max_matches: 20,
+            max_deviation: 130.0,
+            groups: 15,
+            bucket_tolerance: 1,
+            ..Default::default()
+        };
+        let stable = state.bucket_stability(cfg.groups, cfg.bucket_tolerance);
+        let settled = state.settled_flags(&cfg);
+        let (mut capped, mut ok, mut pending_n, mut low_matches, mut high_dev, mut unstable) =
+            (0, 0, 0, 0, 0, 0);
+        for (i, item) in state.items.iter().enumerate() {
+            if settled[i] {
+                if item.matches >= cfg.max_matches {
+                    capped += 1;
+                } else {
+                    ok += 1;
+                }
+                continue;
+            }
+            if state.pending[i] > 0 {
+                pending_n += 1;
+            } else if item.matches < cfg.min_matches {
+                low_matches += 1;
+            } else if item.deviation > cfg.max_deviation {
+                high_dev += 1;
+            } else if !stable[i] {
+                unstable += 1;
+            }
+        }
+        println!(
+            "settled: {capped} capped + {ok} confident; unsettled: {pending_n} pending, \
+             {low_matches} low matches, {high_dev} high deviation, {unstable} bucket-unstable"
+        );
+    }
 }

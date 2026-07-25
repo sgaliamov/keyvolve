@@ -64,6 +64,15 @@ Scores candidate layouts against a bigram-weighted corpus, then evolves them tow
 - `rank.bucketTolerance` — neighboring buckets allowed by confidence stopping.
 - `rank.seed` — optional reproducible question-order seed.
 
+Diagnostic tests (`#[ignore]`, read-only over the live `data/rank-session.json`):
+
+```sh
+# Why is each pair (un)settled — capped / confident / pending / matches / deviation / bucket-unstable:
+cargo test -q scan_live_session_settled -- --ignored --nocapture
+# Preference cycles among majority edges:
+cargo test -q scan_live_session_for_cycles -- --ignored --nocapture
+```
+
 ## Data files
 - `data/keyboard.json` — effort groups, bigram pair costs, penalty coefficients.
 - `data/layouts.csv` — semicolon-layout + fitness; header on first line.
