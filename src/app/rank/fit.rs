@@ -296,13 +296,52 @@ mod tests {
                 .zip(&before.deviations)
                 .all(|(now, was)| now <= was)
         );
-        let spread = |fit: &BradleyTerryFit| {
-            fit.ratings
-                .iter()
-                .cloned()
-                .fold(f64::NEG_INFINITY, f64::max)
-                - fit.ratings.iter().cloned().fold(f64::INFINITY, f64::min)
-        };
         assert!(spread(&after) < spread(&before));
+    }
+
+    /// Rating spread of a fit: max − min.
+    fn spread(fit: &BradleyTerryFit) -> f64 {
+        fit.ratings
+            .iter()
+            .cloned()
+            .fold(f64::NEG_INFINITY, f64::max)
+            - fit.ratings.iter().cloned().fold(f64::INFINITY, f64::min)
+    }
+
+    #[test]
+    fn consistent_answers_grow_spread() {
+        // Repeating the same clean verdicts keeps pushing ratings apart:
+        // wide gaps are the signature of consistent answers.
+        let mut prev = 0.0;
+        for n in [1, 5, 10, 20] {
+            let answers = (0..n)
+                .flat_map(|_| [answer(0, 1, 1.0), answer(1, 2, 1.0)])
+                .collect::<Vec<_>>();
+            let s = spread(&fit_bradley_terry(&answers, 3, &[]));
+            assert!(s > prev, "spread must grow with consistency: {prev} -> {s}");
+            prev = s;
+        }
+    }
+
+    #[test]
+    fn contradictions_compress_spread_vs_clean_session() {
+        // Same answer count; half the verdicts flipped. Contradictory session
+        // must end with a much tighter (worse-separated) rating spread.
+        let clean = (0..10)
+            .flat_map(|_| [answer(0, 1, 1.0), answer(1, 2, 1.0)])
+            .collect::<Vec<_>>();
+        let noisy = (0..5)
+            .flat_map(|_| {
+                [
+                    answer(0, 1, 1.0),
+                    answer(1, 2, 1.0),
+                    answer(0, 1, 0.0),
+                    answer(1, 2, 0.0),
+                ]
+            })
+            .collect::<Vec<_>>();
+        let clean = spread(&fit_bradley_terry(&clean, 3, &[]));
+        let noisy = spread(&fit_bradley_terry(&noisy, 3, &[]));
+        assert!(noisy < clean / 2.0, "noisy {noisy} vs clean {clean}");
     }
 }

@@ -196,33 +196,40 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
                 last.prev_b
             }
         };
+        // Direction arrow for a metric vs its pre-answer snapshot.
+        let dir = |now: f64, before: f64| match now.total_cmp(&before) {
+            std::cmp::Ordering::Greater => "↑",
+            std::cmp::Ordering::Less => "↓",
+            std::cmp::Ordering::Equal => "·",
+        };
         let stat = |i: usize| {
             let it = &state.items[i];
             let (prev_rating, prev_deviation, _) = prev(i);
-            let dir = |now: f64, before: f64| match now.total_cmp(&before) {
-                std::cmp::Ordering::Greater => "↑",
-                std::cmp::Ordering::Less => "↓",
-                std::cmp::Ordering::Equal => "·",
-            };
             format!(
-                "{} {:>4}{}±{:<3}{} m{:<2}",
+                "{} {:04.0}{}±{:03.0}{} m:{:02}",
                 it.label(),
-                format!("{:.0}", it.rating),
+                it.rating,
                 dir(it.rating, prev_rating),
-                format!("{:.0}", it.deviation),
+                it.deviation,
                 dir(it.deviation, prev_deviation),
                 it.matches
             )
         };
         let pick = match score {
-            s if s > 0.5 => format!("{BOLD}{label_a:<6}{RESET}"),
-            s if s < 0.5 => format!("{BOLD}{label_b:<6}{RESET}"),
-            _ => format!("{:<6}", "="),
+            s if s > 0.5 => format!("{BOLD}{:<2}{RESET}", state.items[a].label()),
+            s if s < 0.5 => format!("{BOLD}{:<2}{RESET}", state.items[b].label()),
+            _ => format!("{:<2}", "="),
         };
+        // Rating gap between the two options: growing gap = cleaner separation,
+        // shrinking gap = this answer contradicted the model.
+        let gap = (state.items[a].rating - state.items[b].rating).abs();
+        let prev_gap = (last.prev_a.0 - last.prev_b.0).abs();
         println!(
-            "{LINE_UP}{DIM}[{settled}/{total}]{RESET} {pick}  {DIM}{}  {}{RESET}",
+            "{LINE_UP}{DIM}[{settled}/{total}]{RESET} {pick}  {DIM}{}  {}  gap:{:03.0}{}{RESET}",
             stat(a),
-            stat(b)
+            stat(b),
+            gap,
+            dir(gap, prev_gap),
         );
         if score != 0.5 {
             let (winner, loser) = if score > 0.5 { (a, b) } else { (b, a) };
