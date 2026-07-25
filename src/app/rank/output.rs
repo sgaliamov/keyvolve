@@ -133,22 +133,38 @@ fn write_text(path: &Path, text: String) -> Result<()> {
 }
 
 /// Full 15×15 group table: ranked pairs bucketed; a double press (same key
-/// twice, e.g. QQ) gets the best group among pairs starting from that key —
-/// a double is at least as easy as the easiest roll from the same key.
+/// twice, e.g. QQ) is estimated from key strength — the mean rating of all
+/// ranked pairs touching that key — mapped onto the easy third of the group
+/// scale: strongest key → group 0, weakest → `groups / 3`.
 fn pair_groups(state: &RankState, buckets: &Buckets) -> Vec<Vec<usize>> {
-    let mut grid = vec![vec![0usize; HAND_SLOTS as usize]; HAND_SLOTS as usize];
+    let slots = HAND_SLOTS as usize;
+    let mut grid = vec![vec![0usize; slots]; slots];
     for (idx, item) in state.items.iter().enumerate() {
         grid[item.from as usize][item.to as usize] = buckets.groups[idx];
     }
-    for (from, row) in grid.iter_mut().enumerate() {
-        let best = row
-            .iter()
-            .enumerate()
-            .filter(|&(to, _)| to != from)
-            .map(|(_, &g)| g)
-            .min()
-            .unwrap_or(0);
-        row[from] = best;
+
+    // Key strength: mean rating over every pair the key participates in.
+    let mut sums = vec![(0.0f64, 0usize); slots];
+    for item in &state.items {
+        for slot in [item.from as usize, item.to as usize] {
+            sums[slot].0 += item.rating;
+            sums[slot].1 += 1;
+        }
+    }
+    let strength: Vec<f64> = sums
+        .iter()
+        .map(|(sum, n)| sum / (*n).max(1) as f64)
+        .collect();
+    let (min, max) = strength
+        .iter()
+        .fold((f64::INFINITY, f64::NEG_INFINITY), |(lo, hi), &s| {
+            (lo.min(s), hi.max(s))
+        });
+    let span = (max - min).max(f64::EPSILON);
+    let cap = (buckets.efforts.len() / 3) as f64;
+    for (slot, row) in grid.iter_mut().enumerate() {
+        // Strong (high mean rating) → cheap double.
+        row[slot] = ((max - strength[slot]) / span * cap).round() as usize;
     }
     grid
 }
@@ -176,6 +192,22 @@ mod tests {
         assert!(b.efforts.windows(2).all(|w| w[0] < w[1]));
         // Higher rating never lands in a worse bucket.
         assert!(b.groups.windows(2).all(|w| w[0] <= w[1]));
+    }
+
+    #[test]
+    fn double_press_tracks_key_strength() {
+        let state = ranked_state();
+        let cfg = RankConfig::default();
+        let buckets = bucketize(&state, &cfg);
+        let grid = pair_groups(&state, &buckets);
+        let cap = buckets.efforts.len() / 3;
+        // Items are ordered by (from, to); earlier slots hold higher ratings,
+        // so key strength decreases with the slot index.
+        let doubles: Vec<usize> = (0..HAND_SLOTS as usize).map(|s| grid[s][s]).collect();
+        assert!(doubles.iter().all(|&g| g <= cap));
+        assert!(doubles.windows(2).all(|w| w[0] <= w[1]));
+        assert_eq!(doubles[0], 0);
+        assert_eq!(*doubles.last().unwrap(), cap);
     }
 
     #[test]
