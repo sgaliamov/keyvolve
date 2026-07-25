@@ -90,7 +90,7 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
         // Show both hands for each option, e.g. "QW | PO".
         let label = |i: usize| {
             let item = &state.items[i];
-            format!("{}({})", item.label(), item.label_right())
+            format!("{}[{}]", item.label(), item.label_right())
         };
         let (label_a, label_b) = (label(a), label(b));
         // Options normally start from the same key, so the ending letter
@@ -123,7 +123,7 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
         }
         let reply = loop {
             print!(
-                "{DIM}[{settled}/{total} settled, {} answered]{RESET}  (1) {BOLD}{label_a}{RESET}   (2) {BOLD}{label_b}{RESET}  > ",
+                "{DIM}[{settled}/{total} settled, {} answered]{RESET}  1: {BOLD}{label_a}{RESET}   2: {BOLD}{label_b}{RESET}  > ",
                 state.history.len(),
             );
             std::io::stdout().flush().ok();
