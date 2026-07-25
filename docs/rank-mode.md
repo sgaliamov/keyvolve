@@ -87,3 +87,29 @@ only confirm or challenge the saved ranking. On quit, the session prints stats a
 
 The session file keeps the raw answer history, so future runs can re-verify or refine the
 ranking under different settings.
+
+## Configuration
+
+All settings live under `rank:` in `keyvolve.yaml`; every one has a sensible default.
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `output` | `data/keyboard.ranked.json` | Ranked keyboard JSON (efforts + pair groups). |
+| `report` | `output` with `.csv` | CSV visual report path. |
+| `session` | `data/rank-session.json` | Saved answer history for pause/resume. |
+| `auditRate` | `0` | Probability (0–1) that a question is an audit re-check instead of exploration. `0` = audits only after everything settles. |
+| `minMatches` | `10` | Comparisons an item needs before it *can* settle. A match is any answered question involving the item. |
+| `maxMatches` | `30` | Comparisons after which an item settles unconditionally — caps effort spent on stubborn boundary cases. |
+| `maxDeviation` | `170` | Rating uncertainty an item must reach (together with a stable bucket) to settle before `maxMatches`. Lower = stricter = more questions. |
+| `effortMin` | `1.0` | Effort assigned to the most preferable bucket in the output. |
+| `effortMax` | `10.0` | Effort assigned to the least preferable bucket. |
+| `groups` | `20` | Number of effort buckets in the output (1–210). More groups = finer effort resolution, longer sessions. |
+| `bucketTolerance` | `1` | How many neighboring buckets an item may wobble across while still counting as stable. `0` = exact bucket required. |
+| `seed` | random | RNG seed for a reproducible question order. |
+
+Rules of thumb:
+
+- Fewer questions → raise `maxDeviation`, lower `minMatches`/`maxMatches`, or reduce `groups`.
+- Higher confidence → the opposite; add `auditRate: 0.1` to weave consistency checks into
+  a normal session.
+- `effortMin`/`effortMax` only scale the output; they don't affect ranking itself.

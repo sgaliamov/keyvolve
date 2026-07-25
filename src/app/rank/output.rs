@@ -84,40 +84,34 @@ pub fn write_report_csv(
     for from in 0..HAND_SLOTS {
         let _ = writeln!(
             out,
-            "from: {} (slot {from})",
+            "from: {} (slot {from}),,,,,,rating:,,,,,,deviation:,,,,,,matches:",
             QWERTY[from as usize].to_ascii_uppercase()
         );
 
-        // Effort grid (3 rows × 5 cols).
+        // Effort grid (3 rows × 5 cols) with the analytical grids as extra
+        // column blocks on the same rows: effort | rating | deviation | matches.
         let effort_of = |to: u8| buckets.efforts[grid[from as usize][to as usize]];
+        let analytic: [&dyn Fn(usize) -> String; 3] = [
+            &|i| format!("{:.0}", state.items[i].rating),
+            &|i| format!("{:.0}", state.items[i].deviation),
+            &|i| state.items[i].matches.to_string(),
+        ];
         for row in 0..3u8 {
-            let cells = (0..5u8)
-                .map(|col| format!("{:.2}", effort_of(row * 5 + col)))
-                .collect::<Vec<_>>()
-                .join(",");
-            let _ = writeln!(out, "{cells}");
-        }
-
-        // Analytical grids: fitted rating, uncertainty, and matches (diagonal blank).
-        for (name, cell) in [
-            (
-                "rating",
-                &(|i: usize| format!("{:.0}", state.items[i].rating)) as &dyn Fn(usize) -> String,
-            ),
-            (
-                "deviation",
-                &(|i: usize| format!("{:.0}", state.items[i].deviation)),
-            ),
-            ("matches", &(|i: usize| state.items[i].matches.to_string())),
-        ] {
-            let _ = writeln!(out, "{name}:");
-            for row in 0..3u8 {
-                let cells = (0..5u8)
-                    .map(|col| item(from, row * 5 + col).map(cell).unwrap_or_default())
+            let mut blocks = vec![
+                (0..5u8)
+                    .map(|col| format!("{:.2}", effort_of(row * 5 + col)))
                     .collect::<Vec<_>>()
-                    .join(",");
-                let _ = writeln!(out, "{cells}");
+                    .join(","),
+            ];
+            for cell in analytic {
+                blocks.push(
+                    (0..5u8)
+                        .map(|col| item(from, row * 5 + col).map(cell).unwrap_or_default())
+                        .collect::<Vec<_>>()
+                        .join(","),
+                );
             }
+            let _ = writeln!(out, "{}", blocks.join(",,"));
         }
 
         // Block stats over the 14 ranked targets.
