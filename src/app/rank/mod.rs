@@ -189,16 +189,18 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
             let cycle =
                 find_cycle(&state, winner, loser).or_else(|| find_cycle(&state, loser, winner));
             match cycle {
+                // Only cycles among settled items matter — the model is
+                // confident yet contradicted. Unsettled cycles are noise that
+                // Bradley–Terry averages out; they are ignored unless already
+                // being targeted.
                 Some(cycle) => {
-                    let path = cycle
-                        .iter()
-                        .map(|&i| state.items[i].label())
-                        .collect::<Vec<_>>()
-                        .join(" > ");
-                    // Fresh discovery of a fully-settled cycle re-opens its
-                    // items; an already-active cycle just keeps being targeted.
                     let flags = state.settled_flags(&cfg);
                     if active_cycle.is_none() && cycle.iter().all(|&i| flags[i]) {
+                        let path = cycle
+                            .iter()
+                            .map(|&i| state.items[i].label())
+                            .collect::<Vec<_>>()
+                            .join(" > ");
                         println!(
                             "{DIM}Preference cycle detected:{RESET} {RED}{path} — re-opening those pairs.{RESET}"
                         );
@@ -206,12 +208,11 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
                             state.reopen(pair[0], pair[1]);
                         }
                         state.finished = false;
-                    } else {
-                        println!(
-                            "{DIM}Preference cycle:{RESET} {YELLOW}{path} — targeting its weakest link.{RESET}"
-                        );
+                        active_cycle = Some(cycle);
+                    } else if active_cycle.is_some() {
+                        // Keep targeting the refreshed cycle path.
+                        active_cycle = Some(cycle);
                     }
-                    active_cycle = Some(cycle);
                 }
                 None => {
                     if active_cycle.take().is_some() {
