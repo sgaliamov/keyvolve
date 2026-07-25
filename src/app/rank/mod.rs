@@ -15,6 +15,15 @@ pub use state::*;
 use std::io::{BufRead, Write};
 use std::path::Path;
 
+// ANSI colors for interactive messages.
+const RED: &str = "\x1b[31m";
+const GREEN: &str = "\x1b[32m";
+const YELLOW: &str = "\x1b[33m";
+const CYAN: &str = "\x1b[36m";
+const DIM: &str = "\x1b[2m";
+const BOLD: &str = "\x1b[1m";
+const RESET: &str = "\x1b[0m";
+
 /// Interactive pair-ranking mode: repeatedly asks the user which of two
 /// bigram pairs is easier to type, fitting Bradley–Terry ratings for all 210
 /// ordered left-hand pairs. Resumable; writes ranked keyboard JSON + CSV report.
@@ -25,19 +34,23 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
     let mut state = RankState::load_or_new(&session)?;
     if state.finished && state.settled_count(&cfg) < state.items.len() {
         state.finished = false;
-        println!("Saved ranking needs more confidence under the current model — resuming ranking.");
+        println!(
+            "{YELLOW}Saved ranking needs more confidence under the current model — resuming ranking.{RESET}"
+        );
     }
     let mut rng = match cfg.seed {
         Some(seed) => StdRng::seed_from_u64(seed),
         None => StdRng::from_rng(&mut rand::rng()),
     };
 
-    println!("Rank mode: type the pair on your QWERTY keyboard, pick the EASIER one.");
+    println!("{BOLD}Rank mode:{RESET} type the pair on your QWERTY keyboard, pick the EASIER one.");
     println!(
-        "Answers: 1 / 2 = winner, = tie, n skip, u undo, s stats, c clear, q quit (state is saved)."
+        "{DIM}Answers: 1 / 2 = winner, = tie, n skip, u undo, s stats, c clear, q quit (state is saved).{RESET}"
     );
     if state.finished {
-        println!("Ranking finished earlier — verification mode: checking saved ranking.");
+        println!(
+            "{CYAN}Ranking finished earlier — verification mode: checking saved ranking.{RESET}"
+        );
     }
 
     // Verification counters for this run.
@@ -54,7 +67,7 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
         if settled == total && !state.finished {
             state.finished = true;
             state.save(&session)?;
-            println!("All {total} pairs settled — entering verification mode.");
+            println!("{GREEN}All {total} pairs settled — entering verification mode.{RESET}");
         }
 
         let (mut a, mut b, kind) = match &active_cycle {
@@ -93,7 +106,7 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
         }
         let reply = loop {
             print!(
-                "[{settled}/{total} settled, {} answered]  (1) {label_a}   (2) {label_b}  > ",
+                "{DIM}[{settled}/{total} settled, {} answered]{RESET}  (1) {BOLD}{label_a}{RESET}   (2) {BOLD}{label_b}{RESET}  > ",
                 state.history.len(),
             );
             std::io::stdout().flush().ok();
@@ -113,7 +126,7 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
                             state.finished = false;
                         }
                         active_cycle = None;
-                        println!("Undone.");
+                        println!("{YELLOW}Undone.{RESET}");
                         state.save(&session)?;
                         break Reply::Repick;
                     }
@@ -136,7 +149,7 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
         let contradiction = kind == PickKind::Audit && contradicts(&state, a, b, score);
         if kind == PickKind::Audit {
             if contradiction {
-                println!("Contradiction with earlier answers — both pairs re-opened.");
+                println!("{RED}Contradiction with earlier answers — both pairs re-opened.{RESET}");
                 state.finished = false;
                 contradicted += 1;
             } else {
@@ -160,19 +173,23 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
                     // items; an already-active cycle just keeps being targeted.
                     let flags = state.settled_flags(&cfg);
                     if active_cycle.is_none() && cycle.iter().all(|&i| flags[i]) {
-                        println!("Preference cycle detected: {path} — re-opening those pairs.");
+                        println!(
+                            "{RED}Preference cycle detected: {path} — re-opening those pairs.{RESET}"
+                        );
                         for pair in cycle.windows(2) {
                             state.reopen(pair[0], pair[1]);
                         }
                         state.finished = false;
                     } else {
-                        println!("Preference cycle: {path} — targeting its weakest link.");
+                        println!(
+                            "{YELLOW}Preference cycle: {path} — targeting its weakest link.{RESET}"
+                        );
                     }
                     active_cycle = Some(cycle);
                 }
                 None => {
                     if active_cycle.take().is_some() {
-                        println!("Preference cycle resolved.");
+                        println!("{GREEN}Preference cycle resolved.{RESET}");
                     }
                 }
             }
@@ -191,7 +208,7 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
     state.save(&session)?;
     print_stats(&state, &cfg);
     if confirmed + contradicted > 0 {
-        println!("Verification: {confirmed} confirmed, {contradicted} contradicted.");
+        println!("{CYAN}Verification: {confirmed} confirmed, {contradicted} contradicted.{RESET}");
     }
     write_outputs(&cfg, &state, &keyboard)?;
     Ok(())
