@@ -27,7 +27,7 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
             frequencies::frequencies(cfg.frequencies, app)?;
         }
         Mode::Rank => {
-            rank::rank(cfg.rank, &cfg.keyboard, app)?;
+            rank::rank(cfg.rank, app)?;
         }
         mode => {
             let keyboard = Keyboard::load(cfg.keyboard)?;

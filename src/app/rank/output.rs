@@ -1,5 +1,4 @@
 use crate::app::rank::{HAND_SLOTS, QWERTY, RankConfig, RankState};
-use crate::models::Keyboard;
 use miette::{IntoDiagnostic, Result};
 use std::fmt::Write as _;
 use std::path::Path;
@@ -32,14 +31,9 @@ pub fn bucketize(state: &RankState, cfg: &RankConfig) -> Buckets {
     Buckets { efforts, groups }
 }
 
-/// Write ranked keyboard JSON (left-hand pairs; diagonal copied from `keyboard`).
-pub fn write_keyboard_json(
-    path: &Path,
-    state: &RankState,
-    buckets: &Buckets,
-    keyboard: &Keyboard,
-) -> Result<()> {
-    let grid = pair_groups(state, buckets, keyboard);
+/// Write ranked keyboard JSON (left-hand pairs; diagonal = row's best group).
+pub fn write_keyboard_json(path: &Path, state: &RankState, buckets: &Buckets) -> Result<()> {
+    let grid = pair_groups(state, buckets);
 
     let mut out = String::from("{\n");
     let efforts = buckets
@@ -65,13 +59,8 @@ pub fn write_keyboard_json(
 
 /// Write CSV visual report: 15 blocks (one per starting key), each a 3×5 grid
 /// of efforts matching the physical layout, plus rating/matches grids and stats.
-pub fn write_report_csv(
-    path: &Path,
-    state: &RankState,
-    buckets: &Buckets,
-    keyboard: &Keyboard,
-) -> Result<()> {
-    let grid = pair_groups(state, buckets, keyboard);
+pub fn write_report_csv(path: &Path, state: &RankState, buckets: &Buckets) -> Result<()> {
+    let grid = pair_groups(state, buckets);
     // item lookup by (from, to)
     let item = |from: u8, to: u8| {
         state
@@ -142,33 +131,25 @@ fn write_text(path: &Path, text: String) -> Result<()> {
     std::fs::write(path, text).into_diagnostic()
 }
 
-/// Full 15×15 group table: ranked pairs bucketed, diagonal mapped from the
-/// existing keyboard's repeat efforts to the nearest new group.
-fn pair_groups(state: &RankState, buckets: &Buckets, keyboard: &Keyboard) -> Vec<Vec<usize>> {
+/// Full 15×15 group table: ranked pairs bucketed, diagonal (double press) set
+/// to the best group of its row — a double is at least as easy as the easiest
+/// roll starting from the same key.
+fn pair_groups(state: &RankState, buckets: &Buckets) -> Vec<Vec<usize>> {
     let mut grid = vec![vec![0usize; HAND_SLOTS as usize]; HAND_SLOTS as usize];
     for (idx, item) in state.items.iter().enumerate() {
         grid[item.from as usize][item.to as usize] = buckets.groups[idx];
     }
-    for from in 0..HAND_SLOTS {
-        let old_effort = keyboard
-            .pairs
-            .get(&from)
-            .and_then(|t| t.get(&from))
-            .map(|&g| keyboard.efforts[g])
-            .unwrap_or(buckets.efforts[buckets.efforts.len() - 1]);
-        grid[from as usize][from as usize] = nearest_group(&buckets.efforts, old_effort);
+    for (from, row) in grid.iter_mut().enumerate() {
+        let best = row
+            .iter()
+            .enumerate()
+            .filter(|&(to, _)| to != from)
+            .map(|(_, &g)| g)
+            .min()
+            .unwrap_or(0);
+        row[from] = best;
     }
     grid
-}
-
-/// Index of the effort closest to `value`.
-fn nearest_group(efforts: &[f64], value: f64) -> usize {
-    efforts
-        .iter()
-        .enumerate()
-        .min_by(|(_, a), (_, b)| (*a - value).abs().total_cmp(&(*b - value).abs()))
-        .map(|(i, _)| i)
-        .unwrap_or(0)
 }
 
 #[cfg(test)]
@@ -201,19 +182,18 @@ mod tests {
         let state = ranked_state();
         let cfg = RankConfig::default();
         let buckets = bucketize(&state, &cfg);
-        let keyboard = Keyboard::load("data/keyboard.json").unwrap();
 
         let dir = std::env::temp_dir().join("keyvolve-rank-out-test");
         std::fs::create_dir_all(&dir).unwrap();
         let json = dir.join("generated/json/keyboard.json");
-        write_keyboard_json(&json, &state, &buckets, &keyboard).unwrap();
-        let loaded = Keyboard::load(&json).unwrap();
+        write_keyboard_json(&json, &state, &buckets).unwrap();
+        let loaded = crate::models::Keyboard::load(&json).unwrap();
         assert_eq!(loaded.efforts.len(), cfg.groups);
         assert_eq!(loaded.pairs.len(), 30); // left + mirrored right
         assert!(loaded.pairs[&0].len() == 15);
 
         let csv = dir.join("generated/reports/keyboard.csv");
-        write_report_csv(&csv, &state, &buckets, &keyboard).unwrap();
+        write_report_csv(&csv, &state, &buckets).unwrap();
         let text = std::fs::read_to_string(&csv).unwrap();
         assert_eq!(text.matches("from: ").count(), 15);
         std::fs::remove_dir_all(&dir).ok();
