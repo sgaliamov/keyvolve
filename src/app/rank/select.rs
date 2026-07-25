@@ -276,6 +276,33 @@ mod tests {
         assert_eq!(weakest_edge(&state, &cycle), (2, 0));
     }
 
+    /// Read-only scan of the live session for majority-preference cycles.
+    #[test]
+    #[ignore = "inspects live data/rank-session.json"]
+    fn scan_live_session_for_cycles() {
+        let state = RankState::load_or_new(std::path::Path::new("data/rank-session.json"))
+            .expect("session loads");
+        let edges = majority_edges(&state);
+        let mut seen = std::collections::BTreeSet::new();
+        for (winner, losers) in edges.iter().enumerate() {
+            for &loser in losers {
+                let Some(cycle) = find_cycle(&state, winner, loser) else {
+                    continue;
+                };
+                // Normalize rotation so each cycle prints once.
+                let mut key = cycle[..cycle.len() - 1].to_vec();
+                let start = key.iter().position(|n| n == key.iter().min().unwrap());
+                key.rotate_left(start.unwrap());
+                if seen.insert(key) {
+                    let labels: Vec<_> =
+                        cycle.iter().map(|&i| state.items[i].label()).collect();
+                    println!("cycle: {}", labels.join(" > "));
+                }
+            }
+        }
+        println!("total cycles: {}", seen.len());
+    }
+
     #[test]
     fn cycle_detected_and_absent() {
         let mut state = RankState::new();
