@@ -269,7 +269,7 @@ fn print_stats(state: &RankState, cfg: &RankConfig) {
         show(&order[order.len().saturating_sub(10)..])
     );
     println!(
-        "{DIM}settled{RESET} {}/{}{DIM}, answers{RESET} {}{DIM}, at least ~{} answers left{RESET}",
+        "{DIM}settled{RESET} {}/{}{DIM}, answers{RESET} {}{DIM}, roughly ~{} answers left{RESET}",
         state.settled_count(cfg),
         state.items.len(),
         state.history.len(),

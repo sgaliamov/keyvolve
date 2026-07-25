@@ -247,7 +247,10 @@ impl RankState {
         self.settled_flags(cfg).into_iter().filter(|&x| x).count()
     }
 
-    /// Lower-bound answer estimate; confidence-boundary items may need more.
+    /// Answer estimate: items already past `minMatches` that still are not
+    /// settled almost always grind to the `maxMatches` cap, so count the full
+    /// distance to the cap for them; fresh items get their `minMatches`
+    /// shortfall. Each answer advances two items.
     pub fn steps_left(&self, cfg: &RankConfig) -> u64 {
         let settled = self.settled_flags(cfg);
         let needed: u64 = self
@@ -256,10 +259,19 @@ impl RankState {
             .enumerate()
             .map(|(index, item)| {
                 if settled[index] {
-                    0
-                } else {
-                    u64::from(cfg.min_matches.saturating_sub(item.matches).max(1))
+                    return 0;
                 }
+                let target = if item.matches >= cfg.min_matches {
+                    cfg.max_matches
+                } else {
+                    cfg.min_matches
+                };
+                u64::from(
+                    target
+                        .saturating_sub(item.matches)
+                        .max(u32::from(self.pending[index]))
+                        .max(1),
+                )
             })
             .sum();
         needed.div_ceil(2)

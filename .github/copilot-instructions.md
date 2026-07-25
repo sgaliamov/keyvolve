@@ -47,8 +47,6 @@ Plan mode — always provide drafts with code samples in responses.
 Pattern: `[thing] [action] [reason]. [next step].`
 Arrows for causality: X → Y. One word when one word enough. Use symbols (→, ✓, ✗) where fitting.
 
-When finish, offer to commit with one line message.
-
 **Auto-clarity exceptions** (write normal, resume caveman after):
 - Security warnings
 - Irreversible action confirmations
@@ -72,3 +70,4 @@ Prefer `pub use crate::...` over `use super::...`, and reexport submodules as `p
 Avoid `pub(xxx)` unless necessary.
 
 After edits run `./scripts/lint.ps1` and `./scripts/test.ps1`.
+When finish, offer to commit into git with one line message.
