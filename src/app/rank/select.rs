@@ -294,8 +294,7 @@ mod tests {
                 let start = key.iter().position(|n| n == key.iter().min().unwrap());
                 key.rotate_left(start.unwrap());
                 if seen.insert(key) {
-                    let labels: Vec<_> =
-                        cycle.iter().map(|&i| state.items[i].label()).collect();
+                    let labels: Vec<_> = cycle.iter().map(|&i| state.items[i].label()).collect();
                     println!("cycle: {}", labels.join(" > "));
                 }
             }

@@ -85,8 +85,9 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
                 picked
             }
         };
-        // Random presentation order kills position bias.
-        if rng.random_bool(0.5) {
+        // Random presentation order kills position bias; cycle questions keep
+        // the weakest-edge order as picked.
+        if active_cycle.is_none() && rng.random_bool(0.5) {
             std::mem::swap(&mut a, &mut b);
         }
         // Show both hands for each option, e.g. "QW | PO".
