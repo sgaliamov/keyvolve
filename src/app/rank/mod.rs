@@ -110,7 +110,7 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
             (letter(to_a), letter(to_b))
         } else {
             println!(
-                "{YELLOW}Both options end with '{}' — answer with the STARTING letter.{RESET}",
+                "{CYAN}Both options end with '{}' — answer with the STARTING letter.{RESET}",
                 letter(to_a)
             );
             (letter(from_a), letter(from_b))
