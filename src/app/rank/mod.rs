@@ -95,10 +95,25 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
             format!("{}({})", item.label(), item.label_right())
         };
         let (label_a, label_b) = (label(a), label(b));
-        // Both options start from the same key, so the ending letter alone
-        // identifies the winner (e.g. TE vs TD → 'e' or 'd').
-        let last = |i: usize| QWERTY[state.items[i].to as usize].to_ascii_lowercase();
-        let (last_a, last_b) = (last(a), last(b));
+        // Options normally start from the same key, so the ending letter
+        // identifies the winner (e.g. TE vs TD → 'e' or 'd'). Cycle edges may
+        // share the ENDING key instead (e.g. WD vs RD) — then the starting
+        // letter distinguishes (w/r).
+        let letter = |slot: u8| QWERTY[slot as usize].to_ascii_lowercase();
+        let key = |i: usize| {
+            let item = &state.items[i];
+            (item.from, item.to)
+        };
+        let ((from_a, to_a), (from_b, to_b)) = (key(a), key(b));
+        let (last_a, last_b) = if to_a != to_b {
+            (letter(to_a), letter(to_b))
+        } else {
+            println!(
+                "{YELLOW}Both options end with '{}' — answer with the STARTING letter.{RESET}",
+                letter(to_a)
+            );
+            (letter(from_a), letter(from_b))
+        };
 
         // Re-prompt the same question until valid input; invalid lines are ignored.
         // `Skip` moves on without recording an answer.
@@ -184,7 +199,7 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
                     let flags = state.settled_flags(&cfg);
                     if active_cycle.is_none() && cycle.iter().all(|&i| flags[i]) {
                         println!(
-                            "{RED}Preference cycle detected: {path} — re-opening those pairs.{RESET}"
+                            "{DIM}Preference cycle detected:{RESET} {RED}{path} — re-opening those pairs.{RESET}"
                         );
                         for pair in cycle.windows(2) {
                             state.reopen(pair[0], pair[1]);
@@ -192,7 +207,7 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
                         state.finished = false;
                     } else {
                         println!(
-                            "{YELLOW}Preference cycle: {path} — targeting its weakest link.{RESET}"
+                            "{DIM}Preference cycle:{RESET} {YELLOW}{path} — targeting its weakest link.{RESET}"
                         );
                     }
                     active_cycle = Some(cycle);
@@ -218,7 +233,9 @@ pub fn rank(cfg: RankConfig, keyboard_path: impl AsRef<Path>, app: AppHandle) ->
     state.save(&session)?;
     print_stats(&state, &cfg);
     if confirmed + contradicted > 0 {
-        println!("{CYAN}Verification: {confirmed} confirmed, {contradicted} contradicted.{RESET}");
+        println!(
+            "{DIM}Verification:{RESET} {CYAN}{confirmed} confirmed, {contradicted} contradicted.{RESET}"
+        );
     }
     write_outputs(&cfg, &state, &keyboard)?;
     Ok(())
@@ -246,10 +263,13 @@ fn print_stats(state: &RankState, cfg: &RankConfig) {
             .collect::<Vec<_>>()
             .join("  ")
     };
-    println!("best:  {}", show(&order[..10.min(order.len())]));
-    println!("worst: {}", show(&order[order.len().saturating_sub(10)..]));
+    println!("{DIM}best: {RESET} {}", show(&order[..10.min(order.len())]));
     println!(
-        "settled {}/{}, answers {}, at least ~{} answers left",
+        "{DIM}worst:{RESET} {}",
+        show(&order[order.len().saturating_sub(10)..])
+    );
+    println!(
+        "{DIM}settled{RESET} {}/{}{DIM}, answers{RESET} {}{DIM}, at least ~{} answers left{RESET}",
         state.settled_count(cfg),
         state.items.len(),
         state.history.len(),
