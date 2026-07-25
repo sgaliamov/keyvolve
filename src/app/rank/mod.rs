@@ -155,7 +155,10 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
                     }
                     println!("Nothing to undo.");
                 }
-                Some('S') => print_stats(&state, &cfg),
+                Some('S') => {
+                    print_stats(&state, &cfg);
+                    write_outputs(&cfg, &state)?;
+                }
                 Some('C') => print!("{CLEAR}"),
                 Some('Q') => break Reply::Quit,
                 Some('?') => println!(
@@ -183,21 +186,22 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
         }
         state.answer(a, b, score)?;
         // Rewrite the prompt line in place: erase user's input, append the
-        // picked winner plus updated model stats for both options.
+        // picked winner plus updated model stats for both options. Fixed
+        // column widths keep consecutive lines aligned.
         let stat = |i: usize| {
             let it = &state.items[i];
             format!(
-                "{} {:.0}±{:.0} m{}",
+                "{} {:>4}±{:<3} m{:<2}",
                 it.label(),
-                it.rating,
-                it.deviation,
+                format!("{:.0}", it.rating),
+                format!("{:.0}", it.deviation),
                 it.matches
             )
         };
         let pick = match score {
-            s if s > 0.5 => format!("{BOLD}{label_a}{RESET}"),
-            s if s < 0.5 => format!("{BOLD}{label_b}{RESET}"),
-            _ => "=".into(),
+            s if s > 0.5 => format!("{BOLD}{label_a:<6}{RESET}"),
+            s if s < 0.5 => format!("{BOLD}{label_b:<6}{RESET}"),
+            _ => format!("{:<6}", "="),
         };
         println!(
             "{LINE_UP}{DIM}[{settled}/{total}]{RESET} {pick}  {DIM}{}  {}{RESET}",
