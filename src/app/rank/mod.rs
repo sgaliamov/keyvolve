@@ -205,9 +205,15 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
         let stat = |i: usize| {
             let it = &state.items[i];
             let (prev_rating, prev_deviation, _) = prev(i);
+            // Winner's label is highlighted instead of a separate pick column.
+            let won = (i == a && score > 0.5) || (i == b && score < 0.5);
+            let label = if won {
+                format!("{RESET}{BOLD}{}{RESET}{DIM}", it.label())
+            } else {
+                it.label()
+            };
             format!(
-                "{} {:04.0}{}±{:03.0}{} m:{:02}",
-                it.label(),
+                "{label} {:04.0}{}±{:03.0}{} m:{:02}",
                 it.rating,
                 dir(it.rating, prev_rating),
                 it.deviation,
@@ -215,17 +221,12 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
                 it.matches
             )
         };
-        let pick = match score {
-            s if s > 0.5 => format!("{BOLD}{:<2}{RESET}", state.items[a].label()),
-            s if s < 0.5 => format!("{BOLD}{:<2}{RESET}", state.items[b].label()),
-            _ => format!("{:<2}", "="),
-        };
         // Rating gap between the two options: growing gap = cleaner separation,
         // shrinking gap = this answer contradicted the model.
         let gap = (state.items[a].rating - state.items[b].rating).abs();
         let prev_gap = (last.prev_a.0 - last.prev_b.0).abs();
         println!(
-            "{LINE_UP}{DIM}[{settled}/{total}]{RESET} {pick}  {DIM}{}  {}  gap:{:03.0}{}{RESET}",
+            "{LINE_UP}{DIM}[{settled}/{total}] {}  {}  gap:{:03.0}{}{RESET}",
             stat(a),
             stat(b),
             gap,
@@ -350,8 +351,13 @@ fn print_fit_quality(state: &RankState) {
             (lo.min(i.rating), hi.max(i.rating))
         });
     let mean_dev = state.items.iter().map(|i| i.deviation).sum::<f64>() / state.items.len() as f64;
+    // Natural clusters in raw ratings: split where the gap between sorted
+    // neighbours exceeds the mean deviation (statistically distinct).
+    let mut sorted: Vec<f64> = state.items.iter().map(|i| i.rating).collect();
+    sorted.sort_by(|x, y| y.total_cmp(x));
+    let clusters = 1 + sorted.windows(2).filter(|w| w[0] - w[1] > mean_dev).count();
     println!(
-        "{DIM}fit: log-loss{RESET} {:.3}{DIM}, agreement{RESET} {:.0}%{DIM}, spread/dev{RESET} {:.1}",
+        "{DIM}fit: log-loss{RESET} {:.3}{DIM}, agreement{RESET} {:.0}%{DIM}, spread/dev{RESET} {:.1}{DIM}, clusters{RESET} {clusters}",
         loss / state.history.len() as f64,
         100.0 * hits as f64 / decisive.max(1) as f64,
         (max - min) / mean_dev,

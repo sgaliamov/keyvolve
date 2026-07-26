@@ -61,7 +61,7 @@ tell apart than their individual deviations suggest.
 The stats screen (`S`) ends with a global health check of the whole ranking:
 
 ```
-fit: log-loss 0.412, agreement 87%, spread/dev 14.2
+fit: log-loss 0.412, agreement 87%, spread/dev 14.2, clusters 9
 ```
 
 - **log-loss** — average surprise of the model at your answers. For each answered pair
@@ -76,6 +76,11 @@ fit: log-loss 0.412, agreement 87%, spread/dev 14.2
   uncertainty" fit between the best and worst bigram. High (`>10`) = the ranking is
   well resolved and buckets are meaningful; low (`<5`) = items are still statistically
   indistinguishable, keep answering.
+- **clusters** — natural effort tiers emerging in the raw ratings: sorted ratings are
+  split wherever the gap between neighbours exceeds the mean deviation. Early in a
+  session everything is one indistinct blob (`1`); as answers accumulate, real tiers
+  separate out. Compare with the configured `groups`: far fewer clusters than groups
+  means quantile buckets are slicing through statistically identical items.
 
 A healthy finished session has *wide* spread — big rating gaps are the goal, not a
 problem. Dense, bunched-up ratings with low deviations mean the answers were
