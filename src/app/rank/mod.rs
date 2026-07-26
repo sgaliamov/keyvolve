@@ -351,15 +351,14 @@ fn print_fit_quality(state: &RankState) {
             (lo.min(i.rating), hi.max(i.rating))
         });
     let mean_dev = state.items.iter().map(|i| i.deviation).sum::<f64>() / state.items.len() as f64;
-    // Natural clusters in raw ratings: split where the gap between sorted
-    // neighbours exceeds the mean deviation (statistically distinct).
-    let mut sorted: Vec<f64> = state.items.iter().map(|i| i.rating).collect();
-    sorted.sort_by(|x, y| y.total_cmp(x));
-    let clusters = 1 + sorted.windows(2).filter(|w| w[0] - w[1] > mean_dev).count();
+    // Effective tiers: how many statistically distinct levels the whole
+    // spread can hold at 95% confidence.
+    let tiers = (max - min) / (1.96 * mean_dev);
     println!(
-        "{DIM}fit: log-loss{RESET} {:.3}{DIM}, agreement{RESET} {:.0}%{DIM}, spread/dev{RESET} {:.1}{DIM}, clusters{RESET} {clusters}",
+        "{DIM}fit: log-loss{RESET} {:.3}{DIM}, agreement{RESET} {:.0}%{DIM}, spread/dev{RESET} {:.1}{DIM}, tiers{RESET} {:.0}",
         loss / state.history.len() as f64,
         100.0 * hits as f64 / decisive.max(1) as f64,
         (max - min) / mean_dev,
+        tiers,
     );
 }

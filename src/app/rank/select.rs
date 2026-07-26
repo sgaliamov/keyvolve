@@ -15,6 +15,11 @@ pub enum PickKind {
 
 /// Minimum rating gap for a meaningful audit question.
 const AUDIT_GAP: f64 = 200.0;
+/// Rating gap above which a majority edge pointing against the fit is worth
+/// re-checking (≈ one effort-group width).
+const UPHILL_GAP: f64 = 130.0;
+/// Majority margin below which a couple of answers can still flip the edge.
+const THIN_MARGIN: f64 = 1.0;
 /// Candidate pool size for random tie-breaking.
 const POOL: usize = 10;
 /// Confidence required before one answer can contradict the fitted order.
@@ -28,6 +33,11 @@ pub fn pick(
     cfg: &RankConfig,
     rng: &mut impl RngExt,
 ) -> Option<(usize, usize, PickKind)> {
+    // Thin uphill majority edges (head-to-head against the fitted order)
+    // seed preference cycles — re-check them first, settled or not.
+    if let Some((a, b)) = pick_uphill(state, rng) {
+        return Some((a, b, PickKind::Audit));
+    }
     let audit = state.finished || rng.random_bool(cfg.audit_rate.clamp(0.0, 1.0));
     if audit && let Some(pair) = pick_audit(state, cfg, rng) {
         return Some((pair.0, pair.1, PickKind::Audit));
@@ -162,6 +172,35 @@ fn shares_key(state: &RankState, a: usize, b: usize) -> bool {
     state.items[a].from == state.items[b].from
 }
 
+/// Uphill edge: head-to-head majority points against a large fitted gap, yet
+/// the margin is thin enough for one answer to flip it. These single noisy
+/// answers bridge distant tiers and spawn most preference cycles. Once the
+/// user confirms the preference again, the margin thickens and the edge
+/// stops qualifying — no infinite re-asking.
+fn pick_uphill(state: &RankState, rng: &mut impl RngExt) -> Option<(usize, usize)> {
+    let mut edges: Vec<(usize, usize, f64)> = head_to_head(state)
+        .into_iter()
+        .filter_map(|((lo, hi), (wins, count))| {
+            let margin = wins - count as f64 / 2.0;
+            // Majority winner and how far it sits BELOW the loser in rating.
+            let (winner, loser) = match margin.total_cmp(&0.0) {
+                std::cmp::Ordering::Greater => (lo, hi),
+                std::cmp::Ordering::Less => (hi, lo),
+                std::cmp::Ordering::Equal => return None,
+            };
+            let uphill = state.items[loser].rating - state.items[winner].rating;
+            (uphill > UPHILL_GAP && margin.abs() <= THIN_MARGIN).then_some((winner, loser, uphill))
+        })
+        .collect();
+    edges.shuffle(rng);
+    edges.sort_by(|(_, _, x), (_, _, y)| y.total_cmp(x));
+    if edges.is_empty() {
+        return None;
+    }
+    let &(a, b, _) = &edges[rng.random_range(0..POOL.min(edges.len()))];
+    Some((a, b))
+}
+
 /// Squared Pearson residual; expected value is one for a calibrated binary fit.
 fn pearson_residual(score: f64, predicted: f64) -> f64 {
     let variance = (predicted * (1.0 - predicted)).max(MIN_RESIDUAL_VARIANCE);
@@ -264,6 +303,27 @@ mod tests {
     use rand::{RngExt, SeedableRng, rngs::StdRng};
 
     #[test]
+    fn uphill_edges_are_targeted_until_confirmed() {
+        let mut state = RankState::new();
+        let mut rng = StdRng::seed_from_u64(7);
+        // Build a firm chain 0 > 1 > 2, then a single 2>0 answer: thin 1-0
+        // majority pointing against a big fitted gap — classic uphill edge.
+        for _ in 0..10 {
+            state.answer(0, 1, 1.0).unwrap();
+            state.answer(1, 2, 1.0).unwrap();
+        }
+        assert!(state.items[0].rating - state.items[2].rating > UPHILL_GAP);
+        state.answer(2, 0, 1.0).unwrap();
+        let picked = pick_uphill(&state, &mut rng).unwrap();
+        assert_eq!((picked.0.min(picked.1), picked.0.max(picked.1)), (0, 2));
+        // Restore the majority decisively — edge stops qualifying.
+        for _ in 0..3 {
+            state.answer(0, 2, 1.0).unwrap();
+        }
+        assert_eq!(pick_uphill(&state, &mut rng), None);
+    }
+
+    #[test]
     fn weakest_edge_prefers_thin_majority() {
         let mut state = RankState::new();
         // 0>1 and 1>2 answered three times; 2>0 only once — thinnest margin.
@@ -305,7 +365,9 @@ mod tests {
                         - ratings.fold(f64::INFINITY, f64::min);
                     let labels: Vec<_> = cycle
                         .iter()
-                        .map(|&i| format!("{}({:.0})", state.items[i].label(), state.items[i].rating))
+                        .map(|&i| {
+                            format!("{}({:.0})", state.items[i].label(), state.items[i].rating)
+                        })
                         .collect();
                     println!("span {span:4.0}  cycle: {}", labels.join(" > "));
                     spans.push(span);
@@ -321,6 +383,37 @@ mod tests {
             spans.get(spans.len() / 2).copied().unwrap_or(0.0),
             spans.last().copied().unwrap_or(0.0),
         );
+
+        // Weak-edge shortlist: edges appearing in many cycles that also point
+        // AGAINST the fitted ratings are the likely single-noisy-answer
+        // culprits — re-answering them dissolves most cycles at once.
+        let mut freq: std::collections::HashMap<(usize, usize), usize> =
+            std::collections::HashMap::new();
+        for key in &seen {
+            for pair in key.windows(2) {
+                *freq.entry((pair[0], pair[1])).or_default() += 1;
+            }
+            if let (Some(&first), Some(&last)) = (key.first(), key.last()) {
+                *freq.entry((last, first)).or_default() += 1;
+            }
+        }
+        let mut edges: Vec<_> = freq
+            .into_iter()
+            .filter(|&((w, l), _)| state.items[w].rating < state.items[l].rating)
+            .collect();
+        edges.sort_by_key(|&(_, n)| std::cmp::Reverse(n));
+        println!("weak edges (majority against fit, by cycle frequency):");
+        for ((w, l), n) in edges.iter().take(15) {
+            println!(
+                "  {:>3} cycles  {}({:.0}) > {}({:.0})  uphill {:.0}",
+                n,
+                state.items[*w].label(),
+                state.items[*w].rating,
+                state.items[*l].label(),
+                state.items[*l].rating,
+                state.items[*l].rating - state.items[*w].rating,
+            );
+        }
     }
 
     #[test]
