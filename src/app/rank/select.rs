@@ -2,7 +2,7 @@ use super::fit::{expected_score, information_score};
 use crate::app::rank::{RankConfig, RankState};
 use rand::RngExt;
 use rand::seq::SliceRandom;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 
 /// How the pair was chosen — affects contradiction handling.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -235,62 +235,61 @@ fn head_to_head(state: &RankState) -> BTreeMap<(usize, usize), (f64, usize)> {
     totals
 }
 
+/// Directed majority edges (winner → loser) from head-to-head history.
+/// Used for cycle display on uphill questions and diagnostics.
+fn majority_edges(state: &RankState) -> Vec<Vec<usize>> {
+    let mut edges = vec![Vec::new(); state.items.len()];
+    for ((lo, hi), (wins, count)) in head_to_head(state) {
+        let half = count as f64 / 2.0;
+        if wins > half {
+            edges[lo].push(hi);
+        } else if wins < half {
+            edges[hi].push(lo);
+        }
+    }
+    edges
+}
+
+/// Shortest majority-preference cycle through `winner → loser`, if any.
+/// Nodes are item indexes; first and last entry are both `winner`.
+pub fn find_cycle(state: &RankState, winner: usize, loser: usize) -> Option<Vec<usize>> {
+    let edges = majority_edges(state);
+    // The edge may not exist if the head-to-head majority never flipped.
+    if !edges[winner].contains(&loser) {
+        return None;
+    }
+    // BFS from loser back to winner finds the shortest return path.
+    let mut previous = vec![usize::MAX; edges.len()];
+    previous[loser] = loser;
+    let mut queue = VecDeque::from([loser]);
+    while let Some(node) = queue.pop_front() {
+        for &next in &edges[node] {
+            if previous[next] != usize::MAX {
+                continue;
+            }
+            previous[next] = node;
+            if next == winner {
+                let mut path = vec![winner];
+                let mut node = winner;
+                while node != loser {
+                    node = previous[node];
+                    path.push(node);
+                }
+                path.push(winner);
+                path.reverse();
+                return Some(path);
+            }
+            queue.push_back(next);
+        }
+    }
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::app::rank::{Answer, bucketize};
     use rand::{RngExt, SeedableRng, rngs::StdRng};
-    use std::collections::VecDeque;
-
-    /// Directed majority edges (winner → loser) from head-to-head history.
-    /// Diagnostic helper — runtime cycle repair is handled by `pick_uphill`.
-    fn majority_edges(state: &RankState) -> Vec<Vec<usize>> {
-        let mut edges = vec![Vec::new(); state.items.len()];
-        for ((lo, hi), (wins, count)) in head_to_head(state) {
-            let half = count as f64 / 2.0;
-            if wins > half {
-                edges[lo].push(hi);
-            } else if wins < half {
-                edges[hi].push(lo);
-            }
-        }
-        edges
-    }
-
-    /// Shortest majority-preference cycle through `winner → loser`, if any.
-    /// Nodes are item indexes; first and last entry are both `winner`.
-    fn find_cycle(state: &RankState, winner: usize, loser: usize) -> Option<Vec<usize>> {
-        let edges = majority_edges(state);
-        // The edge may not exist if the head-to-head majority never flipped.
-        if !edges[winner].contains(&loser) {
-            return None;
-        }
-        // BFS from loser back to winner finds the shortest return path.
-        let mut previous = vec![usize::MAX; edges.len()];
-        previous[loser] = loser;
-        let mut queue = VecDeque::from([loser]);
-        while let Some(node) = queue.pop_front() {
-            for &next in &edges[node] {
-                if previous[next] != usize::MAX {
-                    continue;
-                }
-                previous[next] = node;
-                if next == winner {
-                    let mut path = vec![winner];
-                    let mut node = winner;
-                    while node != loser {
-                        node = previous[node];
-                        path.push(node);
-                    }
-                    path.push(winner);
-                    path.reverse();
-                    return Some(path);
-                }
-                queue.push_back(next);
-            }
-        }
-        None
-    }
 
     #[test]
     fn uphill_edges_are_targeted_until_confirmed() {

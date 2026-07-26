@@ -75,6 +75,29 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
             };
             picked
         };
+        // Uphill questions: show the cycle this edge feeds, with per-hop
+        // rating gaps — negative hop = the uphill jump being re-checked.
+        if kind == PickKind::Uphill
+            && let Some(cycle) = find_cycle(&state, a, b)
+        {
+            let rating = |i: usize| state.items[i].rating;
+            let path = cycle
+                .windows(2)
+                .map(|e| {
+                    format!(
+                        "{}({:.0}) >{:+.0}>",
+                        state.items[e[0]].label(),
+                        rating(e[0]),
+                        rating(e[0]) - rating(e[1]),
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join(" ");
+            println!(
+                "{DIM}⚡ cycle:{RESET} {YELLOW}{path} {}{RESET}",
+                state.items[cycle[cycle.len() - 1]].label()
+            );
+        }
         // Random presentation order kills position bias.
         if rng.random_bool(0.5) {
             std::mem::swap(&mut a, &mut b);
