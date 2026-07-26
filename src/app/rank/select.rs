@@ -277,6 +277,9 @@ mod tests {
     }
 
     /// Read-only scan of the live session for majority-preference cycles.
+    /// Reports each cycle's rating span (max−min among members): small span =
+    /// harmless same-tier cluster; big span = ranking damage across tiers.
+    /// Run with: cargo test -q scan_live_session_for_cycles -- --ignored --nocapture
     #[test]
     #[ignore = "inspects live data/rank-session.json"]
     fn scan_live_session_for_cycles() {
@@ -284,6 +287,7 @@ mod tests {
             .expect("session loads");
         let edges = majority_edges(&state);
         let mut seen = std::collections::BTreeSet::new();
+        let mut spans = Vec::new();
         for (winner, losers) in edges.iter().enumerate() {
             for &loser in losers {
                 let Some(cycle) = find_cycle(&state, winner, loser) else {
@@ -294,12 +298,29 @@ mod tests {
                 let start = key.iter().position(|n| n == key.iter().min().unwrap());
                 key.rotate_left(start.unwrap());
                 if seen.insert(key) {
-                    let labels: Vec<_> = cycle.iter().map(|&i| state.items[i].label()).collect();
-                    println!("cycle: {}", labels.join(" > "));
+                    let ratings = cycle[..cycle.len() - 1]
+                        .iter()
+                        .map(|&i| state.items[i].rating);
+                    let span = ratings.clone().fold(f64::NEG_INFINITY, f64::max)
+                        - ratings.fold(f64::INFINITY, f64::min);
+                    let labels: Vec<_> = cycle
+                        .iter()
+                        .map(|&i| format!("{}({:.0})", state.items[i].label(), state.items[i].rating))
+                        .collect();
+                    println!("span {span:4.0}  cycle: {}", labels.join(" > "));
+                    spans.push(span);
                 }
             }
         }
-        println!("total cycles: {}", seen.len());
+        spans.sort_by(f64::total_cmp);
+        let big = spans.iter().filter(|&&s| s > 130.0).count();
+        println!(
+            "total cycles: {}, spans min/median/max: {:.0}/{:.0}/{:.0}, big (>130 = group width): {big}",
+            spans.len(),
+            spans.first().copied().unwrap_or(0.0),
+            spans.get(spans.len() / 2).copied().unwrap_or(0.0),
+            spans.last().copied().unwrap_or(0.0),
+        );
     }
 
     #[test]
