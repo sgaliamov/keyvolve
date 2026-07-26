@@ -99,7 +99,7 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
             (letter(to_a), letter(to_b))
         } else {
             println!(
-                "{CYAN}Both options end with '{}' — answer with the STARTING letter.{RESET}",
+                "{CYAN}Both options end with '{}' — answer with the STARTING letter:{RESET}",
                 letter(to_a)
             );
             (letter(from_a), letter(from_b))
