@@ -114,8 +114,15 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
             Quit,
         }
         let reply = loop {
+            // Non-explore questions carry a marker: ⚡ uphill re-check (past
+            // answer disagrees with the fit), ⚙ audit (consistency check).
+            let mark = match kind {
+                PickKind::Uphill => " ⚡",
+                PickKind::Audit => " ⚙",
+                PickKind::Explore => "",
+            };
             print!(
-                "{DIM}[{settled}/{total} settled, {} answered]{RESET}  1: {BOLD}{label_a}{RESET}   2: {BOLD}{label_b}{RESET}  > ",
+                "{DIM}[{settled}/{total} settled, {} answered]{RESET}{YELLOW}{mark}{RESET}  1: {BOLD}{label_a}{RESET}   2: {BOLD}{label_b}{RESET}  > ",
                 state.history.len(),
             );
             std::io::stdout().flush().ok();
@@ -163,8 +170,9 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
             Reply::Quit => break,
         };
 
-        let contradiction = kind == PickKind::Audit && contradicts(&state, a, b, score);
-        if kind == PickKind::Audit {
+        let checking = kind != PickKind::Explore;
+        let contradiction = checking && contradicts(&state, a, b, score);
+        if checking {
             if contradiction {
                 println!("{RED}Contradiction with earlier answers — both pairs re-opened.{RESET}");
                 state.finished = false;

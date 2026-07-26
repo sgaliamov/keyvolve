@@ -11,6 +11,8 @@ pub enum PickKind {
     Explore,
     /// Settled pair — transitivity/consistency check.
     Audit,
+    /// Thin majority against a big fitted gap — likely noisy answer re-check.
+    Uphill,
 }
 
 /// Minimum rating gap for a meaningful audit question.
@@ -36,7 +38,7 @@ pub fn pick(
     // Thin uphill majority edges (head-to-head against the fitted order)
     // seed preference cycles — re-check them first, settled or not.
     if let Some((a, b)) = pick_uphill(state, rng) {
-        return Some((a, b, PickKind::Audit));
+        return Some((a, b, PickKind::Uphill));
     }
     let audit = state.finished || rng.random_bool(cfg.audit_rate.clamp(0.0, 1.0));
     if audit && let Some(pair) = pick_audit(state, cfg, rng) {

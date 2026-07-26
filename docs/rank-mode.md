@@ -92,12 +92,17 @@ Questions are not random. The picker maximizes learning per answer:
 - **Explore** (normal): asks the pair whose answer carries the most *information* —
   bigrams close in rating and still uncertain. Repeatedly asked pairs are de-prioritized,
   and pairs where both sides still need work are preferred.
-- **Uphill edges** (always first): a head-to-head majority pointing *against* a large
-  fitted rating gap on a thin margin is usually one noisy answer bridging distant
-  tiers — these edges seed most preference cycles. They are re-asked before anything
-  else; two confirming answers thicken the margin and the edge stops qualifying.
-- **Audit** (verification): re-checks pairs whose past answers fit the model *worst*,
-  confirming or contradicting the saved ranking.
+- **Uphill edges** (always first, marked `⚡`): a head-to-head majority pointing
+  *against* a large fitted rating gap on a thin margin is usually one noisy answer
+  bridging distant tiers — these edges seed most preference cycles. They are re-asked
+  before anything else. Either answer resolves it:
+  - pick the side the fit favors → the stray answer is outvoted, the phantom edge
+    disappears and every cycle through it dissolves; tiers stay clean;
+  - repeat the uphill answer → the disagreement is real: the refit pulls the two
+    ratings together, the gap shrinks and both bigrams merge into one tier. The
+    thicker margin also stops the edge from qualifying — no infinite re-asking.
+- **Audit** (verification, marked `⚙`): re-checks pairs whose past answers fit the
+  model *worst*, confirming or contradicting the saved ranking.
 
 A small random pool among the top candidates keeps sessions varied, and the two options
 are shown in random order to cancel position bias.
@@ -119,7 +124,8 @@ Two consistency guards run continuously:
 - **Preference cycles** (`A > B > C > A`) are not chased directly. Cycles among
   same-tier bigrams are harmless noise that Bradley–Terry averages out; harmful
   cross-tier cycles are almost always bridged by a single thin *uphill edge*, which the
-  picker re-asks first — flipping it dissolves every cycle that ran through it.
+  picker re-asks first. Whichever way it is answered, the cycle stops being harmful:
+  the edge either flips (cycle gone) or the tiers merge (cycle becomes same-tier noise).
 
 ```mermaid
 flowchart LR
