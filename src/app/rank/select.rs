@@ -2,7 +2,7 @@ use super::fit::{expected_score, information_score};
 use crate::app::rank::{RankConfig, RankState};
 use rand::RngExt;
 use rand::seq::SliceRandom;
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::BTreeMap;
 
 /// How the pair was chosen — affects contradiction handling.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -216,69 +216,6 @@ pub fn contradicts(state: &RankState, a: usize, b: usize, score: f64) -> bool {
     score == 0.5 || (score > 0.5 && gap < 0.0) || (score < 0.5 && gap > 0.0)
 }
 
-/// Shortest majority-preference cycle through `winner → loser`, if any.
-/// Nodes are item indexes; first and last entry are both `winner`.
-pub fn find_cycle(state: &RankState, winner: usize, loser: usize) -> Option<Vec<usize>> {
-    let edges = majority_edges(state);
-    // The fresh answer may not have flipped the head-to-head majority.
-    if !edges[winner].contains(&loser) {
-        return None;
-    }
-    // BFS from loser back to winner finds the shortest return path.
-    let mut previous = vec![usize::MAX; edges.len()];
-    previous[loser] = loser;
-    let mut queue = VecDeque::from([loser]);
-    while let Some(node) = queue.pop_front() {
-        for &next in &edges[node] {
-            if previous[next] != usize::MAX {
-                continue;
-            }
-            previous[next] = node;
-            if next == winner {
-                let mut path = vec![winner];
-                let mut node = winner;
-                while node != loser {
-                    node = previous[node];
-                    path.push(node);
-                }
-                path.push(winner);
-                path.reverse();
-                return Some(path);
-            }
-            queue.push_back(next);
-        }
-    }
-    None
-}
-
-/// Directed majority edges (winner → loser) from head-to-head history.
-fn majority_edges(state: &RankState) -> Vec<Vec<usize>> {
-    let mut edges = vec![Vec::new(); state.items.len()];
-    for ((lo, hi), (wins, count)) in head_to_head(state) {
-        let half = count as f64 / 2.0;
-        if wins > half {
-            edges[lo].push(hi);
-        } else if wins < half {
-            edges[hi].push(lo);
-        }
-    }
-    edges
-}
-
-/// Cycle edge with the slimmest majority margin — cheapest to flip.
-pub fn weakest_edge(state: &RankState, cycle: &[usize]) -> (usize, usize) {
-    let totals = head_to_head(state);
-    let margin = |a: usize, b: usize| {
-        let (wins, count) = totals[&(a.min(b), a.max(b))];
-        (wins - count as f64 / 2.0).abs()
-    };
-    cycle
-        .windows(2)
-        .map(|pair| (pair[0], pair[1]))
-        .min_by(|&(a, b), &(c, d)| margin(a, b).total_cmp(&margin(c, d)))
-        .expect("cycle has at least one edge")
-}
-
 /// Per-pair `(wins for lower index, total count)` from raw history.
 fn head_to_head(state: &RankState) -> BTreeMap<(usize, usize), (f64, usize)> {
     let mut totals = BTreeMap::<(usize, usize), (f64, usize)>::new();
@@ -301,6 +238,57 @@ mod tests {
     use super::*;
     use crate::app::rank::{Answer, bucketize};
     use rand::{RngExt, SeedableRng, rngs::StdRng};
+    use std::collections::VecDeque;
+
+    /// Directed majority edges (winner → loser) from head-to-head history.
+    /// Diagnostic helper — runtime cycle repair is handled by `pick_uphill`.
+    fn majority_edges(state: &RankState) -> Vec<Vec<usize>> {
+        let mut edges = vec![Vec::new(); state.items.len()];
+        for ((lo, hi), (wins, count)) in head_to_head(state) {
+            let half = count as f64 / 2.0;
+            if wins > half {
+                edges[lo].push(hi);
+            } else if wins < half {
+                edges[hi].push(lo);
+            }
+        }
+        edges
+    }
+
+    /// Shortest majority-preference cycle through `winner → loser`, if any.
+    /// Nodes are item indexes; first and last entry are both `winner`.
+    fn find_cycle(state: &RankState, winner: usize, loser: usize) -> Option<Vec<usize>> {
+        let edges = majority_edges(state);
+        // The edge may not exist if the head-to-head majority never flipped.
+        if !edges[winner].contains(&loser) {
+            return None;
+        }
+        // BFS from loser back to winner finds the shortest return path.
+        let mut previous = vec![usize::MAX; edges.len()];
+        previous[loser] = loser;
+        let mut queue = VecDeque::from([loser]);
+        while let Some(node) = queue.pop_front() {
+            for &next in &edges[node] {
+                if previous[next] != usize::MAX {
+                    continue;
+                }
+                previous[next] = node;
+                if next == winner {
+                    let mut path = vec![winner];
+                    let mut node = winner;
+                    while node != loser {
+                        node = previous[node];
+                        path.push(node);
+                    }
+                    path.push(winner);
+                    path.reverse();
+                    return Some(path);
+                }
+                queue.push_back(next);
+            }
+        }
+        None
+    }
 
     #[test]
     fn uphill_edges_are_targeted_until_confirmed() {
@@ -321,19 +309,6 @@ mod tests {
             state.answer(0, 2, 1.0).unwrap();
         }
         assert_eq!(pick_uphill(&state, &mut rng), None);
-    }
-
-    #[test]
-    fn weakest_edge_prefers_thin_majority() {
-        let mut state = RankState::new();
-        // 0>1 and 1>2 answered three times; 2>0 only once — thinnest margin.
-        for _ in 0..3 {
-            state.answer(0, 1, 1.0).unwrap();
-            state.answer(1, 2, 1.0).unwrap();
-        }
-        state.answer(2, 0, 1.0).unwrap();
-        let cycle = find_cycle(&state, 2, 0).unwrap();
-        assert_eq!(weakest_edge(&state, &cycle), (2, 0));
     }
 
     /// Read-only scan of the live session for majority-preference cycles.

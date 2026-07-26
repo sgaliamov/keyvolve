@@ -54,8 +54,6 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
 
     // Verification counters for this run.
     let (mut confirmed, mut contradicted) = (0u32, 0u32);
-    // While a preference cycle is active, questions target its weakest edge.
-    let mut active_cycle: Option<Vec<usize>> = None;
 
     let stdin = std::io::stdin();
     let mut lines = stdin.lock().lines();
@@ -69,24 +67,16 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
             println!("{GREEN}All {total} pairs settled — entering verification mode.{RESET}");
         }
 
-        let (mut a, mut b, kind) = match &active_cycle {
-            // Break the cycle at its cheapest-to-flip link.
-            Some(cycle) => {
-                let (a, b) = weakest_edge(&state, cycle);
-                (a, b, PickKind::Audit)
-            }
-            None => {
-                let Some(picked) = pick(&state, &cfg, &mut rng) else {
-                    return Err(miette::miette!(
-                        "No valid shared-key comparison is available for the current rank state"
-                    ));
-                };
-                picked
-            }
+        let (mut a, mut b, kind) = {
+            let Some(picked) = pick(&state, &cfg, &mut rng) else {
+                return Err(miette::miette!(
+                    "No valid shared-key comparison is available for the current rank state"
+                ));
+            };
+            picked
         };
-        // Random presentation order kills position bias; cycle questions keep
-        // the weakest-edge order as picked.
-        if active_cycle.is_none() && rng.random_bool(0.5) {
+        // Random presentation order kills position bias.
+        if rng.random_bool(0.5) {
             std::mem::swap(&mut a, &mut b);
         }
         // Show both hands for each option, e.g. "QW | PO".
@@ -96,9 +86,9 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
         };
         let (label_a, label_b) = (label(a), label(b));
         // Options normally start from the same key, so the ending letter
-        // identifies the winner (e.g. TE vs TD → 'e' or 'd'). Cycle edges may
-        // share the ENDING key instead (e.g. WD vs RD) — then the starting
-        // letter distinguishes (w/r).
+        // identifies the winner (e.g. TE vs TD → 'e' or 'd'). Uphill re-checks
+        // of historical pairs may share the ENDING key instead (e.g. WD vs
+        // RD) — then the starting letter distinguishes (w/r).
         let letter = |slot: u8| QWERTY[slot as usize].to_ascii_lowercase();
         let key = |i: usize| {
             let item = &state.items[i];
@@ -148,7 +138,6 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
                         if state.settled_count(&cfg) < state.items.len() {
                             state.finished = false;
                         }
-                        active_cycle = None;
                         println!("{YELLOW}Undone.{RESET}");
                         state.save(&session)?;
                         break Reply::Repick;
@@ -232,44 +221,6 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
             gap,
             dir(gap, prev_gap),
         );
-        if score != 0.5 {
-            let (winner, loser) = if score > 0.5 { (a, b) } else { (b, a) };
-            // One answer may not flip the majority — check both directions.
-            let cycle =
-                find_cycle(&state, winner, loser).or_else(|| find_cycle(&state, loser, winner));
-            match cycle {
-                // Only cycles among settled items matter — the model is
-                // confident yet contradicted. Unsettled cycles are noise that
-                // Bradley–Terry averages out; they are ignored unless already
-                // being targeted.
-                Some(cycle) => {
-                    let flags = state.settled_flags(&cfg);
-                    if active_cycle.is_none() && cycle.iter().all(|&i| flags[i]) {
-                        let path = cycle
-                            .iter()
-                            .map(|&i| state.items[i].label())
-                            .collect::<Vec<_>>()
-                            .join(" > ");
-                        println!(
-                            "{DIM}Preference cycle detected:{RESET} {RED}{path} — re-opening those pairs.{RESET}"
-                        );
-                        for pair in cycle.windows(2) {
-                            state.reopen(pair[0], pair[1]);
-                        }
-                        state.finished = false;
-                        active_cycle = Some(cycle);
-                    } else if active_cycle.is_some() {
-                        // Keep targeting the refreshed cycle path.
-                        active_cycle = Some(cycle);
-                    }
-                }
-                None => {
-                    if active_cycle.take().is_some() {
-                        println!("{GREEN}Preference cycle resolved.{RESET}");
-                    }
-                }
-            }
-        }
         if contradiction {
             state.reopen(a, b);
         }

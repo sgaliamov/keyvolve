@@ -98,16 +98,14 @@ Questions are not random. The picker maximizes learning per answer:
   else; two confirming answers thicken the margin and the edge stops qualifying.
 - **Audit** (verification): re-checks pairs whose past answers fit the model *worst*,
   confirming or contradicting the saved ranking.
-- **Cycle breaking**: when preferences form a loop, questions target the loop directly
-  (see below).
 
 A small random pool among the top candidates keeps sessions varied, and the two options
 are shown in random order to cancel position bias.
 
 ```mermaid
 flowchart TD
-    A{Active preference cycle?} -->|yes| W[Ask the cycle's weakest link]
-    A -->|no| F{Ranking finished?}
+    U{Thin uphill edge in history?} -->|yes| R[Re-ask that pair]
+    U -->|no| F{Ranking finished?}
     F -->|yes| AU[Audit: least model-consistent pair]
     F -->|no| E[Explore: most informative pair]
 ```
@@ -118,16 +116,16 @@ Two consistency guards run continuously:
 
 - **Contradiction**: during verification, an answer that flips a confidently ordered pair
   re-opens both bigrams — they must earn their confidence again.
-- **Preference cycle**: answers can form a loop (`A > B > C > A`), which no ranking can
-  satisfy. When detected, the loop is printed and the next questions attack its *weakest
-  link* — the pairing with the slimmest majority — until one answer flips and the loop
-  dissolves.
+- **Preference cycles** (`A > B > C > A`) are not chased directly. Cycles among
+  same-tier bigrams are harmless noise that Bradley–Terry averages out; harmful
+  cross-tier cycles are almost always bridged by a single thin *uphill edge*, which the
+  picker re-asks first — flipping it dissolves every cycle that ran through it.
 
 ```mermaid
 flowchart LR
     A((TE)) -->|beats| B((TD))
     B -->|beats| C((TA))
-    C -->|beats, weak| A
+    C -->|beats, thin uphill| A
     C -.->|re-ask until it flips| A
 ```
 
