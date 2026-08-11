@@ -204,8 +204,8 @@ pub fn write_bigrams_csv(path: &Path, state: &RankState, buckets: &Buckets) -> R
             "{},{},{},{},{},{},{:.6},{:.6},{},{},{:.6},{},{},{},{},{}",
             rating_rank + 1,
             majority_rank[index],
-            item.label(),
-            item.label_right(),
+            csv_text(&item.label()),
+            csv_text(&item.label_right()),
             item.from,
             item.to,
             item.rating,
@@ -221,6 +221,11 @@ pub fn write_bigrams_csv(path: &Path, state: &RankState, buckets: &Buckets) -> R
         );
     }
     write_text(path, out)
+}
+
+/// Quote one CSV text field and escape inner quotes.
+fn csv_text(value: &str) -> String {
+    format!("\"{}\"", value.replace('"', "\"\""))
 }
 
 /// Create the destination directory and write one generated text file.
@@ -337,6 +342,7 @@ mod tests {
         let text = std::fs::read_to_string(&bigrams).unwrap();
         assert_eq!(text.lines().count(), state.items.len() + 1);
         assert!(text.starts_with("rating_rank,majority_rank,bigram,mirror,"));
+        assert!(text.contains(",\"QW\",\"PO\","));
         std::fs::remove_dir_all(&dir).ok();
     }
 
@@ -386,11 +392,11 @@ mod tests {
         let text = std::fs::read_to_string(&path).unwrap();
         let row0 = text
             .lines()
-            .find(|line| line.contains(",QW,"))
+            .find(|line| line.contains(",\"QW\","))
             .expect("QW row exists");
         let row1 = text
             .lines()
-            .find(|line| line.contains(",QE,"))
+            .find(|line| line.contains(",\"QE\","))
             .expect("QE row exists");
         let cols0 = row0.split(',').collect::<Vec<_>>();
         let cols1 = row1.split(',').collect::<Vec<_>>();
