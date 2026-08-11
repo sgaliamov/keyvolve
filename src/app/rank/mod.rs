@@ -92,22 +92,10 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
         if kind == PickKind::Uphill
             && let Some(ref cycle) = old_cycle
         {
-            let rating = |i: usize| state.items[i].rating;
-            let path = cycle
-                .windows(2)
-                .map(|e| {
-                    format!(
-                        "{}({:.0}) >{:+.0}>",
-                        state.items[e[0]].label(),
-                        rating(e[0]),
-                        rating(e[0]) - rating(e[1]),
-                    )
-                })
-                .collect::<Vec<_>>()
-                .join(" ");
             println!(
                 "{DIM}⚡ cycle:{RESET} {YELLOW}{path} {}{RESET}",
-                state.items[cycle[cycle.len() - 1]].label()
+                state.items[cycle[cycle.len() - 1]].label(),
+                path = format_cycle_path(&state, cycle),
             );
         }
         // Random presentation order kills position bias.
@@ -225,27 +213,19 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
         answered.push((a, b, kind));
         // Capture post-answer cycle text now, print it after the prompt line rewrite
         // so LINE_UP does not erase it.
-        let cycle_after = old_cycle.map(|_| {
+        let cycle_after = old_cycle.map(|old_cycle| {
             if let Some(new_cycle) = find_cycle(&state, a, b) {
-                let rating = |i: usize| state.items[i].rating;
-                let path = new_cycle
-                    .windows(2)
-                    .map(|e| {
-                        format!(
-                            "{}({:.0}) >{:+.0}>",
-                            state.items[e[0]].label(),
-                            rating(e[0]),
-                            rating(e[0]) - rating(e[1]),
-                        )
-                    })
-                    .collect::<Vec<_>>()
-                    .join(" ");
                 format!(
                     "{DIM}→ cycle:{RESET} {CYAN}{path} {}{RESET}",
-                    state.items[new_cycle[new_cycle.len() - 1]].label()
+                    state.items[new_cycle[new_cycle.len() - 1]].label(),
+                    path = format_cycle_path(&state, &new_cycle),
                 )
             } else {
-                format!("{GREEN}✓ Cycle resolved!{RESET}")
+                format!(
+                    "{GREEN}✓ Cycle resolved!{RESET} {DIM}now:{RESET} {CYAN}{path} {}{RESET}",
+                    state.items[old_cycle[old_cycle.len() - 1]].label(),
+                    path = format_cycle_path(&state, &old_cycle),
+                )
             }
         });
         // Rewrite the prompt line in place: erase user's input, append the
@@ -329,6 +309,22 @@ fn write_outputs(cfg: &RankConfig, state: &RankState) -> Result<()> {
     write_report_csv(&csv, state, &buckets)?;
     println!("Wrote {} and {}", json.display(), csv.display());
     Ok(())
+}
+
+/// Render a cycle with current ratings and per-hop fitted gaps.
+fn format_cycle_path(state: &RankState, cycle: &[usize]) -> String {
+    cycle
+        .windows(2)
+        .map(|e| {
+            format!(
+                "{}({:.0}) >{:+.0}>",
+                state.items[e[0]].label(),
+                state.items[e[0]].rating,
+                state.items[e[0]].rating - state.items[e[1]].rating,
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 /// Print progress summary: best/worst pairs and confidence.
