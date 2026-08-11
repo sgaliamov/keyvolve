@@ -330,7 +330,7 @@ The flat export columns (left-to-right priority):
 | `bigram` | Bigram label. |
 | `mirror` | Right-hand mirror. |
 | `effort_bucket` | Bucket index (0 = easiest). |
-| `tier` | Ease category: `easy`, `medium`, or `hard`. |
+| `tier` | Statistical tier (e.g., `5/12` means tier 5 of the 12 effective tiers shown by stats). |
 | `majority_rank` | Position in majority-vote summary order. |
 | `rating`, `deviation`, `effort`, `matches` | Rating details. |
 | `majority_score`, `majority_wins`, `majority_losses`, `majority_ties`, `majority_unseen` | Majority vote breakdown. |
@@ -338,8 +338,9 @@ The flat export columns (left-to-right priority):
 `majority_rank` is a summary projection of the direct-majority graph for inspection. Cycle
 detection still uses the raw majority edges themselves, not this flattened rank.
 
-`tier` categorizes each bigram's effort as easy, medium, or hard based on its position in the
-effort scale — a quick visual grouping useful for inspecting result clusters.
+`tier` uses the same effective-tier estimate as the stats line. Ratings are split across that
+many equal-width bands, best first. It is independent from `effort_bucket`, which uses the
+configured `groups` count for generated keyboard effort values.
 
 The session file keeps the raw answer history, so future runs can re-verify or refine the
 ranking under different settings.

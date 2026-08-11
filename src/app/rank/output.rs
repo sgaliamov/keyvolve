@@ -31,6 +31,22 @@ pub fn bucketize(state: &RankState, cfg: &RankConfig) -> Buckets {
     Buckets { efforts, groups }
 }
 
+/// Estimate statistically distinguishable rating tiers at 95% confidence.
+pub fn effective_tier_count(state: &RankState) -> usize {
+    let (min, max) = rating_bounds(state);
+    let mean_deviation =
+        state.items.iter().map(|item| item.deviation).sum::<f64>() / state.items.len() as f64;
+    if max <= min {
+        return 1;
+    }
+    if mean_deviation <= 0.0 {
+        return state.items.len();
+    }
+    ((max - min) / (1.96 * mean_deviation))
+        .round()
+        .clamp(1.0, state.items.len() as f64) as usize
+}
+
 /// Write ranked keyboard JSON (left-hand pairs; a repeated key gets its row's
 /// best group).
 pub fn write_keyboard_json(path: &Path, state: &RankState, buckets: &Buckets) -> Result<()> {
@@ -190,6 +206,9 @@ pub fn write_bigrams_csv(path: &Path, state: &RankState, buckets: &Buckets) -> R
             .then_with(|| a.cmp(&b))
     });
 
+    let (min_rating, max_rating) = rating_bounds(state);
+    let tier_count = effective_tier_count(state);
+
     let mut out = String::from(
         "rating_rank,bigram,mirror,effort_bucket,tier,majority_rank,rating,deviation,effort,matches,majority_score,majority_wins,majority_losses,majority_ties,majority_unseen\n",
     );
@@ -199,15 +218,16 @@ pub fn write_bigrams_csv(path: &Path, state: &RankState, buckets: &Buckets) -> R
         let score = wins as isize - losses as isize;
         let bucket = buckets.groups[index];
         let effort = buckets.efforts[bucket];
-        let tier = effort_tier(effort, &buckets.efforts);
+        let tier = effective_tier(item.rating, min_rating, max_rating, tier_count);
         let _ = writeln!(
             out,
-            "{},{},{},{},{},{},{:.6},{:.6},{:.6},{},{},{},{},{},{}",
+            "{},{},{},{},{}/{},{},{:.6},{:.6},{:.6},{},{},{},{},{},{}",
             rating_rank + 1,
             csv_text(&item.label()),
             csv_text(&item.label_right()),
             bucket,
             tier,
+            tier_count,
             majority_rank[index],
             item.rating,
             item.deviation,
@@ -228,25 +248,22 @@ fn csv_text(value: &str) -> String {
     format!("\"{}\"", value.replace('"', "\"\""))
 }
 
-/// Categorize effort value into easy/medium/hard tier based on position in scale.
-fn effort_tier(effort: f64, all_efforts: &[f64]) -> &'static str {
-    if all_efforts.is_empty() {
-        return "unknown";
+/// Map one rating to a 1-based effective tier.
+fn effective_tier(rating: f64, min: f64, max: f64, tiers: usize) -> usize {
+    if max <= min {
+        return 1;
     }
-    let min = all_efforts.iter().copied().fold(f64::INFINITY, f64::min);
-    let max = all_efforts
+    ((((max - rating) / (max - min)) * tiers as f64).floor() as usize + 1).min(tiers)
+}
+
+/// Return minimum and maximum fitted ratings.
+fn rating_bounds(state: &RankState) -> (f64, f64) {
+    state
+        .items
         .iter()
-        .copied()
-        .fold(f64::NEG_INFINITY, f64::max);
-    let range = (max - min).max(f64::EPSILON);
-    let position = (effort - min) / range;
-    if position < 0.33 {
-        "easy"
-    } else if position < 0.67 {
-        "medium"
-    } else {
-        "hard"
-    }
+        .fold((f64::INFINITY, f64::NEG_INFINITY), |(min, max), item| {
+            (min.min(item.rating), max.max(item.rating))
+        })
 }
 
 /// Create the destination directory and write one generated text file.
@@ -425,6 +442,7 @@ mod tests {
         // Item 0 (QW): rating_rank=1, majority_rank=2 (2nd in majority: 1>0>2)
         // Item 1 (QE): rating_rank=2, majority_rank=1 (1st in majority: 1>0>2)
         assert_eq!(cols0[0], "1"); // QW rating_rank
+        assert_eq!(cols0[4], format!("1/{}", effective_tier_count(&state)));
         assert_eq!(cols0[5], "2"); // QW majority_rank
         assert_eq!(cols1[0], "2"); // QE rating_rank
         assert_eq!(cols1[5], "1"); // QE majority_rank
