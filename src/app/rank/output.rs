@@ -191,7 +191,7 @@ pub fn write_bigrams_csv(path: &Path, state: &RankState, buckets: &Buckets) -> R
     });
 
     let mut out = String::from(
-        "rating_rank,majority_rank,bigram,mirror,from_slot,to_slot,rating,deviation,matches,effort_bucket,effort,majority_score,majority_wins,majority_losses,majority_ties,majority_unseen\n",
+        "rating_rank,majority_rank,bigram,mirror,from_slot,to_slot,rating,deviation,matches,effort_bucket,effort,tier,majority_score,majority_wins,majority_losses,majority_ties,majority_unseen\n",
     );
     for (rating_rank, &index) in rating_order.iter().enumerate() {
         let item = &state.items[index];
@@ -199,9 +199,10 @@ pub fn write_bigrams_csv(path: &Path, state: &RankState, buckets: &Buckets) -> R
         let score = wins as isize - losses as isize;
         let bucket = buckets.groups[index];
         let effort = buckets.efforts[bucket];
+        let tier = effort_tier(effort, &buckets.efforts);
         let _ = writeln!(
             out,
-            "{},{},{},{},{},{},{:.6},{:.6},{},{},{:.6},{},{},{},{},{}",
+            "{},{},{},{},{},{},{:.6},{:.6},{},{},{:.6},{},{},{},{},{},{}",
             rating_rank + 1,
             majority_rank[index],
             csv_text(&item.label()),
@@ -213,6 +214,7 @@ pub fn write_bigrams_csv(path: &Path, state: &RankState, buckets: &Buckets) -> R
             item.matches,
             bucket,
             effort,
+            tier,
             score,
             wins,
             losses,
@@ -226,6 +228,27 @@ pub fn write_bigrams_csv(path: &Path, state: &RankState, buckets: &Buckets) -> R
 /// Quote one CSV text field and escape inner quotes.
 fn csv_text(value: &str) -> String {
     format!("\"{}\"", value.replace('"', "\"\""))
+}
+
+/// Categorize effort value into easy/medium/hard tier based on position in scale.
+fn effort_tier(effort: f64, all_efforts: &[f64]) -> &'static str {
+    if all_efforts.is_empty() {
+        return "unknown";
+    }
+    let min = all_efforts.iter().copied().fold(f64::INFINITY, f64::min);
+    let max = all_efforts
+        .iter()
+        .copied()
+        .fold(f64::NEG_INFINITY, f64::max);
+    let range = (max - min).max(f64::EPSILON);
+    let position = (effort - min) / range;
+    if position < 0.33 {
+        "easy"
+    } else if position < 0.67 {
+        "medium"
+    } else {
+        "hard"
+    }
 }
 
 /// Create the destination directory and write one generated text file.

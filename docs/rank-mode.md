@@ -324,12 +324,15 @@ only confirm or challenge the saved ranking. On quit, the session prints stats a
 
 The flat export includes both:
 
-- **rating columns** — `rating_rank`, `rating`, `deviation`, `matches`, `effort_bucket`, `effort`
+- **rating columns** — `rating_rank`, `rating`, `deviation`, `matches`, `effort_bucket`, `effort`, `tier`
 - **majority columns** — `majority_rank`, `majority_score`, `majority_wins`, `majority_losses`,
   `majority_ties`, `majority_unseen`
 
 `majority_rank` is a summary projection of the direct-majority graph for inspection. Cycle
 detection still uses the raw majority edges themselves, not this flattened rank.
+
+`tier` categorizes each bigram's effort as easy, medium, or hard based on its position in the
+effort scale — a quick visual grouping useful for inspecting result clusters.
 
 The session file keeps the raw answer history, so future runs can re-verify or refine the
 ranking under different settings.
