@@ -700,7 +700,6 @@ mod tests {
             min_matches: 10,
             max_matches: 20,
             max_deviation: 130.0,
-            groups: 15,
             ..Default::default()
         };
         let settled = state.settled_flags(&cfg);

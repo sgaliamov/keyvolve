@@ -376,7 +376,6 @@ All settings live under `rank:` in `keyvolve.yaml`; every one has a sensible def
 | `thinMargin` | `1.0` | Maximum head-to-head win margin for an edge to count as thin (fragile). Thin edges flip easily; higher = fewer re-asks, lower = stricter. |
 | `effortMin` | `1.0` | Lower bound for population-weighted adaptive tier efforts. |
 | `effortMax` | `10.0` | Upper bound for population-weighted adaptive tier efforts. |
-| `groups` | `20` | Number of old equal-count buckets shown only in flat CSV `effort_bucket` for comparison. |
 | `seed` | random | RNG seed for a reproducible question order. |
 
 ### Cycle tuning
@@ -393,4 +392,3 @@ All settings live under `rank:` in `keyvolve.yaml`; every one has a sensible def
 - Higher confidence → the opposite; add `auditRate: 0.1` to weave consistency checks into
   a normal session.
 - `effortMin`/`effortMax` only scale adaptive tier efforts; they don't affect ranking itself.
-- `groups` only changes the diagnostic flat-CSV bucket column.

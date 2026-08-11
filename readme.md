@@ -60,14 +60,12 @@ Scores candidate layouts against a bigram-weighted corpus, then evolves them tow
 - `rank.auditRate` — audit probability during refinement; finished sessions always audit.
 - `rank.minMatches` / `rank.maxMatches` — confidence floor and hard per-item cap.
 - `rank.maxDeviation` — maximum marginal rating uncertainty before confidence stopping.
-- `rank.groups` — output effort bucket count.
-- `rank.bucketTolerance` — neighboring buckets allowed by confidence stopping.
 - `rank.seed` — optional reproducible question-order seed.
 
 Diagnostic tests (`#[ignore]`, read-only over the live `data/rank-session.json`):
 
 ```sh
-# Why is each pair (un)settled — capped / confident / pending / matches / deviation / bucket-unstable:
+# Why is each pair (un)settled — capped / confident / pending / matches / deviation:
 cargo test -q scan_live_session_settled -- --ignored --nocapture
 # Preference cycles among majority edges:
 cargo test -q scan_live_session_for_cycles -- --ignored --nocapture

@@ -316,16 +316,13 @@ mod tests {
     #[test]
     fn double_press_tracks_key_strength() {
         let state = ranked_state();
-        let cfg = RankConfig {
-            groups: 6,
-            ..Default::default()
-        };
-        // Create tiers directly with a simple assignment: each item to tier = (index * groups) / items_len
+        let tier_count = 6;
+        // Create tiers directly with a simple assignment: each item to tier = (index * tier_count) / items_len
         let groups: Vec<usize> = (0..state.items.len())
-            .map(|i| (i * cfg.groups) / state.items.len())
+            .map(|i| (i * tier_count) / state.items.len())
             .collect();
         let tiers = Tiers {
-            efforts: (0..cfg.groups).map(|effort| effort as f64).collect(),
+            efforts: (0..tier_count).map(|effort| effort as f64).collect(),
             groups,
         };
         let grid = pair_groups(&state, &tiers);
