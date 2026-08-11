@@ -156,11 +156,7 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
             // Check for forced answer marker (! prefix).
             let trimmed = line.trim();
             let is_forced = trimmed.starts_with('!');
-            let trimmed = if is_forced {
-                &trimmed[1..]
-            } else {
-                trimmed
-            };
+            let trimmed = if is_forced { &trimmed[1..] } else { trimmed };
             // React to the last typed character — stray input before it is ignored.
             // Lowercase ending letters answer directly; commands are uppercase
             // (Shift) so they never clash with answers. 1/2/= still work.
@@ -210,7 +206,7 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
         let contradiction = checking && contradicts(&state, a, b, score);
         if checking {
             if contradiction {
-                println!(                "{RED}Contradiction with earlier answers - both pairs re-opened.{RESET}");
+                println!("{RED}Contradiction with earlier answers - both pairs re-opened.{RESET}");
                 state.finished = false;
                 contradicted += 1;
             } else {
@@ -327,9 +323,16 @@ fn write_outputs(cfg: &RankConfig, state: &RankState) -> Result<()> {
     let buckets = bucketize(state, cfg);
     let json = cfg.output_path();
     let csv = cfg.report_path();
+    let bigrams = cfg.bigrams_path();
     write_keyboard_json(&json, state, &buckets)?;
     write_report_csv(&csv, state, &buckets)?;
-    println!("Wrote {} and {}", json.display(), csv.display());
+    write_bigrams_csv(&bigrams, state, &buckets)?;
+    println!(
+        "Wrote {}, {}, and {}",
+        json.display(),
+        csv.display(),
+        bigrams.display()
+    );
     Ok(())
 }
 

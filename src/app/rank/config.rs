@@ -152,7 +152,9 @@ impl RankConfig {
             ));
         }
         if !self.thin_margin.is_finite() || self.thin_margin < 0.0 {
-            return Err(miette::miette!("rank.thinMargin must be finite and non-negative"));
+            return Err(miette::miette!(
+                "rank.thinMargin must be finite and non-negative"
+            ));
         }
         if self.forced_answer_weight == 0 {
             return Err(miette::miette!(
@@ -181,6 +183,22 @@ impl RankConfig {
         self.report
             .clone()
             .unwrap_or_else(|| self.output_path().with_extension("csv"))
+    }
+
+    /// Resolved flat per-bigram CSV path, derived from the report path.
+    pub fn bigrams_path(&self) -> PathBuf {
+        let report = self.report_path();
+        let stem = report
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .filter(|s| !s.is_empty())
+            .unwrap_or("report");
+        let extension = report.extension().and_then(|s| s.to_str());
+        let file_name = match extension {
+            Some(ext) if !ext.is_empty() => format!("{stem}.bigrams.{ext}"),
+            _ => format!("{stem}.bigrams"),
+        };
+        report.with_file_name(file_name)
     }
 }
 
@@ -233,5 +251,17 @@ mod tests {
             ..Default::default()
         };
         assert!(cfg.validate().is_err());
+    }
+
+    #[test]
+    fn derives_bigrams_path_from_report_path() {
+        let cfg = RankConfig {
+            report: Some(PathBuf::from("data/rank/report.csv")),
+            ..Default::default()
+        };
+        assert_eq!(
+            cfg.bigrams_path(),
+            PathBuf::from("data/rank/report.bigrams.csv")
+        );
     }
 }

@@ -146,6 +146,14 @@ Majority order and fitted order do different jobs:
 - **majority order** → detect cycles and thin contradictions from raw votes
 - **fitted order** → estimate global ratings, deviations, and output effort buckets
 
+They also do **not** guarantee the same row order in exports:
+
+- the fitted order is a full global ranking, because Bradley-Terry infers from the whole graph;
+- the majority graph is only direct answers, so it can be sparse, tied, or cyclic.
+
+That is why the flat bigram export keeps **separate rating and majority columns** instead of
+pretending they are one order.
+
 ### Cycle meaning
 
 A majority cycle exists only when direct majority edges form a loop like:
@@ -256,7 +264,17 @@ When every bigram is settled the session enters **verification mode**: further a
 only confirm or challenge the saved ranking. On quit, the session prints stats and writes:
 
 - a ranked `keyboard.json` — bigram efforts grouped into evenly spaced buckets,
-- a CSV report with ratings, deviations, and match counts for inspection.
+- a block CSV report with efforts, ratings, deviations, and match counts,
+- a flat `*.bigrams.csv` sorted by fitted rating, with per-bigram majority summary columns.
+
+The flat export includes both:
+
+- **rating columns** — `rating_rank`, `rating`, `deviation`, `matches`, `effort_bucket`, `effort`
+- **majority columns** — `majority_rank`, `majority_score`, `majority_wins`, `majority_losses`,
+  `majority_ties`, `majority_unseen`
+
+`majority_rank` is a summary projection of the direct-majority graph for inspection. Cycle
+detection still uses the raw majority edges themselves, not this flattened rank.
 
 The session file keeps the raw answer history, so future runs can re-verify or refine the
 ranking under different settings.

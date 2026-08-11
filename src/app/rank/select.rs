@@ -174,7 +174,11 @@ fn shares_key(state: &RankState, a: usize, b: usize) -> bool {
 /// answers bridge distant tiers and spawn most preference cycles. Once the
 /// user confirms the preference again, the margin thickens and the edge
 /// stops qualifying — no infinite re-asking.
-fn pick_uphill(state: &RankState, cfg: &RankConfig, rng: &mut impl RngExt) -> Option<(usize, usize)> {
+fn pick_uphill(
+    state: &RankState,
+    cfg: &RankConfig,
+    rng: &mut impl RngExt,
+) -> Option<(usize, usize)> {
     let mut edges: Vec<(usize, usize, f64)> = head_to_head(state)
         .into_iter()
         .filter_map(|((lo, hi), (wins, count))| {
@@ -186,7 +190,8 @@ fn pick_uphill(state: &RankState, cfg: &RankConfig, rng: &mut impl RngExt) -> Op
                 std::cmp::Ordering::Equal => return None,
             };
             let uphill = state.items[loser].rating - state.items[winner].rating;
-            (uphill > cfg.uphill_gap && margin.abs() <= cfg.thin_margin).then_some((winner, loser, uphill))
+            (uphill > cfg.uphill_gap && margin.abs() <= cfg.thin_margin)
+                .then_some((winner, loser, uphill))
         })
         .collect();
     edges.shuffle(rng);
@@ -214,7 +219,7 @@ pub fn contradicts(state: &RankState, a: usize, b: usize, score: f64) -> bool {
 }
 
 /// Per-pair `(wins for lower index, total count)` from raw history.
-fn head_to_head(state: &RankState) -> BTreeMap<(usize, usize), (f64, usize)> {
+pub(crate) fn head_to_head(state: &RankState) -> BTreeMap<(usize, usize), (f64, usize)> {
     let mut totals = BTreeMap::<(usize, usize), (f64, usize)>::new();
     for answer in &state.history {
         let (lo, hi) = (answer.a.min(answer.b), answer.a.max(answer.b));
@@ -232,7 +237,7 @@ fn head_to_head(state: &RankState) -> BTreeMap<(usize, usize), (f64, usize)> {
 
 /// Directed majority edges (winner → loser) from head-to-head history.
 /// Used for cycle display on uphill questions and diagnostics.
-fn majority_edges(state: &RankState) -> Vec<Vec<usize>> {
+pub(crate) fn majority_edges(state: &RankState) -> Vec<Vec<usize>> {
     let mut edges = vec![Vec::new(); state.items.len()];
     for ((lo, hi), (wins, count)) in head_to_head(state) {
         let half = count as f64 / 2.0;

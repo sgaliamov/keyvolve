@@ -1,4 +1,4 @@
-use crate::app::rank::{HAND_SLOTS, QWERTY, RankConfig, RankState};
+use crate::app::rank::{HAND_SLOTS, QWERTY, RankConfig, RankState, head_to_head, majority_edges};
 use miette::{IntoDiagnostic, Result};
 use std::fmt::Write as _;
 use std::path::Path;
@@ -139,6 +139,90 @@ pub fn write_report_csv(path: &Path, state: &RankState, buckets: &Buckets) -> Re
     write_text(path, out)
 }
 
+/// Write flat per-bigram CSV sorted by fitted rating, with majority summary.
+pub fn write_bigrams_csv(path: &Path, state: &RankState, buckets: &Buckets) -> Result<()> {
+    let edges = majority_edges(state);
+    let head_to_head = head_to_head(state);
+    let mut majority_losses = vec![0usize; state.items.len()];
+    for losers in &edges {
+        for &loser in losers {
+            majority_losses[loser] += 1;
+        }
+    }
+    let mut compared = vec![0usize; state.items.len()];
+    for &(a, b) in head_to_head.keys() {
+        compared[a] += 1;
+        compared[b] += 1;
+    }
+    let majority = state
+        .items
+        .iter()
+        .enumerate()
+        .map(|(index, _)| {
+            let wins = edges[index].len();
+            let losses = majority_losses[index];
+            let ties = compared[index].saturating_sub(wins + losses);
+            let unseen = state.items.len().saturating_sub(1 + compared[index]);
+            (wins, losses, ties, unseen)
+        })
+        .collect::<Vec<_>>();
+    let mut majority_order = (0..state.items.len()).collect::<Vec<_>>();
+    majority_order.sort_by(|&a, &b| {
+        let score_a = majority[a].0 as isize - majority[a].1 as isize;
+        let score_b = majority[b].0 as isize - majority[b].1 as isize;
+        score_b
+            .cmp(&score_a)
+            .then_with(|| majority[b].0.cmp(&majority[a].0))
+            .then_with(|| majority[a].1.cmp(&majority[b].1))
+            .then_with(|| state.items[b].rating.total_cmp(&state.items[a].rating))
+            .then_with(|| a.cmp(&b))
+    });
+    let mut majority_rank = vec![0usize; state.items.len()];
+    for (rank, &index) in majority_order.iter().enumerate() {
+        majority_rank[index] = rank + 1;
+    }
+
+    let mut rating_order = (0..state.items.len()).collect::<Vec<_>>();
+    rating_order.sort_by(|&a, &b| {
+        state.items[b]
+            .rating
+            .total_cmp(&state.items[a].rating)
+            .then_with(|| a.cmp(&b))
+    });
+
+    let mut out = String::from(
+        "rating_rank,majority_rank,bigram,mirror,from_slot,to_slot,rating,deviation,matches,effort_bucket,effort,majority_score,majority_wins,majority_losses,majority_ties,majority_unseen\n",
+    );
+    for (rating_rank, &index) in rating_order.iter().enumerate() {
+        let item = &state.items[index];
+        let (wins, losses, ties, unseen) = majority[index];
+        let score = wins as isize - losses as isize;
+        let bucket = buckets.groups[index];
+        let effort = buckets.efforts[bucket];
+        let _ = writeln!(
+            out,
+            "{},{},{},{},{},{},{:.6},{:.6},{},{},{:.6},{},{},{},{},{}",
+            rating_rank + 1,
+            majority_rank[index],
+            item.label(),
+            item.label_right(),
+            item.from,
+            item.to,
+            item.rating,
+            item.deviation,
+            item.matches,
+            bucket,
+            effort,
+            score,
+            wins,
+            losses,
+            ties,
+            unseen,
+        );
+    }
+    write_text(path, out)
+}
+
 /// Create the destination directory and write one generated text file.
 fn write_text(path: &Path, text: String) -> Result<()> {
     if let Some(parent) = path
@@ -247,6 +331,73 @@ mod tests {
         write_report_csv(&csv, &state, &buckets).unwrap();
         let text = std::fs::read_to_string(&csv).unwrap();
         assert_eq!(text.matches("from: ").count(), 15);
+
+        let bigrams = dir.join("generated/reports/keyboard.bigrams.csv");
+        write_bigrams_csv(&bigrams, &state, &buckets).unwrap();
+        let text = std::fs::read_to_string(&bigrams).unwrap();
+        assert_eq!(text.lines().count(), state.items.len() + 1);
+        assert!(text.starts_with("rating_rank,majority_rank,bigram,mirror,"));
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn flat_bigrams_csv_keeps_rating_and_majority_columns_distinct() {
+        let mut state = RankState::new();
+        state.items[0].rating = 2_000.0;
+        state.items[1].rating = 1_500.0;
+        state.items[2].rating = 1_000.0;
+        for (index, item) in state.items.iter_mut().enumerate().skip(3) {
+            item.rating = 900.0 - index as f64;
+        }
+        state.history.push(crate::app::rank::Answer {
+            a: 1,
+            b: 0,
+            score: 1.0,
+            prev_a: (1_500.0, 350.0, 0),
+            prev_b: (1_500.0, 350.0, 0),
+            prev_pending_a: 0,
+            prev_pending_b: 0,
+        });
+        state.history.push(crate::app::rank::Answer {
+            a: 0,
+            b: 2,
+            score: 1.0,
+            prev_a: (1_500.0, 350.0, 0),
+            prev_b: (1_500.0, 350.0, 0),
+            prev_pending_a: 0,
+            prev_pending_b: 0,
+        });
+        state.history.push(crate::app::rank::Answer {
+            a: 1,
+            b: 2,
+            score: 1.0,
+            prev_a: (1_500.0, 350.0, 0),
+            prev_b: (1_500.0, 350.0, 0),
+            prev_pending_a: 0,
+            prev_pending_b: 0,
+        });
+        let cfg = RankConfig::default();
+        let buckets = bucketize(&state, &cfg);
+
+        let dir = std::env::temp_dir().join("keyvolve-rank-bigram-export-test");
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("keyboard.bigrams.csv");
+        write_bigrams_csv(&path, &state, &buckets).unwrap();
+        let text = std::fs::read_to_string(&path).unwrap();
+        let row0 = text
+            .lines()
+            .find(|line| line.contains(",QW,"))
+            .expect("QW row exists");
+        let row1 = text
+            .lines()
+            .find(|line| line.contains(",QE,"))
+            .expect("QE row exists");
+        let cols0 = row0.split(',').collect::<Vec<_>>();
+        let cols1 = row1.split(',').collect::<Vec<_>>();
+        assert_eq!(cols0[0], "1");
+        assert_eq!(cols1[0], "2");
+        assert_eq!(cols0[1], "2");
+        assert_eq!(cols1[1], "1");
         std::fs::remove_dir_all(&dir).ok();
     }
 }

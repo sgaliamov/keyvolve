@@ -15,12 +15,6 @@ Keyboard layout optimizer. Uses `darwin` (island-model GA, local crate) to evolv
 - `ScoreResult` — per-layout score: effort, left/right split, switches, fitness.
 - `LayoutEvaluator` — precomputes bigram effort table from `Keyboard`; `score_corpus(&keys)` → `ScoreResult`.
 
-## Modes (`Config.mode`)
-- `Optimize` — run GA, write results to `layouts.csv`.
-- `Evaluate` — score one layout, print details.
-- `Synthesise` — build digraph CSV + fake-word corpus from raw text.
-- `Merge` — merge/clean `.txt` files.
-
 ## GA wiring (optimization)
 - `generate` / `mutate` / `NoopCrossover` / `corpus_evaluator` / `callback` injected into `GeneticAlgorithm`.
 - `OptimizerState` holds `LayoutEvaluator`, `AppHandle`, `OptimizationConfig`, `OptimizationCache`.
@@ -68,5 +62,4 @@ All `PhantomData` → one field: `__: PhantomData<(B, Q)>,`.
 Keep `mod.rs` for declarations/reexports mainly.
 Prefer `pub use crate::...` over `use super::...`, and reexport submodules as `pub use module::*;`.
 Avoid `pub(xxx)` unless necessary.
-
 After edits run `./scripts/lint.ps1` and `./scripts/test.ps1`.
