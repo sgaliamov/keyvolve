@@ -52,7 +52,7 @@ rank:
   session: data/rank-session.json
   auditRate: 0.15
   minMatches: 10
-  maxMatches: 39
+  maxMatches: 40
   maxDeviation: 100
   uphillGap: 50
   thinMargin: 1.0
