@@ -7,9 +7,13 @@ effort scale, later used by the optimizer via `keyboard.json`.
 
 ## The question loop
 
-Each round shows two bigrams starting from the same key (e.g. `TE` vs `TD`, with their
-right-hand mirrors for reference). You answer with the ending letter, `1`/`2`, or `=` for
-a tie. Every answer is saved immediately — quit any time, resume later.
+Most rounds show two bigrams starting from the same key (e.g. `TE` vs `TD`, with their
+right-hand mirrors for reference). Rare uphill re-checks may instead share the ending key
+(e.g. `WD` vs `RD`).
+
+Answer with the ending letter, `1`/`2`, or `=` for a tie. If both options end with the same
+letter, answer with the starting letter instead (the prompt tells you when this applies).
+Every answer is saved immediately — quit any time, resume later.
 
 ```mermaid
 flowchart TD
@@ -114,6 +118,80 @@ flowchart TD
     F -->|yes| AU[Audit: least model-consistent pair]
     F -->|no| E[Explore: most informative pair]
 ```
+
+### How uphill edge detection works
+
+Uphill edges are the key to maintaining consistent tiers without infinite cycles. Here is how
+the system detects and handles them:
+
+#### Step 1: Accumulate head-to-head tallies
+For each unique pair in the history, the system tracks `(total_score_for_lower_index, match_count)`.
+Scores are normalized so the lower-indexed item always gets a positive contribution when it wins.
+Example:
+```
+TE (index 10) vs TD (index 11):
+  Answer 1: TE wins → score += 1.0
+  Answer 2: TD wins → score -= 1.0 (lower index gets -1.0)
+  Answer 3: TE wins → score += 1.0
+  Result: TE wins 3.5 / 3 matches, head-to-head margin = 0.5
+```
+
+#### Step 2: Detect uphill criteria
+An edge qualifies as uphill when **both** conditions hold:
+1. **Thin margin** — `margin.abs() <= 1.0` (difference between win total and 50%):
+   - Stable edges have margins > 1.0; thin-margin edges can flip with one or two more answers.
+   - This detects unstable contradictions, not settled disagreements.
+2. **Large fitted gap** — `uphill > 130` effort units (≈ one effort-group width):
+   - The fitted Bradley–Terry model predicts a large rating gap between them.
+   - The head-to-head history contradicts this gap: the lower-rated item beats the higher-rated one.
+
+Examples:
+
+**Case 1:** `TE` (fitted rating 200) vs `TD` (fitted rating 320)
+- Fitted gap: 320 - 200 = 120 units (below threshold, not uphill)
+- Ignore, not enough contradiction to recheck
+
+**Case 2:** `TE` (fitted rating 200) vs `TA` (fitted rating 350)
+- Fitted gap: 350 - 200 = 150 units (above 130 threshold) ✓
+- Head-to-head: TE beats TA by margin 0.8 (thin) ✓
+- Uphill edge; likely one noisy answer bridging distant tiers
+
+#### Step 3: Sort and pick from random pool
+Among all uphill edges:
+- Sort by gap size (largest gaps first; highest contradiction priority).
+- Shuffle to avoid bias.
+- Pick randomly from the top 10 candidates (`POOL`).
+
+This ensures the biggest contradictions are re-asked first, but sessions stay varied.
+
+#### Step 4: What answering does
+
+**User confirms the uphill answer** (picks the previously-winning side again):
+- Refit accumulates more evidence for that direction.
+- The margin thickens (e.g., 0.8 → 2.0+).
+- Edge no longer qualifies as thin-margin → dropped from uphill re-check.
+- Ratings converge slightly (the gap shrinks); both may merge into one tier.
+- Result: stable, repeatable answer; no contradiction.
+
+**User picks the fit's side** (contradicts the head-to-head history):
+- That answer is weighted against the thin uphill majority during refit.
+- The stray answer is statistically outvoted (combined with earlier answers).
+- Edge disappears or flips in head-to-head, ceasing to be uphill.
+- Every preference cycle that relied on this edge dissolves.
+- Result: tiers clean up; rating graph stays acyclic or harmless (same-tier noise).
+
+#### Why this breaks cycles
+
+Preference cycles (e.g., `A > B > C > A`) happen when contradictions chain across tiers.
+Most harmful cross-tier cycles are bridged by a **single thin uphill edge** — exactly
+what the picker targets first. Once that edge is re-asked and answered consistently,
+the cycle either:
+- **Flips** (the outvoted edge flips → cycle gone), or
+- **Merges** (both sides move closer → cycle becomes same-tier noise, which Bradley–Terry
+  tolerates via the posterior).
+
+By re-asking uphill edges first, the system prevents cycles from establishing themselves
+before exploration continues.
 
 ## Contradictions and cycles
 
