@@ -70,4 +70,3 @@ Prefer `pub use crate::...` over `use super::...`, and reexport submodules as `p
 Avoid `pub(xxx)` unless necessary.
 
 After edits run `./scripts/lint.ps1` and `./scripts/test.ps1`.
-When finish, offer to commit into git with one line message.
