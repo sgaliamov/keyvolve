@@ -75,10 +75,16 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
             };
             picked
         };
+        // Save cycle before answering (for uphill edges).
+        let old_cycle = if kind == PickKind::Uphill {
+            find_cycle(&state, a, b)
+        } else {
+            None
+        };
         // Uphill questions: show the cycle this edge feeds, with per-hop
         // rating gaps — negative hop = the uphill jump being re-checked.
         if kind == PickKind::Uphill
-            && let Some(cycle) = find_cycle(&state, a, b)
+            && let Some(ref cycle) = old_cycle
         {
             let rating = |i: usize| state.items[i].rating;
             let path = cycle
@@ -205,6 +211,30 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
             }
         }
         state.answer(a, b, score)?;
+        // Show cycle after refit: either "resolved" or the new cycle with updated ratings.
+        if let Some(_old) = old_cycle {
+            if let Some(new_cycle) = find_cycle(&state, a, b) {
+                let rating = |i: usize| state.items[i].rating;
+                let path = new_cycle
+                    .windows(2)
+                    .map(|e| {
+                        format!(
+                            "{}({:.0}) >{:+.0}>",
+                            state.items[e[0]].label(),
+                            rating(e[0]),
+                            rating(e[0]) - rating(e[1]),
+                        )
+                    })
+                    .collect::<Vec<_>>()
+                    .join(" ");
+                println!(
+                    "{DIM}→ cycle:{RESET} {CYAN}{path} {}{RESET}",
+                    state.items[new_cycle[new_cycle.len() - 1]].label()
+                );
+            } else {
+                println!("{GREEN}✓ Cycle resolved!{RESET}");
+            }
+        }
         // Rewrite the prompt line in place: erase user's input, append the
         // picked winner plus updated model stats for both options. Arrows show
         // rating/deviation direction; fixed column widths keep lines aligned.
