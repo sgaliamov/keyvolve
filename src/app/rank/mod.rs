@@ -325,12 +325,13 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
 /// Write ranked keyboard JSON and CSV report from current ratings.
 fn write_outputs(cfg: &RankConfig, state: &RankState) -> Result<()> {
     let buckets = bucketize(state, cfg);
+    let tiers = tierize(state, cfg);
     let json = cfg.output_path();
     let csv = cfg.report_path();
     let bigrams = cfg.bigrams_path();
-    write_keyboard_json(&json, state, &buckets)?;
-    write_report_csv(&csv, state, &buckets)?;
-    write_bigrams_csv(&bigrams, state, &buckets)?;
+    write_keyboard_json(&json, state, &tiers)?;
+    write_report_csv(&csv, state, &tiers)?;
+    write_bigrams_csv(&bigrams, state, &buckets, &tiers)?;
     println!(
         "Wrote {}, {}, and {}",
         json.display(),
@@ -439,7 +440,7 @@ fn print_fit_quality(state: &RankState) {
             (lo.min(i.rating), hi.max(i.rating))
         });
     let mean_dev = state.items.iter().map(|i| i.deviation).sum::<f64>() / state.items.len() as f64;
-    let tiers = effective_tier_count(state);
+    let tiers = state.confidence_tier_count();
     println!(
         "{DIM}fit: log-loss{RESET} {:.3}{DIM}, agreement{RESET} {:.0}%{DIM}, spread/dev{RESET} {:.1}{DIM}, tiers{RESET} {}",
         loss / state.history.len() as f64,

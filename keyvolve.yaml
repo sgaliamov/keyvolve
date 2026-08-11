@@ -58,7 +58,6 @@ rank:
   thinMargin: 1.0
   forcedAnswerWeight: 3
   groups: 15
-  bucketTolerance: 1
 
 evaluate:
   # text: 'data\synthesised\sample-1000000'

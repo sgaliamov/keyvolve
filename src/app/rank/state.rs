@@ -224,18 +224,15 @@ impl RankState {
         }
     }
 
-    /// Confidence-settled flags for every item, computed with one rating sort.
+    /// Confidence-settled flags for every item.
     pub fn settled_flags(&self, cfg: &RankConfig) -> Vec<bool> {
-        let stable = self.bucket_stability(cfg.groups, cfg.bucket_tolerance);
         self.items
             .iter()
             .enumerate()
             .map(|(index, item)| {
                 self.pending[index] == 0
                     && (item.matches >= cfg.max_matches
-                        || (item.matches >= cfg.min_matches
-                            && item.deviation <= cfg.max_deviation
-                            && stable[index]))
+                        || (item.matches >= cfg.min_matches && item.deviation <= cfg.max_deviation))
             })
             .collect()
     }
@@ -286,6 +283,39 @@ impl RankState {
             .sqrt()
     }
 
+    /// Assign fitted items to confidence-aware tiers, best tier first.
+    pub fn confidence_tiers(&self) -> Vec<usize> {
+        let mut order = (0..self.items.len()).collect::<Vec<_>>();
+        order.sort_by(|&a, &b| {
+            self.items[b]
+                .rating
+                .total_cmp(&self.items[a].rating)
+                .then_with(|| a.cmp(&b))
+        });
+        let mut groups = vec![0; self.items.len()];
+        let Some(&first) = order.first() else {
+            return groups;
+        };
+        let (mut tier, mut anchor) = (0, first);
+        for &candidate in order.iter().skip(1) {
+            let gap = self.items[anchor].rating - self.items[candidate].rating;
+            if gap > CONFIDENCE_Z * self.difference_deviation(anchor, candidate) {
+                tier += 1;
+                anchor = candidate;
+            }
+            groups[candidate] = tier;
+        }
+        groups
+    }
+
+    /// Number of confidence-aware tiers in the current fit.
+    pub fn confidence_tier_count(&self) -> usize {
+        self.confidence_tiers()
+            .into_iter()
+            .max()
+            .map_or(0, |tier| tier + 1)
+    }
+
     /// Refit Bradley–Terry ratings, marginal uncertainty, and match counts.
     pub fn refit(&mut self) {
         if self.history.is_empty() {
@@ -312,39 +342,6 @@ impl RankState {
         }
         self.covariance = fit.covariance;
         self.version = SESSION_VERSION;
-    }
-
-    fn bucket_stability(&self, groups: usize, tolerance: usize) -> Vec<bool> {
-        let n = self.items.len();
-        let groups = groups.clamp(1, n);
-        let mut order = (0..n).collect::<Vec<_>>();
-        order.sort_by(|&a, &b| self.items[b].rating.total_cmp(&self.items[a].rating));
-        let mut first = vec![n; groups];
-        let mut last = vec![0; groups];
-        for position in 0..n {
-            let group = position * groups / n;
-            first[group] = first[group].min(position);
-            last[group] = position;
-        }
-        let mut stable = vec![false; n];
-        for (position, &index) in order.iter().enumerate() {
-            let group = position * groups / n;
-            let upper_group = group.saturating_sub(tolerance);
-            let lower_group = group.saturating_add(tolerance).min(groups - 1);
-            let item = &self.items[index];
-            let below_upper = first[upper_group] == 0 || {
-                let boundary = order[first[upper_group] - 1];
-                self.items[boundary].rating - item.rating
-                    > CONFIDENCE_Z * self.difference_deviation(boundary, index)
-            };
-            let above_lower = last[lower_group] + 1 == n || {
-                let boundary = order[last[lower_group] + 1];
-                item.rating - self.items[boundary].rating
-                    > CONFIDENCE_Z * self.difference_deviation(index, boundary)
-            };
-            stable[index] = below_upper && above_lower;
-        }
-        stable
     }
 
     fn load(path: &Path) -> Result<Self> {
@@ -626,7 +623,7 @@ mod tests {
     }
 
     #[test]
-    fn bucket_confidence_stops_clear_items_but_not_ties() {
+    fn confidence_tiers_merge_ties_and_split_clear_items() {
         let cfg = RankConfig::default();
         let mut state = RankState::new();
         for (index, item) in state.items.iter_mut().enumerate() {
@@ -638,16 +635,35 @@ mod tests {
         for i in 0..state.items.len() {
             state.covariance[i * state.items.len() + i] = 1.0;
         }
+        assert_eq!(state.confidence_tier_count(), state.items.len());
         assert_eq!(state.settled_count(&cfg), state.items.len());
 
         for item in &mut state.items {
             item.rating = START_RATING;
         }
-        assert_eq!(state.settled_count(&cfg), 0);
-        for item in &mut state.items {
-            item.matches = cfg.max_matches;
-        }
+        assert_eq!(state.confidence_tier_count(), 1);
         assert_eq!(state.settled_count(&cfg), state.items.len());
+    }
+
+    #[test]
+    fn confidence_tiers_allow_uneven_populations() {
+        let mut state = RankState::new();
+        for item in &mut state.items {
+            item.rating = 0.0;
+            item.deviation = 1.0;
+        }
+        state.items[0].rating = 100.0;
+        state.items[1].rating = 99.0;
+        state.items[2].rating = 97.0;
+        state.items[3].rating = 96.0;
+        state.covariance = prior_covariance(state.items.len());
+        for i in 0..state.items.len() {
+            state.covariance[i * state.items.len() + i] = 1.0;
+        }
+
+        let tiers = state.confidence_tiers();
+        assert_eq!(&tiers[..4], &[0, 0, 1, 1]);
+        assert!(tiers[4..].iter().all(|&tier| tier == 2));
     }
 
     #[test]
@@ -685,13 +701,10 @@ mod tests {
             max_matches: 20,
             max_deviation: 130.0,
             groups: 15,
-            bucket_tolerance: 1,
             ..Default::default()
         };
-        let stable = state.bucket_stability(cfg.groups, cfg.bucket_tolerance);
         let settled = state.settled_flags(&cfg);
-        let (mut capped, mut ok, mut pending_n, mut low_matches, mut high_dev, mut unstable) =
-            (0, 0, 0, 0, 0, 0);
+        let (mut capped, mut ok, mut pending_n, mut low_matches, mut high_dev) = (0, 0, 0, 0, 0);
         for (i, item) in state.items.iter().enumerate() {
             if settled[i] {
                 if item.matches >= cfg.max_matches {
@@ -707,13 +720,11 @@ mod tests {
                 low_matches += 1;
             } else if item.deviation > cfg.max_deviation {
                 high_dev += 1;
-            } else if !stable[i] {
-                unstable += 1;
             }
         }
         println!(
             "settled: {capped} capped + {ok} confident; unsettled: {pending_n} pending, \
-             {low_matches} low matches, {high_dev} high deviation, {unstable} bucket-unstable"
+             {low_matches} low matches, {high_dev} high deviation"
         );
     }
 }

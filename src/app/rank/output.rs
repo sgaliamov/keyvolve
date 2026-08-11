@@ -3,22 +3,24 @@ use miette::{IntoDiagnostic, Result};
 use std::fmt::Write as _;
 use std::path::Path;
 
-/// Bucketed ranking result: per-item group plus the effort scale.
+/// Diagnostic quantile buckets used only by the flat CSV.
 pub struct Buckets {
-    /// Effort per group index, ascending (group 0 = most preferable).
-    pub efforts: Vec<f64>,
     /// group[item_index] — parallel to `RankState::items`.
     pub groups: Vec<usize>,
 }
 
-/// Quantile-bucket items by rating (highest rating = lowest effort).
+/// Adaptive confidence tiers and their final effort values.
+pub struct Tiers {
+    /// Effort per tier index, ascending (tier 0 = most preferable).
+    pub efforts: Vec<f64>,
+    /// tier[item_index] — parallel to `RankState::items`.
+    pub groups: Vec<usize>,
+}
+
+/// Quantile-bucket items by rating for diagnostic CSV comparison.
 pub fn bucketize(state: &RankState, cfg: &RankConfig) -> Buckets {
     let n = state.items.len();
     let groups_n = cfg.groups.max(1);
-    let span = cfg.effort_max - cfg.effort_min;
-    let efforts = (0..groups_n)
-        .map(|g| cfg.effort_min + span * g as f64 / (groups_n - 1).max(1) as f64)
-        .collect();
 
     // Sort by rating descending: best first → bucket 0.
     let mut order: Vec<usize> = (0..n).collect();
@@ -28,32 +30,49 @@ pub fn bucketize(state: &RankState, cfg: &RankConfig) -> Buckets {
     for (pos, &item) in order.iter().enumerate() {
         groups[item] = pos * groups_n / n;
     }
-    Buckets { efforts, groups }
+    Buckets { groups }
 }
 
-/// Estimate statistically distinguishable rating tiers at 95% confidence.
-pub fn effective_tier_count(state: &RankState) -> usize {
-    let (min, max) = rating_bounds(state);
-    let mean_deviation =
-        state.items.iter().map(|item| item.deviation).sum::<f64>() / state.items.len() as f64;
-    if max <= min {
-        return 1;
+/// Build final adaptive tiers and population-weighted effort values.
+pub fn tierize(state: &RankState, cfg: &RankConfig) -> Tiers {
+    let groups = state.confidence_tiers();
+    let count = state.confidence_tier_count();
+    if count == 0 {
+        return Tiers {
+            efforts: vec![],
+            groups,
+        };
     }
-    if mean_deviation <= 0.0 {
-        return state.items.len();
+    let efforts = tier_efforts(&groups, count, cfg);
+    Tiers { efforts, groups }
+}
+
+/// Calculate population-weighted midpoint effort for each tier.
+fn tier_efforts(groups: &[usize], count: usize, cfg: &RankConfig) -> Vec<f64> {
+    let mut sizes = vec![0usize; count];
+    for &tier in groups {
+        sizes[tier] += 1;
     }
-    ((max - min) / (1.96 * mean_deviation))
-        .round()
-        .clamp(1.0, state.items.len() as f64) as usize
+    let span = cfg.effort_max - cfg.effort_min;
+    let denominator = groups.len().saturating_sub(1).max(1) as f64;
+    let mut start = 0usize;
+    sizes
+        .into_iter()
+        .map(|size| {
+            let midpoint = start as f64 + (size.saturating_sub(1) as f64 / 2.0);
+            start += size;
+            cfg.effort_min + span * midpoint / denominator
+        })
+        .collect()
 }
 
 /// Write ranked keyboard JSON (left-hand pairs; a repeated key gets its row's
 /// best group).
-pub fn write_keyboard_json(path: &Path, state: &RankState, buckets: &Buckets) -> Result<()> {
-    let grid = pair_groups(state, buckets);
+pub fn write_keyboard_json(path: &Path, state: &RankState, tiers: &Tiers) -> Result<()> {
+    let grid = pair_groups(state, tiers);
 
     let mut out = String::from("{\n");
-    let efforts = buckets
+    let efforts = tiers
         .efforts
         .iter()
         .map(|e| format!("{}", (e * 100.0).round() / 100.0))
@@ -76,8 +95,8 @@ pub fn write_keyboard_json(path: &Path, state: &RankState, buckets: &Buckets) ->
 
 /// Write CSV visual report: 15 blocks (one per starting key), each a 3×5 grid
 /// of efforts matching the physical layout, plus rating/matches grids and stats.
-pub fn write_report_csv(path: &Path, state: &RankState, buckets: &Buckets) -> Result<()> {
-    let grid = pair_groups(state, buckets);
+pub fn write_report_csv(path: &Path, state: &RankState, tiers: &Tiers) -> Result<()> {
+    let grid = pair_groups(state, tiers);
     // item lookup by (from, to)
     let item = |from: u8, to: u8| {
         state
@@ -96,7 +115,7 @@ pub fn write_report_csv(path: &Path, state: &RankState, buckets: &Buckets) -> Re
 
         // Effort grid (3 rows × 5 cols) with the analytical grids as extra
         // column blocks on the same rows: effort | rating | deviation | matches.
-        let effort_of = |to: u8| buckets.efforts[grid[from as usize][to as usize]];
+        let effort_of = |to: u8| tiers.efforts[grid[from as usize][to as usize]];
         let analytic: [&dyn Fn(usize) -> String; 3] = [
             &|i| format!("{:.0}", state.items[i].rating),
             &|i| format!("{:.0}", state.items[i].deviation),
@@ -142,7 +161,7 @@ pub fn write_report_csv(path: &Path, state: &RankState, buckets: &Buckets) -> Re
                 format!(
                     "{},{:.2}",
                     QWERTY[s as usize].to_ascii_uppercase(),
-                    buckets.efforts[grid[s as usize][s as usize]]
+                    tiers.efforts[grid[s as usize][s as usize]]
                 )
             })
             .collect::<Vec<_>>()
@@ -156,7 +175,12 @@ pub fn write_report_csv(path: &Path, state: &RankState, buckets: &Buckets) -> Re
 }
 
 /// Write flat per-bigram CSV sorted by fitted rating, with majority summary.
-pub fn write_bigrams_csv(path: &Path, state: &RankState, buckets: &Buckets) -> Result<()> {
+pub fn write_bigrams_csv(
+    path: &Path,
+    state: &RankState,
+    buckets: &Buckets,
+    tiers: &Tiers,
+) -> Result<()> {
     let edges = majority_edges(state);
     let head_to_head = head_to_head(state);
     let mut majority_losses = vec![0usize; state.items.len()];
@@ -206,8 +230,7 @@ pub fn write_bigrams_csv(path: &Path, state: &RankState, buckets: &Buckets) -> R
             .then_with(|| a.cmp(&b))
     });
 
-    let (min_rating, max_rating) = rating_bounds(state);
-    let tier_count = effective_tier_count(state);
+    let tier_count = tiers.efforts.len();
 
     let mut out = String::from(
         "rating_rank,bigram,mirror,effort_bucket,tier,majority_rank,rating,deviation,effort,matches,majority_score,majority_wins,majority_losses,majority_ties,majority_unseen\n",
@@ -217,8 +240,8 @@ pub fn write_bigrams_csv(path: &Path, state: &RankState, buckets: &Buckets) -> R
         let (wins, losses, ties, unseen) = majority[index];
         let score = wins as isize - losses as isize;
         let bucket = buckets.groups[index];
-        let effort = buckets.efforts[bucket];
-        let tier = effective_tier(item.rating, min_rating, max_rating, tier_count);
+        let tier = tiers.groups[index];
+        let effort = tiers.efforts[tier];
         let _ = writeln!(
             out,
             "{},{},{},{},{}/{},{},{:.6},{:.6},{:.6},{},{},{},{},{},{}",
@@ -226,7 +249,7 @@ pub fn write_bigrams_csv(path: &Path, state: &RankState, buckets: &Buckets) -> R
             csv_text(&item.label()),
             csv_text(&item.label_right()),
             bucket,
-            tier,
+            tier + 1,
             tier_count,
             majority_rank[index],
             item.rating,
@@ -248,24 +271,6 @@ fn csv_text(value: &str) -> String {
     format!("\"{}\"", value.replace('"', "\"\""))
 }
 
-/// Map one rating to a 1-based effective tier.
-fn effective_tier(rating: f64, min: f64, max: f64, tiers: usize) -> usize {
-    if max <= min {
-        return 1;
-    }
-    ((((max - rating) / (max - min)) * tiers as f64).floor() as usize + 1).min(tiers)
-}
-
-/// Return minimum and maximum fitted ratings.
-fn rating_bounds(state: &RankState) -> (f64, f64) {
-    state
-        .items
-        .iter()
-        .fold((f64::INFINITY, f64::NEG_INFINITY), |(min, max), item| {
-            (min.min(item.rating), max.max(item.rating))
-        })
-}
-
 /// Create the destination directory and write one generated text file.
 fn write_text(path: &Path, text: String) -> Result<()> {
     if let Some(parent) = path
@@ -277,15 +282,15 @@ fn write_text(path: &Path, text: String) -> Result<()> {
     std::fs::write(path, text).into_diagnostic()
 }
 
-/// Full 15×15 group table: ranked pairs bucketed; a double press (same key
+/// Full 15×15 tier table: ranked pairs tiered; a double press (same key
 /// twice, e.g. QQ) is estimated from key strength — the mean rating of all
 /// ranked pairs touching that key — mapped onto the easy third of the group
 /// scale: strongest key → group 0, weakest → `groups / 3`.
-fn pair_groups(state: &RankState, buckets: &Buckets) -> Vec<Vec<usize>> {
+fn pair_groups(state: &RankState, tiers: &Tiers) -> Vec<Vec<usize>> {
     let slots = HAND_SLOTS as usize;
     let mut grid = vec![vec![0usize; slots]; slots];
     for (idx, item) in state.items.iter().enumerate() {
-        grid[item.from as usize][item.to as usize] = buckets.groups[idx];
+        grid[item.from as usize][item.to as usize] = tiers.groups[idx];
     }
 
     // Key strength: mean rating over every pair the key participates in.
@@ -306,7 +311,7 @@ fn pair_groups(state: &RankState, buckets: &Buckets) -> Vec<Vec<usize>> {
             (lo.min(s), hi.max(s))
         });
     let span = (max - min).max(f64::EPSILON);
-    let cap = (buckets.efforts.len() / 3) as f64;
+    let cap = (tiers.efforts.len() / 3) as f64;
     for (slot, row) in grid.iter_mut().enumerate() {
         // Strong (high mean rating) → cheap double.
         row[slot] = ((max - strength[slot]) / span * cap).round() as usize;
@@ -331,21 +336,33 @@ mod tests {
         let state = ranked_state();
         let cfg = RankConfig::default();
         let b = bucketize(&state, &cfg);
-        assert_eq!(b.efforts.len(), cfg.groups);
         assert_eq!(b.groups[0], 0); // best rating → best bucket
         assert_eq!(b.groups[209], cfg.groups - 1); // worst rating → worst bucket
-        assert!(b.efforts.windows(2).all(|w| w[0] < w[1]));
         // Higher rating never lands in a worse bucket.
         assert!(b.groups.windows(2).all(|w| w[0] <= w[1]));
     }
 
     #[test]
+    fn tier_efforts_use_population_weighted_midpoints() {
+        let cfg = RankConfig::default();
+        let efforts = tier_efforts(&[0, 0, 1, 2, 2, 2], 3, &cfg);
+        assert_eq!(efforts, vec![1.9, 4.6, 8.2]);
+    }
+
+    #[test]
     fn double_press_tracks_key_strength() {
         let state = ranked_state();
-        let cfg = RankConfig::default();
+        let cfg = RankConfig {
+            groups: 6,
+            ..Default::default()
+        };
         let buckets = bucketize(&state, &cfg);
-        let grid = pair_groups(&state, &buckets);
-        let cap = buckets.efforts.len() / 3;
+        let tiers = Tiers {
+            efforts: (0..cfg.groups).map(|effort| effort as f64).collect(),
+            groups: buckets.groups,
+        };
+        let grid = pair_groups(&state, &tiers);
+        let cap = tiers.efforts.len() / 3;
         // Items are ordered by (from, to); earlier slots hold higher ratings,
         // so key strength decreases with the slot index.
         let doubles: Vec<usize> = (0..HAND_SLOTS as usize).map(|s| grid[s][s]).collect();
@@ -360,23 +377,24 @@ mod tests {
         let state = ranked_state();
         let cfg = RankConfig::default();
         let buckets = bucketize(&state, &cfg);
+        let tiers = tierize(&state, &cfg);
 
         let dir = std::env::temp_dir().join("keyvolve-rank-out-test");
         std::fs::create_dir_all(&dir).unwrap();
         let json = dir.join("generated/json/keyboard.json");
-        write_keyboard_json(&json, &state, &buckets).unwrap();
+        write_keyboard_json(&json, &state, &tiers).unwrap();
         let loaded = crate::models::Keyboard::load(&json).unwrap();
-        assert_eq!(loaded.efforts.len(), cfg.groups);
+        assert_eq!(loaded.efforts.len(), state.confidence_tier_count());
         assert_eq!(loaded.pairs.len(), 30); // left + mirrored right
         assert!(loaded.pairs[&0].len() == 15);
 
         let csv = dir.join("generated/reports/keyboard.csv");
-        write_report_csv(&csv, &state, &buckets).unwrap();
+        write_report_csv(&csv, &state, &tiers).unwrap();
         let text = std::fs::read_to_string(&csv).unwrap();
         assert_eq!(text.matches("from: ").count(), 15);
 
         let bigrams = dir.join("generated/reports/keyboard.bigrams.csv");
-        write_bigrams_csv(&bigrams, &state, &buckets).unwrap();
+        write_bigrams_csv(&bigrams, &state, &buckets, &tiers).unwrap();
         let text = std::fs::read_to_string(&bigrams).unwrap();
         assert_eq!(text.lines().count(), state.items.len() + 1);
         assert!(text.starts_with("rating_rank,"));
@@ -422,11 +440,12 @@ mod tests {
         });
         let cfg = RankConfig::default();
         let buckets = bucketize(&state, &cfg);
+        let tiers = tierize(&state, &cfg);
 
         let dir = std::env::temp_dir().join("keyvolve-rank-bigram-export-test");
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("keyboard.bigrams.csv");
-        write_bigrams_csv(&path, &state, &buckets).unwrap();
+        write_bigrams_csv(&path, &state, &buckets, &tiers).unwrap();
         let text = std::fs::read_to_string(&path).unwrap();
         let row0 = text
             .lines()
@@ -442,7 +461,10 @@ mod tests {
         // Item 0 (QW): rating_rank=1, majority_rank=2 (2nd in majority: 1>0>2)
         // Item 1 (QE): rating_rank=2, majority_rank=1 (1st in majority: 1>0>2)
         assert_eq!(cols0[0], "1"); // QW rating_rank
-        assert_eq!(cols0[4], format!("1/{}", effective_tier_count(&state)));
+        assert_eq!(
+            cols0[4],
+            format!("{}/{}", tiers.groups[0] + 1, tiers.efforts.len())
+        );
         assert_eq!(cols0[5], "2"); // QW majority_rank
         assert_eq!(cols1[0], "2"); // QE rating_rank
         assert_eq!(cols1[5], "1"); // QE majority_rank

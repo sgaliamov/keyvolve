@@ -37,8 +37,9 @@ full answer history after every answer, so no single mistake is permanent — th
 weighs all evidence together and tolerates occasional noise.
 
 Each rating carries an **uncertainty** (deviation) that shrinks as the bigram collects
-answers. A bigram is *settled* once its rating is confident enough: sufficient matches,
-low deviation, and a stable position in the final effort groups.
+answers. A bigram is *settled* once it has sufficient matches and low deviation.
+Unresolved distinctions no longer block settling: statistically overlapping bigrams share
+one adaptive tier and therefore one final effort.
 
 ### How deviation changes
 
@@ -52,14 +53,32 @@ of the posterior); deviation is the width of that peak. Practical consequences:
   shrinks your deviation more than playing against an uncertain one.
 - **It (almost) never grows.** Every answer adds information — even a contradictory one
   shrinks deviation. A contradiction hurts differently: it *compresses the rating gap*,
-  making the pair harder to tell apart despite the smaller deviations. That's why
-  settling checks bucket stability, not deviation alone.
+  making the pair harder to tell apart despite the smaller deviations. Compressed,
+  statistically overlapping ratings merge into one adaptive tier.
 - **It never reaches zero.** The prior keeps a floor; typical values fall from the
   initial 350 to ~100 after 15 matches.
 
 For settling, what matters is the deviation of the *difference* between two bigrams,
 which also accounts for their correlation — two pairs that moved together are easier to
 tell apart than their individual deviations suggest.
+
+### Adaptive tiers and final efforts
+
+Final effort groups follow fitted evidence instead of forcing equal item counts. Bigrams are
+sorted by rating, best first. The best item starts a tier. Following items remain in that tier
+until one is confidently worse than the tier anchor:
+
+```text
+anchor rating - candidate rating > 1.96 × deviation(anchor - candidate)
+```
+
+That candidate starts the next tier. The comparison uses posterior covariance, so correlated
+ratings are handled correctly. More evidence shrinks difference deviation and can split a
+previously broad tier.
+
+Each tier receives one effort based on the midpoint rank of all items inside it. Large tiers
+therefore occupy more of the `effortMin`–`effortMax` range than small tiers. Every bigram in a
+tier receives exactly the same effort.
 
 ### Reading the fit quality line
 
@@ -79,12 +98,9 @@ fit: log-loss 0.412, agreement 87%, spread/dev 14.2, tiers 9
   answers; the model then compresses ratings and settling slows down.
 - **spread/dev** — rating range divided by mean deviation: how many "units of
   uncertainty" fit between the best and worst bigram. High (`>10`) = the ranking is
-  well resolved and buckets are meaningful; low (`<5`) = items are still statistically
-  indistinguishable, keep answering.
-- **tiers** — how many statistically distinct levels (at 95% confidence) fit into the
-  whole spread. This is the honest capacity estimate: compare with the configured
-  `groups` — more groups than tiers means neighbouring buckets are not really
-  distinguishable.
+  well resolved; low (`<5`) = many items remain statistically indistinguishable.
+- **tiers** — actual number of adaptive confidence tiers currently produced. This is also
+  the number of effort entries written to the ranked keyboard JSON.
 
 A healthy finished session has *wide* spread — big rating gaps are the goal, not a
 problem. Dense, bunched-up ratings with low deviations mean the answers were
@@ -199,7 +215,7 @@ That fitted order can:
 Majority order and fitted order do different jobs:
 
 - **majority order** → detect cycles and thin contradictions from raw votes
-- **fitted order** → estimate global ratings, deviations, and output effort buckets
+- **fitted order** → estimate global ratings, deviations, adaptive tiers, and final efforts
 
 They also do **not** guarantee the same row order in exports:
 
@@ -318,7 +334,7 @@ flowchart LR
 When every bigram is settled the session enters **verification mode**: further answers
 only confirm or challenge the saved ranking. On quit, the session prints stats and writes:
 
-- a ranked `keyboard.json` — bigram efforts grouped into evenly spaced buckets,
+- a ranked `keyboard.json` — confidence-aware bigram tiers with population-weighted efforts,
 - a block CSV report with efforts, ratings, deviations, and match counts,
 - a flat `*.bigrams.csv` sorted by fitted rating, with per-bigram majority summary columns.
 
@@ -329,8 +345,8 @@ The flat export columns (left-to-right priority):
 | `rating_rank` | Position in fitted effort order (1–210). |
 | `bigram` | Bigram label. |
 | `mirror` | Right-hand mirror. |
-| `effort_bucket` | Bucket index (0 = easiest). |
-| `tier` | Statistical tier (e.g., `5/12` means tier 5 of the 12 effective tiers shown by stats). |
+| `effort_bucket` | Old fixed quantile bucket (0 = easiest), retained only for comparison. |
+| `tier` | Adaptive confidence tier (e.g., `5/12`), matching stats and final JSON groups. |
 | `majority_rank` | Position in majority-vote summary order. |
 | `rating`, `deviation`, `effort`, `matches` | Rating details. |
 | `majority_score`, `majority_wins`, `majority_losses`, `majority_ties`, `majority_unseen` | Majority vote breakdown. |
@@ -338,9 +354,9 @@ The flat export columns (left-to-right priority):
 `majority_rank` is a summary projection of the direct-majority graph for inspection. Cycle
 detection still uses the raw majority edges themselves, not this flattened rank.
 
-`tier` uses the same effective-tier estimate as the stats line. Ratings are split across that
-many equal-width bands, best first. It is independent from `effort_bucket`, which uses the
-configured `groups` count for generated keyboard effort values.
+`tier` is the final confidence-aware group. Its `effort` value is written to the generated
+keyboard JSON. `effort_bucket` is a diagnostic equal-count quantile controlled by `groups`;
+it does not affect final efforts, settling, stats, or optimization.
 
 The session file keeps the raw answer history, so future runs can re-verify or refine the
 ranking under different settings.
@@ -356,14 +372,13 @@ All settings live under `rank:` in `keyvolve.yaml`; every one has a sensible def
 | `session` | `data/rank-session.json` | Saved answer history for pause/resume. |
 | `auditRate` | `0` | Probability (0–1) that a question is an audit re-check instead of exploration. `0` = audits only after everything settles. |
 | `minMatches` | `10` | Comparisons an item needs before it *can* settle. A match is any answered question involving the item. |
-| `maxMatches` | `30` | Comparisons after which an item settles unconditionally — caps effort spent on stubborn boundary cases. |
-| `maxDeviation` | `170` | Rating uncertainty an item must reach (together with a stable bucket) to settle before `maxMatches`. Lower = stricter = more questions. |
+| `maxMatches` | `30` | Comparisons after which an item settles unconditionally — caps effort spent on stubborn uncertainty. |
+| `maxDeviation` | `170` | Rating uncertainty an item must reach to settle before `maxMatches`. Lower = stricter = more questions. |
 | `uphillGap` | `100` | Minimum fitted rating gap (effort units) for an edge to be marked uphill. Detects structural contradictions; larger = fewer cycle re-checks, smaller = more aggressive. |
 | `thinMargin` | `1.0` | Maximum head-to-head win margin for an edge to count as thin (fragile). Thin edges flip easily; higher = fewer re-asks, lower = stricter. |
-| `effortMin` | `1.0` | Effort assigned to the most preferable bucket in the output. |
-| `effortMax` | `10.0` | Effort assigned to the least preferable bucket. |
-| `groups` | `20` | Number of effort buckets in the output (1–210). More groups = finer effort resolution, longer sessions. |
-| `bucketTolerance` | `1` | How many neighboring buckets an item may wobble across while still counting as stable. `0` = exact bucket required. |
+| `effortMin` | `1.0` | Lower bound for population-weighted adaptive tier efforts. |
+| `effortMax` | `10.0` | Upper bound for population-weighted adaptive tier efforts. |
+| `groups` | `20` | Number of old equal-count buckets shown only in flat CSV `effort_bucket` for comparison. |
 | `seed` | random | RNG seed for a reproducible question order. |
 
 ### Cycle tuning
@@ -376,7 +391,8 @@ All settings live under `rank:` in `keyvolve.yaml`; every one has a sensible def
 
 ### General tuning
 
-- Fewer questions → raise `maxDeviation`, lower `minMatches`/`maxMatches`, or reduce `groups`.
+- Fewer questions → raise `maxDeviation` or lower `minMatches`/`maxMatches`.
 - Higher confidence → the opposite; add `auditRate: 0.1` to weave consistency checks into
   a normal session.
-- `effortMin`/`effortMax` only scale the output; they don't affect ranking itself.
+- `effortMin`/`effortMax` only scale adaptive tier efforts; they don't affect ranking itself.
+- `groups` only changes the diagnostic flat-CSV bucket column.

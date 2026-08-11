@@ -32,10 +32,6 @@ fn default_groups() -> usize {
     20
 }
 
-fn default_bucket_tolerance() -> usize {
-    1
-}
-
 fn default_uphill_gap() -> f64 {
     100.0
 }
@@ -69,7 +65,7 @@ pub struct RankConfig {
     #[serde(default = "default_min_matches")]
     pub min_matches: u32,
 
-    /// Hard confirmation cap for items sitting exactly on a bucket boundary.
+    /// Hard confirmation cap for items that remain uncertain.
     #[serde(default = "default_max_matches")]
     pub max_matches: u32,
 
@@ -77,21 +73,17 @@ pub struct RankConfig {
     #[serde(default = "default_max_deviation")]
     pub max_deviation: f64,
 
-    /// Effort assigned to the most preferable bucket.
+    /// Lower bound for adaptive tier efforts.
     #[serde(default = "default_effort_min")]
     pub effort_min: f64,
 
-    /// Effort assigned to the least preferable bucket.
+    /// Upper bound for adaptive tier efforts.
     #[serde(default = "default_effort_max")]
     pub effort_max: f64,
 
-    /// Number of effort buckets in the output.
+    /// Number of diagnostic quantile buckets in the flat CSV.
     #[serde(default = "default_groups")]
     pub groups: usize,
-
-    /// Allowed neighboring-bucket movement when declaring rank confidence.
-    #[serde(default = "default_bucket_tolerance")]
-    pub bucket_tolerance: usize,
 
     /// Minimum fitted rating gap for an edge to qualify as uphill (cycle-prone).
     #[serde(default = "default_uphill_gap")]
@@ -138,12 +130,7 @@ impl RankConfig {
         }
         if !(1..=RANKED_PAIR_COUNT).contains(&self.groups) {
             return Err(miette::miette!(
-                "rank.groups must be between 1 and {RANKED_PAIR_COUNT}"
-            ));
-        }
-        if self.bucket_tolerance >= self.groups {
-            return Err(miette::miette!(
-                "rank.bucketTolerance must be smaller than rank.groups"
+                "rank.groups diagnostic CSV bucket count must be between 1 and {RANKED_PAIR_COUNT}"
             ));
         }
         if !self.uphill_gap.is_finite() || self.uphill_gap <= 0.0 {
@@ -215,7 +202,6 @@ impl Default for RankConfig {
             effort_min: default_effort_min(),
             effort_max: default_effort_max(),
             groups: default_groups(),
-            bucket_tolerance: default_bucket_tolerance(),
             uphill_gap: default_uphill_gap(),
             thin_margin: default_thin_margin(),
             forced_answer_weight: default_forced_answer_weight(),
@@ -244,10 +230,9 @@ mod tests {
     }
 
     #[test]
-    fn rejects_invalid_bucket_settings() {
+    fn rejects_invalid_diagnostic_group_count() {
         let cfg = RankConfig {
-            groups: 20,
-            bucket_tolerance: 20,
+            groups: 0,
             ..Default::default()
         };
         assert!(cfg.validate().is_err());
