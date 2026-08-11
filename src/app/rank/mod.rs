@@ -44,7 +44,7 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
 
     println!("{BOLD}Rank mode:{RESET} type the pair on your QWERTY keyboard, pick the EASIER one.");
     println!(
-        "{DIM}Answers: ending letter / 1 / 2 = winner, = tie; Shift for commands: N skip, U undo, S stats, C clear, Q quit (state is saved).{RESET}"
+        "{DIM}Answers: ending letter / 1 / 2 = winner, = tie, ! prefix = lock (record multiple times); Shift for commands: N skip, U undo, S stats, C clear, Q quit (state is saved).{RESET}"
     );
     if state.finished {
         println!(
@@ -131,7 +131,7 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
         // Re-prompt the same question until valid input; invalid lines are ignored.
         // `Skip` moves on without recording an answer.
         enum Reply {
-            Score(f64),
+            Score(f64, bool), // score, is_forced
             Skip,
             Repick,
             Quit,
@@ -153,15 +153,23 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
             let Some(Ok(line)) = lines.next() else {
                 break Reply::Quit;
             };
+            // Check for forced answer marker (! prefix).
+            let trimmed = line.trim();
+            let is_forced = trimmed.starts_with('!');
+            let trimmed = if is_forced {
+                &trimmed[1..]
+            } else {
+                trimmed
+            };
             // React to the last typed character — stray input before it is ignored.
             // Lowercase ending letters answer directly; commands are uppercase
             // (Shift) so they never clash with answers. 1/2/= still work.
-            match line.trim().chars().last() {
-                Some('1') => break Reply::Score(1.0),
-                Some('2') => break Reply::Score(0.0),
-                Some('=') => break Reply::Score(0.5),
-                Some(ch) if ch == last_a => break Reply::Score(1.0),
-                Some(ch) if ch == last_b => break Reply::Score(0.0),
+            match trimmed.chars().last() {
+                Some('1') => break Reply::Score(1.0, is_forced),
+                Some('2') => break Reply::Score(0.0, is_forced),
+                Some('=') => break Reply::Score(0.5, is_forced),
+                Some(ch) if ch == last_a => break Reply::Score(1.0, is_forced),
+                Some(ch) if ch == last_b => break Reply::Score(0.0, is_forced),
                 Some('N') => break Reply::Skip,
                 Some('U') => {
                     if let Some(ans) = state.undo() {
@@ -186,13 +194,13 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
                 Some('C') => print!("{CLEAR}"),
                 Some('Q') => break Reply::Quit,
                 Some('?') => println!(
-                    "? ending letter / 1 / 2 = winner, = tie, N skip, U undo, S stats, C clear, Q quit"
+                    "? ending letter / 1 / 2 = winner, = tie, ! = forced, N skip, U undo, S stats, C clear, Q quit"
                 ),
                 _ => continue,
             }
         };
-        let score = match reply {
-            Reply::Score(score) => score,
+        let (score, is_forced) = match reply {
+            Reply::Score(score, forced) => (score, forced),
             Reply::Skip => continue,
             Reply::Repick => continue,
             Reply::Quit => break,
@@ -209,8 +217,19 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
                 confirmed += 1;
             }
         }
-        state.answer(a, b, score)?;
+        // Record the answer; repeat if forced.
+        let repeat_count = if is_forced {
+            cfg.forced_answer_weight
+        } else {
+            1
+        };
+        for _ in 0..repeat_count {
+            state.answer(a, b, score)?;
+        }
         answered.push((a, b, kind));
+        if is_forced {
+            println!("{GREEN}! Locked (recorded {repeat_count}x){RESET}");
+        }
         // Capture post-answer cycle text now, print it after the prompt line rewrite
         // so LINE_UP does not erase it.
         let cycle_after = old_cycle.map(|old_cycle| {

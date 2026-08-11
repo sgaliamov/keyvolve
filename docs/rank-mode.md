@@ -119,6 +119,43 @@ flowchart TD
     F -->|no| E[Explore: most informative pair]
 ```
 
+## Majority order
+
+Majority order is the **direct vote graph** built from raw answer history.
+It is not the fitted rating order.
+
+- For each compared pair, count all answers for that pair.
+- If one side has more than half the score, that side gets a directed edge `winner → loser`.
+- If the pair is tied, no majority edge exists.
+- If the pair was never compared, no edge exists.
+
+So majority order only knows about **direct comparisons**. It does not infer missing
+pairs from transitivity.
+
+### How it affects estimation
+
+The Bradley–Terry fit still uses the full history to estimate ratings and deviations.
+That fitted order can:
+
+- move even when a pair majority stays the same,
+- infer relative order for pairs never compared directly,
+- compress or spread ratings based on all answers.
+
+Majority order and fitted order do different jobs:
+
+- **majority order** → detect cycles and thin contradictions from raw votes
+- **fitted order** → estimate global ratings, deviations, and output effort buckets
+
+### Cycle meaning
+
+A majority cycle exists only when direct majority edges form a loop like:
+
+`A → B → C → A`
+
+That cycle can exist even if the fitted ratings look almost settled. It matters because
+it shows a real contradiction in the raw vote graph. If an edge is also thin and far
+from the fit, the picker marks it uphill and re-asks it first.
+
 ### How uphill edge detection works
 
 Uphill edges are the key to maintaining consistent tiers without infinite cycles. Here is how

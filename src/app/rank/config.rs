@@ -44,6 +44,10 @@ fn default_thin_margin() -> f64 {
     1.0
 }
 
+fn default_forced_answer_weight() -> u32 {
+    3
+}
+
 /// Settings for the interactive pair-ranking mode.
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -97,6 +101,10 @@ pub struct RankConfig {
     #[serde(default = "default_thin_margin")]
     pub thin_margin: f64,
 
+    /// Number of times to record a forced answer (with `!` suffix).
+    #[serde(default = "default_forced_answer_weight")]
+    pub forced_answer_weight: u32,
+
     /// Optional RNG seed for reproducible question order.
     pub seed: Option<u64>,
 }
@@ -146,6 +154,11 @@ impl RankConfig {
         if !self.thin_margin.is_finite() || self.thin_margin < 0.0 {
             return Err(miette::miette!("rank.thinMargin must be finite and non-negative"));
         }
+        if self.forced_answer_weight == 0 {
+            return Err(miette::miette!(
+                "rank.forcedAnswerWeight must be greater than 0"
+            ));
+        }
         Ok(())
     }
 
@@ -187,6 +200,7 @@ impl Default for RankConfig {
             bucket_tolerance: default_bucket_tolerance(),
             uphill_gap: default_uphill_gap(),
             thin_margin: default_thin_margin(),
+            forced_answer_weight: default_forced_answer_weight(),
             seed: None,
         }
     }
