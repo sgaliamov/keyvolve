@@ -226,9 +226,8 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
                 line
             } else {
                 format!(
-                    "{GREEN}✓ Majority cycle through this edge resolved.{RESET} {DIM}now:{RESET} {CYAN}{path} {}{RESET}",
-                    state.items[old_cycle[old_cycle.len() - 1]].label(),
-                    path = format_cycle_path(&state, &old_cycle),
+                    "{GREEN}✓ Cycle resolved{RESET} {DIM}order:{RESET} {CYAN}{order}{RESET}",
+                    order = format_cycle_order(&state, &old_cycle),
                 )
             }
         });
@@ -329,6 +328,17 @@ fn format_cycle_path(state: &RankState, cycle: &[usize]) -> String {
         })
         .collect::<Vec<_>>()
         .join(" ")
+}
+
+/// Render the cycle nodes in current rating order after the cycle resolves.
+fn format_cycle_order(state: &RankState, cycle: &[usize]) -> String {
+    let mut nodes = cycle[..cycle.len().saturating_sub(1)].to_vec();
+    nodes.sort_by(|a, b| state.items[*b].rating.total_cmp(&state.items[*a].rating));
+    nodes
+        .into_iter()
+        .map(|i| format!("{}({:.0})", state.items[i].label(), state.items[i].rating))
+        .collect::<Vec<_>>()
+        .join(" > ")
 }
 
 /// True when any edge in a cycle still qualifies as an uphill re-check.
