@@ -288,7 +288,7 @@ pub fn find_cycle(state: &RankState, winner: usize, loser: usize) -> Option<Vec<
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::app::rank::{Answer, bucketize};
+    use crate::app::rank::Answer;
     use rand::{RngExt, SeedableRng, rngs::StdRng};
 
     #[test]
@@ -631,21 +631,10 @@ mod tests {
         state.refit();
         assert_eq!(state.settled_count(&cfg), state.items.len());
 
-        let estimated = bucketize(&state, &cfg).groups;
-        let mut truth = state.clone();
-        for (item, &rating) in truth.items.iter_mut().zip(&hidden) {
-            item.rating = rating;
-        }
-        let expected = bucketize(&truth, &cfg).groups;
-        let bucket_accuracy = estimated
-            .iter()
-            .zip(expected)
-            .filter(|(a, b)| a.abs_diff(*b) <= 1)
-            .count() as f64
-            / state.items.len() as f64;
+        let accuracy = spearman(&hidden, &state);
         (
             state.history.len(),
-            bucket_accuracy,
+            accuracy,
             spearman(&hidden, &state),
         )
     }

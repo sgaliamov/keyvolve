@@ -345,7 +345,6 @@ The flat export columns (left-to-right priority):
 | `rating_rank` | Position in fitted effort order (1–210). |
 | `bigram` | Bigram label. |
 | `mirror` | Right-hand mirror. |
-| `effort_bucket` | Old fixed quantile bucket (0 = easiest), retained only for comparison. |
 | `tier` | Adaptive confidence tier (e.g., `5/12`), matching stats and final JSON groups. |
 | `majority_rank` | Position in majority-vote summary order. |
 | `rating`, `deviation`, `effort`, `matches` | Rating details. |
@@ -355,8 +354,7 @@ The flat export columns (left-to-right priority):
 detection still uses the raw majority edges themselves, not this flattened rank.
 
 `tier` is the final confidence-aware group. Its `effort` value is written to the generated
-keyboard JSON. `effort_bucket` is a diagnostic equal-count quantile controlled by `groups`;
-it does not affect final efforts, settling, stats, or optimization.
+keyboard JSON.
 
 The session file keeps the raw answer history, so future runs can re-verify or refine the
 ranking under different settings.

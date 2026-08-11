@@ -324,14 +324,13 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
 
 /// Write ranked keyboard JSON and CSV report from current ratings.
 fn write_outputs(cfg: &RankConfig, state: &RankState) -> Result<()> {
-    let buckets = bucketize(state, cfg);
     let tiers = tierize(state, cfg);
     let json = cfg.output_path();
     let csv = cfg.report_path();
     let bigrams = cfg.bigrams_path();
     write_keyboard_json(&json, state, &tiers)?;
     write_report_csv(&csv, state, &tiers)?;
-    write_bigrams_csv(&bigrams, state, &buckets, &tiers)?;
+    write_bigrams_csv(&bigrams, state, &tiers)?;
     println!(
         "Wrote {}, {}, and {}",
         json.display(),
