@@ -54,6 +54,10 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
 
     // Verification counters for this run.
     let (mut confirmed, mut contradicted) = (0u32, 0u32);
+    // In-run answer metadata so undo can replay the exact previous comparison
+    // instead of jumping to a fresh random pick.
+    let mut answered = Vec::<(usize, usize, PickKind)>::new();
+    let mut repick = None;
 
     let stdin = std::io::stdin();
     let mut lines = stdin.lock().lines();
@@ -67,7 +71,9 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
             println!("{GREEN}All {total} pairs settled — entering verification mode.{RESET}");
         }
 
-        let (mut a, mut b, kind) = {
+        let (mut a, mut b, kind) = if let Some(picked) = repick.take() {
+            picked
+        } else {
             let Some(picked) = pick(&state, &cfg, &mut rng) else {
                 return Err(miette::miette!(
                     "No valid shared-key comparison is available for the current rank state"
@@ -170,10 +176,15 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
                 Some(ch) if ch == last_b => break Reply::Score(0.0),
                 Some('N') => break Reply::Skip,
                 Some('U') => {
-                    if state.undo() {
+                    if let Some(ans) = state.undo() {
                         if state.settled_count(&cfg) < state.items.len() {
                             state.finished = false;
                         }
+                        let kind = answered
+                            .pop()
+                            .map(|(_, _, kind)| kind)
+                            .unwrap_or(PickKind::Explore);
+                        repick = Some((ans.a, ans.b, kind));
                         println!("{YELLOW}Undone.{RESET}");
                         state.save(&session)?;
                         break Reply::Repick;
@@ -211,6 +222,7 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
             }
         }
         state.answer(a, b, score)?;
+        answered.push((a, b, kind));
         // Capture post-answer cycle text now, print it after the prompt line rewrite
         // so LINE_UP does not erase it.
         let cycle_after = old_cycle.map(|_| {

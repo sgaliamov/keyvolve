@@ -209,14 +209,12 @@ impl RankState {
     }
 
     /// Remove the most recent raw answer and rebuild derived state.
-    pub fn undo(&mut self) -> bool {
-        let Some(ans) = self.history.pop() else {
-            return false;
-        };
+    pub fn undo(&mut self) -> Option<Answer> {
+        let ans = self.history.pop()?;
         self.pending[ans.a] = ans.prev_pending_a;
         self.pending[ans.b] = ans.prev_pending_b;
         self.refit();
-        true
+        Some(ans)
     }
 
     /// Require two more confirmations for items in a contradictory audit.
@@ -489,9 +487,10 @@ mod tests {
         let mut state = RankState::new();
         let before = state.clone();
         state.answer(3, 7, 1.0).unwrap();
-        assert!(state.undo());
+        let undone = state.undo().unwrap();
+        assert_eq!((undone.a, undone.b, undone.score), (3, 7, 1.0));
         assert_eq!(state, before);
-        assert!(!state.undo());
+        assert!(state.undo().is_none());
     }
 
     #[test]
