@@ -38,6 +38,17 @@ fn default_forced_answer_weight() -> u32 {
     3
 }
 
+fn is_pair_label(value: &str) -> bool {
+    value.len() == 2 && value.chars().all(|ch| ch.is_ascii_alphabetic())
+}
+
+fn is_forced_check_pair_format(value: &str) -> bool {
+    let Some((left, right)) = value.split_once('-') else {
+        return false;
+    };
+    !left.is_empty() && !right.is_empty() && is_pair_label(left) && is_pair_label(right)
+}
+
 /// Settings for the interactive pair-ranking mode.
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -87,6 +98,10 @@ pub struct RankConfig {
     #[serde(default = "default_forced_answer_weight")]
     pub forced_answer_weight: u32,
 
+    /// Optional first question forced once per run, formatted as `AF-VE`.
+    #[serde(default)]
+    pub force_check_pair: Option<String>,
+
     /// Optional RNG seed for reproducible question order.
     pub seed: Option<u64>,
 }
@@ -131,6 +146,13 @@ impl RankConfig {
         if self.forced_answer_weight == 0 {
             return Err(miette::miette!(
                 "rank.forcedAnswerWeight must be greater than 0"
+            ));
+        }
+        if let Some(pair) = &self.force_check_pair
+            && !is_forced_check_pair_format(pair)
+        {
+            return Err(miette::miette!(
+                "rank.forceCheckPair must be in XX-YY format (letters only), e.g. AF-VE"
             ));
         }
         Ok(())
@@ -189,6 +211,7 @@ impl Default for RankConfig {
             uphill_gap: default_uphill_gap(),
             thin_margin: default_thin_margin(),
             forced_answer_weight: default_forced_answer_weight(),
+            force_check_pair: None,
             seed: None,
         }
     }
@@ -213,7 +236,23 @@ mod tests {
         assert!(cfg.validate().is_err());
     }
 
+    #[test]
+    fn accepts_forced_check_pair_format() {
+        let cfg = RankConfig {
+            force_check_pair: Some("AF-VE".to_owned()),
+            ..Default::default()
+        };
+        assert!(cfg.validate().is_ok());
+    }
 
+    #[test]
+    fn rejects_invalid_forced_check_pair_format() {
+        let cfg = RankConfig {
+            force_check_pair: Some("AF/VE".to_owned()),
+            ..Default::default()
+        };
+        assert!(cfg.validate().is_err());
+    }
 
     #[test]
     fn derives_bigrams_path_from_report_path() {

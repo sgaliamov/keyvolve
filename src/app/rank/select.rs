@@ -632,11 +632,7 @@ mod tests {
         assert_eq!(state.settled_count(&cfg), state.items.len());
 
         let accuracy = spearman(&hidden, &state);
-        (
-            state.history.len(),
-            accuracy,
-            spearman(&hidden, &state),
-        )
+        (state.history.len(), accuracy, spearman(&hidden, &state))
     }
 
     fn spearman(hidden: &[f64], state: &RankState) -> f64 {

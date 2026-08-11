@@ -153,11 +153,7 @@ pub fn write_report_csv(path: &Path, state: &RankState, tiers: &Tiers) -> Result
 }
 
 /// Write flat per-bigram CSV sorted by fitted rating, with majority summary.
-pub fn write_bigrams_csv(
-    path: &Path,
-    state: &RankState,
-    tiers: &Tiers,
-) -> Result<()> {
+pub fn write_bigrams_csv(path: &Path, state: &RankState, tiers: &Tiers) -> Result<()> {
     let edges = majority_edges(state);
     let head_to_head = head_to_head(state);
     let mut majority_losses = vec![0usize; state.items.len()];

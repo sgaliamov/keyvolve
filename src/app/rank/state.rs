@@ -316,6 +316,23 @@ impl RankState {
             .map_or(0, |tier| tier + 1)
     }
 
+    /// Resolve `AF-VE` style pair labels to two `items` indexes.
+    pub fn resolve_forced_check_pair(&self, spec: &str) -> Result<(usize, usize)> {
+        let (left, right) = split_forced_pair(spec)?;
+        let a = self.find_item_by_label(left).ok_or_else(|| {
+            miette::miette!("Unknown left-hand bigram '{left}' in rank.forceCheckPair")
+        })?;
+        let b = self.find_item_by_label(right).ok_or_else(|| {
+            miette::miette!("Unknown left-hand bigram '{right}' in rank.forceCheckPair")
+        })?;
+        if a == b {
+            return Err(miette::miette!(
+                "rank.forceCheckPair must point to two different bigrams"
+            ));
+        }
+        Ok((a, b))
+    }
+
     /// Refit Bradley–Terry ratings, marginal uncertainty, and match counts.
     pub fn refit(&mut self) {
         if self.history.is_empty() {
@@ -394,6 +411,11 @@ impl RankState {
         }
         Ok(())
     }
+
+    fn find_item_by_label(&self, label: &str) -> Option<usize> {
+        let label = label.to_ascii_uppercase();
+        self.items.iter().position(|item| item.label() == label)
+    }
 }
 
 fn legacy_version() -> u32 {
@@ -434,6 +456,32 @@ fn appended_path(path: &Path, suffix: &str) -> PathBuf {
     let mut value = path.as_os_str().to_os_string();
     value.push(suffix);
     value.into()
+}
+
+fn split_forced_pair(spec: &str) -> Result<(&str, &str)> {
+    let raw = spec.trim();
+    let mut parts = raw.split('-').map(str::trim);
+    let Some(left) = parts.next() else {
+        return Err(miette::miette!(
+            "rank.forceCheckPair must be in XX-YY format (letters only), e.g. AF-VE"
+        ));
+    };
+    let Some(right) = parts.next() else {
+        return Err(miette::miette!(
+            "rank.forceCheckPair must be in XX-YY format (letters only), e.g. AF-VE"
+        ));
+    };
+    if parts.next().is_some()
+        || left.len() != 2
+        || right.len() != 2
+        || !left.chars().all(|ch| ch.is_ascii_alphabetic())
+        || !right.chars().all(|ch| ch.is_ascii_alphabetic())
+    {
+        return Err(miette::miette!(
+            "rank.forceCheckPair must be in XX-YY format (letters only), e.g. AF-VE"
+        ));
+    }
+    Ok((left, right))
 }
 
 impl Default for RankState {
@@ -620,6 +668,20 @@ mod tests {
         let settled = state.settled_flags(&cfg);
         assert!(!settled[0]);
         assert!(!settled[1]);
+    }
+
+    #[test]
+    fn resolves_forced_check_pair_labels_to_indexes() {
+        let state = RankState::new();
+        let (a, b) = state.resolve_forced_check_pair("AF-VE").unwrap();
+        assert_eq!(state.items[a].label(), "AF");
+        assert_eq!(state.items[b].label(), "VE");
+    }
+
+    #[test]
+    fn rejects_forced_check_pair_with_unknown_label() {
+        let state = RankState::new();
+        assert!(state.resolve_forced_check_pair("A;-VE").is_err());
     }
 
     #[test]

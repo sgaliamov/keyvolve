@@ -57,7 +57,7 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
     // In-run answer metadata so undo can replay the exact previous comparison
     // instead of jumping to a fresh random pick.
     let mut answered = Vec::<(usize, usize, PickKind)>::new();
-    let mut repick = None;
+    let mut repick = initial_forced_pick(&cfg, &state)?;
 
     let stdin = std::io::stdin();
     let mut lines = stdin.lock().lines();
@@ -322,6 +322,18 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
     Ok(())
 }
 
+fn initial_forced_pick(
+    cfg: &RankConfig,
+    state: &RankState,
+) -> Result<Option<(usize, usize, PickKind)>> {
+    let Some(spec) = cfg.force_check_pair.as_deref() else {
+        return Ok(None);
+    };
+    let (a, b) = state.resolve_forced_check_pair(spec)?;
+    println!("{CYAN}Forcing first check: {spec}{RESET}");
+    Ok(Some((a, b, PickKind::Explore)))
+}
+
 /// Write ranked keyboard JSON and CSV report from current ratings.
 fn write_outputs(cfg: &RankConfig, state: &RankState) -> Result<()> {
     let tiers = tierize(state, cfg);
@@ -447,4 +459,29 @@ fn print_fit_quality(state: &RankState) {
         (max - min) / mean_dev,
         tiers,
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn initial_forced_pick_is_none_without_config() {
+        let cfg = RankConfig::default();
+        let state = RankState::new();
+        assert!(initial_forced_pick(&cfg, &state).unwrap().is_none());
+    }
+
+    #[test]
+    fn initial_forced_pick_resolves_requested_pair() {
+        let cfg = RankConfig {
+            force_check_pair: Some("AF-VE".to_owned()),
+            ..Default::default()
+        };
+        let state = RankState::new();
+        let (a, b, kind) = initial_forced_pick(&cfg, &state).unwrap().unwrap();
+        assert_eq!(kind, PickKind::Explore);
+        assert_eq!(state.items[a].label(), "AF");
+        assert_eq!(state.items[b].label(), "VE");
+    }
 }
