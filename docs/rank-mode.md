@@ -11,8 +11,9 @@ Most rounds show two bigrams starting from the same key (e.g. `TE` vs `TD`, with
 right-hand mirrors for reference). Rare uphill re-checks may instead share the ending key
 (e.g. `WD` vs `RD`).
 
-Answer with the ending letter, `1`/`2`, or `=` for a tie. If both options end with the same
-letter, answer with the starting letter instead (the prompt tells you when this applies).
+Answer with the ending letter, `1`/`2`, or `=` for a tie. Add `!` at the end to force the
+answer (`e!`, `1!`, `=!`). If both options end with the same letter, answer with the starting
+letter instead (the prompt tells you when this applies).
 Every answer is saved immediately — quit any time, resume later.
 
 ```mermaid
@@ -110,6 +111,60 @@ Questions are not random. The picker maximizes learning per answer:
 
 A small random pool among the top candidates keeps sessions varied, and the two options
 are shown in random order to cancel position bias.
+
+### How audit selection works
+
+Audit is **not** a fully random pair pick.
+
+#### Step 1: Decide whether this round is an audit round
+
+The picker enters audit when either:
+
+- the session is already in **verification mode**, or
+- a normal round passes the `auditRate` random gate
+
+So `auditRate` controls **how often** audit happens before finish, not which pair gets picked.
+
+#### Step 2: Restrict to meaningful audit candidates
+
+Audit only compares pairs that:
+
+- share the same starting key
+- are already considered settled
+
+That keeps the question interpretable and focuses audit on rankings the model currently trusts.
+
+#### Step 3: Rank candidates by model-vs-history mismatch
+
+For each previously answered settled pair, the picker:
+
+- computes the current Bradley-Terry predicted win probability from the fitted ratings
+- compares that prediction with the recorded answers
+- accumulates a **squared Pearson residual**
+
+Pairs with the largest residual are the ones whose saved head-to-head history fits the current
+global rating model worst. Those are the most valuable audit questions.
+
+#### Step 4: Pick randomly from a small top pool
+
+After sorting candidates by residual, the picker chooses randomly from the top `POOL`
+candidates (currently `10`).
+
+So audit behavior is:
+
+- **targeted globally**
+- **slightly randomized locally**
+
+This avoids asking the exact same suspicious pair every time while still focusing on the
+highest-value checks.
+
+#### Step 5: Fallback when no residual candidate exists
+
+If there is not enough direct settled history to compute residual-based candidates, audit falls
+back to settled same-start pairs with the **largest fitted rating gaps**, then again picks
+randomly from a small top pool.
+
+That fallback still prefers meaningful verification questions rather than random ones.
 
 ```mermaid
 flowchart TD

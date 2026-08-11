@@ -44,7 +44,7 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
 
     println!("{BOLD}Rank mode:{RESET} type the pair on your QWERTY keyboard, pick the EASIER one.");
     println!(
-        "{DIM}Answers: ending letter / 1 / 2 = winner, = tie, ! prefix = lock (record multiple times); Shift for commands: N skip, U undo, S stats, C clear, Q quit (state is saved).{RESET}"
+        "{DIM}Answers: ending letter / 1 / 2 = winner, = tie, ! suffix = lock (record multiple times); Shift for commands: N skip, U undo, S stats, C clear, Q quit (state is saved).{RESET}"
     );
     if state.finished {
         println!(
@@ -153,10 +153,14 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
             let Some(Ok(line)) = lines.next() else {
                 break Reply::Quit;
             };
-            // Check for forced answer marker (! prefix).
+            // Check for forced answer marker (! suffix).
             let trimmed = line.trim();
-            let is_forced = trimmed.starts_with('!');
-            let trimmed = if is_forced { &trimmed[1..] } else { trimmed };
+            let is_forced = trimmed.ends_with('!');
+            let trimmed = if is_forced {
+                &trimmed[..trimmed.len().saturating_sub(1)]
+            } else {
+                trimmed
+            };
             // React to the last typed character — stray input before it is ignored.
             // Lowercase ending letters answer directly; commands are uppercase
             // (Shift) so they never clash with answers. 1/2/= still work.
