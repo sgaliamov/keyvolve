@@ -17,11 +17,6 @@ pub enum PickKind {
 
 /// Minimum rating gap for a meaningful audit question.
 const AUDIT_GAP: f64 = 200.0;
-/// Rating gap above which a majority edge pointing against the fit is worth
-/// re-checking (≈ one effort-group width).
-const UPHILL_GAP: f64 = 130.0;
-/// Majority margin below which a couple of answers can still flip the edge.
-const THIN_MARGIN: f64 = 1.0;
 /// Candidate pool size for random tie-breaking.
 const POOL: usize = 10;
 /// Confidence required before one answer can contradict the fitted order.
@@ -37,7 +32,7 @@ pub fn pick(
 ) -> Option<(usize, usize, PickKind)> {
     // Thin uphill majority edges (head-to-head against the fitted order)
     // seed preference cycles — re-check them first, settled or not.
-    if let Some((a, b)) = pick_uphill(state, rng) {
+    if let Some((a, b)) = pick_uphill(state, cfg, rng) {
         return Some((a, b, PickKind::Uphill));
     }
     let audit = state.finished || rng.random_bool(cfg.audit_rate.clamp(0.0, 1.0));
@@ -179,7 +174,7 @@ fn shares_key(state: &RankState, a: usize, b: usize) -> bool {
 /// answers bridge distant tiers and spawn most preference cycles. Once the
 /// user confirms the preference again, the margin thickens and the edge
 /// stops qualifying — no infinite re-asking.
-fn pick_uphill(state: &RankState, rng: &mut impl RngExt) -> Option<(usize, usize)> {
+fn pick_uphill(state: &RankState, cfg: &RankConfig, rng: &mut impl RngExt) -> Option<(usize, usize)> {
     let mut edges: Vec<(usize, usize, f64)> = head_to_head(state)
         .into_iter()
         .filter_map(|((lo, hi), (wins, count))| {
@@ -191,7 +186,7 @@ fn pick_uphill(state: &RankState, rng: &mut impl RngExt) -> Option<(usize, usize
                 std::cmp::Ordering::Equal => return None,
             };
             let uphill = state.items[loser].rating - state.items[winner].rating;
-            (uphill > UPHILL_GAP && margin.abs() <= THIN_MARGIN).then_some((winner, loser, uphill))
+            (uphill > cfg.uphill_gap && margin.abs() <= cfg.thin_margin).then_some((winner, loser, uphill))
         })
         .collect();
     edges.shuffle(rng);
@@ -294,6 +289,7 @@ mod tests {
     #[test]
     fn uphill_edges_are_targeted_until_confirmed() {
         let mut state = RankState::new();
+        let cfg = RankConfig::default();
         let mut rng = StdRng::seed_from_u64(7);
         // Build a firm chain 0 > 1 > 2, then a single 2>0 answer: thin 1-0
         // majority pointing against a big fitted gap — classic uphill edge.
@@ -301,15 +297,15 @@ mod tests {
             state.answer(0, 1, 1.0).unwrap();
             state.answer(1, 2, 1.0).unwrap();
         }
-        assert!(state.items[0].rating - state.items[2].rating > UPHILL_GAP);
+        assert!(state.items[0].rating - state.items[2].rating > cfg.uphill_gap);
         state.answer(2, 0, 1.0).unwrap();
-        let picked = pick_uphill(&state, &mut rng).unwrap();
+        let picked = pick_uphill(&state, &cfg, &mut rng).unwrap();
         assert_eq!((picked.0.min(picked.1), picked.0.max(picked.1)), (0, 2));
         // Restore the majority decisively — edge stops qualifying.
         for _ in 0..3 {
             state.answer(0, 2, 1.0).unwrap();
         }
-        assert_eq!(pick_uphill(&state, &mut rng), None);
+        assert_eq!(pick_uphill(&state, &cfg, &mut rng), None);
     }
 
     /// Read-only scan of the live session for majority-preference cycles.

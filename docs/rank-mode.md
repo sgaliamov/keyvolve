@@ -237,13 +237,23 @@ All settings live under `rank:` in `keyvolve.yaml`; every one has a sensible def
 | `minMatches` | `10` | Comparisons an item needs before it *can* settle. A match is any answered question involving the item. |
 | `maxMatches` | `30` | Comparisons after which an item settles unconditionally — caps effort spent on stubborn boundary cases. |
 | `maxDeviation` | `170` | Rating uncertainty an item must reach (together with a stable bucket) to settle before `maxMatches`. Lower = stricter = more questions. |
+| `uphillGap` | `100` | Minimum fitted rating gap (effort units) for an edge to be marked uphill. Detects structural contradictions; larger = fewer cycle re-checks, smaller = more aggressive. |
+| `thinMargin` | `1.0` | Maximum head-to-head win margin for an edge to count as thin (fragile). Thin edges flip easily; higher = fewer re-asks, lower = stricter. |
 | `effortMin` | `1.0` | Effort assigned to the most preferable bucket in the output. |
 | `effortMax` | `10.0` | Effort assigned to the least preferable bucket. |
 | `groups` | `20` | Number of effort buckets in the output (1–210). More groups = finer effort resolution, longer sessions. |
 | `bucketTolerance` | `1` | How many neighboring buckets an item may wobble across while still counting as stable. `0` = exact bucket required. |
 | `seed` | random | RNG seed for a reproducible question order. |
 
-Rules of thumb:
+### Cycle tuning
+
+`uphillGap` and `thinMargin` control how aggressively the system detects and re-asks potentially contradictory edges:
+
+- **Fewer uphill re-checks** — raise `uphillGap` (e.g., 150) or raise `thinMargin` (e.g., 1.5). Faster sessions but risk leaving cycles unresolved.
+- **More uphill re-checks** — lower `uphillGap` (e.g., 80) or lower `thinMargin` (e.g., 0.7). Slower but more thorough cycle detection.
+- **Independent from settling** — these settings don't affect `maxDeviation`, `minMatches`, or `maxMatches`. Tune settling and cycle detection separately.
+
+### General tuning
 
 - Fewer questions → raise `maxDeviation`, lower `minMatches`/`maxMatches`, or reduce `groups`.
 - Higher confidence → the opposite; add `auditRate: 0.1` to weave consistency checks into

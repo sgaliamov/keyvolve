@@ -36,6 +36,14 @@ fn default_bucket_tolerance() -> usize {
     1
 }
 
+fn default_uphill_gap() -> f64 {
+    100.0
+}
+
+fn default_thin_margin() -> f64 {
+    1.0
+}
+
 /// Settings for the interactive pair-ranking mode.
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -81,6 +89,14 @@ pub struct RankConfig {
     #[serde(default = "default_bucket_tolerance")]
     pub bucket_tolerance: usize,
 
+    /// Minimum fitted rating gap for an edge to qualify as uphill (cycle-prone).
+    #[serde(default = "default_uphill_gap")]
+    pub uphill_gap: f64,
+
+    /// Maximum head-to-head margin for an edge to stay thin (fragile, re-askable).
+    #[serde(default = "default_thin_margin")]
+    pub thin_margin: f64,
+
     /// Optional RNG seed for reproducible question order.
     pub seed: Option<u64>,
 }
@@ -122,6 +138,14 @@ impl RankConfig {
                 "rank.bucketTolerance must be smaller than rank.groups"
             ));
         }
+        if !self.uphill_gap.is_finite() || self.uphill_gap <= 0.0 {
+            return Err(miette::miette!(
+                "rank.uphillGap must be finite and greater than 0"
+            ));
+        }
+        if !self.thin_margin.is_finite() || self.thin_margin < 0.0 {
+            return Err(miette::miette!("rank.thinMargin must be finite and non-negative"));
+        }
         Ok(())
     }
 
@@ -161,6 +185,8 @@ impl Default for RankConfig {
             effort_max: default_effort_max(),
             groups: default_groups(),
             bucket_tolerance: default_bucket_tolerance(),
+            uphill_gap: default_uphill_gap(),
+            thin_margin: default_thin_margin(),
             seed: None,
         }
     }

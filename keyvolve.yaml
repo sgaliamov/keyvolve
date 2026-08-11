@@ -54,6 +54,8 @@ rank:
   minMatches: 10
   maxMatches: 20
   maxDeviation: 130
+  uphillGap: 100
+  thinMargin: 1.0
   groups: 15
   bucketTolerance: 1
 
