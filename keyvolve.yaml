@@ -50,9 +50,9 @@ optimization:
 rank:
   output: data/keyboard.ranked.json
   session: data/rank-session.json
-  auditRate: 0
+  auditRate: 0.1
   minMatches: 10
-  maxMatches: 20
+  maxMatches: 21
   maxDeviation: 100
   uphillGap: 50
   thinMargin: 1.0

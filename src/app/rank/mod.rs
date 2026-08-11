@@ -34,7 +34,7 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
     if state.finished && state.settled_count(&cfg) < state.items.len() {
         state.finished = false;
         println!(
-            "{YELLOW}Saved ranking needs more confidence under the current model — resuming ranking.{RESET}"
+            "{YELLOW}Saved ranking needs more confidence under the current model - resuming ranking.{RESET}"
         );
     }
     let mut rng = match cfg.seed {
@@ -48,7 +48,7 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
     );
     if state.finished {
         println!(
-            "{CYAN}Ranking finished earlier — verification mode: checking saved ranking.{RESET}"
+            "{CYAN}Ranking finished earlier - verification mode: checking saved ranking.{RESET}"
         );
     }
 
@@ -68,7 +68,7 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
         if settled == total && !state.finished {
             state.finished = true;
             state.save(&session)?;
-            println!("{GREEN}All {total} pairs settled — entering verification mode.{RESET}");
+            println!("{GREEN}All {total} pairs settled - entering verification mode.{RESET}");
         }
 
         let (mut a, mut b, kind) = if let Some(picked) = repick.take() {
@@ -93,7 +93,7 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
             && let Some(ref cycle) = old_cycle
         {
             println!(
-                "{DIM}⚡ cycle:{RESET} {YELLOW}{path} {}{RESET}",
+                "{DIM}[cycle]{RESET} {YELLOW}{path} {}{RESET}",
                 state.items[cycle[cycle.len() - 1]].label(),
                 path = format_cycle_path(&state, cycle),
             );
@@ -140,8 +140,8 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
             // Non-explore questions carry a marker: ⚡ uphill re-check (past
             // answer disagrees with the fit), ⚙ audit (consistency check).
             let mark = match kind {
-                PickKind::Uphill => " ⚡",
-                PickKind::Audit => " ⚙",
+                PickKind::Uphill => " [uphill]",
+                PickKind::Audit => " [audit]",
                 PickKind::Explore => "",
             };
             print!(
@@ -210,7 +210,7 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
         let contradiction = checking && contradicts(&state, a, b, score);
         if checking {
             if contradiction {
-                println!("{RED}Contradiction with earlier answers — both pairs re-opened.{RESET}");
+                println!(                "{RED}Contradiction with earlier answers - both pairs re-opened.{RESET}");
                 state.finished = false;
                 contradicted += 1;
             } else {
