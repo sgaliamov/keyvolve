@@ -322,11 +322,18 @@ only confirm or challenge the saved ranking. On quit, the session prints stats a
 - a block CSV report with efforts, ratings, deviations, and match counts,
 - a flat `*.bigrams.csv` sorted by fitted rating, with per-bigram majority summary columns.
 
-The flat export includes both:
+The flat export columns (left-to-right priority):
 
-- **rating columns** — `rating_rank`, `rating`, `deviation`, `matches`, `effort_bucket`, `effort`, `tier`
-- **majority columns** — `majority_rank`, `majority_score`, `majority_wins`, `majority_losses`,
-  `majority_ties`, `majority_unseen`
+| Column | Meaning |
+| --- | --- |
+| `rating_rank` | Position in fitted effort order (1–210). |
+| `bigram` | Bigram label. |
+| `mirror` | Right-hand mirror. |
+| `effort_bucket` | Bucket index (0 = easiest). |
+| `tier` | Ease category: `easy`, `medium`, or `hard`. |
+| `majority_rank` | Position in majority-vote summary order. |
+| `rating`, `deviation`, `effort`, `matches` | Rating details. |
+| `majority_score`, `majority_wins`, `majority_losses`, `majority_ties`, `majority_unseen` | Majority vote breakdown. |
 
 `majority_rank` is a summary projection of the direct-majority graph for inspection. Cycle
 detection still uses the raw majority edges themselves, not this flattened rank.

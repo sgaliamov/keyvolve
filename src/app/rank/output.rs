@@ -191,7 +191,7 @@ pub fn write_bigrams_csv(path: &Path, state: &RankState, buckets: &Buckets) -> R
     });
 
     let mut out = String::from(
-        "rating_rank,majority_rank,bigram,mirror,from_slot,to_slot,rating,deviation,matches,effort_bucket,effort,tier,majority_score,majority_wins,majority_losses,majority_ties,majority_unseen\n",
+        "rating_rank,bigram,mirror,effort_bucket,tier,majority_rank,rating,deviation,effort,matches,majority_score,majority_wins,majority_losses,majority_ties,majority_unseen\n",
     );
     for (rating_rank, &index) in rating_order.iter().enumerate() {
         let item = &state.items[index];
@@ -202,19 +202,17 @@ pub fn write_bigrams_csv(path: &Path, state: &RankState, buckets: &Buckets) -> R
         let tier = effort_tier(effort, &buckets.efforts);
         let _ = writeln!(
             out,
-            "{},{},{},{},{},{},{:.6},{:.6},{},{},{:.6},{},{},{},{},{},{}",
+            "{},{},{},{},{},{},{:.6},{:.6},{:.6},{},{},{},{},{},{}",
             rating_rank + 1,
-            majority_rank[index],
             csv_text(&item.label()),
             csv_text(&item.label_right()),
-            item.from,
-            item.to,
+            bucket,
+            tier,
+            majority_rank[index],
             item.rating,
             item.deviation,
-            item.matches,
-            bucket,
             effort,
-            tier,
+            item.matches,
             score,
             wins,
             losses,
@@ -364,7 +362,7 @@ mod tests {
         write_bigrams_csv(&bigrams, &state, &buckets).unwrap();
         let text = std::fs::read_to_string(&bigrams).unwrap();
         assert_eq!(text.lines().count(), state.items.len() + 1);
-        assert!(text.starts_with("rating_rank,majority_rank,bigram,mirror,"));
+        assert!(text.starts_with("rating_rank,"));
         assert!(text.contains(",\"QW\",\"PO\","));
         std::fs::remove_dir_all(&dir).ok();
     }
@@ -423,10 +421,13 @@ mod tests {
             .expect("QE row exists");
         let cols0 = row0.split(',').collect::<Vec<_>>();
         let cols1 = row1.split(',').collect::<Vec<_>>();
-        assert_eq!(cols0[0], "1");
-        assert_eq!(cols1[0], "2");
-        assert_eq!(cols0[1], "2");
-        assert_eq!(cols1[1], "1");
+        // Column order: rating_rank,bigram,mirror,effort_bucket,tier,majority_rank,...
+        // Item 0 (QW): rating_rank=1, majority_rank=2 (2nd in majority: 1>0>2)
+        // Item 1 (QE): rating_rank=2, majority_rank=1 (1st in majority: 1>0>2)
+        assert_eq!(cols0[0], "1"); // QW rating_rank
+        assert_eq!(cols0[5], "2"); // QW majority_rank
+        assert_eq!(cols1[0], "2"); // QE rating_rank
+        assert_eq!(cols1[5], "1"); // QE majority_rank
         std::fs::remove_dir_all(&dir).ok();
     }
 }
