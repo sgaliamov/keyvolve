@@ -211,8 +211,9 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
             }
         }
         state.answer(a, b, score)?;
-        // Show cycle after refit: either "resolved" or the new cycle with updated ratings.
-        if let Some(_old) = old_cycle {
+        // Capture post-answer cycle text now, print it after the prompt line rewrite
+        // so LINE_UP does not erase it.
+        let cycle_after = old_cycle.map(|_| {
             if let Some(new_cycle) = find_cycle(&state, a, b) {
                 let rating = |i: usize| state.items[i].rating;
                 let path = new_cycle
@@ -227,14 +228,14 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
                     })
                     .collect::<Vec<_>>()
                     .join(" ");
-                println!(
+                format!(
                     "{DIM}→ cycle:{RESET} {CYAN}{path} {}{RESET}",
                     state.items[new_cycle[new_cycle.len() - 1]].label()
-                );
+                )
             } else {
-                println!("{GREEN}✓ Cycle resolved!{RESET}");
+                format!("{GREEN}✓ Cycle resolved!{RESET}")
             }
-        }
+        });
         // Rewrite the prompt line in place: erase user's input, append the
         // picked winner plus updated model stats for both options. Arrows show
         // rating/deviation direction; fixed column widths keep lines aligned.
@@ -282,6 +283,9 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
             gap,
             dir(gap, prev_gap),
         );
+        if let Some(cycle_after) = cycle_after {
+            println!("{cycle_after}");
+        }
         if contradiction {
             state.reopen(a, b);
         }
