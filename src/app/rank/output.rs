@@ -13,8 +13,8 @@ pub struct Tiers {
 
 /// Build final adaptive tiers and population-weighted effort values.
 pub fn tierize(state: &RankState, cfg: &RankConfig) -> Tiers {
-    let groups = state.confidence_tiers();
-    let count = state.confidence_tier_count();
+    let groups = state.confidence_tiers(cfg);
+    let count = state.confidence_tier_count(cfg);
     if count == 0 {
         return Tiers {
             efforts: vec![],
@@ -343,7 +343,7 @@ mod tests {
         let json = dir.join("generated/json/keyboard.json");
         write_keyboard_json(&json, &state, &tiers).unwrap();
         let loaded = crate::models::Keyboard::load(&json).unwrap();
-        assert_eq!(loaded.efforts.len(), state.confidence_tier_count());
+        assert_eq!(loaded.efforts.len(), state.confidence_tier_count(&cfg));
         assert_eq!(loaded.pairs.len(), 30); // left + mirrored right
         assert!(loaded.pairs[&0].len() == 15);
 

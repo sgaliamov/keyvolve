@@ -59,6 +59,8 @@ rank:
   forcedAnswerWeight: 3
   # Optional: ask this exact comparison first once (CLI override: --rank.forceCheckPair AF-VE)
   # forceCheckPair: AF-VE
+  # Raise to merge more adjacent tail pairs into the same tier.
+  tierSplitZ: 2.2
 
 evaluate:
   # text: 'data\synthesised\sample-1000000'

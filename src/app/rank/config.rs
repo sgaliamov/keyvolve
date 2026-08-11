@@ -38,6 +38,10 @@ fn default_forced_answer_weight() -> u32 {
     3
 }
 
+fn default_tier_split_z() -> f64 {
+    2.2
+}
+
 fn is_pair_label(value: &str) -> bool {
     value.len() == 2 && value.chars().all(|ch| ch.is_ascii_alphabetic())
 }
@@ -102,6 +106,10 @@ pub struct RankConfig {
     #[serde(default)]
     pub force_check_pair: Option<String>,
 
+    /// Tier split threshold multiplier; higher keeps adjacent items together.
+    #[serde(default = "default_tier_split_z")]
+    pub tier_split_z: f64,
+
     /// Optional RNG seed for reproducible question order.
     pub seed: Option<u64>,
 }
@@ -146,6 +154,11 @@ impl RankConfig {
         if self.forced_answer_weight == 0 {
             return Err(miette::miette!(
                 "rank.forcedAnswerWeight must be greater than 0"
+            ));
+        }
+        if !self.tier_split_z.is_finite() || self.tier_split_z <= 0.0 {
+            return Err(miette::miette!(
+                "rank.tierSplitZ must be finite and greater than 0"
             ));
         }
         if let Some(pair) = &self.force_check_pair
@@ -212,6 +225,7 @@ impl Default for RankConfig {
             thin_margin: default_thin_margin(),
             forced_answer_weight: default_forced_answer_weight(),
             force_check_pair: None,
+            tier_split_z: default_tier_split_z(),
             seed: None,
         }
     }
@@ -249,6 +263,15 @@ mod tests {
     fn rejects_invalid_forced_check_pair_format() {
         let cfg = RankConfig {
             force_check_pair: Some("AF/VE".to_owned()),
+            ..Default::default()
+        };
+        assert!(cfg.validate().is_err());
+    }
+
+    #[test]
+    fn rejects_invalid_tier_split_z() {
+        let cfg = RankConfig {
+            tier_split_z: 0.0,
             ..Default::default()
         };
         assert!(cfg.validate().is_err());

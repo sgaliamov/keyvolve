@@ -426,12 +426,12 @@ fn print_stats(state: &RankState, cfg: &RankConfig) {
         state.history.len(),
         state.steps_left(cfg),
     );
-    print_fit_quality(state);
+    print_fit_quality(state, cfg);
 }
 
 /// Global fit quality: how well current ratings explain the recorded answers.
 /// See docs/rank-mode.md "Reading the fit quality line" for interpretation.
-fn print_fit_quality(state: &RankState) {
+fn print_fit_quality(state: &RankState, cfg: &RankConfig) {
     if state.history.is_empty() {
         return;
     }
@@ -451,7 +451,7 @@ fn print_fit_quality(state: &RankState) {
             (lo.min(i.rating), hi.max(i.rating))
         });
     let mean_dev = state.items.iter().map(|i| i.deviation).sum::<f64>() / state.items.len() as f64;
-    let tiers = state.confidence_tier_count();
+    let tiers = state.confidence_tier_count(cfg);
     println!(
         "{DIM}fit: log-loss{RESET} {:.3}{DIM}, agreement{RESET} {:.0}%{DIM}, spread/dev{RESET} {:.1}{DIM}, tiers{RESET} {}",
         loss / state.history.len() as f64,

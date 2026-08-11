@@ -375,6 +375,7 @@ All settings live under `rank:` in `keyvolve.yaml`; every one has a sensible def
 | `uphillGap` | `100` | Minimum fitted rating gap (effort units) for an edge to be marked uphill. Detects structural contradictions; larger = fewer cycle re-checks, smaller = more aggressive. |
 | `thinMargin` | `1.0` | Maximum head-to-head win margin for an edge to count as thin (fragile). Thin edges flip easily; higher = fewer re-asks, lower = stricter. |
 | `forceCheckPair` | unset | Optional one-time first question in `XX-YY` format (left-hand labels), e.g. `AF-VE`. |
+| `tierSplitZ` | `2.2` | Global tier split multiplier. Higher = fewer splits, more merging near the bottom. |
 | `effortMin` | `1.0` | Lower bound for population-weighted adaptive tier efforts. |
 | `effortMax` | `10.0` | Upper bound for population-weighted adaptive tier efforts. |
 | `seed` | random | RNG seed for a reproducible question order. |

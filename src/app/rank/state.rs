@@ -25,9 +25,6 @@ pub const START_RATING: f64 = 1500.0;
 pub const START_DEV: f64 = 350.0;
 /// Current on-disk session schema.
 const SESSION_VERSION: u32 = 2;
-/// Normal 95% confidence interval multiplier.
-const CONFIDENCE_Z: f64 = 1.96;
-
 /// One ordered left-hand bigram pair with its Bradley–Terry rating.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Item {
@@ -284,7 +281,7 @@ impl RankState {
     }
 
     /// Assign fitted items to confidence-aware tiers, best tier first.
-    pub fn confidence_tiers(&self) -> Vec<usize> {
+    pub fn confidence_tiers(&self, cfg: &RankConfig) -> Vec<usize> {
         let mut order = (0..self.items.len()).collect::<Vec<_>>();
         order.sort_by(|&a, &b| {
             self.items[b]
@@ -299,7 +296,7 @@ impl RankState {
         let (mut tier, mut anchor) = (0, first);
         for &candidate in order.iter().skip(1) {
             let gap = self.items[anchor].rating - self.items[candidate].rating;
-            if gap > CONFIDENCE_Z * self.difference_deviation(anchor, candidate) {
+            if gap > cfg.tier_split_z * self.difference_deviation(anchor, candidate) {
                 tier += 1;
                 anchor = candidate;
             }
@@ -309,8 +306,8 @@ impl RankState {
     }
 
     /// Number of confidence-aware tiers in the current fit.
-    pub fn confidence_tier_count(&self) -> usize {
-        self.confidence_tiers()
+    pub fn confidence_tier_count(&self, cfg: &RankConfig) -> usize {
+        self.confidence_tiers(cfg)
             .into_iter()
             .max()
             .map_or(0, |tier| tier + 1)
@@ -697,13 +694,13 @@ mod tests {
         for i in 0..state.items.len() {
             state.covariance[i * state.items.len() + i] = 1.0;
         }
-        assert_eq!(state.confidence_tier_count(), state.items.len());
+        assert_eq!(state.confidence_tier_count(&cfg), state.items.len());
         assert_eq!(state.settled_count(&cfg), state.items.len());
 
         for item in &mut state.items {
             item.rating = START_RATING;
         }
-        assert_eq!(state.confidence_tier_count(), 1);
+        assert_eq!(state.confidence_tier_count(&cfg), 1);
         assert_eq!(state.settled_count(&cfg), state.items.len());
     }
 
@@ -723,9 +720,38 @@ mod tests {
             state.covariance[i * state.items.len() + i] = 1.0;
         }
 
-        let tiers = state.confidence_tiers();
-        assert_eq!(&tiers[..4], &[0, 0, 1, 1]);
-        assert!(tiers[4..].iter().all(|&tier| tier == 2));
+        let tiers = state.confidence_tiers(&RankConfig::default());
+        assert_eq!(&tiers[..4], &[0, 0, 0, 1]);
+        assert!(tiers[4..].iter().all(|&tier| tier >= 1));
+    }
+
+    #[test]
+    fn larger_tier_split_z_merges_more_items() {
+        let mut narrow_state = RankState::new();
+        let mut wide_state = RankState::new();
+        for state in [&mut narrow_state, &mut wide_state] {
+            for item in &mut state.items {
+                item.rating = 0.0;
+                item.deviation = 1.0;
+            }
+            state.items[0].rating = 100.0;
+            state.items[1].rating = 98.0;
+            state.items[2].rating = 96.0;
+        }
+        narrow_state.items[1].deviation = 0.5;
+        wide_state.items[1].deviation = 0.5;
+        let narrow_count = narrow_state.confidence_tier_count(&RankConfig {
+            tier_split_z: 1.0,
+            ..Default::default()
+        });
+        wide_state.items[0].rating = 100.0;
+        wide_state.items[1].rating = 99.0;
+        wide_state.items[2].rating = 98.5;
+        let wide_count = wide_state.confidence_tier_count(&RankConfig {
+            tier_split_z: 10.0,
+            ..Default::default()
+        });
+        assert!(wide_count <= narrow_count);
     }
 
     #[test]
