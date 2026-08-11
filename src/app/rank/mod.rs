@@ -215,14 +215,18 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
         // so LINE_UP does not erase it.
         let cycle_after = old_cycle.map(|old_cycle| {
             if let Some(new_cycle) = find_cycle(&state, a, b) {
-                format!(
-                    "{DIM}→ cycle:{RESET} {CYAN}{path} {}{RESET}",
+                let mut line = format!(
+                    "{DIM}→ majority cycle still exists:{RESET} {CYAN}{path} {}{RESET}",
                     state.items[new_cycle[new_cycle.len() - 1]].label(),
                     path = format_cycle_path(&state, &new_cycle),
-                )
+                );
+                if !cycle_has_actionable_edge(&state, &new_cycle, &cfg) {
+                    line.push_str(&format!(" {DIM}(no actionable uphill edge left){RESET}"));
+                }
+                line
             } else {
                 format!(
-                    "{GREEN}✓ Cycle resolved!{RESET} {DIM}now:{RESET} {CYAN}{path} {}{RESET}",
+                    "{GREEN}✓ Majority cycle through this edge resolved.{RESET} {DIM}now:{RESET} {CYAN}{path} {}{RESET}",
                     state.items[old_cycle[old_cycle.len() - 1]].label(),
                     path = format_cycle_path(&state, &old_cycle),
                 )
@@ -325,6 +329,30 @@ fn format_cycle_path(state: &RankState, cycle: &[usize]) -> String {
         })
         .collect::<Vec<_>>()
         .join(" ")
+}
+
+/// True when any edge in a cycle still qualifies as an uphill re-check.
+fn cycle_has_actionable_edge(state: &RankState, cycle: &[usize], cfg: &RankConfig) -> bool {
+    cycle.windows(2).any(|e| {
+        let winner = e[0];
+        let loser = e[1];
+        let mut wins = 0.0;
+        let mut count = 0.0;
+        for ans in &state.history {
+            let (lo, hi) = (ans.a.min(ans.b), ans.a.max(ans.b));
+            if lo == winner.min(loser) && hi == winner.max(loser) {
+                count += 1.0;
+                wins += if ans.a == winner {
+                    ans.score
+                } else {
+                    1.0 - ans.score
+                };
+            }
+        }
+        let margin = wins - count / 2.0;
+        let uphill = state.items[loser].rating - state.items[winner].rating;
+        uphill > cfg.uphill_gap && margin.abs() <= cfg.thin_margin
+    })
 }
 
 /// Print progress summary: best/worst pairs and confidence.
