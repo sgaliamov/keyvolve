@@ -68,7 +68,7 @@ rank:
   #   < 1 = easy tiers spread out, hard tiers compress near effortMax
   #         (strong differentiation among good bigrams, flat tail).
   # Endpoints always pinned: best tier = effortMin, worst = effortMax.
-  effortGamma: 1.0
+  effortGamma: 0.8
 
 evaluate:
   # text: 'data\synthesised\sample-1000000'

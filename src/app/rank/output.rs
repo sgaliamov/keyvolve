@@ -136,12 +136,20 @@ pub fn write_report_csv(path: &Path, state: &RankState, tiers: &Tiers) -> Result
         out.push('\n');
     }
 
-    // Double-press efforts only: 3×5 matrix, same physical layout as above.
-    let _ = writeln!(out, "doubles:",);
+    // Sum of efforts per target slot, merged across every `from` slot.
+    let mut sums = vec![(0.0f64, 0usize); HAND_SLOTS as usize];
+    for item in &state.items {
+        let slot = item.to as usize;
+        sums[slot].0 += tiers.efforts[grid[item.from as usize][slot]];
+        sums[slot].1 += 1;
+    }
+    let merged_efforts: Vec<f64> = sums.into_iter().map(|(sum, _count)| sum).collect();
+    // Double-press efforts + summed efforts: two 3×5 matrices on the same rows.
+    let _ = writeln!(out, "doubles:,,,,,,summed-efforts:");
     for row in 0..3u8 {
         let _ = writeln!(
             out,
-            "{}",
+            "{},,{}",
             (0..5u8)
                 .map(|col| {
                     format!(
@@ -149,6 +157,10 @@ pub fn write_report_csv(path: &Path, state: &RankState, tiers: &Tiers) -> Result
                         tiers.efforts[grid[(row * 5 + col) as usize][(row * 5 + col) as usize]]
                     )
                 })
+                .collect::<Vec<_>>()
+                .join(","),
+            (0..5u8)
+                .map(|col| format!("{:.2}", merged_efforts[(row * 5 + col) as usize]))
                 .collect::<Vec<_>>()
                 .join(",")
         );
@@ -393,6 +405,7 @@ mod tests {
         write_report_csv(&csv, &state, &tiers).unwrap();
         let text = std::fs::read_to_string(&csv).unwrap();
         assert_eq!(text.matches("from: ").count(), 15);
+        assert!(text.contains("doubles:,,,,,,summed-efforts:"));
 
         let bigrams = dir.join("generated/reports/keyboard.bigrams.csv");
         write_bigrams_csv(&bigrams, &state, &tiers).unwrap();
