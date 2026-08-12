@@ -1,4 +1,5 @@
 use super::state::{Answer, START_DEV, START_RATING};
+use std::collections::BTreeMap;
 
 /// Elo points represented by one natural-log Bradley–Terry skill unit.
 const ELO_SCALE: f64 = 173.717_792_761_300_73;
@@ -17,13 +18,22 @@ pub(super) struct BradleyTerryFit {
     pub covariance: Vec<f64>,
 }
 
+#[derive(Clone, Copy)]
+struct WeightedAnswer {
+    a: usize,
+    b: usize,
+    score: f64,
+    weight: f64,
+}
+
 /// Fit ratings and uncertainty from raw answers; answer order has no effect.
 pub(super) fn fit_bradley_terry(
     answers: &[Answer],
     item_count: usize,
     initial_ratings: &[f64],
 ) -> BradleyTerryFit {
-    if answers.is_empty() {
+    let weighted_answers = aggregate_answers(answers);
+    if weighted_answers.is_empty() {
         return BradleyTerryFit {
             ratings: vec![START_RATING; item_count],
             deviations: vec![START_DEV; item_count],
@@ -38,7 +48,7 @@ pub(super) fn fit_bradley_terry(
         .collect::<Vec<_>>();
 
     for _ in 0..MAX_ITERATIONS {
-        let (gradient, hessian) = derivatives(&skills, answers);
+        let (gradient, hessian) = derivatives(&skills, &weighted_answers);
         let rhs = gradient.iter().map(|g| -g).collect::<Vec<_>>();
         let Some(cholesky) = cholesky(hessian, item_count) else {
             break;
@@ -49,7 +59,7 @@ pub(super) fn fit_bradley_terry(
             break;
         }
 
-        let before = objective(&skills, answers);
+        let before = objective(&skills, &weighted_answers);
         let mut step = 1.0;
         while step > 1.0 / 1024.0 {
             let proposed = skills
@@ -57,7 +67,7 @@ pub(super) fn fit_bradley_terry(
                 .zip(&delta)
                 .map(|(skill, change)| skill + step * change)
                 .collect::<Vec<_>>();
-            if objective(&proposed, answers) < before {
+            if objective(&proposed, &weighted_answers) < before {
                 skills = proposed;
                 break;
             }
@@ -68,7 +78,7 @@ pub(super) fn fit_bradley_terry(
         }
     }
 
-    let (_, hessian) = derivatives(&skills, answers);
+    let (_, hessian) = derivatives(&skills, &weighted_answers);
     let cholesky = cholesky(hessian, item_count).expect("positive Bradley–Terry posterior Hessian");
     let covariance = inverse(&cholesky, item_count)
         .into_iter()
@@ -100,7 +110,7 @@ pub(super) fn information_score(a: f64, b: f64, difference_deviation: f64) -> f6
     p * (1.0 - p) * difference_deviation * difference_deviation / (ELO_SCALE * ELO_SCALE)
 }
 
-fn derivatives(skills: &[f64], answers: &[Answer]) -> (Vec<f64>, Vec<f64>) {
+fn derivatives(skills: &[f64], answers: &[WeightedAnswer]) -> (Vec<f64>, Vec<f64>) {
     let n = skills.len();
     let mut gradient = skills
         .iter()
@@ -113,8 +123,8 @@ fn derivatives(skills: &[f64], answers: &[Answer]) -> (Vec<f64>, Vec<f64>) {
 
     for answer in answers {
         let p = logistic(skills[answer.a] - skills[answer.b]);
-        let residual = p - answer.score;
-        let weight = (p * (1.0 - p)).max(1e-12);
+        let residual = (p - answer.score) * answer.weight;
+        let weight = (p * (1.0 - p)).max(1e-12) * answer.weight;
         gradient[answer.a] += residual;
         gradient[answer.b] -= residual;
         hessian[answer.a * n + answer.a] += weight;
@@ -125,15 +135,60 @@ fn derivatives(skills: &[f64], answers: &[Answer]) -> (Vec<f64>, Vec<f64>) {
     (gradient, hessian)
 }
 
-fn objective(skills: &[f64], answers: &[Answer]) -> f64 {
+fn objective(skills: &[f64], answers: &[WeightedAnswer]) -> f64 {
     let prior = skills
         .iter()
         .map(|skill| 0.5 * PRIOR_PRECISION * skill * skill)
         .sum::<f64>();
     answers.iter().fold(prior, |loss, answer| {
         let difference = skills[answer.a] - skills[answer.b];
-        loss + softplus(difference) - answer.score * difference
+        loss + answer.weight * (softplus(difference) - answer.score * difference)
     })
+}
+
+/// Merge repeated same-direction answers; their weight grows as sqrt(count),
+/// so re-confirming a stable preference has diminishing returns.
+fn aggregate_answers(answers: &[Answer]) -> Vec<WeightedAnswer> {
+    let mut grouped = BTreeMap::<(usize, usize, u8), u32>::new();
+    for answer in answers {
+        let (a, b, score) = canonicalize(answer.a, answer.b, answer.score);
+        *grouped.entry((a, b, score_code(score))).or_default() += 1;
+    }
+    grouped
+        .into_iter()
+        .map(|((a, b, score), repeats)| WeightedAnswer {
+            a,
+            b,
+            score: decode_score(score),
+            weight: (repeats as f64).sqrt(),
+        })
+        .collect()
+}
+
+fn canonicalize(a: usize, b: usize, score: f64) -> (usize, usize, f64) {
+    if a <= b {
+        (a, b, score)
+    } else {
+        (b, a, 1.0 - score)
+    }
+}
+
+fn score_code(score: f64) -> u8 {
+    match score {
+        0.0 => 0,
+        0.5 => 1,
+        1.0 => 2,
+        _ => unreachable!("validated rank score"),
+    }
+}
+
+fn decode_score(score: u8) -> f64 {
+    match score {
+        0 => 0.0,
+        1 => 0.5,
+        2 => 1.0,
+        _ => unreachable!("validated score code"),
+    }
 }
 
 fn logistic(value: f64) -> f64 {
@@ -343,5 +398,18 @@ mod tests {
         let clean = spread(&fit_bradley_terry(&clean, 3, &[]));
         let noisy = spread(&fit_bradley_terry(&noisy, 3, &[]));
         assert!(noisy < clean / 2.0, "noisy {noisy} vs clean {clean}");
+    }
+
+    #[test]
+    fn normal_repeats_use_diminishing_returns() {
+        let answers = vec![
+            answer(0, 1, 1.0),
+            answer(0, 1, 1.0),
+            answer(0, 1, 1.0),
+            answer(0, 1, 1.0),
+        ];
+        let weighted = aggregate_answers(&answers);
+        assert_eq!(weighted.len(), 1);
+        assert!((weighted[0].weight - 2.0).abs() < 1e-8);
     }
 }

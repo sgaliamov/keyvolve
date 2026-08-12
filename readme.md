@@ -60,6 +60,7 @@ Scores candidate layouts against a bigram-weighted corpus, then evolves them tow
 - `rank.auditRate` — audit probability during refinement; finished sessions always audit.
 - `rank.minMatches` / `rank.maxMatches` — confidence floor and hard per-item cap.
 - `rank.maxDeviation` — maximum marginal rating uncertainty before confidence stopping.
+- `rank.forcedAnswerWeight` — confirmations recorded by one `!` answer; saves re-answering the same pair.
 - `rank.seed` — optional reproducible question-order seed.
 
 Diagnostic tests (`#[ignore]`, read-only over the live `data/rank-session.json`):

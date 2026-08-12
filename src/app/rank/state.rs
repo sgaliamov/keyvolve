@@ -585,6 +585,7 @@ mod tests {
         let state = RankState::new();
         let mut json = serde_json::to_value(&state).unwrap();
         json.as_object_mut().unwrap().remove("pending");
+        json["version"] = serde_json::json!(2);
         let dir = std::env::temp_dir().join("keyvolve-rank-invalid-v2-test");
         std::fs::remove_dir_all(&dir).ok();
         std::fs::create_dir_all(&dir).unwrap();

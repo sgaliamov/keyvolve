@@ -11,9 +11,10 @@ Most rounds show two bigrams starting from the same key (e.g. `TE` vs `TD`, with
 right-hand mirrors for reference). Rare uphill re-checks may instead share the ending key
 (e.g. `WD` vs `RD`).
 
-Answer with the ending letter, `1`/`2`, or `=` for a tie. Add `!` at the end to force the
-answer (`e!`, `1!`, `=!`). If both options end with the same letter, answer with the starting
-letter instead (the prompt tells you when this applies).
+Answer with the ending letter, `1`/`2`, or `=` for a tie. Add `!` at the end for a **strong
+confirmation** (`e!`, `1!`, `=!`). That records several confirmations at once, so you do not
+need to type the same answer many times manually. If both options end with the same letter,
+answer with the starting letter instead (the prompt tells you when this applies).
 Every answer is saved immediately — quit any time, resume later.
 
 ```mermaid
@@ -36,6 +37,12 @@ probability that A beats B grows with the rating gap. All ratings are refitted f
 full answer history after every answer, so no single mistake is permanent — the model
 weighs all evidence together and tolerates occasional noise.
 
+Repeated confirmations have **diminishing returns**. Re-answering the same pair in the
+same direction still adds evidence, but each extra confirmation counts less than the
+previous one. This keeps stable preferences from exploding into artificially huge gaps just
+because they were repeated many times. A `!` answer is simply a shortcut for repeating the
+same answer several times — it saturates the same way.
+
 Each rating carries an **uncertainty** (deviation) that shrinks as the bigram collects
 answers. A bigram is *settled* once it has sufficient matches and low deviation.
 Unresolved distinctions no longer block settling: statistically overlapping bigrams share
@@ -51,6 +58,8 @@ of the posterior); deviation is the width of that peak. Practical consequences:
   carries maximum information; an answer with an obvious winner teaches almost nothing.
 - **Confidence flows through the graph.** Playing against a well-anchored opponent
   shrinks your deviation more than playing against an uncertain one.
+- **Repeated confirmations still help, but saturate.** Repeats strengthen the fit with
+  diminishing returns; `!` records several confirmations at once without re-asking.
 - **It (almost) never grows.** Every answer adds information — even a contradictory one
   shrinks deviation. A contradiction hurts differently: it *compresses the rating gap*,
   making the pair harder to tell apart despite the smaller deviations. Compressed,
@@ -374,6 +383,7 @@ All settings live under `rank:` in `keyvolve.yaml`; every one has a sensible def
 | `maxDeviation` | `170` | Rating uncertainty an item must reach to settle before `maxMatches`. Lower = stricter = more questions. |
 | `uphillGap` | `100` | Minimum fitted rating gap (effort units) for an edge to be marked uphill. Detects structural contradictions; larger = fewer cycle re-checks, smaller = more aggressive. |
 | `thinMargin` | `1.0` | Maximum head-to-head win margin for an edge to count as thin (fragile). Thin edges flip easily; higher = fewer re-asks, lower = stricter. |
+| `forcedAnswerWeight` | `3` | Confirmations recorded by one `!` answer — a shortcut for answering the same way several times. |
 | `forceCheckPair` | unset | Optional one-time first question in `XX-YY` format (left-hand labels), e.g. `AF-VE`. |
 | `tierSplitZ` | `2.2` | Global tier split multiplier. Higher = fewer splits, more merging near the bottom. |
 | `effortMin` | `1.0` | Lower bound for population-weighted adaptive tier efforts. |

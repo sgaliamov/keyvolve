@@ -56,7 +56,7 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
     let (mut confirmed, mut contradicted) = (0u32, 0u32);
     // In-run answer metadata so undo can replay the exact previous comparison
     // instead of jumping to a fresh random pick.
-    let mut answered = Vec::<(usize, usize, PickKind)>::new();
+    let mut answered = Vec::<(usize, usize, PickKind, u32)>::new();
     let mut repick = initial_forced_pick(&cfg, &state)?;
 
     let stdin = std::io::stdin();
@@ -172,15 +172,14 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
                 Some(ch) if ch == last_b => break Reply::Score(0.0, is_forced),
                 Some('N') => break Reply::Skip,
                 Some('U') => {
-                    if let Some(ans) = state.undo() {
+                    if let Some((a, b, kind, repeat_count)) = answered.pop() {
+                        for _ in 0..repeat_count {
+                            let _ = state.undo();
+                        }
                         if state.settled_count(&cfg) < state.items.len() {
                             state.finished = false;
                         }
-                        let kind = answered
-                            .pop()
-                            .map(|(_, _, kind)| kind)
-                            .unwrap_or(PickKind::Explore);
-                        repick = Some((ans.a, ans.b, kind));
+                        repick = Some((a, b, kind));
                         println!("{YELLOW}Undone.{RESET}");
                         state.save(&session)?;
                         break Reply::Repick;
@@ -217,7 +216,7 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
                 confirmed += 1;
             }
         }
-        // Record the answer; repeat if forced.
+        // Record the answer; ! counts as several confirmations at once.
         let repeat_count = if is_forced {
             cfg.forced_answer_weight
         } else {
@@ -226,9 +225,11 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
         for _ in 0..repeat_count {
             state.answer(a, b, score)?;
         }
-        answered.push((a, b, kind));
+        answered.push((a, b, kind, repeat_count));
         if is_forced {
-            println!("{GREEN}! Locked (recorded {repeat_count}x){RESET}");
+            println!(
+                "{GREEN}! Strong confirmation (counts as {repeat_count} confirmations){RESET}"
+            );
         }
         // Capture post-answer cycle text now, print it after the prompt line rewrite
         // so LINE_UP does not erase it.
@@ -435,15 +436,19 @@ fn print_fit_quality(state: &RankState, cfg: &RankConfig) {
     if state.history.is_empty() {
         return;
     }
-    let (loss, hits, decisive) = state.history.iter().fold((0.0, 0, 0), |(l, h, d), a| {
-        let p = fit::expected_score(state.items[a.a].rating, state.items[a.b].rating);
-        let l = l - (a.score * p.ln() + (1.0 - a.score) * (1.0 - p).ln());
-        match a.score {
-            1.0 => (l, h + usize::from(p > 0.5), d + 1),
-            0.0 => (l, h + usize::from(p < 0.5), d + 1),
-            _ => (l, h, d),
-        }
-    });
+    let (loss, hits, decisive) =
+        state
+            .history
+            .iter()
+            .fold((0.0, 0usize, 0usize), |(l, h, d), a| {
+                let p = fit::expected_score(state.items[a.a].rating, state.items[a.b].rating);
+                let l = l - (a.score * p.ln() + (1.0 - a.score) * (1.0 - p).ln());
+                match a.score {
+                    1.0 => (l, h + usize::from(p > 0.5), d + 1),
+                    0.0 => (l, h + usize::from(p < 0.5), d + 1),
+                    _ => (l, h, d),
+                }
+            });
     let (min, max) = state
         .items
         .iter()
