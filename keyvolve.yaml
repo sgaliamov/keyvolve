@@ -40,16 +40,18 @@ optimization:
   # Mutants produced per parent each generation.
   mutationCount: 10
   # Max home-row groups kept in final ranked output.
-  maxGroups: 3
+  maxGroups: 1
+  # Number of layouts kept per home-row group in final ranked output.
+  itemsPerGroup: 1
   # blocked: [0, 14, 19, 25]
   # frozen:
   #   h: 5
-  # allowed:
-  #   e: [6, 7, 8]
-  #   t: [1, 2, 3, 6, 7, 8, 13]
-  #   a: [1, 2, 3, 6, 7, 8]
-  #   i: [1, 2, 3, 6, 7, 8]
-  #   o: [1, 2, 3, 6, 7, 8]
+  allowed:
+    e: [6, 7, 8]
+    t: [1, 2, 3, 6, 7, 8]
+    a: [1, 2, 3, 6, 7, 8]
+    i: [1, 2, 3, 6, 7, 8]
+    o: [1, 2, 3, 6, 7, 8]
   #   n: [1, 2, 3, 6, 7, 8]
   #   r: [1, 2, 3, 6, 7, 8]
   #   s: [1, 2, 3, 6, 7, 8]
@@ -58,7 +60,8 @@ optimization:
   #   x: [5, 10, 11, 14]
   #   z: [10, 11, 14]
   #   q: [10, 11, 14]
-  # rolls: ['er', 'th']
+  #
+  rolls: ['er', 'th']
   # left: [e, o]
   # right: [a, i]
 
@@ -109,7 +112,7 @@ evaluate:
 evaluator:
   # Fitness multiplier; higher scales scores up, lower scales down.
   fitnessScale: 10
-  # rowCost: 7
+  rowCost: 2
   # switchCost: 1
 
 ga:

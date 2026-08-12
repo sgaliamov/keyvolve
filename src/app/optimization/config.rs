@@ -114,6 +114,10 @@ pub struct OptimizationConfig {
     #[serde(default = "default_max_groups")]
     pub max_groups: usize,
 
+    /// Number of layouts kept per home-row group in final output. Default: 6.
+    #[serde(default = "default_items_per_group")]
+    pub items_per_group: usize,
+
     /// Input layouts csv file, used as optimization seed.
     pub input: Option<PathBuf>,
 
@@ -127,6 +131,10 @@ fn default_mutation_count() -> usize {
 
 fn default_max_groups() -> usize {
     10
+}
+
+fn default_items_per_group() -> usize {
+    6
 }
 
 impl OptimizationConfig {
@@ -435,5 +443,12 @@ mod tests {
         let json = r#"{"rolls": ["th", "st"]}"#;
         let cfg: OptimizationConfig = serde_json::from_str(json).unwrap();
         assert_eq!(cfg.rolls, vec![['t', 'h'], ['s', 't']]);
+    }
+
+    #[test]
+    fn deserialize_items_per_group() {
+        let json = r#"{"itemsPerGroup": 3}"#;
+        let cfg: OptimizationConfig = serde_json::from_str(json).unwrap();
+        assert_eq!(cfg.items_per_group, 3);
     }
 }

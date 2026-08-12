@@ -365,6 +365,7 @@ mod tests {
             right: FxHashSet::default(),
             mutation_count: 10,
             max_groups: 10,
+            items_per_group: 6,
             input: None,
             output: None,
         }

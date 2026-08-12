@@ -30,6 +30,7 @@ pub fn optimize(
 
     let output_path = opt_cfg.output.clone();
     let max_groups = opt_cfg.max_groups;
+    let items_per_group = opt_cfg.items_per_group;
 
     GeneticAlgorithm::set_state(
         &mut ga,
@@ -48,7 +49,7 @@ pub fn optimize(
 
     let pools = &pools;
 
-    let top = top_by_home_row(pools, max_groups);
+    let top = top_by_home_row(pools, max_groups, items_per_group);
 
     let rows: Vec<_> = top
         .iter()
@@ -63,12 +64,11 @@ fn home_row_key(genome: &[char]) -> [char; 10] {
     HOME_ROW.map(|i| genome[i])
 }
 
-/// Collect individuals grouped by home-row content, tiered by group rank.
-///
-/// Top `max_groups` groups by champion fitness; groups 0–1 → 8 picks, 2–3 → 4, rest → 2.
+/// Collect individuals grouped by home-row content with fixed picks per group.
 fn top_by_home_row(
     pools: &darwin::Pools<char, ScoreResult>,
     max_groups: usize,
+    items_per_group: usize,
 ) -> Vec<(usize, &Individual<char, ScoreResult>)> {
     // Parallel collect all scored individuals, tagged with pool number.
     let all: Vec<(usize, &Individual<char, ScoreResult>)> = pools
@@ -96,18 +96,10 @@ fn top_by_home_row(
     groups.sort_unstable_by(|a, b| b[0].1.fitness.total_cmp(&a[0].1.fitness));
     groups.truncate(max_groups);
 
-    // Tier-based extraction with cross-group dedup.
+    // Fixed extraction per group with cross-group dedup.
     groups
         .iter()
-        .enumerate()
-        .flat_map(|(i, g)| {
-            let n = match i {
-                0 | 1 => 6,
-                2 | 3 => 4,
-                _ => 2,
-            };
-            g.iter().take(n).copied()
-        })
+        .flat_map(|g| g.iter().take(items_per_group).copied())
         .unique_by(|(_, ind)| &ind.genome)
         .collect()
 }
