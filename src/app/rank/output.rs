@@ -11,7 +11,7 @@ pub struct Tiers {
     pub groups: Vec<usize>,
 }
 
-/// Build final adaptive tiers and population-weighted effort values.
+/// Build final adaptive tiers with rating-anchored effort values.
 pub fn tiers(state: &RankState, cfg: &RankConfig) -> Tiers {
     let groups = state.confidence_tiers(cfg);
     let count = state.confidence_tier_count(cfg);
@@ -21,25 +21,30 @@ pub fn tiers(state: &RankState, cfg: &RankConfig) -> Tiers {
             groups,
         };
     }
-    let efforts = tier_efforts(&groups, count, cfg);
+    let efforts = tier_efforts(state, &groups, count, cfg);
     Tiers { efforts, groups }
 }
 
-/// Calculate population-weighted midpoint effort for each tier.
-fn tier_efforts(groups: &[usize], count: usize, cfg: &RankConfig) -> Vec<f64> {
-    let mut sizes = vec![0usize; count];
-    for &tier in groups {
-        sizes[tier] += 1;
+/// Rating-anchored tier efforts: mean fitted rating per tier mapped onto
+/// `[effort_min, effort_max]` (best tier pinned to min, worst to max), with
+/// `effort_gamma` bending the curve between the endpoints.
+fn tier_efforts(state: &RankState, groups: &[usize], count: usize, cfg: &RankConfig) -> Vec<f64> {
+    let mut sums = vec![(0.0f64, 0usize); count];
+    for (item, &tier) in state.items.iter().zip(groups) {
+        sums[tier].0 += item.rating;
+        sums[tier].1 += 1;
     }
-    let span = cfg.effort_max - cfg.effort_min;
-    let denominator = groups.len().saturating_sub(1).max(1) as f64;
-    let mut start = 0usize;
-    sizes
+    let means: Vec<f64> = sums
         .into_iter()
-        .map(|size| {
-            let midpoint = start as f64 + (size.saturating_sub(1) as f64 / 2.0);
-            start += size;
-            cfg.effort_min + span * midpoint / denominator
+        .map(|(sum, n)| sum / n.max(1) as f64)
+        .collect();
+    let (best, worst) = (means[0], means[count - 1]);
+    let span = (best - worst).max(f64::EPSILON);
+    means
+        .into_iter()
+        .map(|mean| {
+            let t = ((best - mean) / span).clamp(0.0, 1.0);
+            cfg.effort_min + (cfg.effort_max - cfg.effort_min) * t.powf(cfg.effort_gamma)
         })
         .collect()
 }
@@ -308,10 +313,42 @@ mod tests {
     }
 
     #[test]
-    fn tier_efforts_use_population_weighted_midpoints() {
+    fn tier_efforts_anchor_endpoints_and_track_rating_gaps() {
         let cfg = RankConfig::default();
-        let efforts = tier_efforts(&[0, 0, 1, 2, 2, 2], 3, &cfg);
-        assert_eq!(efforts, vec![1.9, 4.6, 8.2]);
+        let mut state = RankState::new();
+        for (item, rating) in state
+            .items
+            .iter_mut()
+            .zip([2000.0, 2000.0, 1500.0, 1000.0, 1000.0, 1000.0])
+        {
+            item.rating = rating;
+        }
+        // Tier means: 2000, 1500, 1000 → t = 0, 0.5, 1.
+        let efforts = tier_efforts(&state, &[0, 0, 1, 2, 2, 2], 3, &cfg);
+        assert_eq!(efforts, vec![1.0, 5.5, 10.0]);
+    }
+
+    #[test]
+    fn tier_efforts_gamma_bends_curve_between_pinned_endpoints() {
+        let cfg = RankConfig {
+            effort_gamma: 2.0,
+            ..Default::default()
+        };
+        let mut state = RankState::new();
+        for (item, rating) in state.items.iter_mut().zip([2000.0, 1500.0, 1000.0]) {
+            item.rating = rating;
+        }
+        // Middle tier: t = 0.5 → 0.25 after gamma → 1 + 9 · 0.25.
+        let efforts = tier_efforts(&state, &[0, 1, 2], 3, &cfg);
+        assert_eq!(efforts, vec![1.0, 3.25, 10.0]);
+    }
+
+    #[test]
+    fn tier_efforts_single_tier_uses_effort_min() {
+        let cfg = RankConfig::default();
+        let state = ranked_state();
+        let efforts = tier_efforts(&state, &[0, 0], 1, &cfg);
+        assert_eq!(efforts, vec![cfg.effort_min]);
     }
 
     #[test]

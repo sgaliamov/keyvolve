@@ -26,6 +26,10 @@ fn default_effort_max() -> f64 {
     10.0
 }
 
+fn default_effort_gamma() -> f64 {
+    1.0
+}
+
 fn default_uphill_gap() -> f64 {
     100.0
 }
@@ -90,6 +94,13 @@ pub struct RankConfig {
     #[serde(default = "default_effort_max")]
     pub effort_max: f64,
 
+    /// Shaping exponent for rating-anchored tier efforts. 1.0 = linear
+    /// (effort gaps mirror rating gaps); > 1 clusters easy tiers near
+    /// `effort_min` with a harsh tail; < 1 spreads easy tiers with a flat
+    /// tail. Endpoints stay pinned to `effort_min` / `effort_max`.
+    #[serde(default = "default_effort_gamma")]
+    pub effort_gamma: f64,
+
     /// Minimum fitted rating gap for an edge to qualify as uphill (cycle-prone).
     #[serde(default = "default_uphill_gap")]
     pub uphill_gap: f64,
@@ -139,6 +150,11 @@ impl RankConfig {
         {
             return Err(miette::miette!(
                 "rank effortMin and effortMax must be finite, with effortMin < effortMax"
+            ));
+        }
+        if !self.effort_gamma.is_finite() || self.effort_gamma <= 0.0 {
+            return Err(miette::miette!(
+                "rank.effortGamma must be finite and greater than 0"
             ));
         }
         if !self.uphill_gap.is_finite() || self.uphill_gap <= 0.0 {
@@ -221,6 +237,7 @@ impl Default for RankConfig {
             max_deviation: default_max_deviation(),
             effort_min: default_effort_min(),
             effort_max: default_effort_max(),
+            effort_gamma: default_effort_gamma(),
             uphill_gap: default_uphill_gap(),
             thin_margin: default_thin_margin(),
             forced_answer_weight: default_forced_answer_weight(),
