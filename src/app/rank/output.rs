@@ -12,7 +12,7 @@ pub struct Tiers {
 }
 
 /// Build final adaptive tiers and population-weighted effort values.
-pub fn tierize(state: &RankState, cfg: &RankConfig) -> Tiers {
+pub fn tiers(state: &RankState, cfg: &RankConfig) -> Tiers {
     let groups = state.confidence_tiers(cfg);
     let count = state.confidence_tier_count(cfg);
     if count == 0 {
@@ -131,22 +131,22 @@ pub fn write_report_csv(path: &Path, state: &RankState, tiers: &Tiers) -> Result
         out.push('\n');
     }
 
-    // Double-press efforts (QQ, WW, ...) derived from key strength.
-    let _ = writeln!(out, "doubles:");
-    let cells = |range: std::ops::Range<u8>| {
-        range
-            .map(|s| {
-                format!(
-                    "{},{:.2}",
-                    QWERTY[s as usize].to_ascii_uppercase(),
-                    tiers.efforts[grid[s as usize][s as usize]]
-                )
-            })
-            .collect::<Vec<_>>()
-            .join(",")
-    };
+    // Double-press efforts only: 3×5 matrix, same physical layout as above.
+    let _ = writeln!(out, "doubles:",);
     for row in 0..3u8 {
-        let _ = writeln!(out, "{}", cells(row * 5..row * 5 + 5));
+        let _ = writeln!(
+            out,
+            "{}",
+            (0..5u8)
+                .map(|col| {
+                    format!(
+                        "{:.2}",
+                        tiers.efforts[grid[(row * 5 + col) as usize][(row * 5 + col) as usize]]
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join(",")
+        );
     }
 
     write_text(path, out)
@@ -260,22 +260,26 @@ fn write_text(path: &Path, text: String) -> Result<()> {
 fn pair_groups(state: &RankState, tiers: &Tiers) -> Vec<Vec<usize>> {
     let slots = HAND_SLOTS as usize;
     let mut grid = vec![vec![0usize; slots]; slots];
+
     for (idx, item) in state.items.iter().enumerate() {
         grid[item.from as usize][item.to as usize] = tiers.groups[idx];
     }
 
     // Key strength: mean rating over every pair the key participates in.
     let mut sums = vec![(0.0f64, 0usize); slots];
+
     for item in &state.items {
         for slot in [item.from as usize, item.to as usize] {
             sums[slot].0 += item.rating;
             sums[slot].1 += 1;
         }
     }
+
     let strength: Vec<f64> = sums
         .iter()
         .map(|(sum, n)| sum / (*n).max(1) as f64)
         .collect();
+
     let (min, max) = strength
         .iter()
         .fold((f64::INFINITY, f64::NEG_INFINITY), |(lo, hi), &s| {
@@ -283,6 +287,7 @@ fn pair_groups(state: &RankState, tiers: &Tiers) -> Vec<Vec<usize>> {
         });
     let span = (max - min).max(f64::EPSILON);
     let cap = (tiers.efforts.len() / 3) as f64;
+
     for (slot, row) in grid.iter_mut().enumerate() {
         // Strong (high mean rating) → cheap double.
         row[slot] = ((max - strength[slot]) / span * cap).round() as usize;
@@ -336,7 +341,7 @@ mod tests {
     fn written_json_parses_as_keyboard() {
         let state = ranked_state();
         let cfg = RankConfig::default();
-        let tiers = tierize(&state, &cfg);
+        let tiers = tiers(&state, &cfg);
 
         let dir = std::env::temp_dir().join("keyvolve-rank-out-test");
         std::fs::create_dir_all(&dir).unwrap();
@@ -386,7 +391,7 @@ mod tests {
             score: 1.0,
         });
         let cfg = RankConfig::default();
-        let tiers = tierize(&state, &cfg);
+        let tiers = tiers(&state, &cfg);
 
         let dir = std::env::temp_dir().join("keyvolve-rank-bigram-export-test");
         std::fs::create_dir_all(&dir).unwrap();

@@ -357,7 +357,7 @@ fn initial_forced_pick(
 
 /// Write ranked keyboard JSON and CSV report from current ratings.
 fn write_outputs(cfg: &RankConfig, state: &RankState) -> Result<()> {
-    let tiers = tierize(state, cfg);
+    let tiers = tiers(state, cfg);
     let json = cfg.output_path();
     let csv = cfg.report_path();
     let bigrams = cfg.bigrams_path();
