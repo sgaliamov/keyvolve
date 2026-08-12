@@ -256,11 +256,6 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
             prev_pending_a,
             prev_pending_b,
         ));
-        if is_forced {
-            println!(
-                "{GREEN}! Strong confirmation (counts as {repeat_count} confirmations){RESET}"
-            );
-        }
         // Capture post-answer cycle text now, print it after the prompt line rewrite
         // so LINE_UP does not erase it.
         let cycle_after = old_cycle.map(|old_cycle| {
