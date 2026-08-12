@@ -374,28 +374,16 @@ mod tests {
             a: 1,
             b: 0,
             score: 1.0,
-            prev_a: (1_500.0, 350.0, 0),
-            prev_b: (1_500.0, 350.0, 0),
-            prev_pending_a: 0,
-            prev_pending_b: 0,
         });
         state.history.push(crate::app::rank::Answer {
             a: 0,
             b: 2,
             score: 1.0,
-            prev_a: (1_500.0, 350.0, 0),
-            prev_b: (1_500.0, 350.0, 0),
-            prev_pending_a: 0,
-            prev_pending_b: 0,
         });
         state.history.push(crate::app::rank::Answer {
             a: 1,
             b: 2,
             score: 1.0,
-            prev_a: (1_500.0, 350.0, 0),
-            prev_b: (1_500.0, 350.0, 0),
-            prev_pending_a: 0,
-            prev_pending_b: 0,
         });
         let cfg = RankConfig::default();
         let tiers = tierize(&state, &cfg);

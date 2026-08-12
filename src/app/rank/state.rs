@@ -49,7 +49,7 @@ impl Item {
     }
 }
 
-/// One recorded answer with pre-update snapshots for undo.
+/// One recorded pairwise answer.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Answer {
     /// Item indexes into `RankState::items`.
@@ -57,14 +57,6 @@ pub struct Answer {
     pub b: usize,
     /// Score for `a`: 1.0 win, 0.0 loss, 0.5 tie.
     pub score: f64,
-    /// (rating, deviation, matches) of `a`/`b` before the update.
-    pub prev_a: (f64, f64, u32),
-    pub prev_b: (f64, f64, u32),
-    /// Pending verification confirmations before this answer (v2+).
-    #[serde(default)]
-    pub prev_pending_a: u8,
-    #[serde(default)]
-    pub prev_pending_b: u8,
 }
 
 /// Full ranking session state, persisted after every answer.
@@ -189,16 +181,7 @@ impl RankState {
         if !matches!(score, 0.0 | 0.5 | 1.0) {
             return Err(miette::miette!("Rank answer contains an invalid score"));
         }
-        let snap = |i: &Item| (i.rating, i.deviation, i.matches);
-        self.history.push(Answer {
-            a,
-            b,
-            score,
-            prev_a: snap(&self.items[a]),
-            prev_b: snap(&self.items[b]),
-            prev_pending_a: self.pending[a],
-            prev_pending_b: self.pending[b],
-        });
+        self.history.push(Answer { a, b, score });
         self.pending[a] = self.pending[a].saturating_sub(1);
         self.pending[b] = self.pending[b].saturating_sub(1);
         self.refit();
@@ -206,12 +189,10 @@ impl RankState {
     }
 
     /// Remove the most recent raw answer and rebuild derived state.
-    pub fn undo(&mut self) -> Option<Answer> {
-        let ans = self.history.pop()?;
-        self.pending[ans.a] = ans.prev_pending_a;
-        self.pending[ans.b] = ans.prev_pending_b;
+    pub fn undo(&mut self) -> Option<()> {
+        self.history.pop()?;
         self.refit();
-        Some(ans)
+        Some(())
     }
 
     /// Require two more confirmations for items in a contradictory audit.
@@ -219,6 +200,17 @@ impl RankState {
         for i in [a, b] {
             self.pending[i] = self.pending[i].max(2);
         }
+    }
+
+    /// Restore in-run pending counters after undoing one typed action.
+    pub fn restore_pending_pair(&mut self, a: usize, pending_a: u8, b: usize, pending_b: u8) {
+        self.pending[a] = pending_a;
+        self.pending[b] = pending_b;
+    }
+
+    /// Current pending counters for two items.
+    pub fn pending_pair(&self, a: usize, b: usize) -> (u8, u8) {
+        (self.pending[a], self.pending[b])
     }
 
     /// Confidence-settled flags for every item.
@@ -529,8 +521,7 @@ mod tests {
         let mut state = RankState::new();
         let before = state.clone();
         state.answer(3, 7, 1.0).unwrap();
-        let undone = state.undo().unwrap();
-        assert_eq!((undone.a, undone.b, undone.score), (3, 7, 1.0));
+        state.undo().unwrap();
         assert_eq!(state, before);
         assert!(state.undo().is_none());
     }
@@ -562,11 +553,6 @@ mod tests {
         let object = json.as_object_mut().unwrap();
         object.remove("version");
         object.remove("pending");
-        for answer in object["history"].as_array_mut().unwrap() {
-            let answer = answer.as_object_mut().unwrap();
-            answer.remove("prev_pending_a");
-            answer.remove("prev_pending_b");
-        }
         let dir = std::env::temp_dir().join("keyvolve-rank-migration-test");
         std::fs::remove_dir_all(&dir).ok();
         std::fs::create_dir_all(&dir).unwrap();

@@ -274,15 +274,7 @@ mod tests {
     use super::*;
 
     fn answer(a: usize, b: usize, score: f64) -> Answer {
-        Answer {
-            a,
-            b,
-            score,
-            prev_a: (START_RATING, START_DEV, 0),
-            prev_b: (START_RATING, START_DEV, 0),
-            prev_pending_a: 0,
-            prev_pending_b: 0,
-        }
+        Answer { a, b, score }
     }
 
     #[test]

@@ -56,7 +56,16 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
     let (mut confirmed, mut contradicted) = (0u32, 0u32);
     // In-run answer metadata so undo can replay the exact previous comparison
     // instead of jumping to a fresh random pick.
-    let mut answered = Vec::<(usize, usize, PickKind, u32)>::new();
+    let mut answered = Vec::<(
+        usize,
+        usize,
+        PickKind,
+        u32,
+        (f64, f64, u32),
+        (f64, f64, u32),
+        u8,
+        u8,
+    )>::new();
     let mut repick = initial_forced_pick(&cfg, &state)?;
 
     let stdin = std::io::stdin();
@@ -172,10 +181,13 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
                 Some(ch) if ch == last_b => break Reply::Score(0.0, is_forced),
                 Some('N') => break Reply::Skip,
                 Some('U') => {
-                    if let Some((a, b, kind, repeat_count)) = answered.pop() {
+                    if let Some((a, b, kind, repeat_count, _, _, prev_pending_a, prev_pending_b)) =
+                        answered.pop()
+                    {
                         for _ in 0..repeat_count {
                             let _ = state.undo();
                         }
+                        state.restore_pending_pair(a, prev_pending_a, b, prev_pending_b);
                         if state.settled_count(&cfg) < state.items.len() {
                             state.finished = false;
                         }
@@ -222,10 +234,28 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
         } else {
             1
         };
+        let before_a = {
+            let item = &state.items[a];
+            (item.rating, item.deviation, item.matches)
+        };
+        let before_b = {
+            let item = &state.items[b];
+            (item.rating, item.deviation, item.matches)
+        };
+        let (prev_pending_a, prev_pending_b) = state.pending_pair(a, b);
         for _ in 0..repeat_count {
             state.answer(a, b, score)?;
         }
-        answered.push((a, b, kind, repeat_count));
+        answered.push((
+            a,
+            b,
+            kind,
+            repeat_count,
+            before_a,
+            before_b,
+            prev_pending_a,
+            prev_pending_b,
+        ));
         if is_forced {
             println!(
                 "{GREEN}! Strong confirmation (counts as {repeat_count} confirmations){RESET}"
@@ -254,13 +284,8 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
         // Rewrite the prompt line in place: erase user's input, append the
         // picked winner plus updated model stats for both options. Arrows show
         // rating/deviation direction; fixed column widths keep lines aligned.
-        let last = state.history.last().expect("answer just recorded");
         let prev = |i: usize| {
-            if i == last.a {
-                last.prev_a
-            } else {
-                last.prev_b
-            }
+            if i == a { before_a } else { before_b }
         };
         // Direction arrow for a metric vs its pre-answer snapshot.
         let dir = |now: f64, before: f64| match now.total_cmp(&before) {
@@ -290,7 +315,7 @@ pub fn rank(cfg: RankConfig, app: AppHandle) -> Result<()> {
         // Rating gap between the two options: growing gap = cleaner separation,
         // shrinking gap = this answer contradicted the model.
         let gap = (state.items[a].rating - state.items[b].rating).abs();
-        let prev_gap = (last.prev_a.0 - last.prev_b.0).abs();
+        let prev_gap = (before_a.0 - before_b.0).abs();
         println!(
             "{LINE_UP}{DIM}[{settled}/{total}] {}  {}  gap:{:03.0}{}{RESET}",
             stat(a),

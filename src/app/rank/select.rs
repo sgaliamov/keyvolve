@@ -460,10 +460,6 @@ mod tests {
             a: 0,
             b: 1,
             score: 0.0,
-            prev_a: (1_500.0, 350.0, 0),
-            prev_b: (1_500.0, 350.0, 0),
-            prev_pending_a: 0,
-            prev_pending_b: 0,
         });
         let cfg = RankConfig::default();
         let mut rng = StdRng::seed_from_u64(5);
@@ -608,19 +604,7 @@ mod tests {
             if refit_every == 1 {
                 state.answer(a, b, score).unwrap();
             } else {
-                let snap = |i: usize| {
-                    let item = &state.items[i];
-                    (item.rating, item.deviation, item.matches)
-                };
-                state.history.push(Answer {
-                    a,
-                    b,
-                    score,
-                    prev_a: snap(a),
-                    prev_b: snap(b),
-                    prev_pending_a: 0,
-                    prev_pending_b: 0,
-                });
+                state.history.push(Answer { a, b, score });
                 state.items[a].matches += 1;
                 state.items[b].matches += 1;
                 if state.history.len().is_multiple_of(refit_every) {
