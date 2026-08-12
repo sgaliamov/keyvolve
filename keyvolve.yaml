@@ -76,14 +76,15 @@ evaluate:
   eSide: left
 
 evaluator:
-  fitnessScale: 10000
-  rowCost: 7
-  switchCost: 1
+  fitnessScale: 10
+  # rowCost: 7
+  # switchCost: 1
 
 ga:
   mutationRatio: 0.6
-  populationSize: 200
-  pools: 250
+  populationSize: 256
+  stagnationCount: 128
+  pools: 512
   randomRatio: 0.25
   seedMutation: 10
   dump: data/dump.bin
