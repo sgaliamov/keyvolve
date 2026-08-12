@@ -20,11 +20,20 @@ pub struct LayoutEvaluatorConfig {
     /// Multiplier applied to the inverted fitness; sets the "ideal" score magnitude.
     #[serde(default = "default_fitness_scale")]
     pub fitness_scale: f64,
+
+    /// Exponent applied to imbalance ratios; `< 1.0` softens balance pressure.
+    #[serde(default = "default_balance_penalty_power")]
+    pub balance_penalty_power: f64,
 }
 
 /// Serde default for [`LayoutEvaluatorConfig::fitness_scale`].
 fn default_fitness_scale() -> f64 {
     1_000_000.
+}
+
+/// Serde default for [`LayoutEvaluatorConfig::balance_penalty_power`].
+fn default_balance_penalty_power() -> f64 {
+    1.0
 }
 
 impl Default for LayoutEvaluatorConfig {
@@ -33,6 +42,7 @@ impl Default for LayoutEvaluatorConfig {
             switch_cost: 0.0,
             row_cost: 0.0,
             fitness_scale: default_fitness_scale(),
+            balance_penalty_power: default_balance_penalty_power(),
         }
     }
 }
@@ -232,12 +242,14 @@ impl LayoutEvaluator {
         // the shorter hand streak divides it — long runs on both hands raise fitness.
         // Raw row-step cost is already priced by the `row_cost` surcharge above.
         let r = &result;
-        let penalty = imbalance_ratio(r.left_count as f64, r.right_count as f64)
-            * imbalance_ratio(r.left_streak(), r.right_streak())
+        let p = self.config.balance_penalty_power;
+        let penalty = imbalance_ratio(r.left_count as f64, r.right_count as f64).powf(p)
+            * imbalance_ratio(r.left_streak(), r.right_streak()).powf(p)
             * imbalance_ratio(
                 r.left_row_switch_cost as f64,
                 r.right_row_switch_cost as f64,
             )
+            .powf(p)
             / r.left_streak().min(r.right_streak()).max(1.0);
 
         // Mean penalized effort per keypress, inverted: higher = better, `fitness_scale` ≈ ideal.
@@ -433,6 +445,51 @@ mod tests {
     }
 
     #[test]
+    fn score_corpus_softens_imbalance_penalty_with_subunit_power() {
+        let base = LayoutEvaluator::new(
+            &Keyboard::new(
+                json!({
+                    "efforts": [1.0, 2.0, 3.0, 5.0],
+                    "pairs": {
+                        "0": {"0": 0, "1": 1},
+                        "1": {"1": 2, "0": 3}
+                    }
+                })
+                .to_string(),
+            ),
+            vec!["ab".to_string(), "ac".to_string()],
+            LayoutEvaluatorConfig {
+                switch_cost: 3.0,
+                ..test_config()
+            },
+        );
+        let softer = LayoutEvaluator::new(
+            &Keyboard::new(
+                json!({
+                    "efforts": [1.0, 2.0, 3.0, 5.0],
+                    "pairs": {
+                        "0": {"0": 0, "1": 1},
+                        "1": {"1": 2, "0": 3}
+                    }
+                })
+                .to_string(),
+            ),
+            vec!["ab".to_string(), "ac".to_string()],
+            LayoutEvaluatorConfig {
+                switch_cost: 3.0,
+                balance_penalty_power: 0.5,
+                ..test_config()
+            },
+        );
+
+        let base_score = base.score_corpus(&test_keys());
+        let softer_score = softer.score_corpus(&test_keys());
+
+        assert!(softer_score.fitness > base_score.fitness);
+        assert_close(softer_score.fitness, 235_702.26);
+    }
+
+    #[test]
     fn imbalance_ratio_is_neutral_when_balanced_or_one_sided() {
         assert_close(imbalance_ratio(0., 0.), 1.0);
         assert_close(imbalance_ratio(5., 0.), 1.0);
@@ -508,6 +565,7 @@ mod tests {
             switch_cost: 0.0,
             row_cost: 0.0,
             fitness_scale: 1_000_000.,
+            balance_penalty_power: 1.0,
         }
     }
 

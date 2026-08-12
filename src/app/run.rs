@@ -50,11 +50,7 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
                             ));
                         }
                     }
-                    let layouts = eval
-                        .input
-                        .iter()
-                        .flat_map(Layout::load)
-                        .collect::<Vec<_>>();
+                    let layouts = eval.input.iter().flat_map(Layout::load).collect::<Vec<_>>();
                     info!("Loaded {} layouts", layouts.len());
                     evaluate::evaluate(evaluator, layouts, &eval, app)?
                 }
