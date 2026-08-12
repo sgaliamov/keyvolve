@@ -1,29 +1,46 @@
+# Keyboard effort table + pair costs used by scoring and layout fitness.
 keyboard: data/keyboard.json
+# Cached corpus stats JSON; required for evaluate/optimize.
 stats: data/stats/merged.source-stats.json
 
 merge:
+  # Folder of raw .txt files to clean and merge into one corpus.
   input: data/samples
+  # Output merged corpus file; overwritten if it exists.
   output: data/samples/merged.txt
+  # Shuffle merged words before writing. false keeps source order.
   shuffle: false
+  # Number of merged lines printed as preview.
   print: 50
 
 frequencies:
+  # Root folder to scan for matching files.
   input: 'C:/Users/Admin/'
+  # File globs to count characters from.
   masks: ['*.js', '*.ts', '*.cs', '*.cpp', '*.h', '*.rs', '*.py']
+  # CSV output for per-character frequencies.
   output: data/stats/frequencies.csv
+  # Number of rows printed to stdout.
   print: 10
 
 synthesise:
+  # Source text file used to build the fake-word corpus.
   text: data/samples/merged.txt
+  # Output fake-word corpus file.
   output: data/synthesised/sample-10000000.txt
   sample:
+    # Total words to sample from the source corpus.
     target: 10000000
 
 optimization:
+  # Seed layout CSVs to load before GA starts; null means none.
   input: null
+  # Layout CSV written after optimization.
   output: data/layouts.csv
+  # Mutants produced per parent each generation.
   mutationCount: 10
-  maxGroups: 100
+  # Max home-row groups kept in final ranked output.
+  maxGroups: 3
   # blocked: [0, 14, 19, 25]
   # frozen:
   #   h: 5
@@ -46,14 +63,23 @@ optimization:
   # right: [a, i]
 
 rank:
+  # Ranked keyboard JSON output from the calibration session.
   output: data/keyboard.ranked.json
+  # Persisted session state for resuming the ranking run.
   session: data/rank-session.json
+  # Chance of auditing a comparison during refinement.
   auditRate: 0.15
+  # Minimum comparisons needed before stopping.
   minMatches: 10
+  # Hard cap on comparisons per item.
   maxMatches: 30
+  # Max allowed deviation before confidence is considered weak.
   maxDeviation: 98.5
+  # Margin before the ranking path goes uphill.
   uphillGap: 50
+  # Thin tail margin used when collapsing adjacent tiers.
   thinMargin: 1.0
+  # Weight given to forced answers.
   forcedAnswerWeight: 2
   # Optional: ask this exact comparison first once (CLI override: --rank.forceCheckPair AF-VE)
   # forceCheckPair: AF-VE
@@ -69,24 +95,39 @@ rank:
   effortGamma: 0.8
 
 evaluate:
+  # One or more layout CSVs to score.
   input:
     - data/layouts.csv
+    - data/seed.csv
+  # Output CSV for scored layouts.
   output: data/layouts.csv
+  # Number of best layouts printed to stdout.
   print: 10
+  # Orientation used when saving layouts; left mirrors twin layouts.
   eSide: left
 
 evaluator:
+  # Fitness multiplier; higher scales scores up, lower scales down.
   fitnessScale: 10
   # rowCost: 7
   # switchCost: 1
 
 ga:
+  # Mutation probability applied per genome element.
   mutationRatio: 0.6
+  # Individuals per pool.
   populationSize: 256
+  # Generations without improvement before stopping.
   stagnationCount: 128
+  # Number of island pools evolved in parallel.
   pools: 512
+  # Randomly generated individuals ratio per generation.
   randomRatio: 0.25
+  # Mutation steps applied to seeded layouts.
   seedMutation: 10
+  # Binary dump file for GA state snapshots.
   dump: data/dump.bin
+  # Probability of writing a dump snapshot.
   dumpRatio: 0.8
+  # Keep or delete dump files after runs.
   keepDump: false
