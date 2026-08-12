@@ -31,10 +31,8 @@ pub struct Config {
     #[serde(default)]
     pub evaluator: LayoutEvaluatorConfig,
 
-    /// Optional cached corpus stats JSON; when set, evaluation and optimization
-    /// build counts from it instead of streaming the corpus text.
-    #[serde(default)]
-    pub stats: Option<std::path::PathBuf>,
+    /// Cached corpus stats JSON used by evaluation and optimization.
+    pub stats: std::path::PathBuf,
 
     /// settings for `Mode::Merge`
     #[serde(default)]

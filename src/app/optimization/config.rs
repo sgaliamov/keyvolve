@@ -77,9 +77,6 @@ where
 #[derive(Debug, Clone, Default, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct OptimizationConfig {
-    /// Input corpus text file used for optimization scoring.
-    pub text: PathBuf,
-
     /// Characters whose physical position is locked: maps char → key index (0-29).
     #[serde(default)]
     pub frozen: FxHashMap<char, u8>,
@@ -307,7 +304,7 @@ mod tests {
 
     #[test]
     fn deserialize_side_maps() {
-        let json = r#"{"text": "x", "left": ["a","s"], "right": ["o","e"]}"#;
+        let json = r#"{"left": ["a","s"], "right": ["o","e"]}"#;
         let cfg: OptimizationConfig = serde_json::from_str(json).unwrap();
         assert!(cfg.left.contains(&'a'));
         assert!(cfg.left.contains(&'s'));
@@ -390,7 +387,7 @@ mod tests {
 
     #[test]
     fn deserialize_allowed_map() {
-        let json = r#"{"text": "data/synthesised", "allowed": {"a": [0, 4]}}"#;
+        let json = r#"{"allowed": {"a": [0, 4]}}"#;
         let cfg: OptimizationConfig = serde_json::from_str(json).unwrap();
         let a_slots = &cfg.allowed[&'a'];
         assert!(a_slots.contains(&0));
@@ -435,7 +432,7 @@ mod tests {
 
     #[test]
     fn deserialize_rolls() {
-        let json = r#"{"text": "data/synthesised", "rolls": ["th", "st"]}"#;
+        let json = r#"{"rolls": ["th", "st"]}"#;
         let cfg: OptimizationConfig = serde_json::from_str(json).unwrap();
         assert_eq!(cfg.rolls, vec![['t', 'h'], ['s', 't']]);
     }

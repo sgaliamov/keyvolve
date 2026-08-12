@@ -6,11 +6,8 @@ use std::path::PathBuf;
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct EvaluateConfig {
-    /// input corpus text file used for scoring
-    pub text: PathBuf,
-
-    /// input layouts csv file
-    pub input: PathBuf,
+    /// input layouts csv files
+    pub input: Vec<PathBuf>,
 
     /// output file path; overwrites input when omitted
     pub output: Option<PathBuf>,
@@ -33,8 +30,7 @@ fn default_print() -> usize {
 impl Default for EvaluateConfig {
     fn default() -> Self {
         Self {
-            text: PathBuf::default(),
-            input: PathBuf::default(),
+            input: Vec::new(),
             output: None,
             print: default_print(),
             e_side: Side::default(),

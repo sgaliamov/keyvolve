@@ -46,8 +46,8 @@ Scores candidate layouts against a bigram-weighted corpus, then evolves them tow
 ## Mode-specific config
 
 ### `evaluate`
-- `evaluate.input` — layouts CSV to score. Falls back to top-level `layouts` for compatibility.
-- `evaluate.output` — destination CSV for scored layouts. Omitted → overwrite `evaluate.input`.
+- `evaluate.input` — array of layouts CSVs to score.
+- `evaluate.output` — destination CSV for scored layouts. Omitted → overwrite the single input file; required for multi-file input.
 - `evaluate.print` — number of best layouts printed to stdout. Default: `10`.
 
 ### `merge`

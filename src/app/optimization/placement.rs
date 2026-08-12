@@ -351,7 +351,6 @@ mod tests {
 
     fn test_opt(rolls: &[&str], blocked: &[u8]) -> OptimizationConfig {
         OptimizationConfig {
-            text: std::path::PathBuf::default(),
             frozen: FxHashMap::default(),
             blocked: blocked.iter().copied().collect(),
             rolls: rolls

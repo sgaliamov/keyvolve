@@ -50,6 +50,7 @@ pub struct CorpusCounts {
 
 impl CorpusCounts {
     /// Fold one word's characters into the counts.
+    #[cfg(test)]
     pub fn add(&mut self, word: &str) {
         let mut chars = word.chars();
         let Some(mut prev) = chars.next() else {

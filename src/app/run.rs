@@ -5,9 +5,7 @@ use crate::{
     models::{Keyboard, Layout},
 };
 use cliffa::cli::AppHandle;
-use miette::{Context, IntoDiagnostic, Result};
-use std::fs::File;
-use std::io::{BufRead, BufReader};
+use miette::{Context, Result};
 use std::path::Path;
 use tracing::{info, trace};
 
@@ -38,20 +36,30 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
             match mode {
                 Mode::Evaluate => {
                     let eval = cfg.evaluate;
-                    let evaluator =
-                        build_evaluator(&keyboard, &eval.text, stats.as_deref(), evaluator_cfg)?;
-                    let layouts_path = eval.input.clone();
+                    let evaluator = build_evaluator(&keyboard, &stats, evaluator_cfg)?;
                     let mut eval = eval;
-                    if eval.output.is_none() {
-                        eval.output = Some(layouts_path.clone());
+                    if eval.input.is_empty() {
+                        return Err(miette::miette!("evaluate.input requires at least one CSV"));
                     }
-                    let layouts = Layout::load(&layouts_path);
+                    if eval.output.is_none() {
+                        if eval.input.len() == 1 {
+                            eval.output = Some(eval.input[0].clone());
+                        } else {
+                            return Err(miette::miette!(
+                                "evaluate.output is required when evaluate.input has multiple CSVs"
+                            ));
+                        }
+                    }
+                    let layouts = eval
+                        .input
+                        .iter()
+                        .flat_map(Layout::load)
+                        .collect::<Vec<_>>();
                     info!("Loaded {} layouts", layouts.len());
                     evaluate::evaluate(evaluator, layouts, &eval, app)?
                 }
                 Mode::Optimize => {
-                    let evaluator =
-                        build_evaluator(&keyboard, &opt.text, stats.as_deref(), evaluator_cfg)?;
+                    let evaluator = build_evaluator(&keyboard, &stats, evaluator_cfg)?;
                     let mut ga = cfg.ga;
                     ga.ranges = vec![vec![(EMPTY_SLOT, 'z'); 30]];
                     let mut seed: Vec<_> = vec![];
@@ -71,45 +79,23 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
     Ok(())
 }
 
-/// Build evaluator from keyboard and corpus. Prefers cached stats JSON when
-/// configured; falls back to streaming the corpus text.
+/// Build evaluator from keyboard and cached stats.
 fn build_evaluator(
     keyboard: &Keyboard,
-    text_path: impl AsRef<Path>,
-    stats: Option<&Path>,
+    stats_path: impl AsRef<Path>,
     config: LayoutEvaluatorConfig,
 ) -> Result<LayoutEvaluator> {
-    let counts = match stats {
-        Some(path) => {
-            info!(stats = %path.display(), "Building corpus counts from cached stats");
-            CorpusCounts::from(&read_stats_cache(path)?)
-        }
-        None => {
-            info!(text = %text_path.as_ref().display(), "Streaming corpus counts from text");
-            load_counts(text_path)?
-        }
-    };
-    Ok(LayoutEvaluator::from_counts(keyboard, counts, config))
-}
-
-/// Stream whitespace-separated corpus words into compact frequency counts.
-/// Reads line-by-line so multi-GB corpora never materialize in memory.
-fn load_counts(text_path: impl AsRef<Path>) -> Result<CorpusCounts> {
-    let file = File::open(&text_path)
-        .into_diagnostic()
-        .wrap_err("Failed to read text file")?;
-
-    let mut counts = CorpusCounts::default();
-    for line in BufReader::new(file).lines() {
-        let line = line
-            .into_diagnostic()
-            .wrap_err("Failed to read text file")?;
-        for word in line.split_whitespace() {
-            counts.add(word);
-        }
+    let stats_path = stats_path.as_ref();
+    if !stats_path.exists() {
+        return Err(miette::miette!(
+            "Missing corpus stats file: {}",
+            stats_path.display()
+        ));
     }
 
-    Ok(counts)
+    info!(stats = %stats_path.display(), "Building corpus counts from cached stats");
+    let counts = CorpusCounts::from(&read_stats_cache(stats_path)?);
+    Ok(LayoutEvaluator::from_counts(keyboard, counts, config))
 }
 
 /// Convert a `Layout` into a 30-slot genome; empty slots filled with `EMPTY_SLOT`.

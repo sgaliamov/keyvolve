@@ -159,7 +159,6 @@ mod tests {
         use rand::seq::SliceRandom;
 
         let json = r#"{
-            "text": "x",
             "blocked": [19],
             "allowed": {
                 "t":[1,2,3],"h":[1,2,3],

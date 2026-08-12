@@ -20,9 +20,7 @@ synthesise:
     target: 10000000
 
 optimization:
-  text: data/synthesised/sample-5000000.txt
-  # input: data/seed.csv
-  # input: data/layouts.csv
+  input: null
   output: data/layouts.csv
   mutationCount: 10
   maxGroups: 100
@@ -71,12 +69,9 @@ rank:
   effortGamma: 0.8
 
 evaluate:
-  # text: 'data\synthesised\sample-1000000'
-  text: 'data\samples\merged.txt'
-  input: data/layouts.csv
+  input:
+    - data/layouts.csv
   output: data/layouts.csv
-  # input: data/seed.csv
-  # output: data/seed.csv
   print: 10
   eSide: left
 
