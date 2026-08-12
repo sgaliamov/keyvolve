@@ -34,14 +34,14 @@ Scores candidate layouts against a bigram-weighted corpus, then evolves them tow
 - Generator enforces all constraints; invalid genomes never enter the pool.
 
 ### Modes
-| Mode         | Description                                        |
-| ------------ | -------------------------------------------------- |
-| `optimize`   | Run GA, append results to `layouts.csv`            |
-| `evaluate`   | Score one layout, print full breakdown             |
-| `synthesise` | Build digraph CSV + fake-word corpus from raw text |
-| `merge`      | Merge/clean `.txt` files into one corpus           |
-| `frequencies`| Count per-character frequencies across text files  |
-| `rank`       | Interactively calibrate ordered-pair effort groups  |
+| Mode          | Description                                        |
+| ------------- | -------------------------------------------------- |
+| `optimize`    | Run GA, append results to `layouts.csv`            |
+| `evaluate`    | Score one layout, print full breakdown             |
+| `synthesise`  | Build digraph CSV + fake-word corpus from raw text |
+| `merge`       | Merge/clean `.txt` files into one corpus           |
+| `frequencies` | Count per-character frequencies across text files  |
+| `rank`        | Interactively calibrate ordered-pair effort groups |
 
 ## Mode-specific config
 
@@ -66,8 +66,6 @@ Scores candidate layouts against a bigram-weighted corpus, then evolves them tow
 Diagnostic tests (`#[ignore]`, read-only over the live `data/rank-session.json`):
 
 ```sh
-# Why is each pair (un)settled — capped / confident / pending / matches / deviation:
-cargo test -q scan_live_session_settled -- --ignored --nocapture
 # Preference cycles among majority edges:
 cargo test -q scan_live_session_for_cycles -- --ignored --nocapture
 ```
