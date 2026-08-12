@@ -53,7 +53,7 @@ rank:
   auditRate: 0.15
   minMatches: 10
   maxMatches: 30
-  maxDeviation: 99.0
+  maxDeviation: 98.5
   uphillGap: 50
   thinMargin: 1.0
   forcedAnswerWeight: 2
