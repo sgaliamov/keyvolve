@@ -14,13 +14,3 @@ pub fn slot(keys: &Keys, c: char) -> u8 {
 pub fn row_distance(from: u8, to: u8) -> u64 {
     slot_row(from).abs_diff(slot_row(to)).into()
 }
-
-/// Hand-imbalance multiplier `max(a, b) / min(a, b)`: `1.0` when balanced or when
-/// either side is `0` (an empty hand carries no imbalance to penalize).
-#[inline]
-pub fn imbalance_ratio(a: f64, b: f64) -> f64 {
-    match (a.max(b), a.min(b)) {
-        (_, 0.0) => 1.0,
-        (hi, lo) => hi / lo,
-    }
-}

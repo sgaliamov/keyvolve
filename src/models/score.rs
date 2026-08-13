@@ -36,9 +36,11 @@ pub struct ScoreResult {
 }
 
 impl ScoreResult {
+    // Ratios: normalized per-hand shares (0-1 range).
+
     /// Left share of same-hand counts.
     pub fn left_count_ratio(&self) -> f64 {
-        ratio(
+        crate::math::ratio(
             self.left_count as f64,
             (self.left_count + self.right_count) as f64,
         )
@@ -46,60 +48,81 @@ impl ScoreResult {
 
     /// Right share of same-hand counts.
     pub fn right_count_ratio(&self) -> f64 {
-        ratio(
+        crate::math::ratio(
             self.right_count as f64,
             (self.left_count + self.right_count) as f64,
         )
     }
 
+    /// Left share of same-hand effort.
+    pub fn left_effort_ratio(&self) -> f64 {
+        crate::math::ratio(self.left_effort, self.left_effort + self.right_effort)
+    }
+
+    /// Right share of same-hand effort.
+    pub fn right_effort_ratio(&self) -> f64 {
+        crate::math::ratio(self.right_effort, self.left_effort + self.right_effort)
+    }
+
+    /// Share of hand switches among all bigram transitions.
+    pub fn hand_switch_ratio(&self) -> f64 {
+        crate::math::ratio(
+            self.hand_switches as f64,
+            (self.left_count + self.right_count) as f64,
+        )
+    }
+
+    // Imbalances: percent deviation from parity (0% = balanced).
+
     /// Hand imbalance as a percent: how far the left/right same-hand count ratio
     /// strays from parity. 0% = balanced. Asymmetric by direction.
     pub fn hands_imbalance(&self) -> f64 {
-        if self.right_count == 0 {
-            0.0
-        } else {
-            (self.left_count as f64 / self.right_count as f64 - 1.0).abs() * 100.0
-        }
+        crate::math::signed_imbalance_percent(self.left_count as f64, self.right_count as f64)
     }
 
     /// Row-switch cost imbalance as a percent: how far the left/right row-switch
     /// cost ratio strays from parity. 0% = balanced. Asymmetric by direction.
     pub fn row_switch_imbalance(&self) -> f64 {
-        if self.right_row_switch_cost == 0 {
-            0.0
-        } else {
-            (self.left_row_switch_cost as f64 / self.right_row_switch_cost as f64 - 1.0).abs()
-                * 100.0
-        }
+        crate::math::signed_imbalance_percent(
+            self.left_row_switch_cost as f64,
+            self.right_row_switch_cost as f64,
+        )
     }
 
     /// Same-hand bigram imbalance as a percent: how far the left/right roll count
     /// ratio strays from parity. 0% = balanced. Asymmetric by direction.
     pub fn roll_imbalance(&self) -> f64 {
-        if self.right_rolls == 0 {
-            0.0
-        } else {
-            (self.left_rolls as f64 / self.right_rolls as f64 - 1.0).abs() * 100.0
-        }
+        crate::math::signed_imbalance_percent(self.left_rolls as f64, self.right_rolls as f64)
     }
 
-    /// Left share of same-hand effort.
-    pub fn left_effort_ratio(&self) -> f64 {
-        ratio(self.left_effort, self.left_effort + self.right_effort)
+    // Streaks: average consecutive-press run length per hand.
+
+    /// Average left-hand streak: consecutive presses before leaving the hand.
+    /// A run of length k yields k presses and k−1 rolls, so streak = presses / runs.
+    pub fn left_streak(&self) -> f64 {
+        crate::math::streak(self.left_count, self.left_rolls)
     }
 
-    /// Right share of same-hand effort.
-    pub fn right_effort_ratio(&self) -> f64 {
-        ratio(self.right_effort, self.left_effort + self.right_effort)
+    /// Average right-hand streak: consecutive presses before leaving the hand.
+    pub fn right_streak(&self) -> f64 {
+        crate::math::streak(self.right_count, self.right_rolls)
     }
 
-    /// Share of hand switches among all bigram transitions.
-    pub fn hand_switch_ratio(&self) -> f64 {
-        ratio(
-            self.hand_switches as f64,
-            self.left_count as f64 + self.right_count as f64,
+    /// Left/right streak ratio: >1 means left hand holds longer runs. `0.0` when
+    /// the right hand is unused.
+    pub fn streak_ratio(&self) -> f64 {
+        crate::math::ratio(self.left_streak(), self.right_streak())
+    }
+
+    /// Overall average streak: all presses over all runs, both hands.
+    pub fn mean_streak(&self) -> f64 {
+        crate::math::streak(
+            self.left_count + self.right_count,
+            self.left_rolls + self.right_rolls,
         )
     }
+
+    // Aggregates: totals combining both hands.
 
     /// Total weighted row-switch cost, both hands.
     pub fn row_switch_cost(&self) -> u64 {
@@ -108,36 +131,32 @@ impl ScoreResult {
 
     /// Share of same-hand transitions that switch rows, weighted by jump severity.
     pub fn row_switch_ratio(&self) -> f64 {
-        ratio(
+        crate::math::ratio(
             self.row_switch_cost() as f64,
-            self.left_count.saturating_sub(1) as f64 + self.right_count.saturating_sub(1) as f64,
+            crate::math::transitions(self.left_count, self.right_count),
         )
     }
 
-    /// Average left-hand streak: consecutive presses before leaving the hand.
-    /// A run of length k yields k presses and k−1 rolls, so streak = presses / runs.
-    pub fn left_streak(&self) -> f64 {
-        streak(self.left_count, self.left_rolls)
+    // Transformations: generate derived scores.
+
+    /// Hand-swapped score: left/right counts and efforts trade places. Symmetric
+    /// fields (fitness, effort, switches) stay — a layout and its mirror score
+    /// identically apart from which hand owns each share.
+    pub fn mirror(&self) -> Self {
+        ScoreResult {
+            left_count: self.right_count,
+            right_count: self.left_count,
+            left_rolls: self.right_rolls,
+            right_rolls: self.left_rolls,
+            left_row_switch_cost: self.right_row_switch_cost,
+            right_row_switch_cost: self.left_row_switch_cost,
+            left_effort: self.right_effort,
+            right_effort: self.left_effort,
+            ..self.clone()
+        }
     }
 
-    /// Average right-hand streak: consecutive presses before leaving the hand.
-    pub fn right_streak(&self) -> f64 {
-        streak(self.right_count, self.right_rolls)
-    }
-
-    /// Left/right streak ratio: >1 means left hand holds longer runs. `0.0` when
-    /// the right hand is unused.
-    pub fn streak_ratio(&self) -> f64 {
-        ratio(self.left_streak(), self.right_streak())
-    }
-
-    /// Overall average streak: all presses over all runs, both hands.
-    pub fn mean_streak(&self) -> f64 {
-        streak(
-            self.left_count + self.right_count,
-            self.left_rolls + self.right_rolls,
-        )
-    }
+    // CSV serialization: (de)serialize rows.
 
     /// Serialize as a CSV row (no header).
     pub fn to_csv(&self) -> String {
@@ -183,23 +202,6 @@ impl ScoreResult {
         "fitness,row_switch_ratio,row_switch_imbalance,hand_switch_ratio,hands_imbalance,roll_imbalance,mean_streak,streak_ratio,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,effort,left_effort,right_effort,left_count,right_count,hand_switches,left_row_switch_cost,right_row_switch_cost,left_rolls,right_rolls,left_streak,right_streak"
     }
 
-    /// Hand-swapped score: left/right counts and efforts trade places. Symmetric
-    /// fields (fitness, effort, switches) stay — a layout and its mirror score
-    /// identically apart from which hand owns each share.
-    pub fn mirror(&self) -> Self {
-        ScoreResult {
-            left_count: self.right_count,
-            right_count: self.left_count,
-            left_rolls: self.right_rolls,
-            right_rolls: self.left_rolls,
-            left_row_switch_cost: self.right_row_switch_cost,
-            right_row_switch_cost: self.left_row_switch_cost,
-            left_effort: self.right_effort,
-            right_effort: self.left_effort,
-            ..self.clone()
-        }
-    }
-
     /// Parse the raw (non-derived) fields from a persisted CSV row, skipping the
     /// six key columns plus the optional `name` column. Derived ratios are
     /// recomputed by [`to_csv`], so they are ignored here. Returns `None` on a
@@ -231,14 +233,14 @@ impl std::fmt::Display for ScoreResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "φ {:.4} | ⟳Δ {:.2}% | Δ {:.2}% | ↕Δ {:.2}% | ↕ {:.2}% | ⇄ {:.2}% | →Δ {:.2} | → {:.2} | Lε {:.1}% | Rε {:.1}% | L# {:.1}% | R# {:.1}% | ε {:.2} | Lε {:.2} | Rε {:.2} | L# {} | R# {} | ⇄ {} | L↕ {} | R↕ {} | L⟳ {} | R⟳ {} | L→ {:.2} | R→ {:.2}",
+            "φ {:.4} | ⟳Δ {:.2}% | Δ {:.2}% | ↕Δ {:.2}% | ↕ {:.2}% | ⇄ {:.2}% | →Δ {:.2}% | → {:.2} | Lε {:.1}% | Rε {:.1}% | L# {:.1}% | R# {:.1}% | ε {:.2} | Lε {:.2} | Rε {:.2} | L# {} | R# {} | ⇄ {} | L↕ {} | R↕ {} | L⟳ {} | R⟳ {} | L→ {:.2} | R→ {:.2}",
             self.fitness,
             self.roll_imbalance(),
             self.hands_imbalance(),
             self.row_switch_imbalance(),
             self.row_switch_ratio() * 100.0,
             self.hand_switch_ratio() * 100.0,
-            self.streak_ratio(),
+            self.streak_ratio() * 100.0,
             self.mean_streak(),
             self.left_effort_ratio() * 100.0,
             self.right_effort_ratio() * 100.0,
@@ -257,21 +259,6 @@ impl std::fmt::Display for ScoreResult {
             self.left_streak(),
             self.right_streak(),
         )
-    }
-}
-
-/// Safe ratio helper.
-fn ratio(value: f64, total: f64) -> f64 {
-    if total == 0.0 { 0.0 } else { value / total }
-}
-
-/// Average run length from presses and same-hand transitions. Every press starts
-/// a run or continues one; continuations are exactly the rolls, so
-/// runs = count − rolls and streak = count / runs. `0.0` for an unused hand.
-fn streak(count: u64, rolls: u64) -> f64 {
-    match count.saturating_sub(rolls) {
-        0 => 0.0,
-        runs => count as f64 / runs as f64,
     }
 }
 

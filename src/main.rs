@@ -1,5 +1,6 @@
 mod app;
 mod config;
+mod math;
 mod models;
 
 use cliffa::cli;

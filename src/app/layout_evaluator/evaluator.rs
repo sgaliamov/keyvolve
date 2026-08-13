@@ -1,8 +1,9 @@
 use crate::app::LayoutEvaluatorConfig;
 use crate::app::layout_evaluator::corpus::CorpusCounts;
-use crate::app::layout_evaluator::math::{imbalance_ratio, row_distance, slot};
+use crate::app::layout_evaluator::keys::{row_distance, slot};
 #[cfg(test)]
 use crate::app::synthesise::CachedSourceStats;
+use crate::math::imbalance_ratio;
 use crate::models::{Keyboard, Keys, ScoreResult};
 #[cfg(test)]
 use itertools::Itertools;
@@ -489,21 +490,6 @@ mod tests {
 
         assert!(full.penalty(&score) < weaker.penalty(&score));
         assert!(weaker.penalty(&score) < off.penalty(&score));
-    }
-
-    #[test]
-    fn imbalance_ratio_is_neutral_when_balanced_or_one_sided() {
-        assert_close(imbalance_ratio(0., 0.), 1.0);
-        assert_close(imbalance_ratio(5., 0.), 1.0);
-        assert_close(imbalance_ratio(0., 5.), 1.0);
-        assert_close(imbalance_ratio(3., 3.), 1.0);
-    }
-
-    #[test]
-    fn imbalance_ratio_grows_with_imbalance() {
-        assert_close(imbalance_ratio(3., 1.), 3.0);
-        assert_close(imbalance_ratio(1., 3.), 3.0);
-        assert!(imbalance_ratio(3., 2.) < imbalance_ratio(3., 1.));
     }
 
     #[test]
