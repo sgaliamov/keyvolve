@@ -1,61 +1,12 @@
 use crate::app::LayoutEvaluatorConfig;
+use crate::app::layout_evaluator::corpus::CorpusCounts;
+use crate::app::layout_evaluator::math::{imbalance_ratio, row_distance, slot};
+#[cfg(test)]
 use crate::app::synthesise::CachedSourceStats;
-use crate::models::{Keyboard, Keys, ScoreResult, slot_row};
+use crate::models::{Keyboard, Keys, ScoreResult};
 #[cfg(test)]
 use itertools::Itertools;
 use rustc_hash::FxHashMap;
-
-/// Compact corpus representation: first-character and bigram frequencies.
-/// Built by streaming so a multi-GB corpus never lands in memory whole.
-#[derive(Debug, Default, Clone)]
-pub struct CorpusCounts {
-    /// How many words start with each character.
-    pub first_chars: FxHashMap<char, u64>,
-
-    /// How many times each adjacent character pair occurs within words.
-    pub bigrams: FxHashMap<(char, char), u64>,
-}
-
-impl CorpusCounts {
-    /// Fold one word's characters into the counts.
-    #[cfg(test)]
-    pub fn add(&mut self, word: &str) {
-        let mut chars = word.chars();
-        let Some(mut prev) = chars.next() else {
-            return;
-        };
-        *self.first_chars.entry(prev).or_default() += 1;
-        for c in chars {
-            *self.bigrams.entry((prev, c)).or_default() += 1;
-            prev = c;
-        }
-    }
-}
-
-/// Rebuild approximate counts from cached normalized stats. Fitness is
-/// scale-invariant, so scaling frequencies by corpus size preserves ranking.
-impl From<&CachedSourceStats> for CorpusCounts {
-    fn from(cached: &CachedSourceStats) -> Self {
-        let words = cached.word_count as f64;
-        // Bigrams per word ≈ average word length − 1.
-        let bigram_total = words * (cached.stats.average_word_length - 1.0).max(0.0);
-
-        CorpusCounts {
-            first_chars: cached
-                .stats
-                .first_letters
-                .iter()
-                .map(|(&c, &f)| (c, (f * words).round() as u64))
-                .collect(),
-            bigrams: cached
-                .stats
-                .bigrams
-                .iter()
-                .map(|(&[a, b], &f)| ((a, b), (f * bigram_total).round() as u64))
-                .collect(),
-        }
-    }
-}
 
 /// Evaluates layouts by scoring a corpus against a precomputed bigram effort table.
 #[derive(Clone)]
@@ -233,29 +184,6 @@ impl LayoutEvaluator {
             .pairs
             .get(&(from, to))
             .unwrap_or_else(|| panic!("no pair effort for keys ({from}, {to})"))
-    }
-}
-
-/// Slot for `c`; panic names the offending char so corpus/layout mismatches are debuggable.
-#[inline]
-fn slot(keys: &Keys, c: char) -> u8 {
-    *keys
-        .get(&c)
-        .unwrap_or_else(|| panic!("char {c:?} (U+{:04X}) not in layout: {keys:?}", c as u32))
-}
-
-/// Weighted same-hand row-switch cost. Adjacent-row move = 1, jump-over-row = 2.
-#[inline]
-fn row_distance(from: u8, to: u8) -> u64 {
-    slot_row(from).abs_diff(slot_row(to)).into()
-}
-
-/// Hand-imbalance multiplier `max(a, b) / min(a, b)`: `1.0` when balanced or when
-/// either side is `0` (an empty hand carries no imbalance to penalize).
-fn imbalance_ratio(a: f64, b: f64) -> f64 {
-    match (a.max(b), a.min(b)) {
-        (_, 0.0) => 1.0,
-        (hi, lo) => hi / lo,
     }
 }
 
@@ -559,7 +487,6 @@ mod tests {
             ..Default::default()
         };
 
-        // Reward divides penalty: full strength lowest, off highest.
         assert!(full.penalty(&score) < weaker.penalty(&score));
         assert!(weaker.penalty(&score) < off.penalty(&score));
     }
