@@ -114,11 +114,18 @@ evaluator:
   fitnessScale: 10
   # rowCost: 2
   # switchCost: 1
-  # Exponent for left/right imbalance ratios:
+  # Exponents for score balance factors:
   #   1.0 = current behavior
-  #   <1.0 = softer balance pressure
-  #   >1.0 = stricter balance pressure
-  balancePenaltyPower: 0.1
+  #   <1.0 = softer pressure
+  #   >1.0 = stricter pressure
+  # balancePenaltyPower → hands_imbalance / left_count_ratio / right_count_ratio
+  balancePenaltyPower: 0.8
+  # streakPenaltyPower → streak_ratio / mean_streak
+  streakPenaltyPower: 0.8
+  # rowSwitchPenaltyPower → row_switch_imbalance / row_switch_ratio
+  rowSwitchPenaltyPower: 0.5
+  # minStreakPenaltyPower → mean_streak / streak_ratio
+  # minStreakPenaltyPower: 0.8
 
 ga:
   # Mutation probability applied per genome element.
