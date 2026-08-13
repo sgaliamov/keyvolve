@@ -33,6 +33,10 @@ pub struct LayoutEvaluatorConfig {
     #[serde(default = "default_row_switch_penalty_power")]
     pub row_switch_penalty_power: f64,
 
+    /// Strength applied to overall row-switch ratio; `0.0` disables, `1.0` uses full excess.
+    #[serde(default = "default_row_switch_ratio_penalty_power")]
+    pub row_switch_ratio_penalty_power: f64,
+
     /// Exponent scale applied to the shorter-hand streak divisor; `< 1.0` softens.
     #[serde(default = "default_min_streak_penalty_power")]
     pub min_streak_penalty_power: f64,
@@ -58,6 +62,11 @@ fn default_row_switch_penalty_power() -> f64 {
     1.0
 }
 
+/// Serde default for [`LayoutEvaluatorConfig::row_switch_ratio_penalty_power`].
+fn default_row_switch_ratio_penalty_power() -> f64 {
+    0.0
+}
+
 /// Serde default for [`LayoutEvaluatorConfig::min_streak_penalty_power`].
 fn default_min_streak_penalty_power() -> f64 {
     1.0
@@ -72,6 +81,7 @@ impl Default for LayoutEvaluatorConfig {
             balance_penalty_power: default_balance_penalty_power(),
             streak_penalty_power: default_streak_penalty_power(),
             row_switch_penalty_power: default_row_switch_penalty_power(),
+            row_switch_ratio_penalty_power: default_row_switch_ratio_penalty_power(),
             min_streak_penalty_power: default_min_streak_penalty_power(),
         }
     }
@@ -296,6 +306,7 @@ impl LayoutEvaluator {
                 r.right_row_switch_cost as f64,
             )
             .powf(self.config.row_switch_penalty_power)
+            * row_switch_ratio_penalty(r, self.config.row_switch_ratio_penalty_power)
             / r.left_streak()
                 .min(r.right_streak())
                 .max(1.0)
@@ -333,6 +344,19 @@ fn imbalance_ratio(a: f64, b: f64) -> f64 {
         (_, 0.0) => 1.0,
         (hi, lo) => hi / lo,
     }
+}
+
+/// Row-switch ratio: weighted row steps per same-hand transition.
+#[inline]
+fn row_switch_ratio(r: &ScoreResult) -> f64 {
+    let denom = (r.left_count.saturating_sub(1) + r.right_count.saturating_sub(1)).max(1) as f64;
+    r.row_switch_cost() as f64 / denom
+}
+
+/// Row-switch ratio penalty: only the excess above 1.0 counts.
+#[inline]
+fn row_switch_ratio_penalty(r: &ScoreResult, strength: f64) -> f64 {
+    1.0 + (row_switch_ratio(r) - 1.0).max(0.0) * strength.max(0.0)
 }
 
 #[cfg(test)]
@@ -558,6 +582,38 @@ mod tests {
     }
 
     #[test]
+    fn balance_penalty_softens_row_switch_ratio_with_subunit_power() {
+        let base = LayoutEvaluator::new(
+            &test_keyboard(),
+            vec![],
+            LayoutEvaluatorConfig {
+                row_switch_ratio_penalty_power: 1.0,
+                ..test_config()
+            },
+        );
+        let softer = LayoutEvaluator::new(
+            &test_keyboard(),
+            vec![],
+            LayoutEvaluatorConfig {
+                row_switch_ratio_penalty_power: 0.5,
+                ..test_config()
+            },
+        );
+
+        let score = ScoreResult {
+            left_count: 6,
+            right_count: 6,
+            left_rolls: 1,
+            right_rolls: 1,
+            left_row_switch_cost: 10,
+            right_row_switch_cost: 10,
+            ..Default::default()
+        };
+
+        assert!(softer.balance_penalty(&score) < base.balance_penalty(&score));
+    }
+
+    #[test]
     fn balance_penalty_softens_min_streak_divisor_with_subunit_power() {
         let base = LayoutEvaluator::new(&test_keyboard(), vec![], test_config());
         let softer = LayoutEvaluator::new(
@@ -659,6 +715,7 @@ mod tests {
             balance_penalty_power: 1.0,
             streak_penalty_power: 1.0,
             row_switch_penalty_power: 1.0,
+            row_switch_ratio_penalty_power: 0.0,
             min_streak_penalty_power: 1.0,
         }
     }

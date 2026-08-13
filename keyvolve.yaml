@@ -112,8 +112,8 @@ evaluate:
 evaluator:
   # Fitness multiplier; higher scales scores up, lower scales down.
   fitnessScale: 10
-  # rowCost: 2
-  # switchCost: 1
+  rowCost: 0
+  switchCost: 0
   # Exponents for score balance factors:
   #   1.0 = current behavior
   #   <1.0 = softer pressure
@@ -122,10 +122,12 @@ evaluator:
   balancePenaltyPower: 0.8
   # streakPenaltyPower → streak_ratio / mean_streak
   streakPenaltyPower: 0.8
-  # rowSwitchPenaltyPower → row_switch_imbalance / row_switch_ratio
-  rowSwitchPenaltyPower: 0.5
+  # rowSwitchPenaltyPower → row_switch_imbalance
+  rowSwitchPenaltyPower: 0.8
+  # rowSwitchRatioPenaltyPower → row_switch_ratio (0.0 = off, 1.0 = full excess)
+  rowSwitchRatioPenaltyPower: 0.5
   # minStreakPenaltyPower → mean_streak / streak_ratio
-  # minStreakPenaltyPower: 0.8
+  minStreakPenaltyPower: 1.0
 
 ga:
   # Mutation probability applied per genome element.
