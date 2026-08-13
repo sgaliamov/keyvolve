@@ -17,7 +17,7 @@
           "value": "full"
         },
         {
-          "name": "MODE",
+          "name": "K_MODE",
           "value": "optimize"
         }
       ],
@@ -32,7 +32,8 @@
       "args": [],
       "env": {
         "RAYON_NUM_THREADS": "1",
-        "RUST_BACKTRACE": "full"
+        "RUST_BACKTRACE": "full",
+        "K_MODE": "optimize"
       },
       "cwd": "${workspaceFolder}"
     }

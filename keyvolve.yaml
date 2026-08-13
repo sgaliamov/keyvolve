@@ -118,7 +118,7 @@ evaluator:
   #   1.0 = current behavior
   #   <1.0 = softer balance pressure
   #   >1.0 = stricter balance pressure
-  balancePenaltyPower: 0.5
+  balancePenaltyPower: 0.1
 
 ga:
   # Mutation probability applied per genome element.

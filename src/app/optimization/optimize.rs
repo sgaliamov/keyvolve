@@ -31,7 +31,6 @@ pub fn optimize(
     let output_path = opt_cfg.output.clone();
     let max_groups = opt_cfg.max_groups;
     let items_per_group = opt_cfg.items_per_group;
-    let max_rows = max_groups.saturating_mul(items_per_group);
 
     GeneticAlgorithm::set_state(
         &mut ga,
@@ -51,17 +50,13 @@ pub fn optimize(
     let pools = &pools;
 
     let top = top_by_home_row(pools, max_groups, items_per_group);
-    info!(
-        max_groups,
-        items_per_group,
-        max_rows,
-        selected_rows = top.len(),
-        "Selected top layouts by home row"
-    );
 
     let rows: Vec<_> = top
         .iter()
-        .map(|(pool, ind)| to_output_row(*pool, ind))
+        .map(|(pool, ind)| {
+            let score = ind.state.as_ref().unwrap().clone();
+            (Layout::from_keys(&ind.genome), score, *pool)
+        })
         .collect();
 
     write_layouts(&rows, rows.len(), output_path.as_deref(), false, Side::Any)
@@ -78,11 +73,6 @@ fn top_by_home_row(
     max_groups: usize,
     items_per_group: usize,
 ) -> Vec<(usize, &Individual<char, ScoreResult>)> {
-    let max_rows = max_groups.saturating_mul(items_per_group);
-    if max_rows == 0 {
-        return Vec::new();
-    }
-
     // Parallel collect all scored individuals, tagged with pool number.
     let all: Vec<(usize, &Individual<char, ScoreResult>)> = pools
         .par_iter()
@@ -110,19 +100,9 @@ fn top_by_home_row(
     groups.truncate(max_groups);
 
     // Fixed extraction per group with cross-group dedup.
-    let mut selected: Vec<_> = groups
+    groups
         .iter()
         .flat_map(|g| g.iter().take(items_per_group).copied())
         .unique_by(|(_, ind)| &ind.genome)
-        .collect();
-    selected.truncate(max_rows);
-    selected
-}
-
-fn to_output_row(
-    pool: usize,
-    individual: &Individual<char, ScoreResult>,
-) -> (Layout, ScoreResult, usize) {
-    let score = individual.state.as_ref().unwrap().clone();
-    (Layout::from_keys(&individual.genome), score, pool)
+        .collect()
 }
