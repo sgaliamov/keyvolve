@@ -171,6 +171,14 @@ impl ScoreResult {
     }
 
     /// CSV header matching [`to_csv`] column order.
+    /// Columns: fitness (normalized quality), row_switch_ratio (row jumps %), row_switch_imbalance (hand row asymmetry),
+    /// hand_switch_ratio (hand alternation %), hands_imbalance (left/right count %), roll_imbalance (left/right roll %),
+    /// mean_streak (avg consecutive presses per hand), streak_ratio (left/right streak ratio),
+    /// left_effort_ratio (left % of total), right_effort_ratio (right % of total),
+    /// left_count_ratio (left % of bigrams), right_count_ratio (right % of bigrams),
+    /// effort (raw total), left_effort/right_effort (per-hand), left_count/right_count (bigrams per hand),
+    /// hand_switches (transitions), left_row_switch_cost/right_row_switch_cost (weighted jumps),
+    /// left_rolls/right_rolls (same-hand bigrams), left_streak/right_streak (avg run length).
     pub fn csv_header() -> &'static str {
         "fitness,row_switch_ratio,row_switch_imbalance,hand_switch_ratio,hands_imbalance,roll_imbalance,mean_streak,streak_ratio,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,effort,left_effort,right_effort,left_count,right_count,hand_switches,left_row_switch_cost,right_row_switch_cost,left_rolls,right_rolls,left_streak,right_streak"
     }

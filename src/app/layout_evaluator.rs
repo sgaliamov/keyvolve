@@ -231,15 +231,21 @@ impl LayoutEvaluator {
 
         // Flat surcharges in effort units: each hand switch and each same-hand row step
         // (jump counts double) costs like extra key presses. Comparable to the pairs table.
+        // - hand_switches (CSV: hand_switch_ratio) → penalizes hand alternation
+        // - row_switch_cost (CSV: row_switch_ratio) → penalizes vertical jumps, especially when reaching
         let surcharge = self.config.switch_cost * result.hand_switches as f64
             + self.config.row_cost * result.row_switch_cost() as f64;
 
-        // Mean effort per keypress: dividing by total presses makes fitness
-        // independent of corpus size, so layouts compare equally across input lengths.
+        // Normalization by total presses (CSV: effort, left_effort, right_effort).
+        // Dividing by presses makes fitness independent of corpus size.
+        // Layouts with different input lengths compare equally.
         let presses = (result.left_count + result.right_count).max(1) as f64;
 
-        // Penalty is purely dimensionless: imbalance ratios scale mean effort up,
-        // the shorter hand streak divides it — long runs on both hands raise fitness.
+        // Penalty term (dimensionless) multiplies effort, driving four CSV metrics:
+        // - (left_count / right_count)^p → hands_imbalance: penalizes left/right count asymmetry
+        // - (left_streak / right_streak)^p → streak_ratio: penalizes unequal run lengths (longer = worse)
+        // - (left_row_cost / right_row_cost)^p → row_switch_imbalance: penalizes unequal row-switch burden
+        // - 1 / min_streak → mean_streak: rewards long same-hand runs (reciprocal of minimum streak)
         // Raw row-step cost is already priced by the `row_cost` surcharge above.
         let r = &result;
         let p = self.config.balance_penalty_power;
@@ -252,7 +258,11 @@ impl LayoutEvaluator {
             .powf(p)
             / r.left_streak().min(r.right_streak()).max(1.0);
 
-        // Mean penalized effort per keypress, inverted: higher = better, `fitness_scale` ≈ ideal.
+        // Fitness (CSV column) = (scale · presses) / ((effort + surcharge) · penalty)
+        // Higher = better. Inverted denominator structure:
+        // - effort: mean bigram/switch cost (from pairs table)
+        // - surcharge: explicit hand_switch + row penalties (same units as effort)
+        // - penalty: dimensionless multiplier on effort, driving balance/streak metrics
         result.fitness =
             self.config.fitness_scale * presses / ((result.effort + surcharge) * penalty);
 

@@ -112,13 +112,13 @@ evaluate:
 evaluator:
   # Fitness multiplier; higher scales scores up, lower scales down.
   fitnessScale: 10
-  rowCost: 2
+  # rowCost: 2
   # switchCost: 1
   # Exponent for left/right imbalance ratios:
   #   1.0 = current behavior
-  #   <1.0 = softer balance pressure (recommended tuning: 0.6..0.9)
+  #   <1.0 = softer balance pressure
   #   >1.0 = stricter balance pressure
-  # balancePenaltyPower: 0.8
+  balancePenaltyPower: 0.5
 
 ga:
   # Mutation probability applied per genome element.
@@ -128,7 +128,7 @@ ga:
   # Generations without improvement before stopping.
   stagnationCount: 128
   # Number of island pools evolved in parallel.
-  pools: 512
+  pools: 256
   # Randomly generated individuals ratio per generation.
   randomRatio: 0.25
   # Mutation steps applied to seeded layouts.
