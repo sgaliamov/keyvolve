@@ -37,13 +37,6 @@ pub fn streak(count: u64, rolls: u64) -> f64 {
     }
 }
 
-/// Combine two hand counts into a transition total: each side contributes
-/// `count − 1` (a run of `n` presses yields `n − 1` internal transitions),
-/// saturating at `0` so an empty or single-press hand contributes none.
-pub fn transitions(a: u64, b: u64) -> f64 {
-    (a.saturating_sub(1) + b.saturating_sub(1)) as f64
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -86,12 +79,5 @@ mod tests {
         assert_eq!(streak(8, 6), 4.0);
         assert_eq!(streak(2, 0), 1.0);
         assert_eq!(streak(0, 0), 0.0);
-    }
-
-    #[test]
-    fn transitions_subtracts_one_per_side_saturating() {
-        assert_eq!(transitions(3, 5), 2.0 + 4.0);
-        assert_eq!(transitions(0, 0), 0.0);
-        assert_eq!(transitions(1, 1), 0.0);
     }
 }

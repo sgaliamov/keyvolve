@@ -136,12 +136,13 @@ impl ScoreResult {
         self.left_row_switch_cost + self.right_row_switch_cost
     }
 
-    /// Share of same-hand transitions that switch rows, weighted by jump severity.
-    /// Range: [0.0, ∞). 0 = no row jumps, higher = more disruptive hand motion.
+    /// Share of same-hand moves that cross rows, weighted by jump severity.
+    /// Range: [0.0, 2.0] — the numerator only accrues on same-hand bigrams, and a single
+    /// jump over a row costs 2. 0 = every roll stays in its row.
     pub fn row_switch_ratio(&self) -> f64 {
         crate::math::ratio(
             self.row_switch_cost() as f64,
-            crate::math::transitions(self.left_count, self.right_count),
+            (self.left_rolls + self.right_rolls) as f64,
         )
     }
 
@@ -381,6 +382,29 @@ mod tests {
             ..Default::default()
         };
         assert_eq!(zero_right.roll_imbalance(), 0.0);
+    }
+
+    #[test]
+    fn row_switch_ratio_is_cost_per_same_hand_move() {
+        // Row cost only accrues on same-hand bigrams, so rolls are the denominator.
+        let sample = |left_rolls, right_rolls, left_cost, right_cost| ScoreResult {
+            left_count: 8,
+            right_count: 8,
+            left_rolls,
+            right_rolls,
+            left_row_switch_cost: left_cost,
+            right_row_switch_cost: right_cost,
+            ..Default::default()
+        };
+
+        // Every roll stays in its row.
+        assert_eq!(sample(3, 3, 0, 0).row_switch_ratio(), 0.0);
+        // Every roll steps one row.
+        assert_eq!(sample(3, 3, 3, 3).row_switch_ratio(), 1.0);
+        // Upper bound: every roll jumps over a row, worth 2 each.
+        assert_eq!(sample(3, 3, 6, 6).row_switch_ratio(), 2.0);
+        // Fully alternating layout has no rolls to charge — 0.0, not NaN.
+        assert_eq!(sample(0, 0, 0, 0).row_switch_ratio(), 0.0);
     }
 
     #[test]
