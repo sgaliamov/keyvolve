@@ -38,7 +38,8 @@ pub struct ScoreResult {
 impl ScoreResult {
     // Ratios: normalized per-hand shares (0-1 range).
 
-    /// Left share of same-hand counts.
+    /// Left share of same-hand counts. Range: [0.0, 1.0], where 0 = unused left hand,
+    /// 1 = all bigrams on left.
     pub fn left_count_ratio(&self) -> f64 {
         crate::math::ratio(
             self.left_count as f64,
@@ -46,7 +47,8 @@ impl ScoreResult {
         )
     }
 
-    /// Right share of same-hand counts.
+    /// Right share of same-hand counts. Range: [0.0, 1.0], where 0 = unused right hand,
+    /// 1 = all bigrams on right.
     pub fn right_count_ratio(&self) -> f64 {
         crate::math::ratio(
             self.right_count as f64,
@@ -54,17 +56,18 @@ impl ScoreResult {
         )
     }
 
-    /// Left share of same-hand effort.
+    /// Left share of same-hand effort. Range: [0.0, 1.0], proportional to key travel distance.
     pub fn left_effort_ratio(&self) -> f64 {
         crate::math::ratio(self.left_effort, self.left_effort + self.right_effort)
     }
 
-    /// Right share of same-hand effort.
+    /// Right share of same-hand effort. Range: [0.0, 1.0], proportional to key travel distance.
     pub fn right_effort_ratio(&self) -> f64 {
         crate::math::ratio(self.right_effort, self.left_effort + self.right_effort)
     }
 
-    /// Share of hand switches among all bigram transitions.
+    /// Share of hand switches among all bigram transitions. Range: [0.0, 1.0],
+    /// where 0 = no alternation, 1 = every transition switches hands.
     pub fn hand_switch_ratio(&self) -> f64 {
         crate::math::ratio(
             self.hand_switches as f64,
@@ -75,13 +78,14 @@ impl ScoreResult {
     // Imbalances: percent deviation from parity (0% = balanced).
 
     /// Hand imbalance as a percent: how far the left/right same-hand count ratio
-    /// strays from parity. 0% = balanced. Asymmetric by direction.
+    /// strays from parity. Range: [0.0, ∞). 0% = balanced, >0% = left-skewed,
+    /// <0% = right-skewed.
     pub fn hands_imbalance(&self) -> f64 {
         crate::math::signed_imbalance_percent(self.left_count as f64, self.right_count as f64)
     }
 
     /// Row-switch cost imbalance as a percent: how far the left/right row-switch
-    /// cost ratio strays from parity. 0% = balanced. Asymmetric by direction.
+    /// cost ratio strays from parity. Range: [0.0, ∞). 0% = balanced, asymmetric by sign.
     pub fn row_switch_imbalance(&self) -> f64 {
         crate::math::signed_imbalance_percent(
             self.left_row_switch_cost as f64,
@@ -90,7 +94,7 @@ impl ScoreResult {
     }
 
     /// Same-hand bigram imbalance as a percent: how far the left/right roll count
-    /// ratio strays from parity. 0% = balanced. Asymmetric by direction.
+    /// ratio strays from parity. Range: [0.0, ∞). 0% = balanced, asymmetric by sign.
     pub fn roll_imbalance(&self) -> f64 {
         crate::math::signed_imbalance_percent(self.left_rolls as f64, self.right_rolls as f64)
     }
@@ -99,22 +103,25 @@ impl ScoreResult {
 
     /// Average left-hand streak: consecutive presses before leaving the hand.
     /// A run of length k yields k presses and k−1 rolls, so streak = presses / runs.
+    /// Range: [0.0, ∞). 0 = unused, 1.0 = constant alternation, >1 = sustained runs.
     pub fn left_streak(&self) -> f64 {
         crate::math::streak(self.left_count, self.left_rolls)
     }
 
     /// Average right-hand streak: consecutive presses before leaving the hand.
+    /// Range: [0.0, ∞). 0 = unused, 1.0 = constant alternation, >1 = sustained runs.
     pub fn right_streak(&self) -> f64 {
         crate::math::streak(self.right_count, self.right_rolls)
     }
 
     /// Left/right streak ratio: >1 means left hand holds longer runs. `0.0` when
-    /// the right hand is unused.
+    /// the right hand is unused. Range: [0.0, ∞).
     pub fn streak_ratio(&self) -> f64 {
         crate::math::ratio(self.left_streak(), self.right_streak())
     }
 
     /// Overall average streak: all presses over all runs, both hands.
+    /// Range: [0.0, ∞). 1.0 = every press switches hands, >1 = sustained multi-press runs.
     pub fn mean_streak(&self) -> f64 {
         crate::math::streak(
             self.left_count + self.right_count,
@@ -130,6 +137,7 @@ impl ScoreResult {
     }
 
     /// Share of same-hand transitions that switch rows, weighted by jump severity.
+    /// Range: [0.0, ∞). 0 = no row jumps, higher = more disruptive hand motion.
     pub fn row_switch_ratio(&self) -> f64 {
         crate::math::ratio(
             self.row_switch_cost() as f64,

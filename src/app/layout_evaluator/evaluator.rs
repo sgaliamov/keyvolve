@@ -162,7 +162,7 @@ impl LayoutEvaluator {
         // - row imbalance → row_switch_imbalance: unequal row-step burden
         // - hand-switch share → hand_switch_ratio: penalizes hand alternation
         // - row-switch share → row_switch_ratio: penalizes vertical jumps
-        // - min streak divisor → mean_streak: rewards long runs on both hands
+        // - streak divisor → mean_streak: rewards long runs on both hands
         imbalance_ratio(r.left_count as f64, r.right_count as f64).powf(self.config.count_power)
             * imbalance_ratio(r.left_streak(), r.right_streak()).powf(self.config.streak_power)
             * imbalance_ratio(
@@ -172,10 +172,7 @@ impl LayoutEvaluator {
             .powf(self.config.row_imbalance_power)
             * (1.0 + r.hand_switch_ratio()).powf(self.config.switch_power)
             * (1.0 + r.row_switch_ratio()).powf(self.config.row_power)
-            / r.left_streak()
-                .min(r.right_streak())
-                .max(1.0)
-                .powf(self.config.min_streak_power)
+            / r.mean_streak().powf(self.config.streak_power)
     }
 
     /// Look up precomputed bigram effort. Right-hand pairs were expanded at init by `Keyboard::expand_pairs`.
@@ -467,7 +464,7 @@ mod tests {
             &test_keyboard(),
             vec![],
             LayoutEvaluatorConfig {
-                min_streak_power: 0.5,
+                streak_power: 0.5,
                 ..test_config()
             },
         );
@@ -475,7 +472,7 @@ mod tests {
             &test_keyboard(),
             vec![],
             LayoutEvaluatorConfig {
-                min_streak_power: 0.0,
+                streak_power: 0.0,
                 ..test_config()
             },
         );
@@ -556,7 +553,7 @@ mod tests {
             row_imbalance_power: 1.0,
             switch_power: 0.0,
             row_power: 0.0,
-            min_streak_power: 1.0,
+            streak_power: 1.0,
         }
     }
 

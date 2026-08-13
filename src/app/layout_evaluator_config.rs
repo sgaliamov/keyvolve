@@ -34,8 +34,8 @@ pub struct LayoutEvaluatorConfig {
     pub row_power: f64,
 
     /// Exponent on the shorter-hand streak reward divisor `min_streak`.
-    #[serde(default = "default_min_streak_power", alias = "minStreakPenaltyPower")]
-    pub min_streak_power: f64,
+    #[serde(default = "default_mean_streak_power", alias = "meanStreakPenaltyPower")]
+    pub mean_streak_power: f64,
 }
 
 /// Serde default for [`LayoutEvaluatorConfig::fitness_scale`].
@@ -58,8 +58,8 @@ fn default_row_imbalance_power() -> f64 {
     1.0
 }
 
-/// Serde default for [`LayoutEvaluatorConfig::min_streak_power`].
-fn default_min_streak_power() -> f64 {
+/// Serde default for [`LayoutEvaluatorConfig::mean_streak_power`].
+fn default_mean_streak_power() -> f64 {
     1.0
 }
 
@@ -72,7 +72,7 @@ impl Default for LayoutEvaluatorConfig {
             row_imbalance_power: default_row_imbalance_power(),
             switch_power: 0.0,
             row_power: 0.0,
-            min_streak_power: default_min_streak_power(),
+            mean_streak_power: default_mean_streak_power(),
         }
     }
 }
