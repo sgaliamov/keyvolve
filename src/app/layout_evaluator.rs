@@ -148,7 +148,7 @@ impl LayoutEvaluator {
         } else {
             // Hands alternate: key `a` was already counted in the previous press.
             // Charge `b` as an independent press (self-effort, like the first letter).
-            // The switch is recorded; its price lives in `switch_cost` at corpus level.
+            // The switch is recorded; its price lives in the `switch_power` factor at corpus level.
             (self.lookup(kb, kb), 1, 0)
         };
 
@@ -169,7 +169,7 @@ impl LayoutEvaluator {
         }
     }
 
-    /// Score the corpus: physical effort plus flat per-event surcharges, balance-scaled.
+    /// Score the corpus: raw effort scaled by uniform multiplicative penalty factors.
     pub fn score_corpus(&self, keys: &Keys) -> ScoreResult {
         let seeds = self
             .counts
@@ -187,48 +187,43 @@ impl LayoutEvaluator {
             .chain(bigrams)
             .fold(ScoreResult::default(), |acc, x| acc + x);
 
-        // Flat surcharges in effort units: each hand switch and each same-hand row step
-        // (jump counts double) costs like extra key presses. Comparable to the pairs table.
-        // - hand_switches (CSV: hand_switch_ratio) → penalizes hand alternation
-        // - row_switch_cost (CSV: row_switch_ratio) → penalizes vertical jumps, especially when reaching
-        let surcharge = self.config.switch_cost * result.hand_switches as f64
-            + self.config.row_cost * result.row_switch_cost() as f64;
-
         // Normalization by total presses (CSV: effort, left_effort, right_effort).
         // Dividing by presses makes fitness independent of corpus size.
         // Layouts with different input lengths compare equally.
         let presses = (result.left_count + result.right_count).max(1) as f64;
 
-        let penalty = self.balance_penalty(&result);
+        let penalty = self.penalty(&result);
 
-        // Fitness (CSV column) = (scale · presses) / ((effort + surcharge) · penalty)
-        // Higher = better. Inverted denominator structure:
-        // - effort: mean bigram/switch cost (from pairs table)
-        // - surcharge: explicit hand_switch + row penalties (same units as effort)
-        // - penalty: dimensionless multiplier on effort, driving balance/streak metrics
-        result.fitness =
-            self.config.fitness_scale * presses / ((result.effort + surcharge) * penalty);
+        // Fitness (CSV column) = (scale · presses) / (effort · penalty). Higher = better.
+        // - effort: raw bigram cost from the pairs table
+        // - penalty: dimensionless multiplier built from per-press ratios
+        result.fitness = self.config.fitness_scale * presses / (result.effort * penalty);
 
         result
     }
 
-    /// Balance penalty multiplier for the corpus score.
-    fn balance_penalty(&self, r: &ScoreResult) -> f64 {
-        // Default 1.0 on each knob preserves existing behavior.
-        imbalance_ratio(r.left_count as f64, r.right_count as f64)
-            .powf(self.config.balance_penalty_power)
-            * imbalance_ratio(r.left_streak(), r.right_streak())
-                .powf(self.config.streak_penalty_power)
+    /// Uniform penalty multiplier: each factor is a dimensionless ratio raised to
+    /// its power knob. `0.0` = off, `1.0` = full, between = softer, above = stricter.
+    fn penalty(&self, r: &ScoreResult) -> f64 {
+        // - count imbalance → hands_imbalance: left/right press asymmetry
+        // - streak imbalance → streak_ratio: unequal run lengths
+        // - row imbalance → row_switch_imbalance: unequal row-step burden
+        // - hand-switch share → hand_switch_ratio: penalizes hand alternation
+        // - row-switch share → row_switch_ratio: penalizes vertical jumps
+        // - min streak divisor → mean_streak: rewards long runs on both hands
+        imbalance_ratio(r.left_count as f64, r.right_count as f64).powf(self.config.count_power)
+            * imbalance_ratio(r.left_streak(), r.right_streak()).powf(self.config.streak_power)
             * imbalance_ratio(
                 r.left_row_switch_cost as f64,
                 r.right_row_switch_cost as f64,
             )
-            .powf(self.config.row_switch_penalty_power)
-            * row_switch_ratio_penalty(r, self.config.row_switch_ratio_penalty_power)
+            .powf(self.config.row_imbalance_power)
+            * (1.0 + r.hand_switch_ratio()).powf(self.config.switch_power)
+            * (1.0 + r.row_switch_ratio()).powf(self.config.row_power)
             / r.left_streak()
                 .min(r.right_streak())
                 .max(1.0)
-                .powf(1.0 / self.config.min_streak_penalty_power.max(f64::MIN_POSITIVE))
+                .powf(self.config.min_streak_power)
     }
 
     /// Look up precomputed bigram effort. Right-hand pairs were expanded at init by `Keyboard::expand_pairs`.
@@ -262,19 +257,6 @@ fn imbalance_ratio(a: f64, b: f64) -> f64 {
         (_, 0.0) => 1.0,
         (hi, lo) => hi / lo,
     }
-}
-
-/// Row-switch ratio: weighted row steps per same-hand transition.
-#[inline]
-fn row_switch_ratio(r: &ScoreResult) -> f64 {
-    let denom = (r.left_count.saturating_sub(1) + r.right_count.saturating_sub(1)).max(1) as f64;
-    r.row_switch_cost() as f64 / denom
-}
-
-/// Row-switch ratio penalty: only the excess above 1.0 counts.
-#[inline]
-fn row_switch_ratio_penalty(r: &ScoreResult, strength: f64) -> f64 {
-    1.0 + (row_switch_ratio(r) - 1.0).max(0.0) * strength.max(0.0)
 }
 
 #[cfg(test)]
@@ -384,7 +366,7 @@ mod tests {
     }
 
     #[test]
-    fn score_corpus_applies_configured_switch_cost() {
+    fn score_corpus_applies_switch_power_factor() {
         let evaluator = LayoutEvaluator::new(
             &Keyboard::new(
                 json!({
@@ -398,7 +380,7 @@ mod tests {
             ),
             vec!["ab".to_string(), "ac".to_string()],
             LayoutEvaluatorConfig {
-                switch_cost: 3.0,
+                switch_power: 1.0,
                 ..test_config()
             },
         );
@@ -406,17 +388,18 @@ mod tests {
         let score = evaluator.score_corpus(&test_keys());
 
         assert_eq!(score.hand_switches, 1);
-        // (effort 5.0 + 3.0·1 switch)/4 = 2.0; ×count-ratio 3.0 ×streak-ratio 1.5 = 9.0; 1e6/9.
-        assert_close(score.fitness, 111_111.11);
+        // effort 5.0, presses 4; penalty = count 3.0 × streak 1.5 × switch (1 + 1/4) = 5.625;
+        // 1e6·4 / (5·5.625) = 142_222.22.
+        assert_close(score.fitness, 142_222.22);
     }
 
     #[test]
-    fn score_corpus_applies_configured_row_cost() {
+    fn score_corpus_applies_row_power_factor() {
         let evaluator = LayoutEvaluator::new(
             &row_switch_test_keyboard(),
             vec!["ad".to_string()],
             LayoutEvaluatorConfig {
-                row_cost: 1.0,
+                row_power: 1.0,
                 ..test_config()
             },
         );
@@ -424,19 +407,19 @@ mod tests {
         let score = evaluator.score_corpus(&test_keys());
 
         assert_eq!(score.row_switch_cost(), 1);
-        // Single-hand corpus: both imbalance ratios neutral (1.0).
-        // (effort 3.0 + 1.0·1 row step)/2 = 2.0; 1e6/2.
-        assert_close(score.fitness, 500_000.0);
+        // Single-hand corpus: imbalance ratios neutral; row factor (1 + 1/1) = 2;
+        // min-streak divisor: min(2, 0).max(1) = 1. 1e6·2 / (3·2) = 333_333.33.
+        assert_close(score.fitness, 333_333.33);
     }
 
     #[test]
-    fn balance_penalty_softens_count_imbalance_with_subunit_power() {
+    fn penalty_softens_count_imbalance_with_subunit_power() {
         let base = LayoutEvaluator::new(&test_keyboard(), vec![], test_config());
         let softer = LayoutEvaluator::new(
             &test_keyboard(),
             vec![],
             LayoutEvaluatorConfig {
-                balance_penalty_power: 0.5,
+                count_power: 0.5,
                 ..test_config()
             },
         );
@@ -448,17 +431,17 @@ mod tests {
             ..Default::default()
         };
 
-        assert!(softer.balance_penalty(&score) < base.balance_penalty(&score));
+        assert!(softer.penalty(&score) < base.penalty(&score));
     }
 
     #[test]
-    fn balance_penalty_softens_streak_imbalance_with_subunit_power() {
+    fn penalty_softens_streak_imbalance_with_subunit_power() {
         let base = LayoutEvaluator::new(&test_keyboard(), vec![], test_config());
         let softer = LayoutEvaluator::new(
             &test_keyboard(),
             vec![],
             LayoutEvaluatorConfig {
-                streak_penalty_power: 0.5,
+                streak_power: 0.5,
                 ..test_config()
             },
         );
@@ -471,17 +454,17 @@ mod tests {
             ..Default::default()
         };
 
-        assert!(softer.balance_penalty(&score) < base.balance_penalty(&score));
+        assert!(softer.penalty(&score) < base.penalty(&score));
     }
 
     #[test]
-    fn balance_penalty_softens_row_switch_imbalance_with_subunit_power() {
+    fn penalty_softens_row_switch_imbalance_with_subunit_power() {
         let base = LayoutEvaluator::new(&row_switch_test_keyboard(), vec![], test_config());
         let softer = LayoutEvaluator::new(
             &row_switch_test_keyboard(),
             vec![],
             LayoutEvaluatorConfig {
-                row_switch_penalty_power: 0.5,
+                row_imbalance_power: 0.5,
                 ..test_config()
             },
         );
@@ -496,49 +479,74 @@ mod tests {
             ..Default::default()
         };
 
-        assert!(softer.balance_penalty(&score) < base.balance_penalty(&score));
+        assert!(softer.penalty(&score) < base.penalty(&score));
     }
 
     #[test]
-    fn balance_penalty_softens_row_switch_ratio_with_subunit_power() {
+    fn penalty_softens_hand_switches_with_subunit_power() {
         let base = LayoutEvaluator::new(
             &test_keyboard(),
-            vec![],
+            vec!["ac".to_string(), "ca".to_string()],
             LayoutEvaluatorConfig {
-                row_switch_ratio_penalty_power: 1.0,
+                switch_power: 1.0,
                 ..test_config()
             },
         );
         let softer = LayoutEvaluator::new(
             &test_keyboard(),
-            vec![],
+            vec!["ac".to_string(), "ca".to_string()],
             LayoutEvaluatorConfig {
-                row_switch_ratio_penalty_power: 0.5,
+                switch_power: 0.5,
                 ..test_config()
             },
         );
 
-        let score = ScoreResult {
-            left_count: 6,
-            right_count: 6,
-            left_rolls: 1,
-            right_rolls: 1,
-            left_row_switch_cost: 10,
-            right_row_switch_cost: 10,
-            ..Default::default()
-        };
-
-        assert!(softer.balance_penalty(&score) < base.balance_penalty(&score));
+        assert!(
+            softer.score_corpus(&test_keys()).fitness > base.score_corpus(&test_keys()).fitness
+        );
     }
 
     #[test]
-    fn balance_penalty_softens_min_streak_divisor_with_subunit_power() {
-        let base = LayoutEvaluator::new(&test_keyboard(), vec![], test_config());
+    fn penalty_softens_row_steps_with_subunit_power() {
+        let base = LayoutEvaluator::new(
+            &row_switch_test_keyboard(),
+            vec!["ae".to_string()],
+            LayoutEvaluatorConfig {
+                row_power: 1.0,
+                ..test_config()
+            },
+        );
         let softer = LayoutEvaluator::new(
+            &row_switch_test_keyboard(),
+            vec!["ae".to_string()],
+            LayoutEvaluatorConfig {
+                row_power: 0.5,
+                ..test_config()
+            },
+        );
+
+        let base_score = base.score_corpus(&test_keys());
+        let softer_score = softer.score_corpus(&test_keys());
+
+        assert!(softer_score.fitness > base_score.fitness);
+    }
+
+    #[test]
+    fn penalty_weakens_min_streak_reward_with_subunit_power() {
+        let full = LayoutEvaluator::new(&test_keyboard(), vec![], test_config());
+        let weaker = LayoutEvaluator::new(
             &test_keyboard(),
             vec![],
             LayoutEvaluatorConfig {
-                min_streak_penalty_power: 0.5,
+                min_streak_power: 0.5,
+                ..test_config()
+            },
+        );
+        let off = LayoutEvaluator::new(
+            &test_keyboard(),
+            vec![],
+            LayoutEvaluatorConfig {
+                min_streak_power: 0.0,
                 ..test_config()
             },
         );
@@ -551,7 +559,9 @@ mod tests {
             ..Default::default()
         };
 
-        assert!(softer.balance_penalty(&score) < base.balance_penalty(&score));
+        // Reward divides penalty: full strength lowest, off highest.
+        assert!(full.penalty(&score) < weaker.penalty(&score));
+        assert!(weaker.penalty(&score) < off.penalty(&score));
     }
 
     #[test]
@@ -627,14 +637,13 @@ mod tests {
 
     fn test_config() -> LayoutEvaluatorConfig {
         LayoutEvaluatorConfig {
-            switch_cost: 0.0,
-            row_cost: 0.0,
             fitness_scale: 1_000_000.,
-            balance_penalty_power: 1.0,
-            streak_penalty_power: 1.0,
-            row_switch_penalty_power: 1.0,
-            row_switch_ratio_penalty_power: 0.0,
-            min_streak_penalty_power: 1.0,
+            count_power: 1.0,
+            streak_power: 1.0,
+            row_imbalance_power: 1.0,
+            switch_power: 0.0,
+            row_power: 0.0,
+            min_streak_power: 1.0,
         }
     }
 

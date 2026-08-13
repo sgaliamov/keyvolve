@@ -112,22 +112,22 @@ evaluate:
 evaluator:
   # Fitness multiplier; higher scales scores up, lower scales down.
   fitnessScale: 10
-  rowCost: 0
-  switchCost: 0
-  # Exponents for score balance factors:
-  #   1.0 = current behavior
-  #   <1.0 = softer pressure
-  #   >1.0 = stricter pressure
-  # balancePenaltyPower → hands_imbalance / left_count_ratio / right_count_ratio
-  balancePenaltyPower: 0.8
-  # streakPenaltyPower → streak_ratio / mean_streak
-  streakPenaltyPower: 0.8
-  # rowSwitchPenaltyPower → row_switch_imbalance
-  rowSwitchPenaltyPower: 0.8
-  # rowSwitchRatioPenaltyPower → row_switch_ratio (0.0 = off, 1.0 = full excess)
-  rowSwitchRatioPenaltyPower: 0.5
-  # minStreakPenaltyPower → mean_streak / streak_ratio
-  minStreakPenaltyPower: 1.0
+  # Uniform penalty knobs — each factor is (dimensionless ratio)^power:
+  #   0.0 = off
+  #   1.0 = full strength
+  #   between = softer, above = stricter
+  # countPower → hands_imbalance / left_count_ratio / right_count_ratio
+  countPower: 1.0
+  # streakPower → streak_ratio / mean_streak
+  streakPower: 0.8
+  # rowImbalancePower → row_switch_imbalance
+  rowImbalancePower: 0.8
+  # switchPower → hand_switch_ratio (penalizes hand alternation)
+  switchPower: 1.0
+  # rowPower → row_switch_ratio (penalizes vertical jumps)
+  rowPower: 0.8
+  # minStreakPower → mean_streak (rewards long same-hand runs)
+  minStreakPower: 0.8
 
 ga:
   # Mutation probability applied per genome element.
