@@ -73,21 +73,30 @@ tell apart than their individual deviations suggest.
 
 ### Adaptive tiers and final efforts
 
-Final effort groups follow fitted evidence instead of forcing equal item counts. Bigrams are
-sorted by rating, best first. The best item starts a tier. Following items remain in that tier
-until one is confidently worse than the tier anchor:
+Two independent mechanisms produce the final efforts — one decides *where* the tiers are,
+the other decides *what effort* each tier gets.
+
+**Finding tiers** is the job of `tierSplitZ`. Bigrams are sorted by rating, best first. The
+best item starts a tier. Following items remain in that tier until one is confidently worse
+than the tier anchor:
 
 ```text
-anchor rating - candidate rating > 1.96 × deviation(anchor - candidate)
+anchor rating - candidate rating > tierSplitZ × deviation(anchor - candidate)
 ```
 
 That candidate starts the next tier. The comparison uses posterior covariance, so correlated
 ratings are handled correctly. More evidence shrinks difference deviation and can split a
-previously broad tier.
+previously broad tier. This is also where the tier *count* comes from: it grows on its own
+as evidence accumulates — nothing else supplies it. Splits only happen at statistically real
+gaps, which is why tiers stay stable between runs and why noise never creates a boundary
+(the tier quality line below measures how little this safety costs).
 
-Each tier receives one effort based on the midpoint rank of all items inside it. Large tiers
-therefore occupy more of the `effortMin`–`effortMax` range than small tiers. Every bigram in a
-tier receives exactly the same effort.
+**Assigning efforts** is proportional to the rating gaps between the found tiers. Each tier
+takes the mean rating of its items; the best tier's mean is pinned to `effortMin`, the worst
+to `effortMax`, and every tier in between lands proportionally to its rating distance from
+the best. Two tiers separated by a large felt-effort gap therefore get a large effort gap,
+near-equal tiers get near-equal efforts. `effortGamma` optionally bends this line (see the
+configuration table). Every bigram in a tier receives exactly the same effort.
 
 ### Reading the fit quality line
 
@@ -139,6 +148,15 @@ theoretical optimum, so there is nothing to tune.
 One special case: if the first number itself is low (below ~`0.85`) while the gap stays
 small, the problem is too *few* tiers, not badly placed ones — lower `tierSplitZ` to allow
 more splits.
+
+**How is "optimal" known, and why not just use it?** In 1D the truly best split into k
+contiguous tiers can be computed exactly (dynamic programming over the sorted ratings), so
+the second number is a mathematical ceiling, not an estimate. It is not used directly
+because it only optimizes summarizing the *point estimates*: it ignores rating uncertainty,
+so it would happily draw boundaries between statistically identical pairs, jump around
+after every answer, and hallucinate structure early in a session. The confidence splitter
+only cuts where a gap is statistically real — the optimal partition serves purely as a
+yardstick for how much R² that safety costs (here: almost none).
 
 The same numbers appear as the `tier_r2,<current>,<optimal>` summary row at the bottom of
 the flat bigrams CSV.
@@ -371,7 +389,7 @@ flowchart LR
 When every bigram is settled the session enters **verification mode**: further answers
 only confirm or challenge the saved ranking. On quit, the session prints stats and writes:
 
-- a ranked `keyboard.json` — confidence-aware bigram tiers with population-weighted efforts,
+- a ranked `keyboard.json` — confidence-aware bigram tiers with rating-proportional efforts,
 - a block CSV report with efforts, ratings, deviations, and match counts,
 - a flat `*.bigrams.csv` sorted by fitted rating, with per-bigram majority summary columns.
 
@@ -386,15 +404,7 @@ The flat export columns (left-to-right priority):
 | `majority_rank` | Position in majority-vote summary order. |
 | `rating`, `deviation`, `effort`, `matches` | Rating details. |
 | `distance` | Physical distance between the two keys, in key widths, on an ordinary staggered keyboard (rows shifted 0 / 0.25 / 0.75). Pure geometry — knows nothing about fingers or rows. |
-| `distance_rank` | Where this distance stands among all 210 pairs: 1 = closest, 210 = farthest. |
 | `majority_score`, `majority_wins`, `majority_losses`, `majority_ties`, `majority_unseen` | Majority vote breakdown. |
-
-**Why `distance_rank` has values like 12.5:** many pairs are exactly the same distance
-apart, and tied pairs share one averaged rank. For example, all 24 side-by-side same-row
-pairs (QW, WQ, WE, …) are exactly 1 key width apart. Together they occupy ranks 1–24, so
-each gets the average: `(1 + 24) / 2 = 12.5`. A value of `133.5` just means "middle of a
-tie group somewhere in the farther half". The rank by itself is neither good nor bad —
-it is only the geometric baseline that `rating_rank` gets compared against.
 
 The file ends with two summary rows — these are the ones to actually read:
 
@@ -438,8 +448,9 @@ All settings live under `rank:` in `keyvolve.yaml`; every one has a sensible def
 | `forcedAnswerWeight` | `3` | Confirmations recorded by one `!` answer — a shortcut for answering the same way several times. |
 | `forceCheckPair` | unset | Optional one-time first question in `XX-YY` format (left-hand labels), e.g. `AF-VE`. |
 | `tierSplitZ` | `2.2` | Global tier split multiplier. Higher = fewer splits, more merging near the bottom. |
-| `effortMin` | `1.0` | Lower bound for population-weighted adaptive tier efforts. |
-| `effortMax` | `10.0` | Upper bound for population-weighted adaptive tier efforts. |
+| `effortMin` | `1.0` | Effort assigned to the best tier; lower bound of the rating-proportional mapping. |
+| `effortMax` | `10.0` | Effort assigned to the worst tier; upper bound of the rating-proportional mapping. |
+| `effortGamma` | `1.0` | Shaping exponent for the rating-proportional mapping. `1` = linear (effort gaps mirror rating gaps); `> 1` bunches easy tiers near `effortMin` with a harsh tail; `< 1` spreads easy tiers with a flat tail. Endpoints stay pinned. |
 | `seed` | random | RNG seed for a reproducible question order. |
 
 You can also pass it at launch time:

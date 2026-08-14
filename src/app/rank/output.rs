@@ -184,16 +184,15 @@ pub fn write_bigrams_csv(path: &Path, state: &RankState, tiers: &Tiers) -> Resul
 
     let tier_count = tiers.efforts.len();
 
-    // Trivial staggered-grid distance per pair and its tie-averaged rank.
+    // Trivial staggered-grid distance per pair.
     let distances: Vec<f64> = state
         .items
         .iter()
         .map(|item| slot_distance(item.from, item.to))
         .collect();
-    let distance_ranks = tie_ranks(&distances);
 
     let mut out = String::from(
-        "rating_rank,bigram,mirror,tier,majority_rank,rating,deviation,effort,distance,distance_rank,matches,majority_score,majority_wins,majority_losses,majority_ties,majority_unseen\n",
+        "rating_rank,bigram,mirror,tier,majority_rank,rating,deviation,effort,distance,matches,majority_score,majority_wins,majority_losses,majority_ties,majority_unseen\n",
     );
     for (rating_rank, &index) in rating_order.iter().enumerate() {
         let item = &state.items[index];
@@ -203,7 +202,7 @@ pub fn write_bigrams_csv(path: &Path, state: &RankState, tiers: &Tiers) -> Resul
         let effort = tiers.efforts[tier];
         let _ = writeln!(
             out,
-            "{},{},{},{}/{},{},{:.6},{:.6},{:.6},{:.3},{:.1},{},{},{},{},{},{}",
+            "{},{},{},{}/{},{},{:.6},{:.6},{:.6},{:.3},{},{},{},{},{},{}",
             rating_rank + 1,
             csv_text(&item.label()),
             csv_text(&item.label_right()),
@@ -214,7 +213,6 @@ pub fn write_bigrams_csv(path: &Path, state: &RankState, tiers: &Tiers) -> Resul
             item.deviation,
             effort,
             distances[index],
-            distance_ranks[index],
             item.matches,
             score,
             wins,
