@@ -115,6 +115,33 @@ A healthy finished session has *wide* spread — big rating gaps are the goal, n
 problem. Dense, bunched-up ratings with low deviations mean the answers were
 contradictory and the model gave up on separating items.
 
+### Reading the tier quality line
+
+Right after the fit line, the stats screen scores how well the tier *boundaries* are placed:
+
+```
+tiers: R² 0.932, optimal same-k 0.951, gap 0.019
+```
+
+- **R²** — share of rating variance explained by the current tier means. `1.0` = the tiers
+  capture the fitted ranking perfectly; `0` = tiers are meaningless relative to rating spread.
+- **optimal same-k** — the best possible R² for the *same number* of tiers, computed with
+  exact 1D k-means over the fitted ratings. Comparing at equal tier count isolates *boundary
+  placement* quality from the tier-count choice.
+- **gap** — `optimal − R²`, the actionable number:
+  - `< 0.02` — boundaries are near-optimal; `tierSplitZ` is doing its job, nothing to gain
+    from a different clustering method.
+  - `0.02–0.05` — mild misplacement; a few pairs near tier edges may sit one effort step off.
+  - `> 0.05` — the splitter misses real structure in the ratings; boundary placement is
+    worth revisiting.
+
+If absolute R² is low (below ~`0.85`) while the gap stays *small*, the tier **count** is the
+limiter, not the placement — lower `tierSplitZ` to allow more splits instead of changing the
+clustering method.
+
+The same three numbers are exported as the `tier_r2,<current>,<optimal>` summary row at the
+bottom of the flat bigrams CSV.
+
 ## Choosing the next question
 
 Questions are not random. The picker maximizes learning per answer:
@@ -357,7 +384,23 @@ The flat export columns (left-to-right priority):
 | `tier` | Adaptive confidence tier (e.g., `5/12`), matching stats and final JSON groups. |
 | `majority_rank` | Position in majority-vote summary order. |
 | `rating`, `deviation`, `effort`, `matches` | Rating details. |
+| `distance` | Euclidean distance between the two slots on a plain staggered grid (row offsets 0 / 0.25 / 0.75, unit key pitch). A trivial geometric baseline with no finger or row knowledge. |
+| `distance_rank` | 1-based rank of `distance` across all pairs, ties averaged. |
 | `majority_score`, `majority_wins`, `majority_losses`, `majority_ties`, `majority_unseen` | Majority vote breakdown. |
+
+The file ends with summary rows:
+
+| Row | Meaning |
+| --- | --- |
+| `spearman_rating_vs_distance` | Spearman rank correlation between the fitted effort order and the trivial distance baseline. |
+| `spearman_majority_vs_distance` | Same correlation for the majority-vote order. |
+| `tier_r2` | Current tier R² and optimal same-count R² — same numbers as the tier quality stats line. |
+
+Reading the correlations: `+1` means felt effort is pure distance — the ranking adds nothing
+beyond geometry. Values around `0.3–0.7` are expected: distance matters, but fingers, rows,
+and stagger add real signal on top. Near-zero or negative is suspicious — likely inconsistent
+answers. A large drop of the majority rho versus the rating rho means the fitted model and
+the raw majority votes disagree about how much the ranking follows geometry.
 
 `majority_rank` is a summary projection of the direct-majority graph for inspection. Cycle
 detection still uses the raw majority edges themselves, not this flattened rank.

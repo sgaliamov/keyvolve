@@ -481,13 +481,23 @@ fn print_fit_quality(state: &RankState, cfg: &RankConfig) {
             (lo.min(i.rating), hi.max(i.rating))
         });
     let mean_dev = state.items.iter().map(|i| i.deviation).sum::<f64>() / state.items.len() as f64;
-    let tiers = state.confidence_tier_count(cfg);
+    let groups = state.confidence_tiers(cfg);
+    let tiers = groups.iter().max().map_or(0, |&tier| tier + 1);
     println!(
         "{DIM}fit: log-loss{RESET} {:.3}{DIM}, agreement{RESET} {:.0}%{DIM}, spread/dev{RESET} {:.1}{DIM}, tiers{RESET} {}",
         loss / state.history.len() as f64,
         100.0 * hits as f64 / decisive.max(1) as f64,
         (max - min) / mean_dev,
         tiers,
+    );
+    // Boundary quality vs the optimal same-count partition; the gap is the
+    // actionable number (see docs/rank-mode.md "Reading the tier quality line").
+    let (r2, optimal) = tier_quality(state, &groups, tiers);
+    println!(
+        "{DIM}tiers: R²{RESET} {:.3}{DIM}, optimal same-k{RESET} {:.3}{DIM}, gap{RESET} {:.3}",
+        r2,
+        optimal,
+        optimal - r2,
     );
 }
 

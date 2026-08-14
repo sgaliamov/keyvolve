@@ -229,7 +229,26 @@ pub fn write_bigrams_csv(path: &Path, state: &RankState, tiers: &Tiers) -> Resul
     let (rating_rho, majority_rho) = distance_correlations(state, &majority_rank);
     let _ = writeln!(out, "spearman_rating_vs_distance,{rating_rho:.4}");
     let _ = writeln!(out, "spearman_majority_vs_distance,{majority_rho:.4}");
+    // Tier boundary quality: current vs optimal same-count partition.
+    let (r2, optimal) = tier_quality(state, &tiers.groups, tier_count);
+    let _ = writeln!(out, "tier_r2,{r2:.4},{optimal:.4}");
     write_text(path, out)
+}
+
+/// Tier boundary quality over fitted ratings: R² of the given tier assignment
+/// and of the optimal same-count 1D k-means partition (Ckmeans DP). The gap
+/// between the two isolates boundary placement quality from tier count.
+/// See docs/rank-mode.md "Reading the tier quality line".
+pub fn tier_quality(state: &RankState, groups: &[usize], count: usize) -> (f64, f64) {
+    if count == 0 || state.items.is_empty() {
+        return (1.0, 1.0);
+    }
+    let ratings: Vec<f64> = state.items.iter().map(|item| item.rating).collect();
+    let current = variance_explained(&ratings, groups, count);
+    let mut sorted = ratings;
+    sorted.sort_by(f64::total_cmp);
+    let optimal = variance_explained(&sorted, &ckmeans_partition(&sorted, count), count);
+    (current, optimal)
 }
 
 /// Spearman rho of (rating rank, majority rank) against trivial slot distance.
@@ -337,6 +356,70 @@ fn tie_ranks(values: &[f64]) -> Vec<f64> {
         start = end + 1;
     }
     ranks
+}
+
+/// Share of value variance explained by group means: 1 − SSE_within / SST.
+fn variance_explained(values: &[f64], groups: &[usize], count: usize) -> f64 {
+    let mut sums = vec![(0.0f64, 0usize); count];
+    for (&value, &group) in values.iter().zip(groups) {
+        sums[group].0 += value;
+        sums[group].1 += 1;
+    }
+    let means: Vec<f64> = sums
+        .iter()
+        .map(|(sum, n)| sum / (*n).max(1) as f64)
+        .collect();
+    let mean = values.iter().sum::<f64>() / values.len() as f64;
+    let (sse, sst) = values
+        .iter()
+        .zip(groups)
+        .fold((0.0, 0.0), |(sse, sst), (&value, &group)| {
+            (
+                sse + (value - means[group]).powi(2),
+                sst + (value - mean).powi(2),
+            )
+        });
+    1.0 - sse / sst.max(f64::EPSILON)
+}
+
+/// Exact 1D k-means (Ckmeans DP) on sorted values → cluster id per index,
+/// ascending. O(k·n²) — fine for 210 items.
+fn ckmeans_partition(sorted: &[f64], k: usize) -> Vec<usize> {
+    let n = sorted.len();
+    let k = k.min(n);
+    let (mut sum, mut sq) = (vec![0.0; n + 1], vec![0.0; n + 1]);
+    for (i, &value) in sorted.iter().enumerate() {
+        sum[i + 1] = sum[i] + value;
+        sq[i + 1] = sq[i] + value * value;
+    }
+    // Within-cluster sum of squared deviations for the half-open range [lo, hi).
+    let sse = |lo: usize, hi: usize| {
+        let (s, len) = (sum[hi] - sum[lo], (hi - lo) as f64);
+        sq[hi] - sq[lo] - s * s / len
+    };
+    let mut dp = vec![vec![f64::INFINITY; n + 1]; k + 1];
+    let mut cut = vec![vec![0usize; n + 1]; k + 1];
+    dp[0][0] = 0.0;
+    for j in 1..=k {
+        for i in j..=n {
+            for m in (j - 1)..i {
+                let cost = dp[j - 1][m] + sse(m, i);
+                if cost < dp[j][i] {
+                    dp[j][i] = cost;
+                    cut[j][i] = m;
+                }
+            }
+        }
+    }
+    let mut ids = vec![0usize; n];
+    let (mut i, mut j) = (n, k);
+    while j > 0 {
+        let m = cut[j][i];
+        ids[m..i].iter_mut().for_each(|id| *id = j - 1);
+        i = m;
+        j -= 1;
+    }
+    ids
 }
 
 /// Quote one CSV text field and escape inner quotes.
@@ -495,12 +578,13 @@ mod tests {
         let bigrams = dir.join("generated/reports/keyboard.bigrams.csv");
         write_bigrams_csv(&bigrams, &state, &tiers).unwrap();
         let text = std::fs::read_to_string(&bigrams).unwrap();
-        // items + header + two spearman summary rows
-        assert_eq!(text.lines().count(), state.items.len() + 3);
+        // items + header + spearman rows + tier_r2 row
+        assert_eq!(text.lines().count(), state.items.len() + 4);
         assert!(text.starts_with("rating_rank,"));
         assert!(text.contains(",\"QW\",\"PO\","));
         assert!(text.contains("spearman_rating_vs_distance,"));
         assert!(text.contains("spearman_majority_vs_distance,"));
+        assert!(text.contains("tier_r2,"));
         std::fs::remove_dir_all(&dir).ok();
     }
 
@@ -540,6 +624,41 @@ mod tests {
         let majority_rank = majority_ranks(&state, &majority_stats(&state));
         let (rating_rho, _) = distance_correlations(&state, &majority_rank);
         assert!((rating_rho - 1.0).abs() < 1e-12);
+    }
+
+    #[test]
+    fn ckmeans_splits_at_natural_gap() {
+        let sorted = [1.0, 1.1, 1.2, 9.0, 9.1, 9.2];
+        assert_eq!(ckmeans_partition(&sorted, 2), vec![0, 0, 0, 1, 1, 1]);
+        // k capped at n; ids ascending.
+        let ids = ckmeans_partition(&sorted, 10);
+        assert_eq!(ids, vec![0, 1, 2, 3, 4, 5]);
+    }
+
+    #[test]
+    fn variance_explained_ranks_partitions() {
+        let values = [1.0, 1.1, 9.0, 9.1];
+        let good = variance_explained(&values, &[0, 0, 1, 1], 2);
+        let bad = variance_explained(&values, &[0, 1, 0, 1], 2);
+        assert!(good > 0.99);
+        assert!(bad < good);
+        // Single group explains nothing.
+        assert!(variance_explained(&values, &[0, 0, 0, 0], 1).abs() < 1e-12);
+    }
+
+    #[test]
+    fn tier_quality_optimal_bounds_current() {
+        let cfg = RankConfig::default();
+        let mut state = RankState::new();
+        for (i, item) in state.items.iter_mut().enumerate() {
+            // Two lumps with noise → non-trivial boundaries.
+            item.rating = if i % 3 == 0 { 1800.0 } else { 1200.0 } + (i % 7) as f64 * 10.0;
+        }
+        let groups = state.confidence_tiers(&cfg);
+        let count = state.confidence_tier_count(&cfg);
+        let (current, optimal) = tier_quality(&state, &groups, count);
+        assert!(optimal >= current - 1e-12);
+        assert!(optimal <= 1.0 + 1e-12);
     }
 
     #[test]
