@@ -171,46 +171,8 @@ pub fn write_report_csv(path: &Path, state: &RankState, tiers: &Tiers) -> Result
 
 /// Write flat per-bigram CSV sorted by fitted rating, with majority summary.
 pub fn write_bigrams_csv(path: &Path, state: &RankState, tiers: &Tiers) -> Result<()> {
-    let edges = majority_edges(state);
-    let head_to_head = head_to_head(state);
-    let mut majority_losses = vec![0usize; state.items.len()];
-    for losers in &edges {
-        for &loser in losers {
-            majority_losses[loser] += 1;
-        }
-    }
-    let mut compared = vec![0usize; state.items.len()];
-    for &(a, b) in head_to_head.keys() {
-        compared[a] += 1;
-        compared[b] += 1;
-    }
-    let majority = state
-        .items
-        .iter()
-        .enumerate()
-        .map(|(index, _)| {
-            let wins = edges[index].len();
-            let losses = majority_losses[index];
-            let ties = compared[index].saturating_sub(wins + losses);
-            let unseen = state.items.len().saturating_sub(1 + compared[index]);
-            (wins, losses, ties, unseen)
-        })
-        .collect::<Vec<_>>();
-    let mut majority_order = (0..state.items.len()).collect::<Vec<_>>();
-    majority_order.sort_by(|&a, &b| {
-        let score_a = majority[a].0 as isize - majority[a].1 as isize;
-        let score_b = majority[b].0 as isize - majority[b].1 as isize;
-        score_b
-            .cmp(&score_a)
-            .then_with(|| majority[b].0.cmp(&majority[a].0))
-            .then_with(|| majority[a].1.cmp(&majority[b].1))
-            .then_with(|| state.items[b].rating.total_cmp(&state.items[a].rating))
-            .then_with(|| a.cmp(&b))
-    });
-    let mut majority_rank = vec![0usize; state.items.len()];
-    for (rank, &index) in majority_order.iter().enumerate() {
-        majority_rank[index] = rank + 1;
-    }
+    let majority = majority_stats(state);
+    let majority_rank = majority_ranks(state, &majority);
 
     let mut rating_order = (0..state.items.len()).collect::<Vec<_>>();
     rating_order.sort_by(|&a, &b| {
@@ -222,8 +184,16 @@ pub fn write_bigrams_csv(path: &Path, state: &RankState, tiers: &Tiers) -> Resul
 
     let tier_count = tiers.efforts.len();
 
+    // Trivial staggered-grid distance per pair and its tie-averaged rank.
+    let distances: Vec<f64> = state
+        .items
+        .iter()
+        .map(|item| slot_distance(item.from, item.to))
+        .collect();
+    let distance_ranks = tie_ranks(&distances);
+
     let mut out = String::from(
-        "rating_rank,bigram,mirror,tier,majority_rank,rating,deviation,effort,matches,majority_score,majority_wins,majority_losses,majority_ties,majority_unseen\n",
+        "rating_rank,bigram,mirror,tier,majority_rank,rating,deviation,effort,distance,distance_rank,matches,majority_score,majority_wins,majority_losses,majority_ties,majority_unseen\n",
     );
     for (rating_rank, &index) in rating_order.iter().enumerate() {
         let item = &state.items[index];
@@ -233,7 +203,7 @@ pub fn write_bigrams_csv(path: &Path, state: &RankState, tiers: &Tiers) -> Resul
         let effort = tiers.efforts[tier];
         let _ = writeln!(
             out,
-            "{},{},{},{}/{},{},{:.6},{:.6},{:.6},{},{},{},{},{},{}",
+            "{},{},{},{}/{},{},{:.6},{:.6},{:.6},{:.3},{:.1},{},{},{},{},{},{}",
             rating_rank + 1,
             csv_text(&item.label()),
             csv_text(&item.label_right()),
@@ -243,6 +213,8 @@ pub fn write_bigrams_csv(path: &Path, state: &RankState, tiers: &Tiers) -> Resul
             item.rating,
             item.deviation,
             effort,
+            distances[index],
+            distance_ranks[index],
             item.matches,
             score,
             wins,
@@ -251,7 +223,120 @@ pub fn write_bigrams_csv(path: &Path, state: &RankState, tiers: &Tiers) -> Resul
             unseen,
         );
     }
+
+    // Rank/distance alignment: positive rho = worse-ranked pairs sit farther
+    // apart on the trivial staggered grid.
+    let (rating_rho, majority_rho) = distance_correlations(state, &majority_rank);
+    let _ = writeln!(out, "spearman_rating_vs_distance,{rating_rho:.4}");
+    let _ = writeln!(out, "spearman_majority_vs_distance,{majority_rho:.4}");
     write_text(path, out)
+}
+
+/// Spearman rho of (rating rank, majority rank) against trivial slot distance.
+/// Both oriented so positive = discovered ranks follow physical distance.
+pub fn distance_correlations(state: &RankState, majority_rank: &[usize]) -> (f64, f64) {
+    let distances: Vec<f64> = state
+        .items
+        .iter()
+        .map(|item| slot_distance(item.from, item.to))
+        .collect();
+    // Negated rating: low rating (worse pair) → high value, matching rank order.
+    let rating_key: Vec<f64> = state.items.iter().map(|item| -item.rating).collect();
+    let majority_key: Vec<f64> = majority_rank.iter().map(|&rank| rank as f64).collect();
+    (
+        spearman(&rating_key, &distances),
+        spearman(&majority_key, &distances),
+    )
+}
+
+/// 1-based majority rank per item derived from majority stats.
+pub fn majority_ranks(state: &RankState, majority: &[(usize, usize, usize, usize)]) -> Vec<usize> {
+    let mut order = (0..state.items.len()).collect::<Vec<_>>();
+    order.sort_by(|&a, &b| {
+        let score_a = majority[a].0 as isize - majority[a].1 as isize;
+        let score_b = majority[b].0 as isize - majority[b].1 as isize;
+        score_b
+            .cmp(&score_a)
+            .then_with(|| majority[b].0.cmp(&majority[a].0))
+            .then_with(|| majority[a].1.cmp(&majority[b].1))
+            .then_with(|| state.items[b].rating.total_cmp(&state.items[a].rating))
+            .then_with(|| a.cmp(&b))
+    });
+    let mut ranks = vec![0usize; state.items.len()];
+    for (rank, &index) in order.iter().enumerate() {
+        ranks[index] = rank + 1;
+    }
+    ranks
+}
+
+/// Per-item majority stats (wins, losses, ties, unseen) over head-to-head answers.
+pub fn majority_stats(state: &RankState) -> Vec<(usize, usize, usize, usize)> {
+    let edges = majority_edges(state);
+    let head_to_head = head_to_head(state);
+    let mut losses = vec![0usize; state.items.len()];
+    for losers in &edges {
+        for &loser in losers {
+            losses[loser] += 1;
+        }
+    }
+    let mut compared = vec![0usize; state.items.len()];
+    for &(a, b) in head_to_head.keys() {
+        compared[a] += 1;
+        compared[b] += 1;
+    }
+    (0..state.items.len())
+        .map(|index| {
+            let wins = edges[index].len();
+            let ties = compared[index].saturating_sub(wins + losses[index]);
+            let unseen = state.items.len().saturating_sub(1 + compared[index]);
+            (wins, losses[index], ties, unseen)
+        })
+        .collect()
+}
+
+/// Euclidean distance between two slots on a staggered 3×5 grid
+/// (standard row stagger: top 0.0, home 0.25, bottom 0.75; unit key pitch).
+pub fn slot_distance(from: u8, to: u8) -> f64 {
+    const STAGGER: [f64; 3] = [0.0, 0.25, 0.75];
+    let pos = |s: u8| ((s % 5) as f64 + STAGGER[(s / 5) as usize], (s / 5) as f64);
+    let ((xa, ya), (xb, yb)) = (pos(from), pos(to));
+    (xa - xb).hypot(ya - yb)
+}
+
+/// Spearman rank correlation with average ranks for ties
+/// (Pearson correlation on tie-averaged ranks).
+pub fn spearman(a: &[f64], b: &[f64]) -> f64 {
+    let (ra, rb) = (tie_ranks(a), tie_ranks(b));
+    let n = ra.len() as f64;
+    let (ma, mb) = (ra.iter().sum::<f64>() / n, rb.iter().sum::<f64>() / n);
+    let (mut cov, mut va, mut vb) = (0.0, 0.0, 0.0);
+    for (x, y) in ra.iter().zip(&rb) {
+        let (dx, dy) = (x - ma, y - mb);
+        cov += dx * dy;
+        va += dx * dx;
+        vb += dy * dy;
+    }
+    cov / (va * vb).sqrt().max(f64::EPSILON)
+}
+
+/// 1-based ranks with ties averaged (e.g. two equal smallest values → 1.5, 1.5).
+fn tie_ranks(values: &[f64]) -> Vec<f64> {
+    let mut order = (0..values.len()).collect::<Vec<_>>();
+    order.sort_by(|&a, &b| values[a].total_cmp(&values[b]));
+    let mut ranks = vec![0.0; values.len()];
+    let mut start = 0;
+    while start < order.len() {
+        let mut end = start;
+        while end + 1 < order.len() && values[order[end + 1]] == values[order[start]] {
+            end += 1;
+        }
+        let rank = (start + end) as f64 / 2.0 + 1.0;
+        for &index in &order[start..=end] {
+            ranks[index] = rank;
+        }
+        start = end + 1;
+    }
+    ranks
 }
 
 /// Quote one CSV text field and escape inner quotes.
@@ -410,10 +495,51 @@ mod tests {
         let bigrams = dir.join("generated/reports/keyboard.bigrams.csv");
         write_bigrams_csv(&bigrams, &state, &tiers).unwrap();
         let text = std::fs::read_to_string(&bigrams).unwrap();
-        assert_eq!(text.lines().count(), state.items.len() + 1);
+        // items + header + two spearman summary rows
+        assert_eq!(text.lines().count(), state.items.len() + 3);
         assert!(text.starts_with("rating_rank,"));
         assert!(text.contains(",\"QW\",\"PO\","));
+        assert!(text.contains("spearman_rating_vs_distance,"));
+        assert!(text.contains("spearman_majority_vs_distance,"));
         std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn slot_distance_follows_staggered_grid() {
+        // Same-row neighbors: Q(0) → W(1).
+        assert_eq!(slot_distance(0, 1), 1.0);
+        // Symmetric.
+        assert_eq!(slot_distance(3, 12), slot_distance(12, 3));
+        // Stagger shifts cross-row distance: Q(0) → A(5) = hypot(0.25, 1).
+        assert!((slot_distance(0, 5) - 0.25f64.hypot(1.0)).abs() < 1e-12);
+        // Q(0) → Z(10) = hypot(0.75, 2).
+        assert!((slot_distance(0, 10) - 0.75f64.hypot(2.0)).abs() < 1e-12);
+    }
+
+    #[test]
+    fn spearman_detects_agreement_reversal_and_ties() {
+        let a = [1.0, 2.0, 3.0, 4.0];
+        assert!((spearman(&a, &[10.0, 20.0, 30.0, 40.0]) - 1.0).abs() < 1e-12);
+        assert!((spearman(&a, &[40.0, 30.0, 20.0, 10.0]) + 1.0).abs() < 1e-12);
+        // Ties get averaged ranks; still monotone overall → positive rho.
+        assert!(spearman(&a, &[1.0, 1.0, 2.0, 3.0]) > 0.9);
+    }
+
+    #[test]
+    fn tie_ranks_average_equal_values() {
+        assert_eq!(tie_ranks(&[3.0, 1.0, 1.0, 2.0]), vec![4.0, 1.5, 1.5, 3.0]);
+    }
+
+    #[test]
+    fn distance_correlations_track_rating_alignment() {
+        let mut state = RankState::new();
+        // Rating = −distance → perfect alignment (worse pair = farther).
+        for item in state.items.iter_mut() {
+            item.rating = 2000.0 - 100.0 * slot_distance(item.from, item.to);
+        }
+        let majority_rank = majority_ranks(&state, &majority_stats(&state));
+        let (rating_rho, _) = distance_correlations(&state, &majority_rank);
+        assert!((rating_rho - 1.0).abs() < 1e-12);
     }
 
     #[test]

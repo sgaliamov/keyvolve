@@ -46,12 +46,12 @@ optimization:
   # blocked: [0, 14, 19, 25]
   # frozen:
   #   h: 5
-  allowed:
-    e: [6, 7, 8]
-    t: [1, 2, 3, 6, 7, 8]
-    a: [1, 2, 3, 6, 7, 8]
-    i: [1, 2, 3, 6, 7, 8]
-    o: [1, 2, 3, 6, 7, 8]
+  # allowed:
+  #   e: [6, 7, 8]
+    # t: [1, 2, 3, 6, 7, 8]
+    # a: [1, 2, 3, 6, 7, 8]
+    # i: [1, 2, 3, 6, 7, 8]
+    # o: [1, 2, 3, 6, 7, 8]
   #   n: [1, 2, 3, 6, 7, 8]
   #   r: [1, 2, 3, 6, 7, 8]
   #   s: [1, 2, 3, 6, 7, 8]
@@ -61,7 +61,7 @@ optimization:
   #   z: [10, 11, 14]
   #   q: [10, 11, 14]
   #
-  rolls: ['er', 'th']
+  # rolls: ['er', 'th']
   # left: [e, o]
   # right: [a, i]
 
@@ -117,15 +117,15 @@ evaluator:
   # Two per family: *level* = how much of the trait, *balance* = how evenly hands split it.
   # Derivation: src/app/layout_evaluator/penalty.rs
   # balance (CSV: hands_imbalance) — left/right press asymmetry
-  countPower: 1.0
-  # level (CSV: mean_streak) — rewards long same-hand runs; subsumes the old switchPower
-  meanStreakPower: 0.8
-  # balance (CSV: streak_ratio) — unequal run lengths between hands
-  streakPower: 0.8
-  # level (CSV: row_switch_ratio) — penalizes row jumps inside a hand
-  rowPower: 0.8
-  # balance (CSV: row_switch_imbalance) — unequal row-step burden
-  rowImbalancePower: 0.8
+  # countPower: 1.0
+  # # level (CSV: mean_streak) — rewards long same-hand runs; subsumes the old switchPower
+  # meanStreakPower: 0.8
+  # # balance (CSV: streak_ratio) — unequal run lengths between hands
+  # streakPower: 0.8
+  # # level (CSV: row_switch_ratio) — penalizes row jumps inside a hand
+  # rowPower: 0.8
+  # # balance (CSV: row_switch_imbalance) — unequal row-step burden
+  # rowImbalancePower: 0.8
 
 ga:
   # Mutation probability applied per genome element.
