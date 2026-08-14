@@ -364,10 +364,9 @@ fn write_outputs(cfg: &RankConfig, state: &RankState) -> Result<()> {
     write_keyboard_json(&json, state, &tiers)?;
     write_report_csv(&csv, state, &tiers)?;
     write_bigrams_csv(&bigrams, state, &tiers)?;
-    let majority_rank = majority_ranks(state, &majority_stats(state));
-    let (rating_rho, majority_rho) = distance_correlations(state, &majority_rank);
     println!(
-        "{DIM}rank vs trivial distance (spearman):{RESET} {CYAN}rating {rating_rho:.3}, majority {majority_rho:.3}{RESET}"
+        "{DIM}rank vs trivial distance (spearman):{RESET} {CYAN}{:.3}{RESET}",
+        distance_correlation(state)
     );
     println!(
         "Wrote {}, {}, and {}",

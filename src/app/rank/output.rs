@@ -224,11 +224,13 @@ pub fn write_bigrams_csv(path: &Path, state: &RankState, tiers: &Tiers) -> Resul
         );
     }
 
-    // Rank/distance alignment: positive rho = worse-ranked pairs sit farther
+    // Rank/distance alignment: positive = worse-ranked pairs sit farther
     // apart on the trivial staggered grid.
-    let (rating_rho, majority_rho) = distance_correlations(state, &majority_rank);
-    let _ = writeln!(out, "spearman_rating_vs_distance,{rating_rho:.4}");
-    let _ = writeln!(out, "spearman_majority_vs_distance,{majority_rho:.4}");
+    let _ = writeln!(
+        out,
+        "spearman_rating_vs_distance,{:.4}",
+        distance_correlation(state)
+    );
     // Tier boundary quality: current vs optimal same-count partition.
     let (r2, optimal) = tier_quality(state, &tiers.groups, tier_count);
     let _ = writeln!(out, "tier_r2,{r2:.4},{optimal:.4}");
@@ -251,9 +253,9 @@ pub fn tier_quality(state: &RankState, groups: &[usize], count: usize) -> (f64, 
     (current, optimal)
 }
 
-/// Spearman rho of (rating rank, majority rank) against trivial slot distance.
-/// Both oriented so positive = discovered ranks follow physical distance.
-pub fn distance_correlations(state: &RankState, majority_rank: &[usize]) -> (f64, f64) {
+/// Spearman rho of the fitted rating order against trivial slot distance,
+/// oriented so positive = worse-rated pairs sit physically farther apart.
+pub fn distance_correlation(state: &RankState) -> f64 {
     let distances: Vec<f64> = state
         .items
         .iter()
@@ -261,11 +263,7 @@ pub fn distance_correlations(state: &RankState, majority_rank: &[usize]) -> (f64
         .collect();
     // Negated rating: low rating (worse pair) → high value, matching rank order.
     let rating_key: Vec<f64> = state.items.iter().map(|item| -item.rating).collect();
-    let majority_key: Vec<f64> = majority_rank.iter().map(|&rank| rank as f64).collect();
-    (
-        spearman(&rating_key, &distances),
-        spearman(&majority_key, &distances),
-    )
+    spearman(&rating_key, &distances)
 }
 
 /// 1-based majority rank per item derived from majority stats.
@@ -578,12 +576,12 @@ mod tests {
         let bigrams = dir.join("generated/reports/keyboard.bigrams.csv");
         write_bigrams_csv(&bigrams, &state, &tiers).unwrap();
         let text = std::fs::read_to_string(&bigrams).unwrap();
-        // items + header + spearman rows + tier_r2 row
-        assert_eq!(text.lines().count(), state.items.len() + 4);
+        // items + header + spearman row + tier_r2 row
+        assert_eq!(text.lines().count(), state.items.len() + 3);
         assert!(text.starts_with("rating_rank,"));
         assert!(text.contains(",\"QW\",\"PO\","));
         assert!(text.contains("spearman_rating_vs_distance,"));
-        assert!(text.contains("spearman_majority_vs_distance,"));
+        assert!(!text.contains("spearman_majority_vs_distance"));
         assert!(text.contains("tier_r2,"));
         std::fs::remove_dir_all(&dir).ok();
     }
@@ -615,15 +613,13 @@ mod tests {
     }
 
     #[test]
-    fn distance_correlations_track_rating_alignment() {
+    fn distance_correlation_tracks_rating_alignment() {
         let mut state = RankState::new();
         // Rating = −distance → perfect alignment (worse pair = farther).
         for item in state.items.iter_mut() {
             item.rating = 2000.0 - 100.0 * slot_distance(item.from, item.to);
         }
-        let majority_rank = majority_ranks(&state, &majority_stats(&state));
-        let (rating_rho, _) = distance_correlations(&state, &majority_rank);
-        assert!((rating_rho - 1.0).abs() < 1e-12);
+        assert!((distance_correlation(&state) - 1.0).abs() < 1e-12);
     }
 
     #[test]
