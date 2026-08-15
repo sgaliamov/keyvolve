@@ -112,21 +112,21 @@ evaluate:
 
 evaluator:
   # Fitness multiplier; higher scales scores up, lower scales down.
-  fitnessScale: 10
+  fitnessScale: 100000000000
   # Penalty knobs — each factor is (dimensionless ratio)^power:
   #   0.0 = off, 1.0 = full strength, between = softer, above = stricter.
   # Two per family: *level* = how much of the trait, *balance* = how evenly hands split it.
   # Derivation: src/app/layout_evaluator/penalty.rs
   # balance (CSV: hands_imbalance) — left/right press asymmetry
-  # countPower: 1.0
+  countPower: 1.0
   # # level (CSV: mean_streak) — rewards long same-hand runs; subsumes the old switchPower
-  # meanStreakPower: 0.8
+  meanStreakPower: 1.0
   # # balance (CSV: streak_ratio) — unequal run lengths between hands
-  # streakPower: 0.8
+  streakPower: 0.8
   # # level (CSV: row_switch_ratio) — penalizes row jumps inside a hand
-  # rowPower: 0.8
+  rowPower: 2.0
   # # balance (CSV: row_switch_imbalance) — unequal row-step burden
-  # rowImbalancePower: 0.8
+  rowImbalancePower: 1.0
 
 ga:
   # Mutation probability applied per genome element.
