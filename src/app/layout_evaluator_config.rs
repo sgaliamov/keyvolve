@@ -13,9 +13,9 @@ pub struct LayoutEvaluatorConfig {
     #[serde(default = "default_fitness_scale")]
     pub fitness_scale: f64,
 
-    /// Balance: hand-count imbalance (CSV: `hands_imbalance`).
+    /// Balance: hand-effort imbalance (CSV: `efforts_imbalance`).
     #[serde(default = "default_power")]
-    pub count_power: f64,
+    pub effort_power: f64,
 
     /// Balance: left/right run-length imbalance (CSV: `streak_ratio`).
     #[serde(default = "default_power")]
@@ -48,7 +48,7 @@ impl Default for LayoutEvaluatorConfig {
     fn default() -> Self {
         Self {
             fitness_scale: default_fitness_scale(),
-            count_power: default_power(),
+            effort_power: default_power(),
             streak_power: default_power(),
             mean_streak_power: default_power(),
             row_imbalance_power: default_power(),
@@ -66,8 +66,8 @@ mod tests {
     /// penalty that no longer exists, so the load has to fail rather than default.
     #[test]
     fn stale_knob_names_are_rejected() {
-        for stale in ["minStreakPower", "switchPower", "balancePenaltyPower"] {
-            let json = format!(r#"{{"countPower": 1.0, "{stale}": 0.8}}"#);
+        for stale in ["minStreakPower", "switchPower", "balancePenaltyPower", "countPower"] {
+            let json = format!(r#"{{"effortPower": 1.0, "{stale}": 0.8}}"#);
 
             assert!(
                 serde_json::from_str::<LayoutEvaluatorConfig>(&json).is_err(),

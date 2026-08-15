@@ -10,7 +10,7 @@
 //!
 //! | family         | level (how much)                | balance (how evenly split) |
 //! |----------------|---------------------------------|----------------------------|
-//! | effort         | implicit: fitness divides by it | `count_power`              |
+//! | effort         | implicit: fitness divides by it | `effort_power`              |
 //! | same-hand runs | `mean_streak_power`             | `streak_power`             |
 //! | row jumps      | `row_power`                     | `row_imbalance_power`      |
 //!
@@ -58,22 +58,24 @@ use crate::models::ScoreResult;
 /// Penalty multiplier for a scored corpus. `1.0` = neutral, higher = worse layout.
 /// See the module docs for the algebra behind each factor.
 pub fn penalty(config: &LayoutEvaluatorConfig, r: &ScoreResult) -> f64 {
-    // Balance: both hands should carry comparable load.
-    let counts =
-        imbalance_ratio(r.left_count as f64, r.right_count as f64).powf(config.count_power);
-    let streaks = imbalance_ratio(r.left_streak(), r.right_streak()).powf(config.streak_power);
-    let rows = imbalance_ratio(
-        r.left_row_switch_cost as f64,
-        r.right_row_switch_cost as f64,
-    )
-    .powf(config.row_imbalance_power);
-
     // Level: row jumps cost, long same-hand runs pay back.
     // `max(1.0)` keeps an empty corpus neutral, where `mean_streak` is `0.0`.
     let row_jumps = (1.0 + r.row_switch_ratio()).powf(config.row_power);
+
+    let rows = imbalance_ratio(
+        r.left_row_switch_cost as f64,
+        r.right_row_switch_cost as f64,
+    ).powf(config.row_imbalance_power);
+
+    // Balance: both hands should carry comparable effort load.
+    let efforts =
+        imbalance_ratio(r.left_effort, r.right_effort).powf(config.effort_power);
+
+    let streaks = imbalance_ratio(r.left_streak(), r.right_streak()).powf(config.streak_power);
+
     let runs = r.mean_streak().powf(config.mean_streak_power).max(1.0);
 
-    counts * streaks * rows * row_jumps / runs
+    efforts * streaks * rows * row_jumps / runs
 }
 
 #[cfg(test)]
@@ -103,7 +105,7 @@ mod tests {
     #[test]
     fn zero_powers_leave_penalty_neutral() {
         let config = LayoutEvaluatorConfig {
-            count_power: 0.0,
+            effort_power: 0.0,
             streak_power: 0.0,
             mean_streak_power: 0.0,
             row_imbalance_power: 0.0,
@@ -119,7 +121,7 @@ mod tests {
     #[test]
     fn each_power_moves_penalty_in_its_documented_direction() {
         let off = LayoutEvaluatorConfig {
-            count_power: 0.0,
+            effort_power: 0.0,
             streak_power: 0.0,
             mean_streak_power: 0.0,
             row_imbalance_power: 0.0,
@@ -133,7 +135,7 @@ mod tests {
             penalty(&config, &skewed())
         };
 
-        assert!(with(|c| c.count_power = 1.0) > neutral);
+        assert!(with(|c| c.effort_power = 1.0) > neutral);
         assert!(with(|c| c.streak_power = 1.0) > neutral);
         assert!(with(|c| c.row_imbalance_power = 1.0) > neutral);
         assert!(with(|c| c.row_power = 1.0) > neutral);
@@ -146,7 +148,7 @@ mod tests {
         let scaled = |power: f64| {
             penalty(
                 &LayoutEvaluatorConfig {
-                    count_power: power,
+                    effort_power: power,
                     streak_power: 0.0,
                     mean_streak_power: 0.0,
                     row_imbalance_power: 0.0,
@@ -170,6 +172,8 @@ mod tests {
             right_rolls: 1,
             left_row_switch_cost: 4,
             right_row_switch_cost: 1,
+            left_effort: 30.0,
+            right_effort: 10.0,
             ..Default::default()
         }
     }
