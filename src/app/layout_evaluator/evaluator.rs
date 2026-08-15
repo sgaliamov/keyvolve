@@ -369,6 +369,7 @@ mod tests {
             fitness_scale: 1_000_000.,
             effort_power: 1.0,
             streak_power: 1.0,
+            roll_imbalance_power: 0.0,
             mean_streak_power: 1.0,
             row_imbalance_power: 1.0,
             row_power: 0.0,

@@ -11,6 +11,7 @@
 //! | family         | level (how much)                | balance (how evenly split) |
 //! |----------------|---------------------------------|----------------------------|
 //! | effort         | implicit: fitness divides by it | `effort_power`              |
+//! | rolls          | -                               | `roll_imbalance_power`      |
 //! | same-hand runs | `mean_streak_power`             | `streak_power`             |
 //! | row jumps      | `row_power`                     | `row_imbalance_power`      |
 //!
@@ -73,9 +74,12 @@ pub fn penalty(config: &LayoutEvaluatorConfig, r: &ScoreResult) -> f64 {
     // Balance: both hands should carry comparable effort load.
     let efforts = imbalance_ratio(r.left_effort, r.right_effort).powf(config.effort_power);
 
+    let rolls = imbalance_ratio(r.left_rolls as f64, r.right_rolls as f64)
+        .powf(config.roll_imbalance_power);
+
     let streaks = imbalance_ratio(r.left_streak(), r.right_streak()).powf(config.streak_power);
 
-    efforts * streaks * rows * row_jumps / runs
+    efforts * streaks * rolls * rows * row_jumps / runs
 }
 
 #[cfg(test)]
@@ -107,6 +111,7 @@ mod tests {
         let config = LayoutEvaluatorConfig {
             effort_power: 0.0,
             streak_power: 0.0,
+            roll_imbalance_power: 0.0,
             mean_streak_power: 0.0,
             row_imbalance_power: 0.0,
             row_power: 0.0,
@@ -123,6 +128,7 @@ mod tests {
         let off = LayoutEvaluatorConfig {
             effort_power: 0.0,
             streak_power: 0.0,
+            roll_imbalance_power: 0.0,
             mean_streak_power: 0.0,
             row_imbalance_power: 0.0,
             row_power: 0.0,
@@ -137,6 +143,7 @@ mod tests {
 
         assert!(with(|c| c.effort_power = 1.0) > neutral);
         assert!(with(|c| c.streak_power = 1.0) > neutral);
+        assert!(with(|c| c.roll_imbalance_power = 1.0) > neutral);
         assert!(with(|c| c.row_imbalance_power = 1.0) > neutral);
         assert!(with(|c| c.row_power = 1.0) > neutral);
         assert!(with(|c| c.mean_streak_power = 1.0) < neutral);
@@ -150,6 +157,7 @@ mod tests {
                 &LayoutEvaluatorConfig {
                     effort_power: power,
                     streak_power: 0.0,
+                    roll_imbalance_power: 0.0,
                     mean_streak_power: 0.0,
                     row_imbalance_power: 0.0,
                     row_power: 0.0,

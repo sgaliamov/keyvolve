@@ -121,10 +121,12 @@ evaluator:
   # rowPower: 1.5
   # balance (CSV: row_switch_imbalance) — unequal row-step burden
   rowImbalancePower: 0.5
-  # # level (CSV: mean_streak) — rewards long same-hand runs; affects hand-switching frequency
-  # meanStreakPower: 3.0
+  # level (CSV: mean_streak, hand_switch_ratio) — rewards long same-hand runs; affects hand-switching frequency
+  meanStreakPower: 0.5
   # balance (CSV: efforts_imbalance) — left/right effort asymmetry
   # effortPower: 0.5
+  # # balance (CSV: roll_ratio) — unequal roll distribution between hands
+  # rollImbalancePower: 0.0
   # # balance (CSV: streak_ratio) — unequal run lengths between hands
   # streakPower: 1.0
 

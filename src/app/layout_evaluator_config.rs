@@ -21,6 +21,10 @@ pub struct LayoutEvaluatorConfig {
     #[serde(default = "default_power")]
     pub streak_power: f64,
 
+    /// Balance: left/right roll imbalance (CSV: `roll_ratio`).
+    #[serde(default = "default_power")]
+    pub roll_imbalance_power: f64,
+
     /// Level: long same-hand runs, applied as a reward divisor (CSV: `mean_streak`).
     #[serde(default = "default_power")]
     pub mean_streak_power: f64,
@@ -50,6 +54,7 @@ impl Default for LayoutEvaluatorConfig {
             fitness_scale: default_fitness_scale(),
             effort_power: default_power(),
             streak_power: default_power(),
+            roll_imbalance_power: default_power(),
             mean_streak_power: default_power(),
             row_imbalance_power: default_power(),
             row_power: default_power(),
