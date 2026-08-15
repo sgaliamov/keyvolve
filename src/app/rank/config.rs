@@ -42,8 +42,8 @@ fn default_forced_answer_weight() -> u32 {
     3
 }
 
-fn default_tier_split_z() -> f64 {
-    2.2
+fn default_tier_count() -> usize {
+    10
 }
 
 fn is_pair_label(value: &str) -> bool {
@@ -86,11 +86,11 @@ pub struct RankConfig {
     #[serde(default = "default_max_deviation")]
     pub max_deviation: f64,
 
-    /// Lower bound for adaptive tier efforts.
+    /// Lower bound for fixed-tier efforts.
     #[serde(default = "default_effort_min")]
     pub effort_min: f64,
 
-    /// Upper bound for adaptive tier efforts.
+    /// Upper bound for fixed-tier efforts.
     #[serde(default = "default_effort_max")]
     pub effort_max: f64,
 
@@ -117,14 +117,9 @@ pub struct RankConfig {
     #[serde(default)]
     pub force_check_pair: Option<String>,
 
-    /// Tier split threshold multiplier; higher keeps adjacent items together.
-    #[serde(default = "default_tier_split_z")]
-    pub tier_split_z: f64,
-
-    /// Optional fixed tier count; overrides adaptive splitting with the
-    /// optimal same-count partition over fitted ratings.
-    #[serde(default)]
-    pub tier_count: Option<usize>,
+    /// Fixed tier count; boundaries minimize within-tier rating variance.
+    #[serde(default = "default_tier_count")]
+    pub tier_count: usize,
 
     /// Optional RNG seed for reproducible question order.
     pub seed: Option<u64>,
@@ -177,13 +172,8 @@ impl RankConfig {
                 "rank.forcedAnswerWeight must be greater than 0"
             ));
         }
-        if !self.tier_split_z.is_finite() || self.tier_split_z <= 0.0 {
-            return Err(miette::miette!(
-                "rank.tierSplitZ must be finite and greater than 0"
-            ));
-        }
-        if self.tier_count == Some(0) {
-            return Err(miette::miette!("rank.tierCount must be greater than 0"));
+        if !(1..=210).contains(&self.tier_count) {
+            return Err(miette::miette!("rank.tierCount must be between 1 and 210"));
         }
         if let Some(pair) = &self.force_check_pair
             && !is_forced_check_pair_format(pair)
@@ -250,8 +240,7 @@ impl Default for RankConfig {
             thin_margin: default_thin_margin(),
             forced_answer_weight: default_forced_answer_weight(),
             force_check_pair: None,
-            tier_split_z: default_tier_split_z(),
-            tier_count: None,
+            tier_count: default_tier_count(),
             seed: None,
         }
     }
@@ -295,28 +284,27 @@ mod tests {
     }
 
     #[test]
-    fn rejects_invalid_tier_split_z() {
-        let cfg = RankConfig {
-            tier_split_z: 0.0,
-            ..Default::default()
-        };
-        assert!(cfg.validate().is_err());
-    }
-
-    #[test]
     fn rejects_zero_tier_count() {
         let cfg = RankConfig {
-            tier_count: Some(0),
+            tier_count: 0,
             ..Default::default()
         };
         assert!(cfg.validate().is_err());
         assert!(
             RankConfig {
-                tier_count: Some(8),
+                tier_count: 8,
                 ..Default::default()
             }
             .validate()
             .is_ok()
+        );
+        assert!(
+            RankConfig {
+                tier_count: 211,
+                ..Default::default()
+            }
+            .validate()
+            .is_err()
         );
     }
 

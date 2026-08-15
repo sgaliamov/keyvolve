@@ -44,9 +44,8 @@ because they were repeated many times. A `!` answer is simply a shortcut for rep
 same answer several times — it saturates the same way.
 
 Each rating carries an **uncertainty** (deviation) that shrinks as the bigram collects
-answers. A bigram is *settled* once it has sufficient matches and low deviation.
-Unresolved distinctions no longer block settling: statistically overlapping bigrams share
-one adaptive tier and therefore one final effort.
+answers. A bigram is *settled* once it has sufficient matches and low deviation. Output
+tiers are a separate, fixed-count compression step after fitting.
 
 ### How deviation changes
 
@@ -62,8 +61,7 @@ of the posterior); deviation is the width of that peak. Practical consequences:
   diminishing returns; `!` records several confirmations at once without re-asking.
 - **It (almost) never grows.** Every answer adds information — even a contradictory one
   shrinks deviation. A contradiction hurts differently: it *compresses the rating gap*,
-  making the pair harder to tell apart despite the smaller deviations. Compressed,
-  statistically overlapping ratings merge into one adaptive tier.
+  making the pair harder to tell apart despite the smaller deviations.
 - **It never reaches zero.** The prior keeps a floor; typical values fall from the
   initial 350 to ~100 after 15 matches.
 
@@ -71,38 +69,17 @@ For settling, what matters is the deviation of the *difference* between two bigr
 which also accounts for their correlation — two pairs that moved together are easier to
 tell apart than their individual deviations suggest.
 
-### Adaptive tiers and final efforts
+### Fixed tiers and final efforts
 
-Two independent mechanisms produce the final efforts — one decides *where* the tiers are,
-the other decides *what effort* each tier gets.
+`tierCount` defines exactly how many effort levels the generated keyboard has. Bigrams are
+sorted by fitted rating, then exact 1D k-means places the boundaries that minimize rating
+variation inside each tier. This is the best possible partition for the configured count.
 
-**Finding tiers** is the job of `tierSplitZ`. Bigrams are sorted by rating, best first. The
-best item starts a tier. Following items remain in that tier until one is confidently worse
-than the tier anchor:
+Choosing the count is a compression choice:
 
-```text
-anchor rating - candidate rating > tierSplitZ × deviation(anchor - candidate)
-```
-
-That candidate starts the next tier. The comparison uses posterior covariance, so correlated
-ratings are handled correctly. More evidence shrinks difference deviation and can split a
-previously broad tier. This is also where the tier *count* comes from: it grows on its own
-as evidence accumulates — nothing else supplies it. Splits only happen at statistically real
-gaps, which is why tiers stay stable between runs and why noise never creates a boundary
-(the tier quality line below measures how little this safety costs).
-
-Prefer a concrete number over the statistical threshold? Set `tierCount` and the splitter is
-bypassed: the ratings are cut into exactly that many tiers at the best possible boundary
-positions (the same optimal partition the tier quality line compares against). The
-trade-off: boundaries are no longer confidence-gated, so with few answers they may separate
-statistically indistinguishable pairs and drift between runs.
-
-Which to use? `tierCount` shifts the hard question onto you: *how many tiers does the data
-support?* Too few merges genuinely different pairs into one effort; too many splits
-statistically identical ones apart. The adaptive splitter answers that question from
-evidence — so the practical recipe is: rank with the default adaptive tiers, note the tier
-count it discovers, and only pin `tierCount` if you deliberately want a different
-granularity for the generated keyboard (e.g. fewer, coarser effort levels).
+- too few tiers merge meaningfully different pairs into one effort;
+- more tiers preserve more detail but create more effort levels;
+- `tier_r2` (explained below) reports how much rating detail the chosen count preserves.
 
 **Assigning efforts** is proportional to the rating gaps between the found tiers. Each tier
 takes the mean rating of its items; the best tier's mean is pinned to `effortMin`, the worst
@@ -130,8 +107,8 @@ fit: log-loss 0.412, agreement 87%, spread/dev 14.2, tiers 9
 - **spread/dev** — rating range divided by mean deviation: how many "units of
   uncertainty" fit between the best and worst bigram. High (`>10`) = the ranking is
   well resolved; low (`<5`) = many items remain statistically indistinguishable.
-- **tiers** — actual number of adaptive confidence tiers currently produced. This is also
-  the number of effort entries written to the ranked keyboard JSON.
+- **tiers** — configured tier count. This is also the number of effort entries written to
+  the ranked keyboard JSON.
 
 A healthy finished session has *wide* spread — big rating gaps are the goal, not a
 problem. Dense, bunched-up ratings with low deviations mean the answers were
@@ -139,40 +116,20 @@ contradictory and the model gave up on separating items.
 
 ### Reading the tier quality line
 
-Right after the fit line, the stats screen checks one thing: **are the tier boundaries in
-the right places?**
+Right after the fit line, the stats screen reports how much fitted-rating detail survives
+compression into the configured number of tiers:
 
 ```
-tiers: R² 0.991, optimal same-k 0.993, gap 0.002
+tiers: R² 0.980 (rating variation preserved)
 ```
 
-Plain reading: the first number says how well the tiers summarize your ranking (1.0 =
-perfectly). The second says how well the *best possible* boundaries would do with the same
-number of tiers. **Only the gap between them matters** — it tells you whether moving the
-boundaries around could improve anything:
+`1.0` means no rating variation was lost; `0.98` means the tiers preserve 98% and discard
+about 2%. Higher is better. Raise `tierCount` if you want to preserve more detail; lower it
+if you deliberately want fewer, coarser effort levels. The boundaries are already optimal
+for the chosen count, so there is no second "optimal" number to compare against.
 
-- gap `< 0.02` — boundaries are already as good as they can get. Ignore this line.
-- gap `0.02–0.05` — a few pairs near tier edges may sit one effort step off. Harmless.
-- gap `> 0.05` — the splitter misses real structure; boundary placement worth revisiting.
-
-In the example above the gap is `0.002`: the tiers lose almost nothing compared to the
-theoretical optimum, so there is nothing to tune.
-
-One special case: if the first number itself is low (below ~`0.85`) while the gap stays
-small, the problem is too *few* tiers, not badly placed ones — lower `tierSplitZ` to allow
-more splits.
-
-**How is "optimal" known, and why not just use it?** In 1D the truly best split into k
-contiguous tiers can be computed exactly (dynamic programming over the sorted ratings), so
-the second number is a mathematical ceiling, not an estimate. It is not used directly
-because it only optimizes summarizing the *point estimates*: it ignores rating uncertainty,
-so it would happily draw boundaries between statistically identical pairs, jump around
-after every answer, and hallucinate structure early in a session. The confidence splitter
-only cuts where a gap is statistically real — the optimal partition serves purely as a
-yardstick for how much R² that safety costs (here: almost none).
-
-The same numbers appear as the `tier_r2,<current>,<optimal>` summary row at the bottom of
-the flat bigrams CSV.
+The same number appears as the `tier_r2,<value>` summary row at the bottom of the flat
+bigrams CSV.
 
 ## Choosing the next question
 
@@ -283,7 +240,8 @@ That fitted order can:
 Majority order and fitted order do different jobs:
 
 - **majority order** → detect cycles and thin contradictions from raw votes
-- **fitted order** → estimate global ratings, deviations, adaptive tiers, and final efforts
+- **fitted order** → estimate global ratings and deviations, then produce fixed-count tiers
+  and final efforts
 
 They also do **not** guarantee the same row order in exports:
 
@@ -430,14 +388,13 @@ The file ends with two summary rows — these are the ones to actually read:
   pushes effort up, but most of what you felt comes from *other* factors — which finger,
   which row, awkward stagger — exactly the signal the ranking exists to capture.
 
-- `tier_r2` — the two tier quality numbers from the stats line (current, best possible).
-  Both near `1` and close together (e.g. `0.99, 0.99`) = tiers summarize the ranking about
-  as well as tiers possibly can; nothing to fix. See "Reading the tier quality line".
+- `tier_r2` — share of fitted-rating variation preserved by the configured tiers.
+  `0.98` means 98% retained and about 2% discarded. Raise `tierCount` to retain more.
 
 `majority_rank` is a summary projection of the direct-majority graph for inspection. Cycle
 detection still uses the raw majority edges themselves, not this flattened rank.
 
-`tier` is the final confidence-aware group. Its `effort` value is written to the generated
+`tier` is the final fixed-count group. Its `effort` value is written to the generated
 keyboard JSON.
 
 The session file keeps the raw answer history, so future runs can re-verify or refine the
@@ -460,8 +417,7 @@ All settings live under `rank:` in `keyvolve.yaml`; every one has a sensible def
 | `thinMargin` | `1.0` | Maximum head-to-head win margin for an edge to count as thin (fragile). Thin edges flip easily; higher = fewer re-asks, lower = stricter. |
 | `forcedAnswerWeight` | `3` | Confirmations recorded by one `!` answer — a shortcut for answering the same way several times. |
 | `forceCheckPair` | unset | Optional one-time first question in `XX-YY` format (left-hand labels), e.g. `AF-VE`. |
-| `tierSplitZ` | `2.2` | Global tier split multiplier. Higher = fewer splits, more merging near the bottom. Ignored when `tierCount` is set. |
-| `tierCount` | unset | Fixed number of tiers. Cuts the ratings at optimal boundary positions instead of adaptive confidence splitting. Unset = tier count adapts to evidence. |
+| `tierCount` | `10` | Number of effort tiers (1–210). Boundaries minimize within-tier rating variance. More tiers preserve more detail. |
 | `effortMin` | `1.0` | Effort assigned to the best tier; lower bound of the rating-proportional mapping. |
 | `effortMax` | `10.0` | Effort assigned to the worst tier; upper bound of the rating-proportional mapping. |
 | `effortGamma` | `1.0` | Shaping exponent for the rating-proportional mapping. `1` = linear (effort gaps mirror rating gaps); `> 1` bunches easy tiers near `effortMin` with a harsh tail; `< 1` spreads easy tiers with a flat tail. Endpoints stay pinned. |
@@ -486,4 +442,5 @@ keyvolve --mode rank --rank.forceCheckPair AF-VE
 - Fewer questions → raise `maxDeviation` or lower `minMatches`/`maxMatches`.
 - Higher confidence → the opposite; add `auditRate: 0.1` to weave consistency checks into
   a normal session.
-- `effortMin`/`effortMax` only scale adaptive tier efforts; they don't affect ranking itself.
+- `tierCount`, `effortMin`, and `effortMax` only control output compression and effort
+  scaling; they don't affect ranking itself.

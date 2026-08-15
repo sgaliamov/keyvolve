@@ -488,14 +488,11 @@ fn print_fit_quality(state: &RankState, cfg: &RankConfig) {
         (max - min) / mean_dev,
         tiers,
     );
-    // Boundary quality vs the optimal same-count partition; the gap is the
-    // actionable number (see docs/rank-mode.md "Reading the tier quality line").
-    let (r2, optimal) = tier_quality(state, &groups, tiers);
+    // Rating detail retained after compressing all pairs into fixed-count tiers.
+    let r2 = tier_r2(state, &groups, tiers);
     println!(
-        "{DIM}tiers: R²{RESET} {:.3}{DIM}, optimal same-k{RESET} {:.3}{DIM}, gap{RESET} {:.3}",
+        "{DIM}tiers: R²{RESET} {:.3}{DIM} (rating variation preserved){RESET}",
         r2,
-        optimal,
-        optimal - r2,
     );
 }
 

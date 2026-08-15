@@ -3,7 +3,7 @@ use miette::{IntoDiagnostic, Result};
 use std::fmt::Write as _;
 use std::path::Path;
 
-/// Adaptive confidence tiers and their final effort values.
+/// Fixed-count rating tiers and their final effort values.
 pub struct Tiers {
     /// Effort per tier index, ascending (tier 0 = most preferable).
     pub efforts: Vec<f64>,
@@ -11,8 +11,7 @@ pub struct Tiers {
     pub groups: Vec<usize>,
 }
 
-/// Build final tiers with rating-anchored effort values. A configured
-/// `tierCount` fixes the count; otherwise tiers adapt to confidence.
+/// Build fixed-count tiers with rating-anchored effort values.
 pub fn tiers(state: &RankState, cfg: &RankConfig) -> Tiers {
     let (groups, count) = tier_groups(state, cfg);
     if count == 0 {
@@ -25,13 +24,9 @@ pub fn tiers(state: &RankState, cfg: &RankConfig) -> Tiers {
     Tiers { efforts, groups }
 }
 
-/// Tier assignment + tier count: fixed optimal partition when `tierCount`
-/// is set, adaptive confidence tiers otherwise.
+/// Optimal fixed-count tier assignment and realized count.
 pub fn tier_groups(state: &RankState, cfg: &RankConfig) -> (Vec<usize>, usize) {
-    let groups = match cfg.tier_count {
-        Some(k) if !state.items.is_empty() => fixed_tiers(state, k),
-        _ => state.confidence_tiers(cfg),
-    };
+    let groups = fixed_tiers(state, cfg.tier_count);
     let count = groups.iter().max().map_or(0, |&tier| tier + 1);
     (groups, count)
 }
@@ -261,29 +256,22 @@ pub fn write_bigrams_csv(path: &Path, state: &RankState, tiers: &Tiers) -> Resul
         "spearman_rating_vs_distance,{:.4},\"correlation between discovered ranks and physical key distance: 1 = ranking is pure distance, 0 = no relation, negative = farther felt easier (suspicious); 0.3-0.7 healthy\"",
         distance_correlation(state)
     );
-    // Tier boundary quality: current vs optimal same-count partition.
-    let (r2, optimal) = tier_quality(state, &tiers.groups, tier_count);
+    // Compression quality: share of rating variation retained by the tiers.
+    let r2 = tier_r2(state, &tiers.groups, tier_count);
     let _ = writeln!(
         out,
-        "tier_r2,{r2:.4},{optimal:.4},\"how well tiers summarize the ranking (actual, best possible for same tier count); only the gap matters: < 0.02 = nothing to fix\""
+        "tier_r2,{r2:.4},\"share of discovered rating variation preserved by the configured tier count: 1 = no detail lost, higher is better; raise tierCount to preserve more\""
     );
     write_text(path, out)
 }
 
-/// Tier boundary quality over fitted ratings: R² of the given tier assignment
-/// and of the optimal same-count 1D k-means partition (Ckmeans DP). The gap
-/// between the two isolates boundary placement quality from tier count.
-/// See docs/rank-mode.md "Reading the tier quality line".
-pub fn tier_quality(state: &RankState, groups: &[usize], count: usize) -> (f64, f64) {
+/// Share of fitted-rating variance preserved by the tier means.
+pub fn tier_r2(state: &RankState, groups: &[usize], count: usize) -> f64 {
     if count == 0 || state.items.is_empty() {
-        return (1.0, 1.0);
+        return 1.0;
     }
     let ratings: Vec<f64> = state.items.iter().map(|item| item.rating).collect();
-    let current = variance_explained(&ratings, groups, count);
-    let mut sorted = ratings;
-    sorted.sort_by(f64::total_cmp);
-    let optimal = variance_explained(&sorted, &ckmeans_partition(&sorted, count), count);
-    (current, optimal)
+    variance_explained(&ratings, groups, count)
 }
 
 /// Spearman rho of the fitted rating order against trivial slot distance,
@@ -596,7 +584,7 @@ mod tests {
         let json = dir.join("generated/json/keyboard.json");
         write_keyboard_json(&json, &state, &tiers).unwrap();
         let loaded = crate::models::Keyboard::load(&json).unwrap();
-        assert_eq!(loaded.efforts.len(), state.confidence_tier_count(&cfg));
+        assert_eq!(loaded.efforts.len(), cfg.tier_count);
         assert_eq!(loaded.pairs.len(), 30); // left + mirrored right
         assert!(loaded.pairs[&0].len() == 15);
 
@@ -676,24 +664,23 @@ mod tests {
     }
 
     #[test]
-    fn tier_quality_optimal_bounds_current() {
-        let cfg = RankConfig::default();
+    fn tier_r2_reports_fixed_count_compression() {
+        let cfg = RankConfig {
+            tier_count: 2,
+            ..Default::default()
+        };
         let mut state = RankState::new();
         for (i, item) in state.items.iter_mut().enumerate() {
-            // Two lumps with noise → non-trivial boundaries.
-            item.rating = if i % 3 == 0 { 1800.0 } else { 1200.0 } + (i % 7) as f64 * 10.0;
+            item.rating = if i < 100 { 1800.0 } else { 1200.0 } + (i % 7) as f64;
         }
-        let groups = state.confidence_tiers(&cfg);
-        let count = state.confidence_tier_count(&cfg);
-        let (current, optimal) = tier_quality(&state, &groups, count);
-        assert!(optimal >= current - 1e-12);
-        assert!(optimal <= 1.0 + 1e-12);
+        let (groups, count) = tier_groups(&state, &cfg);
+        assert!(tier_r2(&state, &groups, count) > 0.99);
     }
 
     #[test]
-    fn fixed_tier_count_overrides_adaptive_splitting() {
+    fn configured_tier_count_controls_output() {
         let cfg = RankConfig {
-            tier_count: Some(5),
+            tier_count: 5,
             ..Default::default()
         };
         let state = ranked_state();

@@ -272,41 +272,6 @@ impl RankState {
             .sqrt()
     }
 
-    /// Assign fitted items to confidence-aware tiers, best tier first.
-    pub fn confidence_tiers(&self, cfg: &RankConfig) -> Vec<usize> {
-        let mut order = (0..self.items.len()).collect::<Vec<_>>();
-        order.sort_by(|&a, &b| {
-            self.items[b]
-                .rating
-                .total_cmp(&self.items[a].rating)
-                .then_with(|| a.cmp(&b))
-        });
-        let mut groups = vec![0; self.items.len()];
-        let Some(&first) = order.first() else {
-            return groups;
-        };
-        let (mut tier, mut anchor) = (0, first);
-        for &candidate in order.iter().skip(1) {
-            let gap = self.items[anchor].rating - self.items[candidate].rating;
-            if gap > cfg.tier_split_z * self.difference_deviation(anchor, candidate) {
-                tier += 1;
-                anchor = candidate;
-            }
-            groups[candidate] = tier;
-        }
-        groups
-    }
-
-    /// Number of confidence-aware tiers in the current fit (test helper;
-    /// production goes through `output::tier_groups`).
-    #[cfg(test)]
-    pub fn confidence_tier_count(&self, cfg: &RankConfig) -> usize {
-        self.confidence_tiers(cfg)
-            .into_iter()
-            .max()
-            .map_or(0, |tier| tier + 1)
-    }
-
     /// Resolve `AF-VE` style pair labels to two `items` indexes.
     pub fn resolve_forced_check_pair(&self, spec: &str) -> Result<(usize, usize)> {
         let (left, right) = split_forced_pair(spec)?;
@@ -668,79 +633,6 @@ mod tests {
     fn rejects_forced_check_pair_with_unknown_label() {
         let state = RankState::new();
         assert!(state.resolve_forced_check_pair("A;-VE").is_err());
-    }
-
-    #[test]
-    fn confidence_tiers_merge_ties_and_split_clear_items() {
-        let cfg = RankConfig::default();
-        let mut state = RankState::new();
-        for (index, item) in state.items.iter_mut().enumerate() {
-            item.rating = 30_000.0 - index as f64 * 100.0;
-            item.deviation = 1.0;
-            item.matches = cfg.min_matches;
-        }
-        state.covariance = prior_covariance(state.items.len());
-        for i in 0..state.items.len() {
-            state.covariance[i * state.items.len() + i] = 1.0;
-        }
-        assert_eq!(state.confidence_tier_count(&cfg), state.items.len());
-        assert_eq!(state.settled_count(&cfg), state.items.len());
-
-        for item in &mut state.items {
-            item.rating = START_RATING;
-        }
-        assert_eq!(state.confidence_tier_count(&cfg), 1);
-        assert_eq!(state.settled_count(&cfg), state.items.len());
-    }
-
-    #[test]
-    fn confidence_tiers_allow_uneven_populations() {
-        let mut state = RankState::new();
-        for item in &mut state.items {
-            item.rating = 0.0;
-            item.deviation = 1.0;
-        }
-        state.items[0].rating = 100.0;
-        state.items[1].rating = 99.0;
-        state.items[2].rating = 97.0;
-        state.items[3].rating = 96.0;
-        state.covariance = prior_covariance(state.items.len());
-        for i in 0..state.items.len() {
-            state.covariance[i * state.items.len() + i] = 1.0;
-        }
-
-        let tiers = state.confidence_tiers(&RankConfig::default());
-        assert_eq!(&tiers[..4], &[0, 0, 0, 1]);
-        assert!(tiers[4..].iter().all(|&tier| tier >= 1));
-    }
-
-    #[test]
-    fn larger_tier_split_z_merges_more_items() {
-        let mut narrow_state = RankState::new();
-        let mut wide_state = RankState::new();
-        for state in [&mut narrow_state, &mut wide_state] {
-            for item in &mut state.items {
-                item.rating = 0.0;
-                item.deviation = 1.0;
-            }
-            state.items[0].rating = 100.0;
-            state.items[1].rating = 98.0;
-            state.items[2].rating = 96.0;
-        }
-        narrow_state.items[1].deviation = 0.5;
-        wide_state.items[1].deviation = 0.5;
-        let narrow_count = narrow_state.confidence_tier_count(&RankConfig {
-            tier_split_z: 1.0,
-            ..Default::default()
-        });
-        wide_state.items[0].rating = 100.0;
-        wide_state.items[1].rating = 99.0;
-        wide_state.items[2].rating = 98.5;
-        let wide_count = wide_state.confidence_tier_count(&RankConfig {
-            tier_split_z: 10.0,
-            ..Default::default()
-        });
-        assert!(wide_count <= narrow_count);
     }
 
     #[test]
