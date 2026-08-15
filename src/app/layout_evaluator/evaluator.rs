@@ -176,7 +176,7 @@ mod tests {
         assert_eq!(score.left_count, 0);
         assert_eq!(score.right_count, 0);
         assert_eq!(score.hand_switches, 0);
-        assert_eq!(score.row_switch_cost(), 0);
+        assert_eq!(score.row_switch_distance(), 0);
         assert_close(score.left_effort, 0.0);
         assert_close(score.right_effort, 0.0);
     }
@@ -192,7 +192,7 @@ mod tests {
         assert_eq!(score.left_rolls, 1);
         assert_eq!(score.right_rolls, 0);
         assert_eq!(score.hand_switches, 0);
-        assert_eq!(score.row_switch_cost(), 0);
+        assert_eq!(score.row_switch_distance(), 0);
         assert_close(score.effort, 3.0);
         assert_close(score.fitness, 0.0);
         assert_close(score.left_effort, 3.0);
@@ -208,7 +208,7 @@ mod tests {
         assert_eq!(score.left_count, 2);
         assert_eq!(score.right_count, 0);
         assert_eq!(score.hand_switches, 0);
-        assert_eq!(score.row_switch_cost(), 0);
+        assert_eq!(score.row_switch_distance(), 0);
         assert_close(score.effort, 2.0);
         assert_close(score.fitness, 0.0);
         assert_close(score.left_effort, 2.0);
@@ -226,7 +226,7 @@ mod tests {
         assert_eq!(score.left_rolls, 0);
         assert_eq!(score.right_rolls, 0);
         assert_eq!(score.hand_switches, 1);
-        assert_eq!(score.row_switch_cost(), 0);
+        assert_eq!(score.row_switch_distance(), 0);
         assert_close(score.effort, 2.0);
         assert_close(score.fitness, 0.0);
         assert_close(score.left_effort, 1.0);
@@ -251,7 +251,7 @@ mod tests {
         let score = evaluator.score_word("ad", &test_keys());
 
         assert_eq!(score.hand_switches, 0);
-        assert_eq!(score.row_switch_cost(), 1);
+        assert_eq!(score.row_switch_distance(), 1);
         assert_close(score.effort, 3.0);
     }
 
@@ -262,7 +262,7 @@ mod tests {
         let score = evaluator.score_word("ae", &test_keys());
 
         assert_eq!(score.hand_switches, 0);
-        assert_eq!(score.row_switch_cost(), 2);
+        assert_eq!(score.row_switch_distance(), 2);
         assert_close(score.effort, 5.0);
     }
 
@@ -279,7 +279,7 @@ mod tests {
 
         let score = evaluator.score_corpus(&test_keys());
 
-        assert_eq!(score.row_switch_cost(), 1);
+        assert_eq!(score.row_switch_distance(), 1);
         // Single-hand corpus: every imbalance ratio is neutral. One roll carrying one row
         // step gives row factor (1 + 1/1) = 2, cancelled by the mean_streak divisor 2/1 = 2.
         // 1e6·2 / (3·1) = 666_666.67.
@@ -367,7 +367,7 @@ mod tests {
     fn test_config() -> LayoutEvaluatorConfig {
         LayoutEvaluatorConfig {
             fitness_scale: 1_000_000.,
-            count_power: 1.0,
+            effort_power: 1.0,
             streak_power: 1.0,
             mean_streak_power: 1.0,
             row_imbalance_power: 1.0,

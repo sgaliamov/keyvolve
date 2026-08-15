@@ -137,17 +137,18 @@ impl ScoreResult {
 
     // Aggregates: totals combining both hands.
 
-    /// Total weighted row-switch cost, both hands.
-    pub fn row_switch_cost(&self) -> u64 {
+    /// Total vertical row-switch distance, both hands (adjacent row = 1, jump = 2).
+    pub fn row_switch_distance(&self) -> u64 {
         self.left_row_switch_cost + self.right_row_switch_cost
     }
 
     /// Share of same-hand moves that cross rows, weighted by jump severity.
-    /// Range: [0.0, 2.0] — the numerator only accrues on same-hand bigrams, and a single
-    /// jump over a row costs 2. 0 = every same-hand move stays in its row.
+    /// Average vertical distance per same-hand press. Numerator: total row-switch distance
+    /// (adjacent row = 1, jump = 2). Denominator: all same-hand presses. Range: [0.0, ∞).
+    /// 0 = every same-hand move stays in its row. Example: 8 distance / 16 presses = 0.5 avg distance per press.
     pub fn row_switch_ratio(&self) -> f64 {
         crate::math::ratio(
-            self.row_switch_cost() as f64,
+            self.row_switch_distance() as f64,
             (self.left_count + self.right_count) as f64,
         )
     }
