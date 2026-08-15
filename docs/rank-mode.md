@@ -406,7 +406,7 @@ All settings live under `rank:` in `keyvolve.yaml`; every one has a sensible def
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
-| `output` | `data/keyboard.ranked.json` | Ranked keyboard JSON (efforts + pair groups). |
+| `output` | `data/keyboard.json` | Ranked keyboard JSON (efforts + pair groups). |
 | `report` | `output` with `.csv` | CSV visual report path. |
 | `session` | `data/rank-session.json` | Saved answer history for pause/resume. |
 | `auditRate` | `0` | Probability (0–1) that a question is an audit re-check instead of exploration. `0` = audits only after everything settles. |

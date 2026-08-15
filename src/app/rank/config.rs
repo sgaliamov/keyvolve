@@ -196,7 +196,7 @@ impl RankConfig {
     pub fn output_path(&self) -> PathBuf {
         self.output
             .clone()
-            .unwrap_or_else(|| PathBuf::from("data/keyboard.ranked.json"))
+            .unwrap_or_else(|| PathBuf::from("data/keyboard.json"))
     }
 
     /// Resolved CSV report path: explicit `report`, or output with `.csv`.
