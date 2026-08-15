@@ -39,9 +39,9 @@ fn default_fitness_scale() -> f64 {
     1_000_000.
 }
 
-/// Serde default for every penalty power: full strength.
+/// Serde default for every penalty power: disabled.
 fn default_power() -> f64 {
-    1.0
+    0.0
 }
 
 impl Default for LayoutEvaluatorConfig {

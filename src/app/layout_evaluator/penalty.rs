@@ -65,15 +65,15 @@ pub fn penalty(config: &LayoutEvaluatorConfig, r: &ScoreResult) -> f64 {
     let rows = imbalance_ratio(
         r.left_row_switch_cost as f64,
         r.right_row_switch_cost as f64,
-    ).powf(config.row_imbalance_power);
-
-    // Balance: both hands should carry comparable effort load.
-    let efforts =
-        imbalance_ratio(r.left_effort, r.right_effort).powf(config.effort_power);
-
-    let streaks = imbalance_ratio(r.left_streak(), r.right_streak()).powf(config.streak_power);
+    )
+    .powf(config.row_imbalance_power);
 
     let runs = r.mean_streak().powf(config.mean_streak_power).max(1.0);
+
+    // Balance: both hands should carry comparable effort load.
+    let efforts = imbalance_ratio(r.left_effort, r.right_effort).powf(config.effort_power);
+
+    let streaks = imbalance_ratio(r.left_streak(), r.right_streak()).powf(config.streak_power);
 
     efforts * streaks * rows * row_jumps / runs
 }
