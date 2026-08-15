@@ -140,17 +140,12 @@ impl LayoutEvaluator {
             .chain(bigrams)
             .fold(ScoreResult::default(), |acc, x| acc + x);
 
-        // Normalization by total presses (CSV: effort, left_effort, right_effort).
-        // Dividing by presses makes fitness independent of corpus size.
-        // Layouts with different input lengths compare equally.
-        let presses = (result.left_count + result.right_count).max(1) as f64;
-
         let penalty = penalty(&self.config, &result);
 
-        // Fitness (CSV column) = (scale · presses) / (effort · penalty). Higher = better.
+        // Fitness (CSV column) = scale / (effort · penalty). Higher = better.
         // - effort: raw bigram cost from the pairs table
         // - penalty: dimensionless multiplier built from per-press ratios
-        result.fitness = self.config.fitness_scale * presses / (result.effort * penalty);
+        result.fitness = self.config.fitness_scale / (result.effort * penalty);
 
         result
     }
