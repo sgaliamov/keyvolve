@@ -67,7 +67,7 @@ optimization:
 
 rank:
   # Ranked keyboard JSON output from the calibration session.
-  output: data/keyboard.ranked.json
+  output: data/keyboard.json
   # Persisted session state for resuming the ranking run.
   session: data/rank-session.json
   # Chance of auditing a comparison during refinement.
@@ -126,7 +126,8 @@ evaluator:
   # balance (CSV: efforts_imbalance) — left/right effort asymmetry
   # effortPower: 0.5
   # # balance (CSV: roll_ratio) — unequal roll distribution between hands
-  # rollImbalancePower: 0.0
+  # balance (CSV: roll_ratio) — unequal roll distribution between hands
+  rollImbalancePower: 0.5
   # # balance (CSV: streak_ratio) — unequal run lengths between hands
   # streakPower: 1.0
 
