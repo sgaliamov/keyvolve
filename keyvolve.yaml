@@ -122,11 +122,11 @@ evaluator:
   # # level (CSV: mean_streak) — rewards long same-hand runs; subsumes the old switchPower
   meanStreakPower: 1.0
   # # balance (CSV: streak_ratio) — unequal run lengths between hands
-  streakPower: 0.8
+  streakPower: 0
   # # level (CSV: row_switch_ratio) — penalizes row jumps inside a hand
-  rowPower: 2.0
+  rowPower: 0.0
   # # balance (CSV: row_switch_imbalance) — unequal row-step burden
-  rowImbalancePower: 1.0
+  rowImbalancePower: 0.0
 
 ga:
   # Mutation probability applied per genome element.

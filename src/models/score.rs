@@ -99,6 +99,12 @@ impl ScoreResult {
         crate::math::signed_imbalance_percent(self.left_rolls as f64, self.right_rolls as f64)
     }
 
+    /// Effort imbalance as a percent: how far the left/right effort ratio
+    /// strays from parity. Range: [0.0, ∞). 0% = balanced, asymmetric by sign.
+    pub fn efforts_imbalance(&self) -> f64 {
+        crate::math::signed_imbalance_percent(self.left_effort, self.right_effort)
+    }
+
     // Streaks: average consecutive-press run length per hand.
 
     /// Average left-hand streak: consecutive presses before leaving the hand.
@@ -138,11 +144,11 @@ impl ScoreResult {
 
     /// Share of same-hand moves that cross rows, weighted by jump severity.
     /// Range: [0.0, 2.0] — the numerator only accrues on same-hand bigrams, and a single
-    /// jump over a row costs 2. 0 = every roll stays in its row.
+    /// jump over a row costs 2. 0 = every same-hand move stays in its row.
     pub fn row_switch_ratio(&self) -> f64 {
         crate::math::ratio(
             self.row_switch_cost() as f64,
-            (self.left_rolls + self.right_rolls) as f64,
+            (self.left_count + self.right_count) as f64,
         )
     }
 
@@ -170,12 +176,13 @@ impl ScoreResult {
     /// Serialize as a CSV row (no header).
     pub fn to_csv(&self) -> String {
         format!(
-            "{:.6},{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2},{:.2},{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2},{:.2},{:.2},{},{},{},{},{},{},{},{:.2},{:.2}",
+            "{:.6},{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2},{:.2},{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2},{:.2},{:.2},{},{},{},{},{},{},{},{:.2},{:.2}",
             self.fitness,
             self.row_switch_ratio() * 100.0,
             self.row_switch_imbalance(),
             self.hand_switch_ratio() * 100.0,
             self.hands_imbalance(),
+            self.efforts_imbalance(),
             self.roll_imbalance(),
             self.mean_streak(),
             self.streak_ratio(),
@@ -200,15 +207,15 @@ impl ScoreResult {
 
     /// CSV header matching [`to_csv`] column order.
     /// Columns: fitness (normalized quality), row_switch_ratio (row jumps %), row_switch_imbalance (hand row asymmetry),
-    /// hand_switch_ratio (hand alternation %), hands_imbalance (left/right count %), roll_imbalance (left/right roll %),
-    /// mean_streak (avg consecutive presses per hand), streak_ratio (left/right streak ratio),
+    /// hand_switch_ratio (hand alternation %), hands_imbalance (left/right count %), efforts_imbalance (left/right effort %),
+    /// roll_imbalance (left/right roll %), mean_streak (avg consecutive presses per hand), streak_ratio (left/right streak ratio),
     /// left_effort_ratio (left % of total), right_effort_ratio (right % of total),
     /// left_count_ratio (left % of bigrams), right_count_ratio (right % of bigrams),
     /// effort (raw total), left_effort/right_effort (per-hand), left_count/right_count (bigrams per hand),
     /// hand_switches (transitions), left_row_switch_cost/right_row_switch_cost (weighted jumps),
     /// left_rolls/right_rolls (same-hand bigrams), left_streak/right_streak (avg run length).
     pub fn csv_header() -> &'static str {
-        "fitness,row_switch_ratio,row_switch_imbalance,hand_switch_ratio,hands_imbalance,roll_imbalance,mean_streak,streak_ratio,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,effort,left_effort,right_effort,left_count,right_count,hand_switches,left_row_switch_cost,right_row_switch_cost,left_rolls,right_rolls,left_streak,right_streak"
+        "fitness,row_switch_ratio,row_switch_imbalance,hand_switch_ratio,hands_imbalance,efforts_imbalance,roll_imbalance,mean_streak,streak_ratio,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,effort,left_effort,right_effort,left_count,right_count,hand_switches,left_row_switch_cost,right_row_switch_cost,left_rolls,right_rolls,left_streak,right_streak"
     }
 
     /// Parse the raw (non-derived) fields from a persisted CSV row, skipping the
@@ -224,16 +231,16 @@ impl ScoreResult {
         let c: Vec<&str> = line.split(',').skip(skip).map(str::trim).collect();
         Some(ScoreResult {
             fitness: c.first()?.parse().ok()?,
-            effort: c.get(12)?.parse().ok()?,
-            left_effort: c.get(13)?.parse().ok()?,
-            right_effort: c.get(14)?.parse().ok()?,
-            left_count: c.get(15)?.parse().ok()?,
-            right_count: c.get(16)?.parse().ok()?,
-            hand_switches: c.get(17)?.parse().ok()?,
-            left_row_switch_cost: c.get(18)?.parse().ok()?,
-            right_row_switch_cost: c.get(19)?.parse().ok()?,
-            left_rolls: c.get(20)?.parse().ok()?,
-            right_rolls: c.get(21)?.parse().ok()?,
+            effort: c.get(13)?.parse().ok()?,
+            left_effort: c.get(14)?.parse().ok()?,
+            right_effort: c.get(15)?.parse().ok()?,
+            left_count: c.get(16)?.parse().ok()?,
+            right_count: c.get(17)?.parse().ok()?,
+            hand_switches: c.get(18)?.parse().ok()?,
+            left_row_switch_cost: c.get(19)?.parse().ok()?,
+            right_row_switch_cost: c.get(20)?.parse().ok()?,
+            left_rolls: c.get(21)?.parse().ok()?,
+            right_rolls: c.get(22)?.parse().ok()?,
         })
     }
 }
@@ -242,10 +249,11 @@ impl std::fmt::Display for ScoreResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "φ {:.4} | ⟳Δ {:.2}% | Δ {:.2}% | ↕Δ {:.2}% | ↕ {:.2}% | ⇄ {:.2}% | →Δ {:.2}% | → {:.2} | Lε {:.1}% | Rε {:.1}% | L# {:.1}% | R# {:.1}% | ε {:.2} | Lε {:.2} | Rε {:.2} | L# {} | R# {} | ⇄ {} | L↕ {} | R↕ {} | L⟳ {} | R⟳ {} | L→ {:.2} | R→ {:.2}",
+            "φ {:.4} | ⟳Δ {:.2}% | Δ {:.2}% | ↕Δ {:.2}% | ↕εΔ {:.2}% | ↕ {:.2}% | ⇄ {:.2}% | →Δ {:.2}% | → {:.2} | Lε {:.1}% | Rε {:.1}% | L# {:.1}% | R# {:.1}% | ε {:.2} | Lε {:.2} | Rε {:.2} | L# {} | R# {} | ⇄ {} | L↕ {} | R↕ {} | L⟳ {} | R⟳ {} | L→ {:.2} | R→ {:.2}",
             self.fitness,
             self.roll_imbalance(),
             self.hands_imbalance(),
+            self.efforts_imbalance(),
             self.row_switch_imbalance(),
             self.row_switch_ratio() * 100.0,
             self.hand_switch_ratio() * 100.0,
@@ -386,7 +394,7 @@ mod tests {
 
     #[test]
     fn row_switch_ratio_is_cost_per_same_hand_move() {
-        // Row cost only accrues on same-hand bigrams, so rolls are the denominator.
+        // Row cost only accrues on same-hand bigrams, denominator is all same-hand counts.
         let sample = |left_rolls, right_rolls, left_cost, right_cost| ScoreResult {
             left_count: 8,
             right_count: 8,
@@ -397,13 +405,13 @@ mod tests {
             ..Default::default()
         };
 
-        // Every roll stays in its row.
+        // Every same-hand move stays in its row: 0 cost / 16 counts = 0.0.
         assert_eq!(sample(3, 3, 0, 0).row_switch_ratio(), 0.0);
-        // Every roll steps one row.
-        assert_eq!(sample(3, 3, 3, 3).row_switch_ratio(), 1.0);
-        // Upper bound: every roll jumps over a row, worth 2 each.
-        assert_eq!(sample(3, 3, 6, 6).row_switch_ratio(), 2.0);
-        // Fully alternating layout has no rolls to charge — 0.0, not NaN.
+        // Every same-hand move steps one row: 6 cost / 16 counts = 0.375.
+        assert_eq!(sample(3, 3, 3, 3).row_switch_ratio(), 0.375);
+        // Upper bound: every same-hand move jumps over a row, worth 2 each: 12 cost / 16 counts = 0.75.
+        assert_eq!(sample(3, 3, 6, 6).row_switch_ratio(), 0.75);
+        // Fully alternating layout has no same-hand moves to charge — 0.0, not NaN.
         assert_eq!(sample(0, 0, 0, 0).row_switch_ratio(), 0.0);
     }
 
