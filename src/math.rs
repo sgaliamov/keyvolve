@@ -17,13 +17,14 @@ pub fn imbalance_ratio(a: f64, b: f64) -> f64 {
 }
 
 /// Directional imbalance as a percent: how far the `left/right` ratio strays
-/// from parity. `0%` when balanced or when `right == 0`. Asymmetric by
-/// direction (unlike [`imbalance_ratio`], `left` and `right` are not interchangeable).
+/// from parity. `0%` when balanced or when `right == 0`. Negative = left-heavy,
+/// positive = right-heavy. Asymmetric by direction (unlike [`imbalance_ratio`],
+/// `left` and `right` are not interchangeable).
 pub fn signed_imbalance_percent(left: f64, right: f64) -> f64 {
     if right == 0.0 {
         0.0
     } else {
-        (left / right - 1.0).abs() * 100.0
+        (left / right - 1.0) * 100.0
     }
 }
 
@@ -70,8 +71,10 @@ mod tests {
     #[test]
     fn signed_imbalance_percent_measures_skew() {
         assert_eq!(signed_imbalance_percent(5.0, 5.0), 0.0);
-        // 6/3 - 1 = 1 -> 100%.
+        // 6/3 - 1 = 1 -> 100% (left-heavy, positive).
         assert!((signed_imbalance_percent(6.0, 3.0) - 100.0).abs() < 1e-9);
+        // 3/6 - 1 = -0.5 -> -50% (right-heavy, negative).
+        assert!((signed_imbalance_percent(3.0, 6.0) - (-50.0)).abs() < 1e-9);
     }
 
     #[test]

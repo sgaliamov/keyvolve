@@ -382,7 +382,7 @@ mod tests {
         };
         assert_eq!(balanced.roll_imbalance(), 0.0);
 
-        // 6/3 - 1 = 1 → 100%.
+        // 6/3 - 1 = 1 → 100% (left-heavy, positive).
         let skewed = ScoreResult {
             left_rolls: 6,
             right_rolls: 3,
@@ -397,6 +397,35 @@ mod tests {
             ..Default::default()
         };
         assert_eq!(zero_right.roll_imbalance(), 0.0);
+    }
+
+    #[test]
+    fn directional_symbols_show_which_hand_is_heavier() {
+        // Left-heavy: left_rolls > right_rolls → negative value → ← symbol.
+        let left_heavy = ScoreResult {
+            left_rolls: 9,
+            right_rolls: 3,
+            ..Default::default()
+        };
+        // 9/3 - 1 = 2 → 200% (left-heavy, positive because left > right).
+        assert_eq!(left_heavy.roll_imbalance(), 200.0);
+
+        // Right-heavy: left_rolls < right_rolls → negative value → → symbol.
+        let right_heavy = ScoreResult {
+            left_rolls: 2,
+            right_rolls: 8,
+            ..Default::default()
+        };
+        // 2/8 - 1 = -0.75 → -75% (right-heavy, negative because left < right).
+        assert!((right_heavy.roll_imbalance() - (-75.0)).abs() < 1e-9);
+
+        // Balanced: left_rolls == right_rolls → 0.0 → · symbol.
+        let balanced = ScoreResult {
+            left_rolls: 5,
+            right_rolls: 5,
+            ..Default::default()
+        };
+        assert_eq!(balanced.roll_imbalance(), 0.0);
     }
 
     #[test]
