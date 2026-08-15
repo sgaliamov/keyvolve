@@ -71,7 +71,12 @@ mod tests {
     /// penalty that no longer exists, so the load has to fail rather than default.
     #[test]
     fn stale_knob_names_are_rejected() {
-        for stale in ["minStreakPower", "switchPower", "balancePenaltyPower", "countPower"] {
+        for stale in [
+            "minStreakPower",
+            "switchPower",
+            "balancePenaltyPower",
+            "countPower",
+        ] {
             let json = format!(r#"{{"effortPower": 1.0, "{stale}": 0.8}}"#);
 
             assert!(
@@ -81,12 +86,12 @@ mod tests {
         }
     }
 
-    /// Every knob is optional and defaults to full strength.
+    /// Every knob is optional and defaults to disabled.
     #[test]
-    fn omitted_knobs_default_to_full_strength() {
+    fn omitted_knobs_default_to_disabled() {
         let config: LayoutEvaluatorConfig = serde_json::from_str("{}").unwrap();
 
         assert_eq!(config, LayoutEvaluatorConfig::default());
-        assert_eq!(config.mean_streak_power, 1.0);
+        assert_eq!(config.mean_streak_power, 0.0);
     }
 }
