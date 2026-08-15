@@ -89,7 +89,7 @@ rank:
   # Raise to merge more adjacent tail pairs into the same tier.
   # tierSplitZ: 0.92
   # Optional: fixed tier count with optimal boundaries; overrides tierSplitZ.
-  tierCount: 15
+  tierCount: 10
   # Shaping exponent for tier effort spacing (rating-anchored curve).
   #   1.0 = linear: effort gaps mirror rating gaps exactly (default).
   #   > 1 = easy tiers cluster near effortMin, hard tiers spread out

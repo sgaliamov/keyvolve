@@ -258,12 +258,15 @@ pub fn write_bigrams_csv(path: &Path, state: &RankState, tiers: &Tiers) -> Resul
     // apart on the trivial staggered grid.
     let _ = writeln!(
         out,
-        "spearman_rating_vs_distance,{:.4}",
+        "spearman_rating_vs_distance,{:.4},\"correlation between discovered ranks and physical key distance: 1 = ranking is pure distance, 0 = no relation, negative = farther felt easier (suspicious); 0.3-0.7 healthy\"",
         distance_correlation(state)
     );
     // Tier boundary quality: current vs optimal same-count partition.
     let (r2, optimal) = tier_quality(state, &tiers.groups, tier_count);
-    let _ = writeln!(out, "tier_r2,{r2:.4},{optimal:.4}");
+    let _ = writeln!(
+        out,
+        "tier_r2,{r2:.4},{optimal:.4},\"how well tiers summarize the ranking (actual, best possible for same tier count); only the gap matters: < 0.02 = nothing to fix\""
+    );
     write_text(path, out)
 }
 
