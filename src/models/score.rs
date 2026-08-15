@@ -174,17 +174,23 @@ impl ScoreResult {
 
     // CSV serialization: (de)serialize rows.
 
+    /// Format signed imbalance with directional symbol: negative = left (←), positive = right (→).
+    fn format_imbalance(value: f64) -> String {
+        let symbol = if value < 0.0 { "←" } else if value > 0.0 { "→" } else { "·" };
+        format!("{}{:.2}%", symbol, value.abs())
+    }
+
     /// Serialize as a CSV row (no header).
     pub fn to_csv(&self) -> String {
         format!(
-            "{:.6},{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2},{:.2},{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2},{:.2},{:.2},{},{},{},{},{},{},{},{:.2},{:.2}",
+            "{:.6},{:.2}%,{},{:.2}%,{},{},{},{:.2},{:.2},{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2},{:.2},{:.2},{},{},{},{:.2},{:.2},{},{},{:.2},{:.2}",
             self.fitness,
             self.row_switch_ratio() * 100.0,
-            self.row_switch_imbalance(),
+            Self::format_imbalance(self.row_switch_imbalance()),
             self.hand_switch_ratio() * 100.0,
-            self.hands_imbalance(),
-            self.efforts_imbalance(),
-            self.roll_imbalance(),
+            Self::format_imbalance(self.hands_imbalance()),
+            Self::format_imbalance(self.efforts_imbalance()),
+            Self::format_imbalance(self.roll_imbalance()),
             self.mean_streak(),
             self.streak_ratio(),
             self.left_effort_ratio() * 100.0,
