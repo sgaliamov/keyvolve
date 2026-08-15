@@ -117,8 +117,8 @@ evaluator:
   #   0.0 = off, 1.0 = full strength, between = softer, above = stricter.
   # Two per family: *level* = how much of the trait, *balance* = how evenly hands split it.
   # Derivation: src/app/layout_evaluator/penalty.rs
-  # # level (CSV: row_switch_ratio) — penalizes row jumps inside a hand
-  # rowPower: 1.5
+  # level (CSV: row_switch_ratio) — penalizes row jumps inside a hand
+  rowPower: 0.5
   # balance (CSV: row_switch_imbalance) — unequal row-step burden
   rowImbalancePower: 0.5
   # level (CSV: mean_streak, hand_switch_ratio) — rewards long same-hand runs; affects hand-switching frequency
