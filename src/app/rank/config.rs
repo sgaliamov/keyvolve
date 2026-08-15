@@ -121,6 +121,11 @@ pub struct RankConfig {
     #[serde(default = "default_tier_split_z")]
     pub tier_split_z: f64,
 
+    /// Optional fixed tier count; overrides adaptive splitting with the
+    /// optimal same-count partition over fitted ratings.
+    #[serde(default)]
+    pub tier_count: Option<usize>,
+
     /// Optional RNG seed for reproducible question order.
     pub seed: Option<u64>,
 }
@@ -176,6 +181,9 @@ impl RankConfig {
             return Err(miette::miette!(
                 "rank.tierSplitZ must be finite and greater than 0"
             ));
+        }
+        if self.tier_count == Some(0) {
+            return Err(miette::miette!("rank.tierCount must be greater than 0"));
         }
         if let Some(pair) = &self.force_check_pair
             && !is_forced_check_pair_format(pair)
@@ -243,6 +251,7 @@ impl Default for RankConfig {
             forced_answer_weight: default_forced_answer_weight(),
             force_check_pair: None,
             tier_split_z: default_tier_split_z(),
+            tier_count: None,
             seed: None,
         }
     }
@@ -292,6 +301,23 @@ mod tests {
             ..Default::default()
         };
         assert!(cfg.validate().is_err());
+    }
+
+    #[test]
+    fn rejects_zero_tier_count() {
+        let cfg = RankConfig {
+            tier_count: Some(0),
+            ..Default::default()
+        };
+        assert!(cfg.validate().is_err());
+        assert!(
+            RankConfig {
+                tier_count: Some(8),
+                ..Default::default()
+            }
+            .validate()
+            .is_ok()
+        );
     }
 
     #[test]

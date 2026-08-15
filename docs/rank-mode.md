@@ -91,6 +91,19 @@ as evidence accumulates — nothing else supplies it. Splits only happen at stat
 gaps, which is why tiers stay stable between runs and why noise never creates a boundary
 (the tier quality line below measures how little this safety costs).
 
+Prefer a concrete number over the statistical threshold? Set `tierCount` and the splitter is
+bypassed: the ratings are cut into exactly that many tiers at the best possible boundary
+positions (the same optimal partition the tier quality line compares against). The
+trade-off: boundaries are no longer confidence-gated, so with few answers they may separate
+statistically indistinguishable pairs and drift between runs.
+
+Which to use? `tierCount` shifts the hard question onto you: *how many tiers does the data
+support?* Too few merges genuinely different pairs into one effort; too many splits
+statistically identical ones apart. The adaptive splitter answers that question from
+evidence — so the practical recipe is: rank with the default adaptive tiers, note the tier
+count it discovers, and only pin `tierCount` if you deliberately want a different
+granularity for the generated keyboard (e.g. fewer, coarser effort levels).
+
 **Assigning efforts** is proportional to the rating gaps between the found tiers. Each tier
 takes the mean rating of its items; the best tier's mean is pinned to `effortMin`, the worst
 to `effortMax`, and every tier in between lands proportionally to its rating distance from
@@ -447,7 +460,8 @@ All settings live under `rank:` in `keyvolve.yaml`; every one has a sensible def
 | `thinMargin` | `1.0` | Maximum head-to-head win margin for an edge to count as thin (fragile). Thin edges flip easily; higher = fewer re-asks, lower = stricter. |
 | `forcedAnswerWeight` | `3` | Confirmations recorded by one `!` answer — a shortcut for answering the same way several times. |
 | `forceCheckPair` | unset | Optional one-time first question in `XX-YY` format (left-hand labels), e.g. `AF-VE`. |
-| `tierSplitZ` | `2.2` | Global tier split multiplier. Higher = fewer splits, more merging near the bottom. |
+| `tierSplitZ` | `2.2` | Global tier split multiplier. Higher = fewer splits, more merging near the bottom. Ignored when `tierCount` is set. |
+| `tierCount` | unset | Fixed number of tiers. Cuts the ratings at optimal boundary positions instead of adaptive confidence splitting. Unset = tier count adapts to evidence. |
 | `effortMin` | `1.0` | Effort assigned to the best tier; lower bound of the rating-proportional mapping. |
 | `effortMax` | `10.0` | Effort assigned to the worst tier; upper bound of the rating-proportional mapping. |
 | `effortGamma` | `1.0` | Shaping exponent for the rating-proportional mapping. `1` = linear (effort gaps mirror rating gaps); `> 1` bunches easy tiers near `effortMin` with a harsh tail; `< 1` spreads easy tiers with a flat tail. Endpoints stay pinned. |

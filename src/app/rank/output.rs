@@ -11,10 +11,10 @@ pub struct Tiers {
     pub groups: Vec<usize>,
 }
 
-/// Build final adaptive tiers with rating-anchored effort values.
+/// Build final tiers with rating-anchored effort values. A configured
+/// `tierCount` fixes the count; otherwise tiers adapt to confidence.
 pub fn tiers(state: &RankState, cfg: &RankConfig) -> Tiers {
-    let groups = state.confidence_tiers(cfg);
-    let count = state.confidence_tier_count(cfg);
+    let (groups, count) = tier_groups(state, cfg);
     if count == 0 {
         return Tiers {
             efforts: vec![],
@@ -23,6 +23,38 @@ pub fn tiers(state: &RankState, cfg: &RankConfig) -> Tiers {
     }
     let efforts = tier_efforts(state, &groups, count, cfg);
     Tiers { efforts, groups }
+}
+
+/// Tier assignment + tier count: fixed optimal partition when `tierCount`
+/// is set, adaptive confidence tiers otherwise.
+pub fn tier_groups(state: &RankState, cfg: &RankConfig) -> (Vec<usize>, usize) {
+    let groups = match cfg.tier_count {
+        Some(k) if !state.items.is_empty() => fixed_tiers(state, k),
+        _ => state.confidence_tiers(cfg),
+    };
+    let count = groups.iter().max().map_or(0, |&tier| tier + 1);
+    (groups, count)
+}
+
+/// Tier id per item for a fixed tier count: the optimal same-count partition
+/// (exact 1D k-means) over fitted ratings; tier 0 = best.
+fn fixed_tiers(state: &RankState, count: usize) -> Vec<usize> {
+    let mut order = (0..state.items.len()).collect::<Vec<_>>();
+    order.sort_by(|&a, &b| {
+        state.items[a]
+            .rating
+            .total_cmp(&state.items[b].rating)
+            .then_with(|| a.cmp(&b))
+    });
+    let sorted: Vec<f64> = order.iter().map(|&i| state.items[i].rating).collect();
+    let ids = ckmeans_partition(&sorted, count);
+    // Ids ascend with rating; flip so tier 0 = highest rating.
+    let top = ids.last().copied().unwrap_or(0);
+    let mut groups = vec![0usize; state.items.len()];
+    for (&item, &id) in order.iter().zip(&ids) {
+        groups[item] = top - id;
+    }
+    groups
 }
 
 /// Rating-anchored tier efforts: mean fitted rating per tier mapped onto
@@ -653,6 +685,41 @@ mod tests {
         let (current, optimal) = tier_quality(&state, &groups, count);
         assert!(optimal >= current - 1e-12);
         assert!(optimal <= 1.0 + 1e-12);
+    }
+
+    #[test]
+    fn fixed_tier_count_overrides_adaptive_splitting() {
+        let cfg = RankConfig {
+            tier_count: Some(5),
+            ..Default::default()
+        };
+        let state = ranked_state();
+        let tiers = tiers(&state, &cfg);
+        assert_eq!(tiers.efforts.len(), 5);
+        // Tier 0 = best rating; last tier = worst.
+        let best = state
+            .items
+            .iter()
+            .enumerate()
+            .max_by(|(_, x), (_, y)| x.rating.total_cmp(&y.rating))
+            .unwrap()
+            .0;
+        assert_eq!(tiers.groups[best], 0);
+        let (groups, count) = tier_groups(&state, &cfg);
+        assert_eq!(count, 5);
+        assert_eq!(groups, tiers.groups);
+    }
+
+    #[test]
+    fn fixed_tiers_split_at_natural_gap() {
+        let mut state = RankState::new();
+        for (i, item) in state.items.iter_mut().enumerate() {
+            // Two lumps: first 100 items strong, rest weak.
+            item.rating = if i < 100 { 2000.0 } else { 1000.0 } + (i % 5) as f64;
+        }
+        let groups = fixed_tiers(&state, 2);
+        assert!((0..100).all(|i| groups[i] == 0));
+        assert!((100..state.items.len()).all(|i| groups[i] == 1));
     }
 
     #[test]

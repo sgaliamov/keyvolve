@@ -480,8 +480,7 @@ fn print_fit_quality(state: &RankState, cfg: &RankConfig) {
             (lo.min(i.rating), hi.max(i.rating))
         });
     let mean_dev = state.items.iter().map(|i| i.deviation).sum::<f64>() / state.items.len() as f64;
-    let groups = state.confidence_tiers(cfg);
-    let tiers = groups.iter().max().map_or(0, |&tier| tier + 1);
+    let (groups, tiers) = tier_groups(state, cfg);
     println!(
         "{DIM}fit: log-loss{RESET} {:.3}{DIM}, agreement{RESET} {:.0}%{DIM}, spread/dev{RESET} {:.1}{DIM}, tiers{RESET} {}",
         loss / state.history.len() as f64,

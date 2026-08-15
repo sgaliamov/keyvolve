@@ -297,7 +297,9 @@ impl RankState {
         groups
     }
 
-    /// Number of confidence-aware tiers in the current fit.
+    /// Number of confidence-aware tiers in the current fit (test helper;
+    /// production goes through `output::tier_groups`).
+    #[cfg(test)]
     pub fn confidence_tier_count(&self, cfg: &RankConfig) -> usize {
         self.confidence_tiers(cfg)
             .into_iter()
