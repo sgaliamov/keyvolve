@@ -80,3 +80,6 @@ cargo test -q scan_live_session_for_cycles -- --ignored --nocapture
 - **`darwin/`** — generic GA engine, no domain knowledge.
 - **`cliffa/`** — thin CLI wrapper; `AppHandle` signals graceful shutdown.
 - **`src/`** — keyboard domain: models, evaluator, GA wiring, modes.
+
+BEAKL / Hands Down / ISRT / Engram / Gallium / Graphite / Sturdy / Canary Asset, Capewell, Halmak MINIMAK-8 RECURVA
+
