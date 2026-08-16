@@ -115,8 +115,8 @@ evaluator:
   fitnessScale: 100000000000
   # Penalty knobs — each factor is (dimensionless ratio)^power:
   #   0.0 = off, 1.0 = full strength, between = softer, above = stricter.
-  # # level (CSV: row_switch_ratio) — penalizes row jumps inside a hand
-  # rowPower: 0.1
+  # level (CSV: row_switch_ratio) — penalizes row jumps inside a hand
+  rowPower: 0.1
   # # balance (CSV: row_switch_imbalance) — unequal row-step burden
   # rowImbalancePower: 0.1
   # level (CSV: mean_streak, hand_switch_ratio) — rewards long same-hand runs; affects hand-switching frequency
