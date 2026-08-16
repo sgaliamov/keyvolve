@@ -116,11 +116,11 @@ evaluator:
   # Penalty knobs — each factor is (dimensionless ratio)^power:
   #   0.0 = off, 1.0 = full strength, between = softer, above = stricter.
   # level (CSV: row_switch_ratio) — penalizes row jumps inside a hand
-  rowPower: 0.1
+  rowPower: 0.5
   # # balance (CSV: row_switch_imbalance) — unequal row-step burden
   # rowImbalancePower: 0.1
   # level (CSV: mean_streak, hand_switch_ratio) — rewards long same-hand runs; affects hand-switching frequency
-  meanStreakPower: 2.0
+  meanStreakPower: 1.0
   # balance (CSV: efforts_imbalance) — left/right effort asymmetry
   balancePower: 0.3
   # # balance (CSV: roll_ratio) — unequal roll distribution between hands
