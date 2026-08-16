@@ -102,7 +102,7 @@ evaluate:
   # One or more layout CSVs to score.
   input:
     - data/layouts.csv
-    # - data/seed.csv
+    - data/seed.csv
   # Output CSV for scored layouts.
   output: data/layouts.csv
   # Number of best layouts printed to stdout.
@@ -118,15 +118,15 @@ evaluator:
   # Two per family: *level* = how much of the trait, *balance* = how evenly hands split it.
   # Derivation: src/app/layout_evaluator/penalty.rs
   # level (CSV: row_switch_ratio) — penalizes row jumps inside a hand
-  rowPower: 2
+  rowPower: 0.5
   # balance (CSV: row_switch_imbalance) — unequal row-step burden
-  # rowImbalancePower: 0.5
+  rowImbalancePower: 0.5
   # level (CSV: mean_streak, hand_switch_ratio) — rewards long same-hand runs; affects hand-switching frequency
-  # meanStreakPower: 2
+  meanStreakPower: 0.5
   # balance (CSV: efforts_imbalance) — left/right effort asymmetry
-  # effortPower: 0.5
+  effortPower: 0.5
   # balance (CSV: roll_ratio) — unequal roll distribution between hands
-  # rollImbalancePower: 0.5
+  rollImbalancePower: 0.5
   # # balance (CSV: streak_ratio) — unequal run lengths between hands
   # streakPower: 1.0
 

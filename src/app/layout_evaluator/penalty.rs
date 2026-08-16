@@ -74,12 +74,14 @@ pub fn penalty(config: &LayoutEvaluatorConfig, r: &ScoreResult) -> f64 {
     // Balance: both hands should carry comparable effort load.
     let efforts = imbalance_ratio(r.left_effort, r.right_effort).powf(config.effort_power);
 
+    let counts = imbalance_ratio(r.left_count as f64, r.right_count as f64).powf(config.effort_power);
+
     let rolls = imbalance_ratio(r.left_rolls as f64, r.right_rolls as f64)
         .powf(config.roll_imbalance_power);
 
     let streaks = imbalance_ratio(r.left_streak(), r.right_streak()).powf(config.streak_power);
 
-    efforts * streaks * rolls * rows * row_jumps / runs
+    efforts * counts * streaks * rolls * rows * row_jumps / runs
 }
 
 #[cfg(test)]
