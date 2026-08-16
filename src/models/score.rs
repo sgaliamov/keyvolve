@@ -176,7 +176,13 @@ impl ScoreResult {
 
     /// Format signed imbalance with directional symbol: negative = left (←), positive = right (→).
     fn format_imbalance(value: f64) -> String {
-        let symbol = if value < 0.0 { "←" } else if value > 0.0 { "→" } else { "·" };
+        let symbol = if value < 0.0 {
+            "←"
+        } else if value > 0.0 {
+            "→"
+        } else {
+            "·"
+        };
         format!("{}{:.2}%", symbol, value.abs())
     }
 
@@ -256,14 +262,14 @@ impl std::fmt::Display for ScoreResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "φ {:.4} | ⟳Δ {:.2}% | Δ {:.2}% | ↕Δ {:.2}% | ↕εΔ {:.2}% | ↕ {:.2}% | ⇄ {:.2}% | →Δ {:.2}% | → {:.2} | Lε {:.1}% | Rε {:.1}% | L# {:.1}% | R# {:.1}% | ε {:.2} | Lε {:.2} | Rε {:.2} | L# {} | R# {} | ⇄ {} | L↕ {} | R↕ {} | L⟳ {} | R⟳ {} | L→ {:.2} | R→ {:.2}",
+            "φ {:.4} | ↕ {:.2}% | ⇄ {:.2}% | ⟳Δ {:.2}% | Δ {:.2}% | ↕Δ {:.2}% | ↕εΔ {:.2}% | →Δ {:.2}% | → {:.2} | Lε {:.1}% | Rε {:.1}% | L# {:.1}% | R# {:.1}% | ε {:.2} | Lε {:.2} | Rε {:.2} | L# {} | R# {} | ⇄ {} | L↕ {} | R↕ {} | L⟳ {} | R⟳ {} | L→ {:.2} | R→ {:.2}",
             self.fitness,
+            self.row_switch_ratio() * 100.0,
+            self.hand_switch_ratio() * 100.0,
             self.roll_imbalance(),
             self.hands_imbalance(),
             self.efforts_imbalance(),
             self.row_switch_imbalance(),
-            self.row_switch_ratio() * 100.0,
-            self.hand_switch_ratio() * 100.0,
             self.streak_ratio() * 100.0,
             self.mean_streak(),
             self.left_effort_ratio() * 100.0,

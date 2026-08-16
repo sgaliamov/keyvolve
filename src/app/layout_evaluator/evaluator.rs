@@ -280,10 +280,12 @@ mod tests {
         let score = evaluator.score_corpus(&test_keys());
 
         assert_eq!(score.row_switch_distance(), 1);
-        // Single-hand corpus: every imbalance ratio is neutral. One roll carrying one row
-        // step gives row factor (1 + 1/1) = 2, cancelled by the mean_streak divisor 2/1 = 2.
-        // 1e6·2 / (3·1) = 666_666.67.
-        assert_close(score.fitness, 666_666.67);
+        // "ad": left-hand bigram with 1 row step. First char 'a' (left, cost 1) + bigram 'ad'
+        // (same-hand, cost 1+1). Total: 3 effort, 2 presses (left_count).
+        // Row factor: (1 + row_distance/total_presses)^row_power = (1 + 1/2)^1 = 1.5.
+        // Mean streak divisor: 2^1 = 2. Penalty = 1.5 / 2 = 0.75.
+        // Fitness = 1e6 / (3 · 0.75) = 444_444.44.
+        assert_close(score.fitness, 444_444.44);
     }
 
     /// A run ends only at a hand switch or a word boundary, so `runs = switches + words`
