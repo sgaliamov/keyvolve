@@ -115,18 +115,16 @@ evaluator:
   fitnessScale: 100000000000
   # Penalty knobs — each factor is (dimensionless ratio)^power:
   #   0.0 = off, 1.0 = full strength, between = softer, above = stricter.
-  # Two per family: *level* = how much of the trait, *balance* = how evenly hands split it.
-  # Derivation: src/app/layout_evaluator/penalty.rs
   # level (CSV: row_switch_ratio) — penalizes row jumps inside a hand
-  rowPower: 0.5
-  # balance (CSV: row_switch_imbalance) — unequal row-step burden
-  rowImbalancePower: 0.5
-  # level (CSV: mean_streak, hand_switch_ratio) — rewards long same-hand runs; affects hand-switching frequency
-  meanStreakPower: 0.7
-  # balance (CSV: efforts_imbalance) — left/right effort asymmetry
-  balancePower: 0.5
-  # balance (CSV: roll_ratio) — unequal roll distribution between hands
-  rollImbalancePower: 0.5
+  # rowPower: 0.5
+  # # balance (CSV: row_switch_imbalance) — unequal row-step burden
+  # rowImbalancePower: 0.5
+  # # level (CSV: mean_streak, hand_switch_ratio) — rewards long same-hand runs; affects hand-switching frequency
+  # meanStreakPower: 0.7
+  # # balance (CSV: efforts_imbalance) — left/right effort asymmetry
+  # balancePower: 0.5
+  # # balance (CSV: roll_ratio) — unequal roll distribution between hands
+  # rollImbalancePower: 0.5
   # # balance (CSV: streak_ratio) — unequal run lengths between hands
   # streakPower: 1.0
 
