@@ -102,7 +102,7 @@ evaluate:
   # One or more layout CSVs to score.
   input:
     - data/layouts.csv
-    - data/seed.csv
+    # - data/seed.csv
   # Output CSV for scored layouts.
   output: data/layouts.csv
   # Number of best layouts printed to stdout.
