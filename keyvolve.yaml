@@ -40,9 +40,9 @@ optimization:
   # Mutants produced per parent each generation.
   mutationCount: 10
   # Max home-row groups kept in final ranked output.
-  maxGroups: 1
+  maxGroups: 3
   # Number of layouts kept per home-row group in final ranked output.
-  itemsPerGroup: 1
+  itemsPerGroup: 5
   # blocked: [0, 14, 19, 25]
   # frozen:
   #   h: 5
@@ -122,7 +122,7 @@ evaluator:
   # balance (CSV: row_switch_imbalance) — unequal row-step burden
   rowImbalancePower: 0.5
   # level (CSV: mean_streak, hand_switch_ratio) — rewards long same-hand runs; affects hand-switching frequency
-  meanStreakPower: 0.6
+  meanStreakPower: 0.7
   # balance (CSV: efforts_imbalance) — left/right effort asymmetry
   balancePower: 0.5
   # balance (CSV: roll_ratio) — unequal roll distribution between hands
