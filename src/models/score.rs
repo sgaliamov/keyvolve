@@ -229,7 +229,7 @@ impl ScoreResult {
     /// hand_switches (transitions), left_row_switch_cost/right_row_switch_cost (weighted jumps),
     /// left_rolls/right_rolls (same-hand bigrams), left_streak/right_streak (avg run length).
     pub fn csv_header() -> &'static str {
-        "fitness,row_switch_ratio,row_switch_imbalance,hand_switch_ratio,hands_imbalance,efforts_imbalance,roll_imbalance,mean_streak,streak_ratio,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,effort,left_effort,right_effort,left_count,right_count,hand_switches,left_row_switch_cost,right_row_switch_cost,left_rolls,right_rolls,left_streak,right_streak"
+        "fitness,row_switch_ratio,row_switch_imbalance,hand_switch_ratio,hands_imbalance,efforts_imbalance,roll_imbalance,mean_streak,streak_imbalance,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,effort,left_effort,right_effort,left_count,right_count,hand_switches,left_row_switch_cost,right_row_switch_cost,left_rolls,right_rolls,left_streak,right_streak"
     }
 
     /// Parse the raw (non-derived) fields from a persisted CSV row, skipping the
