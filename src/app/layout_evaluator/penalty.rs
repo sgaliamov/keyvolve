@@ -63,7 +63,9 @@ pub fn penalty(config: &LayoutEvaluatorConfig, r: &ScoreResult) -> f64 {
     // Level: row jumps cost, long same-hand runs pay back.
     // `max(1.0)` keeps an empty corpus neutral, where `mean_streak` is `0.0`.
     let row_jumps = (1.0 + r.row_switch_ratio()).powf(config.row_power);
-    let switch_factor = (1.0 + r.hand_switch_ratio() + r.row_switch_ratio()).powf(config.switch_power);
+    // Hand switches are weighted by 0.5 so this term stays comparable to row-switch ratio.
+    let switch_factor =
+        (1.0 + r.hand_switch_ratio() / 2.0 + r.row_switch_ratio()).powf(config.switch_power);
 
     let rows = imbalance_ratio(
         r.left_row_switch_cost as f64,
@@ -181,6 +183,7 @@ mod tests {
     }
 
     /// Combined switch+row knob should rise with either hand switching or row movement.
+    /// Hand-switch ratio contributes at half weight.
     #[test]
     fn switch_power_penalizes_combined_switch_and_row_ratios() {
         let config = LayoutEvaluatorConfig {
@@ -201,14 +204,15 @@ mod tests {
         let combined = ScoreResult {
             left_count: 10,
             right_count: 10,
-            hand_switches: 5,         // 5 / 20 = 0.25
-            left_row_switch_cost: 3,  // 5 / 20 = 0.25 total row ratio
+            hand_switches: 5,        // 5 / 20 = 0.25
+            left_row_switch_cost: 3, // 5 / 20 = 0.25 total row ratio
             right_row_switch_cost: 2,
             ..Default::default()
         };
 
         assert_eq!(penalty(&config, &neutral), 1.0);
-        assert_eq!(penalty(&config, &combined), 1.5);
+        // 1 + (0.25 / 2) + 0.25 = 1.375
+        assert_eq!(penalty(&config, &combined), 1.375);
     }
 
     /// A layout skewed on every axis, so no factor sits at its neutral value.

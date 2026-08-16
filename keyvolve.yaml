@@ -117,7 +117,7 @@ evaluator:
   #   0.0 = off, 1.0 = full strength, between = softer, above = stricter.
   # # level (CSV: row_switch_ratio) — penalizes row jumps inside a hand
   # rowPower: 0.1
-  # level (CSV: hand_switch_ratio + row_switch_ratio) — penalizes combined hand alternation and row movement
+  # level (CSV: hand_switch_ratio/2 + row_switch_ratio) — penalizes combined hand alternation and row movement
   switchPower: 0.2
   # balance (CSV: row_switch_imbalance) — unequal row-step burden
   rowImbalancePower: 0.1

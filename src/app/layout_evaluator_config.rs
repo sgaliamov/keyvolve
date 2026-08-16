@@ -37,7 +37,7 @@ pub struct LayoutEvaluatorConfig {
     #[serde(default = "default_power")]
     pub row_power: f64,
 
-    /// Level: combined hand switches + row jumps (CSV: `hand_switch_ratio + row_switch_ratio`).
+    /// Level: combined hand switches + row jumps (CSV: `hand_switch_ratio/2 + row_switch_ratio`).
     #[serde(default = "default_power")]
     pub switch_power: f64,
 }
