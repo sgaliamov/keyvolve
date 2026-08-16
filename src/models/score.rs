@@ -196,7 +196,7 @@ impl ScoreResult {
     /// Serialize as a CSV row (no header).
     pub fn to_csv(&self) -> String {
         format!(
-            "{:.6},{:.2}%,{},{:.2}%,{},{},{},{:.2},{:.2},{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2},{:.2},{:.2},{},{},{},{:.2},{:.2},{},{},{:.2},{:.2}",
+            "{:.6},{:.2}%,{},{:.2}%,{},{},{},{:.2},{},{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2},{:.2},{:.2},{},{},{},{:.2},{:.2},{},{},{:.2},{:.2}",
             self.fitness,
             self.row_switch_ratio() * 100.0,
             Self::format_imbalance(self.row_switch_imbalance()),
@@ -205,7 +205,7 @@ impl ScoreResult {
             Self::format_imbalance(self.efforts_imbalance()),
             Self::format_imbalance(self.roll_imbalance()),
             self.mean_streak(),
-            self.streak_ratio(),
+            Self::format_imbalance(self.streak_imbalance()),
             self.left_effort_ratio() * 100.0,
             self.right_effort_ratio() * 100.0,
             self.left_count_ratio() * 100.0,
@@ -228,7 +228,7 @@ impl ScoreResult {
     /// CSV header matching [`to_csv`] column order.
     /// Columns: fitness (normalized quality), row_switch_ratio (row jumps %), row_switch_imbalance (hand row asymmetry),
     /// hand_switch_ratio (hand alternation %), hands_imbalance (left/right count %), efforts_imbalance (left/right effort %),
-    /// roll_imbalance (left/right roll %), mean_streak (avg consecutive presses per hand), streak_ratio (left/right streak ratio),
+    /// roll_imbalance (left/right roll %), mean_streak (avg consecutive presses per hand), streak_imbalance (left/right streak %),
     /// left_effort_ratio (left % of total), right_effort_ratio (right % of total),
     /// left_count_ratio (left % of bigrams), right_count_ratio (right % of bigrams),
     /// effort (raw total), left_effort/right_effort (per-hand), left_count/right_count (bigrams per hand),
