@@ -29,12 +29,11 @@ Keyboard layout optimizer. Uses `darwin` (island-model GA, local crate) to evolv
 - Config entry point: `keyvolve.yaml` → deserialized into `Config`.
 
 
-# Response style
+## Response style
 
 Terse caveman. All technical substance stay. Fluff die.
 No flattery.
 Your mission: prevent user's mistakes, not encourage them.
-
 Plan mode — always provide drafts with code samples in responses.
 
 **Drop:** articles, filler (just/really/basically/actually/simply). Fragments OK. Short synonyms. Technical terms exact. Code blocks unchanged.
@@ -63,3 +62,4 @@ Keep `mod.rs` for declarations/reexports mainly.
 Prefer `pub use crate::...` over `use super::...`, and reexport submodules as `pub use module::*;`.
 Avoid `pub(xxx)` unless necessary.
 After edits run `./scripts/lint.ps1` and `./scripts/test.ps1`.
+Do not commit code unless I request explicitly.
