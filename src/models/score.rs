@@ -120,12 +120,6 @@ impl ScoreResult {
         crate::math::streak(self.right_count, self.right_rolls)
     }
 
-    /// Left/right streak ratio: >1 means left hand holds longer runs. `0.0` when
-    /// the right hand is unused. Range: [0.0, ∞).
-    pub fn streak_ratio(&self) -> f64 {
-        crate::math::ratio(self.left_streak(), self.right_streak())
-    }
-
     /// Streak imbalance as a percent: how far the left/right streak length ratio
     /// strays from parity. Range: (-∞, ∞). 0% = balanced, >0% = left-lean (longer left runs),
     /// <0% = right-lean (longer right runs).
@@ -379,11 +373,10 @@ mod tests {
         };
         assert_eq!(s.left_streak(), 4.0);
         assert_eq!(s.right_streak(), 1.0);
-        assert_eq!(s.streak_ratio(), 4.0);
 
         // Unused hand → 0.0, no division blowup.
         assert_eq!(ScoreResult::default().left_streak(), 0.0);
-        assert_eq!(ScoreResult::default().streak_ratio(), 0.0);
+        assert_eq!(ScoreResult::default().right_streak(), 0.0);
     }
 
     #[test]
