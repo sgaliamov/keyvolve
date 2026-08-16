@@ -15,7 +15,7 @@ pub struct LayoutEvaluatorConfig {
 
     /// Balance: hand-effort imbalance (CSV: `efforts_imbalance`).
     #[serde(default = "default_power")]
-    pub effort_power: f64,
+    pub balance_power: f64,
 
     /// Balance: left/right run-length imbalance (CSV: `streak_ratio`).
     #[serde(default = "default_power")]
@@ -52,7 +52,7 @@ impl Default for LayoutEvaluatorConfig {
     fn default() -> Self {
         Self {
             fitness_scale: default_fitness_scale(),
-            effort_power: default_power(),
+            balance_power: default_power(),
             streak_power: default_power(),
             roll_imbalance_power: default_power(),
             mean_streak_power: default_power(),
@@ -77,7 +77,7 @@ mod tests {
             "balancePenaltyPower",
             "countPower",
         ] {
-            let json = format!(r#"{{"effortPower": 1.0, "{stale}": 0.8}}"#);
+            let json = format!(r#"{{"balancePower": 1.0, "{stale}": 0.8}}"#);
 
             assert!(
                 serde_json::from_str::<LayoutEvaluatorConfig>(&json).is_err(),

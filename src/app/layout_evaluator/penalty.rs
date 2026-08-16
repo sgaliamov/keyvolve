@@ -10,7 +10,7 @@
 //!
 //! | family         | level (how much)                | balance (how evenly split) |
 //! |----------------|---------------------------------|----------------------------|
-//! | effort         | implicit: fitness divides by it | `effort_power`              |
+//! | effort         | implicit: fitness divides by it | `balance_power`              |
 //! | rolls          | -                               | `roll_imbalance_power`      |
 //! | same-hand runs | `mean_streak_power`             | `streak_power`             |
 //! | row jumps      | `row_power`                     | `row_imbalance_power`      |
@@ -72,9 +72,9 @@ pub fn penalty(config: &LayoutEvaluatorConfig, r: &ScoreResult) -> f64 {
     let runs = r.mean_streak().powf(config.mean_streak_power).max(1.0);
 
     // Balance: both hands should carry comparable effort load.
-    let efforts = imbalance_ratio(r.left_effort, r.right_effort).powf(config.effort_power);
+    let efforts = imbalance_ratio(r.left_effort, r.right_effort).powf(config.balance_power);
 
-    let counts = imbalance_ratio(r.left_count as f64, r.right_count as f64).powf(config.effort_power);
+    let counts = imbalance_ratio(r.left_count as f64, r.right_count as f64).powf(config.balance_power);
 
     let rolls = imbalance_ratio(r.left_rolls as f64, r.right_rolls as f64)
         .powf(config.roll_imbalance_power);
@@ -111,7 +111,7 @@ mod tests {
     #[test]
     fn zero_powers_leave_penalty_neutral() {
         let config = LayoutEvaluatorConfig {
-            effort_power: 0.0,
+            balance_power: 0.0,
             streak_power: 0.0,
             roll_imbalance_power: 0.0,
             mean_streak_power: 0.0,
@@ -128,7 +128,7 @@ mod tests {
     #[test]
     fn each_power_moves_penalty_in_its_documented_direction() {
         let off = LayoutEvaluatorConfig {
-            effort_power: 0.0,
+            balance_power: 0.0,
             streak_power: 0.0,
             roll_imbalance_power: 0.0,
             mean_streak_power: 0.0,
@@ -143,7 +143,7 @@ mod tests {
             penalty(&config, &skewed())
         };
 
-        assert!(with(|c| c.effort_power = 1.0) > neutral);
+        assert!(with(|c| c.balance_power = 1.0) > neutral);
         assert!(with(|c| c.streak_power = 1.0) > neutral);
         assert!(with(|c| c.roll_imbalance_power = 1.0) > neutral);
         assert!(with(|c| c.row_imbalance_power = 1.0) > neutral);
@@ -157,7 +157,7 @@ mod tests {
         let scaled = |power: f64| {
             penalty(
                 &LayoutEvaluatorConfig {
-                    effort_power: power,
+                    balance_power: power,
                     streak_power: 0.0,
                     roll_imbalance_power: 0.0,
                     mean_streak_power: 0.0,
