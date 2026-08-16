@@ -22,7 +22,7 @@ pub fn callback(ctx: &GaContext) -> bool {
 
     let ratio_str = best.state.as_ref().map_or(String::new(), |s| {
         format!(
-            " | ↕ {:+.2}% | ⇄ {:+.2}% | ⟳Δ {:+.2}% | Δ {:+.2}% | εΔ {:+.2}% | ↕↔ {:+.2}% | →Δ {:+.2}% | → {:.2}",
+            " | ↕ {:+06.2}% | ⇄ {:+06.2}% | ⟳Δ {:+06.2}% | Δ {:+06.2}% | εΔ {:+06.2}% | ↕↔ {:+06.2}% | →Δ {:+06.2}% | → {:.2}",
             s.row_switch_ratio() * 100.0,
             s.hand_switch_ratio() * 100.0,
             s.roll_imbalance(),
