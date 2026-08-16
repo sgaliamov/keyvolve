@@ -126,6 +126,13 @@ impl ScoreResult {
         crate::math::ratio(self.left_streak(), self.right_streak())
     }
 
+    /// Streak imbalance as a percent: how far the left/right streak length ratio
+    /// strays from parity. Range: (-∞, ∞). 0% = balanced, >0% = left-lean (longer left runs),
+    /// <0% = right-lean (longer right runs).
+    pub fn streak_imbalance(&self) -> f64 {
+        crate::math::signed_imbalance_percent(self.left_streak(), self.right_streak())
+    }
+
     /// Overall average streak: all presses over all runs, both hands.
     /// Range: [0.0, ∞). 1.0 = every press switches hands, >1 = sustained multi-press runs.
     pub fn mean_streak(&self) -> f64 {
@@ -262,7 +269,7 @@ impl std::fmt::Display for ScoreResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "φ {:.4} | ↕ {:.2}% | ⇄ {:.2}% | ⟳Δ {:.2}% | Δ {:.2}% | εΔ {:.2}% | ↕↔ {:.2}% | →Δ {:.2}% | → {:.2} | Lε {:.1}% | Rε {:.1}% | L# {:.1}% | R# {:.1}% | ε {:.2} | Lε {:.2} | Rε {:.2} | L# {} | R# {} | ⇄ {} | L↕ {} | R↕ {} | L⟳ {} | R⟳ {} | L→ {:.2} | R→ {:.2}",
+            "φ {:.4} | ↕ {:+.2}% | ⇄ {:+.2}% | ⟳Δ {:+.2}% | Δ {:+.2}% | εΔ {:+.2}% | ↕↔ {:+.2}% | →Δ {:+.2}% | → {:.2} | Lε {:.1}% | Rε {:.1}% | L# {:.1}% | R# {:.1}% | ε {:.2} | Lε {:.2} | Rε {:.2} | L# {} | R# {} | ⇄ {} | L↕ {} | R↕ {} | L⟳ {} | R⟳ {} | L→ {:.2} | R→ {:.2}",
             self.fitness,
             self.row_switch_ratio() * 100.0,
             self.hand_switch_ratio() * 100.0,
@@ -270,7 +277,7 @@ impl std::fmt::Display for ScoreResult {
             self.hands_imbalance(),
             self.efforts_imbalance(),
             self.row_switch_imbalance(),
-            self.streak_ratio() * 100.0,
+            self.streak_imbalance(),
             self.mean_streak(),
             self.left_effort_ratio() * 100.0,
             self.right_effort_ratio() * 100.0,
