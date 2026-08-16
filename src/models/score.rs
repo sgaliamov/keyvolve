@@ -263,7 +263,7 @@ impl std::fmt::Display for ScoreResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "φ {:.4} | ↕ {:+06.2}% | ⇄ {:+06.2}% | ⟳Δ {:+06.2}% | Δ {:+06.2}% | εΔ {:+06.2}% | ↕↔ {:+06.2}% | →Δ {:+06.2}% | → {:.2} | Lε {:.1}% | Rε {:.1}% | L# {:.1}% | R# {:.1}% | ε {:.2} | Lε {:.2} | Rε {:.2} | L# {} | R# {} | ⇄ {} | L↕ {} | R↕ {} | L⟳ {} | R⟳ {} | L→ {:.2} | R→ {:.2}",
+            "φ {:.4} | ↕ {:+06.2}% | ⇄ {:+06.2}% | ⟳Δ {:+06.2}% | Δ {:+06.2}% | εΔ {:+06.2}% | ↕↔ {:+06.2}% | →Δ {:+06.2}% | → {:.2} | ε {:.2}",
             self.fitness,
             self.row_switch_ratio() * 100.0,
             self.hand_switch_ratio() * 100.0,
@@ -273,22 +273,7 @@ impl std::fmt::Display for ScoreResult {
             self.row_switch_imbalance(),
             self.streak_imbalance(),
             self.mean_streak(),
-            self.left_effort_ratio() * 100.0,
-            self.right_effort_ratio() * 100.0,
-            self.left_count_ratio() * 100.0,
-            self.right_count_ratio() * 100.0,
             self.effort,
-            self.left_effort,
-            self.right_effort,
-            self.left_count,
-            self.right_count,
-            self.hand_switches,
-            self.left_row_switch_cost,
-            self.right_row_switch_cost,
-            self.left_rolls,
-            self.right_rolls,
-            self.left_streak(),
-            self.right_streak(),
         )
     }
 }

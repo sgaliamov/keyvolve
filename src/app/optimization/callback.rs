@@ -20,19 +20,7 @@ pub fn callback(ctx: &GaContext) -> bool {
 
     let name = Layout::from_keys(&best.genome).to_string();
 
-    let ratio_str = best.state.as_ref().map_or(String::new(), |s| {
-        format!(
-            " | ↕ {:+06.2}% | ⇄ {:+06.2}% | ⟳Δ {:+06.2}% | Δ {:+06.2}% | εΔ {:+06.2}% | ↕↔ {:+06.2}% | →Δ {:+06.2}% | → {:.2}",
-            s.row_switch_ratio() * 100.0,
-            s.hand_switch_ratio() * 100.0,
-            s.roll_imbalance(),
-            s.hands_imbalance(),
-            s.efforts_imbalance(),
-            s.row_switch_imbalance(),
-            s.streak_imbalance(),
-            s.mean_streak(),
-        )
-    });
+    let score_str = best.state.as_ref().map_or(String::new(), |s| s.to_string());
 
     let min_div = ctx
         .pools
@@ -44,9 +32,6 @@ pub fn callback(ctx: &GaContext) -> bool {
         None => String::new(),
     };
 
-    println!(
-        "{:>3}: {} | φ: {:.4}{}{}",
-        ctx.generation, name, best.fitness, ratio_str, div_str
-    );
+    println!("{:>3}: {} | {}{}", ctx.generation, name, score_str, div_str);
     true
 }
