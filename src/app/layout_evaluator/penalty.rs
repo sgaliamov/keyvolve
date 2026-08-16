@@ -6,7 +6,7 @@
 //! `>= 1.0` means "worse". `0.0` = off, `1.0` = full, between = softer, above = stricter.
 //! With every power at `0.0` the penalty is exactly `1.0`, so knobs never leak a bias.
 //!
-//! Two knobs per metric family, never more:
+//! One or two knobs per metric family (level and optional balance):
 //!
 //! | family         | level (how much)                | balance (how evenly split) |
 //! |----------------|---------------------------------|----------------------------|
@@ -14,6 +14,7 @@
 //! | rolls          | -                               | `roll_imbalance_power`      |
 //! | same-hand runs | `mean_streak_power`             | `streak_power`             |
 //! | row jumps      | `row_power`                     | `row_imbalance_power`      |
+//! | switches+rows  | `switch_power`                  | -                          |
 //!
 //! # Why there is no `switch_power`
 //!
@@ -62,6 +63,7 @@ pub fn penalty(config: &LayoutEvaluatorConfig, r: &ScoreResult) -> f64 {
     // Level: row jumps cost, long same-hand runs pay back.
     // `max(1.0)` keeps an empty corpus neutral, where `mean_streak` is `0.0`.
     let row_jumps = (1.0 + r.row_switch_ratio()).powf(config.row_power);
+    let switch_factor = (1.0 + r.hand_switch_ratio() + r.row_switch_ratio()).powf(config.switch_power);
 
     let rows = imbalance_ratio(
         r.left_row_switch_cost as f64,
@@ -82,7 +84,7 @@ pub fn penalty(config: &LayoutEvaluatorConfig, r: &ScoreResult) -> f64 {
 
     let streaks = imbalance_ratio(r.left_streak(), r.right_streak()).powf(config.streak_power);
 
-    efforts * counts * streaks * rolls * rows * row_jumps / runs
+    efforts * counts * streaks * rolls * rows * row_jumps * switch_factor / runs
 }
 
 #[cfg(test)]
@@ -118,6 +120,7 @@ mod tests {
             mean_streak_power: 0.0,
             row_imbalance_power: 0.0,
             row_power: 0.0,
+            switch_power: 0.0,
             ..Default::default()
         };
 
@@ -135,6 +138,7 @@ mod tests {
             mean_streak_power: 0.0,
             row_imbalance_power: 0.0,
             row_power: 0.0,
+            switch_power: 0.0,
             ..Default::default()
         };
         let neutral = penalty(&off, &skewed());
@@ -149,6 +153,7 @@ mod tests {
         assert!(with(|c| c.roll_imbalance_power = 1.0) > neutral);
         assert!(with(|c| c.row_imbalance_power = 1.0) > neutral);
         assert!(with(|c| c.row_power = 1.0) > neutral);
+        assert!(with(|c| c.switch_power = 1.0) > neutral);
         assert!(with(|c| c.mean_streak_power = 1.0) < neutral);
     }
 
@@ -164,6 +169,7 @@ mod tests {
                     mean_streak_power: 0.0,
                     row_imbalance_power: 0.0,
                     row_power: 0.0,
+                    switch_power: 0.0,
                     ..Default::default()
                 },
                 &skewed(),
@@ -172,6 +178,37 @@ mod tests {
 
         assert!(scaled(0.5) < scaled(1.0));
         assert!(scaled(1.0) < scaled(2.0));
+    }
+
+    /// Combined switch+row knob should rise with either hand switching or row movement.
+    #[test]
+    fn switch_power_penalizes_combined_switch_and_row_ratios() {
+        let config = LayoutEvaluatorConfig {
+            balance_power: 0.0,
+            streak_power: 0.0,
+            roll_imbalance_power: 0.0,
+            mean_streak_power: 0.0,
+            row_imbalance_power: 0.0,
+            row_power: 0.0,
+            switch_power: 1.0,
+            ..Default::default()
+        };
+        let neutral = ScoreResult {
+            left_count: 10,
+            right_count: 10,
+            ..Default::default()
+        };
+        let combined = ScoreResult {
+            left_count: 10,
+            right_count: 10,
+            hand_switches: 5,         // 5 / 20 = 0.25
+            left_row_switch_cost: 3,  // 5 / 20 = 0.25 total row ratio
+            right_row_switch_cost: 2,
+            ..Default::default()
+        };
+
+        assert_eq!(penalty(&config, &neutral), 1.0);
+        assert_eq!(penalty(&config, &combined), 1.5);
     }
 
     /// A layout skewed on every axis, so no factor sits at its neutral value.

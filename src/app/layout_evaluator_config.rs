@@ -36,6 +36,10 @@ pub struct LayoutEvaluatorConfig {
     /// Level: row jumps within a hand (CSV: `row_switch_ratio`).
     #[serde(default = "default_power")]
     pub row_power: f64,
+
+    /// Level: combined hand switches + row jumps (CSV: `hand_switch_ratio + row_switch_ratio`).
+    #[serde(default = "default_power")]
+    pub switch_power: f64,
 }
 
 /// Serde default for [`LayoutEvaluatorConfig::fitness_scale`].
@@ -58,6 +62,7 @@ impl Default for LayoutEvaluatorConfig {
             mean_streak_power: default_power(),
             row_imbalance_power: default_power(),
             row_power: default_power(),
+            switch_power: default_power(),
         }
     }
 }
@@ -66,14 +71,13 @@ impl Default for LayoutEvaluatorConfig {
 mod tests {
     use super::*;
 
-    /// A stale knob name must not deserialize into silence. `minStreakPower` and
-    /// `switchPower` were removed; a config still carrying them is asking for a
+    /// A stale knob name must not deserialize into silence. `minStreakPower`
+    /// was removed; a config still carrying it is asking for a
     /// penalty that no longer exists, so the load has to fail rather than default.
     #[test]
     fn stale_knob_names_are_rejected() {
         for stale in [
             "minStreakPower",
-            "switchPower",
             "balancePenaltyPower",
             "countPower",
         ] {
@@ -93,5 +97,6 @@ mod tests {
 
         assert_eq!(config, LayoutEvaluatorConfig::default());
         assert_eq!(config.mean_streak_power, 0.0);
+        assert_eq!(config.switch_power, 0.0);
     }
 }
