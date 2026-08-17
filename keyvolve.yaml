@@ -120,16 +120,15 @@ evaluator:
   #   penalty = 1 + sum(weight * (|value| / max) ^ sharpness)
   # All metrics on target -> penalty exactly 1.0 -> fitness = fitnessScale / effort.
   # Bare number = max with weight 1; write `{ max: 1, weight: 2 }` only when one metric
-  # should give way before another. Delete the `targets:` block to fall back to the
-  # legacy power knobs below.
+  # should give way before another. Delete the `targets:` block to use `powers:` below.
   # sharpness: half the limit costs weight/16, double the limit costs 16*weight.
-  sharpness: 4
+  sharpness: 1
   targets:
     # level (CSV: row_switch_ratio) - row jumps inside a hand
     rowSwitchRatio: 20
     # level (CSV: hand_switch_ratio) - hand alternation; replaces meanStreakPower,
     # since mean_streak = presses / (hand switches + words)
-    handSwitchRatio: 35
+    handSwitchRatio: 37
     # balance (CSV: efforts_imbalance) - left/right effort asymmetry
     effortsImbalance: 1
     # balance (CSV: hands_imbalance) - left/right press-count asymmetry
@@ -144,13 +143,13 @@ evaluator:
   # --- Power-knob mode: used only when `targets` is absent. ---
   # Each factor is (dimensionless ratio)^power: 0.0 = off, 1.0 = full strength.
   # powers:
-  # rowPower: 0.5
-  # rowImbalancePower: 0.5
-  # meanStreakPower: 0.6
-  # balancePower: 0.5
-  # rollImbalancePower: 0.5
-  # switchPower: 0.2
-  # streakPower: 1.0
+  #   rowPower: 0.5
+  #   rowImbalancePower: 0.5
+  #   meanStreakPower: 0.6
+  #   balancePower: 0.5
+  #   rollImbalancePower: 0.5
+  #   switchPower: 0.2
+  #   streakPower: 1.0
 
 ga:
   # Mutation probability applied per genome element.
