@@ -48,10 +48,10 @@ optimization:
   #   h: 5
   # allowed:
   #   e: [6, 7, 8]
-    # t: [1, 2, 3, 6, 7, 8]
-    # a: [1, 2, 3, 6, 7, 8]
-    # i: [1, 2, 3, 6, 7, 8]
-    # o: [1, 2, 3, 6, 7, 8]
+  # t: [1, 2, 3, 6, 7, 8]
+  # a: [1, 2, 3, 6, 7, 8]
+  # i: [1, 2, 3, 6, 7, 8]
+  # o: [1, 2, 3, 6, 7, 8]
   #   n: [1, 2, 3, 6, 7, 8]
   #   r: [1, 2, 3, 6, 7, 8]
   #   s: [1, 2, 3, 6, 7, 8]
@@ -128,7 +128,7 @@ evaluator:
     rowSwitchRatio: 20
     # level (CSV: hand_switch_ratio) - hand alternation; replaces meanStreakPower,
     # since mean_streak = presses / (hand switches + words)
-    handSwitchRatio: 37
+    handSwitchRatio: { max: 35, weight: 2 }
     # balance (CSV: efforts_imbalance) - left/right effort asymmetry
     effortsImbalance: 1
     # balance (CSV: hands_imbalance) - left/right press-count asymmetry
