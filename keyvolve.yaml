@@ -122,23 +122,23 @@ evaluator:
   # Bare number = max with weight 1; write `{ max: 1, weight: 2 }` only when one metric
   # should give way before another. Delete the `targets:` block to use `powers:` below.
   # sharpness: half the limit costs weight/16, double the limit costs 16*weight.
-  sharpness: 1
+  sharpness: 4
   targets:
     # level (CSV: row_switch_ratio) - row jumps inside a hand
-    rowSwitchRatio: 20
+    rowSwitchRatio: 21
     # level (CSV: hand_switch_ratio) - hand alternation; replaces meanStreakPower,
     # since mean_streak = presses / (hand switches + words)
-    handSwitchRatio: { max: 35, weight: 2 }
+    handSwitchRatio: { max: 35, weight: 3 }
     # balance (CSV: efforts_imbalance) - left/right effort asymmetry
-    effortsImbalance: 1
+    effortsImbalance: 2
     # balance (CSV: hands_imbalance) - left/right press-count asymmetry
-    handsImbalance: 1
+    handsImbalance: 2
     # balance (CSV: roll_imbalance) - unequal roll distribution between hands
-    rollImbalance: 1
+    rollImbalance: 2
     # balance (CSV: row_switch_imbalance) - unequal row-step burden
-    rowSwitchImbalance: 1
+    rowSwitchImbalance: 2
     # balance (CSV: streak_imbalance) - unequal run lengths between hands
-    streakImbalance: 1
+    streakImbalance: 5
 
   # --- Power-knob mode: used only when `targets` is absent. ---
   # Each factor is (dimensionless ratio)^power: 0.0 = off, 1.0 = full strength.

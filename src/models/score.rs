@@ -263,7 +263,7 @@ impl std::fmt::Display for ScoreResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "φ {:.4} | ↕ {:+06.2}% | ⇄ {:+06.2}% | ⟳Δ {:+06.2}% | Δ {:+06.2}% | εΔ {:+06.2}% | ↕↔ {:+06.2}% | →Δ {:+06.2}% | → {:.2} | ε {:.2}",
+            "φ {:.4} | ↕ {:06.2}% | ⇄ {:06.2}% | ⟳Δ {:+06.2}% | Δ {:+06.2}% | εΔ {:+06.2}% | ↕↔ {:+06.2}% | →Δ {:+06.2}% | → {:.2} | ε {:.2}",
             self.fitness,
             self.row_switch_ratio() * 100.0,
             self.hand_switch_ratio() * 100.0,
