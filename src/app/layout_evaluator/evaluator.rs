@@ -1,7 +1,7 @@
 use crate::app::LayoutEvaluatorConfig;
 use crate::app::layout_evaluator::corpus::CorpusCounts;
 use crate::app::layout_evaluator::keys::{row_distance, slot};
-use crate::app::layout_evaluator::penalty::penalty;
+use crate::app::layout_evaluator::penalty::{breakdown, penalty};
 #[cfg(test)]
 use crate::app::synthesise::CachedSourceStats;
 use crate::models::{Keyboard, Keys, ScoreResult};
@@ -148,6 +148,12 @@ impl LayoutEvaluator {
         result.fitness = self.config.fitness_scale / (result.effort * penalty);
 
         result
+    }
+
+    /// Per-metric penalty contributions for a scored layout, worst first. Empty in
+    /// powers mode, where the factors are not attributable to single metrics.
+    pub fn breakdown(&self, score: &ScoreResult) -> Vec<(&'static str, f64)> {
+        breakdown(&self.config, score)
     }
 
     /// Look up precomputed bigram effort. Right-hand pairs were expanded at init by `Keyboard::expand_pairs`.
@@ -387,6 +393,7 @@ mod tests {
         FxHashMap::from_iter([('a', 0), ('b', 1), ('c', 19), ('d', 5), ('e', 10)])
     }
 
+    /// Legacy power-mode knobs; `targets` stays empty so the power path runs.
     fn test_config() -> LayoutEvaluatorConfig {
         LayoutEvaluatorConfig {
             fitness_scale: 1_000_000.,
@@ -397,6 +404,7 @@ mod tests {
             row_imbalance_power: 1.0,
             row_power: 0.0,
             switch_power: 0.0,
+            ..Default::default()
         }
     }
 
