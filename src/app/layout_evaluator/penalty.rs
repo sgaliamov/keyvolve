@@ -35,7 +35,7 @@
 //! | `row_imbalance_power`  | `row_switch_imbalance`                 |
 //! | `streak_power`         | `streak_imbalance`                     |
 //!
-//! # Powers mode (legacy)
+//! # Powers mode
 //!
 //! Every knob is one scheme — `factor ^ power`, where `factor` is dimensionless and
 //! `>= 1.0` means "worse". `0.0` = off, `1.0` = full, between = softer, above = stricter.
@@ -72,7 +72,7 @@
 //!
 //! `W/P` is fixed for a corpus, so the factor is strictly monotone in `S`. A separate
 //! `(1 + hand_switch_ratio)^q` factor would penalize the same trait twice with two knobs.
-//! The divisor form is kept in powers mode because it discriminates harder: `mean_streak`
+//! The divisor form in powers mode discriminates harder: `mean_streak`
 //! spans `[1, P/W]` (~5x on typical corpora) against `[1, 2]` for `1 + hand_switch_ratio`.
 //! Proven by `mean_streak_equals_presses_over_runs` and
 //! `mean_streak_falls_as_hand_switches_rise`.
@@ -100,7 +100,7 @@ use crate::models::ScoreResult;
 use itertools::Itertools;
 
 /// Penalty multiplier for a scored corpus. `1.0` = neutral, higher = worse layout.
-/// Targets configured → normalized-deviation sum; otherwise the legacy power knobs.
+/// Targets configured → normalized-deviation sum; otherwise the power knobs.
 /// See the module docs for the algebra behind each factor.
 pub fn penalty(config: &LayoutEvaluatorConfig, r: &ScoreResult) -> f64 {
     match config.targets.is_empty() {
@@ -157,33 +157,33 @@ fn terms<'a>(
     })
 }
 
-/// Legacy penalty: one `factor ^ power` per knob, multiplied together.
+/// Power-knob penalty: one `factor ^ power` per knob, multiplied together.
 fn powers(config: &LayoutEvaluatorConfig, r: &ScoreResult) -> f64 {
+    let p = config.powers;
     // Level: row jumps cost, long same-hand runs pay back.
     // `max(1.0)` keeps an empty corpus neutral, where `mean_streak` is `0.0`.
-    let row_jumps = (1.0 + r.row_switch_ratio()).powf(config.row_power);
+    let row_jumps = (1.0 + r.row_switch_ratio()).powf(p.row_power);
     // Hand switches are weighted by 0.5 so this term stays comparable to row-switch ratio.
     let switch_factor =
-        (1.0 + r.hand_switch_ratio() / 2.0 + r.row_switch_ratio()).powf(config.switch_power);
+        (1.0 + r.hand_switch_ratio() / 2.0 + r.row_switch_ratio()).powf(p.switch_power);
 
     let rows = imbalance_ratio(
         r.left_row_switch_cost as f64,
         r.right_row_switch_cost as f64,
     )
-    .powf(config.row_imbalance_power);
+    .powf(p.row_imbalance_power);
 
-    let runs = r.mean_streak().powf(config.mean_streak_power).max(1.0);
+    let runs = r.mean_streak().powf(p.mean_streak_power).max(1.0);
 
     // Balance: both hands should carry comparable effort load.
-    let efforts = imbalance_ratio(r.left_effort, r.right_effort).powf(config.balance_power);
+    let efforts = imbalance_ratio(r.left_effort, r.right_effort).powf(p.balance_power);
 
-    let counts =
-        imbalance_ratio(r.left_count as f64, r.right_count as f64).powf(config.balance_power);
+    let counts = imbalance_ratio(r.left_count as f64, r.right_count as f64).powf(p.balance_power);
 
-    let rolls = imbalance_ratio(r.left_rolls as f64, r.right_rolls as f64)
-        .powf(config.roll_imbalance_power);
+    let rolls =
+        imbalance_ratio(r.left_rolls as f64, r.right_rolls as f64).powf(p.roll_imbalance_power);
 
-    let streaks = imbalance_ratio(r.left_streak(), r.right_streak()).powf(config.streak_power);
+    let streaks = imbalance_ratio(r.left_streak(), r.right_streak()).powf(p.streak_power);
 
     efforts * counts * streaks * rolls * rows * row_jumps * switch_factor / runs
 }
@@ -191,7 +191,7 @@ fn powers(config: &LayoutEvaluatorConfig, r: &ScoreResult) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::app::{Target, Targets};
+    use crate::app::{PowerKnobs, Target, Targets};
 
     /// One 8-press word under four hand patterns. Rolls and switches trade off, so
     /// `mean_streak` drops monotonically as alternation rises — it *is* a switch penalty.
@@ -216,13 +216,15 @@ mod tests {
     #[test]
     fn zero_powers_leave_penalty_neutral() {
         let config = LayoutEvaluatorConfig {
-            balance_power: 0.0,
-            streak_power: 0.0,
-            roll_imbalance_power: 0.0,
-            mean_streak_power: 0.0,
-            row_imbalance_power: 0.0,
-            row_power: 0.0,
-            switch_power: 0.0,
+            powers: PowerKnobs {
+                balance_power: 0.0,
+                streak_power: 0.0,
+                roll_imbalance_power: 0.0,
+                mean_streak_power: 0.0,
+                row_imbalance_power: 0.0,
+                row_power: 0.0,
+                switch_power: 0.0,
+            },
             ..Default::default()
         };
 
@@ -234,13 +236,15 @@ mod tests {
     #[test]
     fn each_power_moves_penalty_in_its_documented_direction() {
         let off = LayoutEvaluatorConfig {
-            balance_power: 0.0,
-            streak_power: 0.0,
-            roll_imbalance_power: 0.0,
-            mean_streak_power: 0.0,
-            row_imbalance_power: 0.0,
-            row_power: 0.0,
-            switch_power: 0.0,
+            powers: PowerKnobs {
+                balance_power: 0.0,
+                streak_power: 0.0,
+                roll_imbalance_power: 0.0,
+                mean_streak_power: 0.0,
+                row_imbalance_power: 0.0,
+                row_power: 0.0,
+                switch_power: 0.0,
+            },
             ..Default::default()
         };
         let neutral = penalty(&off, &skewed());
@@ -250,13 +254,13 @@ mod tests {
             penalty(&config, &skewed())
         };
 
-        assert!(with(|c| c.balance_power = 1.0) > neutral);
-        assert!(with(|c| c.streak_power = 1.0) > neutral);
-        assert!(with(|c| c.roll_imbalance_power = 1.0) > neutral);
-        assert!(with(|c| c.row_imbalance_power = 1.0) > neutral);
-        assert!(with(|c| c.row_power = 1.0) > neutral);
-        assert!(with(|c| c.switch_power = 1.0) > neutral);
-        assert!(with(|c| c.mean_streak_power = 1.0) < neutral);
+        assert!(with(|c| c.powers.balance_power = 1.0) > neutral);
+        assert!(with(|c| c.powers.streak_power = 1.0) > neutral);
+        assert!(with(|c| c.powers.roll_imbalance_power = 1.0) > neutral);
+        assert!(with(|c| c.powers.row_imbalance_power = 1.0) > neutral);
+        assert!(with(|c| c.powers.row_power = 1.0) > neutral);
+        assert!(with(|c| c.powers.switch_power = 1.0) > neutral);
+        assert!(with(|c| c.powers.mean_streak_power = 1.0) < neutral);
     }
 
     /// Raising a power past `1.0` must sharpen an existing penalty, lowering it must soften.
@@ -265,13 +269,15 @@ mod tests {
         let scaled = |power: f64| {
             penalty(
                 &LayoutEvaluatorConfig {
-                    balance_power: power,
-                    streak_power: 0.0,
-                    roll_imbalance_power: 0.0,
-                    mean_streak_power: 0.0,
-                    row_imbalance_power: 0.0,
-                    row_power: 0.0,
-                    switch_power: 0.0,
+                    powers: PowerKnobs {
+                        balance_power: power,
+                        streak_power: 0.0,
+                        roll_imbalance_power: 0.0,
+                        mean_streak_power: 0.0,
+                        row_imbalance_power: 0.0,
+                        row_power: 0.0,
+                        switch_power: 0.0,
+                    },
                     ..Default::default()
                 },
                 &skewed(),
@@ -287,13 +293,15 @@ mod tests {
     #[test]
     fn switch_power_penalizes_combined_switch_and_row_ratios() {
         let config = LayoutEvaluatorConfig {
-            balance_power: 0.0,
-            streak_power: 0.0,
-            roll_imbalance_power: 0.0,
-            mean_streak_power: 0.0,
-            row_imbalance_power: 0.0,
-            row_power: 0.0,
-            switch_power: 1.0,
+            powers: PowerKnobs {
+                balance_power: 0.0,
+                streak_power: 0.0,
+                roll_imbalance_power: 0.0,
+                mean_streak_power: 0.0,
+                row_imbalance_power: 0.0,
+                row_power: 0.0,
+                switch_power: 1.0,
+            },
             ..Default::default()
         };
         let neutral = ScoreResult {
@@ -455,9 +463,12 @@ mod tests {
     #[test]
     fn targets_override_the_power_knobs() {
         let both = LayoutEvaluatorConfig {
-            balance_power: 1.0,
-            mean_streak_power: 1.0,
-            row_power: 1.0,
+            powers: PowerKnobs {
+                balance_power: 1.0,
+                mean_streak_power: 1.0,
+                row_power: 1.0,
+                ..Default::default()
+            },
             ..targets_config()
         };
 

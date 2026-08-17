@@ -24,7 +24,7 @@ dimensionless multiplier built from corpus metrics — see below.
     `max` normalizes metrics against each other; `weight` (default 1) only decides which
     metric gives way first. A `handSwitchRatio` limit replaces the old `meanStreakPower`,
     since `mean_streak = presses / (hand switches + words)`.
-  - **powers** (legacy, used when `targets` is absent) — one `factor ^ power` per knob,
+  - **powers** (used when `targets` is absent) — one `factor ^ power` per knob,
     multiplied together.
 - Corpus: synthesised fake-word file (built from real text via `Synthesise` mode), not raw text — keeps evaluation fast.
 
@@ -90,4 +90,3 @@ cargo test -q scan_live_session_for_cycles -- --ignored --nocapture
 - **`src/`** — keyboard domain: models, evaluator, GA wiring, modes.
 
 BEAKL / Hands Down / ISRT / Engram / Gallium / Graphite / Sturdy / Canary Asset, Capewell, Halmak MINIMAK-8 RECURVA
-

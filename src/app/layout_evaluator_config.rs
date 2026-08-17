@@ -5,7 +5,7 @@ use serde::Deserialize;
 ///
 /// * **targets** — desired limits per metric, in the percent units the CSV prints.
 ///   Active whenever [`Targets`] holds at least one entry.
-/// * **powers** — legacy `factor ^ power` knobs, where `factor` is dimensionless and
+/// * **powers** — `factor ^ power` knobs, where `factor` is dimensionless and
 ///   `>= 1.0` means "worse". `0.0` = off, `1.0` = full strength. Used when `targets` is empty.
 ///
 /// See [`crate::app::layout_evaluator::penalty`] for the derivation behind each factor.
@@ -21,37 +21,13 @@ pub struct LayoutEvaluatorConfig {
     #[serde(default = "default_sharpness")]
     pub sharpness: f64,
 
-    /// Desired metric limits. Empty → the power knobs below drive the penalty.
+    /// Desired metric limits. Empty → the power knobs drive the penalty.
     #[serde(default)]
     pub targets: Targets,
 
-    /// Balance: hand-effort imbalance (CSV: `efforts_imbalance`). Legacy, ignored in targets mode.
-    #[serde(default = "default_power")]
-    pub balance_power: f64,
-
-    /// Balance: left/right run-length imbalance (CSV: `streak_ratio`).
-    #[serde(default = "default_power")]
-    pub streak_power: f64,
-
-    /// Balance: left/right roll imbalance (CSV: `roll_ratio`).
-    #[serde(default = "default_power")]
-    pub roll_imbalance_power: f64,
-
-    /// Level: long same-hand runs, applied as a reward divisor (CSV: `mean_streak`).
-    #[serde(default = "default_power")]
-    pub mean_streak_power: f64,
-
-    /// Balance: left/right row-step imbalance (CSV: `row_switch_imbalance`).
-    #[serde(default = "default_power")]
-    pub row_imbalance_power: f64,
-
-    /// Level: row jumps within a hand (CSV: `row_switch_ratio`).
-    #[serde(default = "default_power")]
-    pub row_power: f64,
-
-    /// Level: combined hand switches + row jumps (CSV: `hand_switch_ratio/2 + row_switch_ratio`).
-    #[serde(default = "default_power")]
-    pub switch_power: f64,
+    /// Power-knob mode parameters. Used when `targets` is empty.
+    #[serde(default)]
+    pub powers: PowerKnobs,
 }
 
 /// Serde default for [`LayoutEvaluatorConfig::fitness_scale`].
@@ -80,6 +56,47 @@ impl Default for LayoutEvaluatorConfig {
             fitness_scale: default_fitness_scale(),
             sharpness: default_sharpness(),
             targets: Targets::default(),
+            powers: PowerKnobs::default(),
+        }
+    }
+}
+
+/// Power-knob scoring mode: each factor is `(dimensionless ratio)^power`.
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct PowerKnobs {
+    /// Balance: hand-effort imbalance (CSV: `efforts_imbalance`).
+    #[serde(default = "default_power")]
+    pub balance_power: f64,
+
+    /// Balance: left/right run-length imbalance (CSV: `streak_ratio`).
+    #[serde(default = "default_power")]
+    pub streak_power: f64,
+
+    /// Balance: left/right roll imbalance (CSV: `roll_ratio`).
+    #[serde(default = "default_power")]
+    pub roll_imbalance_power: f64,
+
+    /// Level: long same-hand runs, applied as a reward divisor (CSV: `mean_streak`).
+    #[serde(default = "default_power")]
+    pub mean_streak_power: f64,
+
+    /// Balance: left/right row-step imbalance (CSV: `row_switch_imbalance`).
+    #[serde(default = "default_power")]
+    pub row_imbalance_power: f64,
+
+    /// Level: row jumps within a hand (CSV: `row_switch_ratio`).
+    #[serde(default = "default_power")]
+    pub row_power: f64,
+
+    /// Level: combined hand switches + row jumps (CSV: `hand_switch_ratio/2 + row_switch_ratio`).
+    #[serde(default = "default_power")]
+    pub switch_power: f64,
+}
+
+impl Default for PowerKnobs {
+    fn default() -> Self {
+        Self {
             balance_power: default_power(),
             streak_power: default_power(),
             roll_imbalance_power: default_power(),
@@ -92,7 +109,7 @@ impl Default for LayoutEvaluatorConfig {
 }
 
 /// Desired limits per metric, in the percent units the CSV prints. Every entry is
-/// optional; all absent means the legacy power knobs own the penalty.
+/// optional; all absent means the power knobs own the penalty.
 #[derive(Debug, Clone, Copy, Default, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields, default)]
 pub struct Targets {
@@ -119,7 +136,7 @@ pub struct Targets {
 }
 
 impl Targets {
-    /// No metric configured → the legacy power penalty owns scoring.
+    /// No metric configured → the power-knob penalty owns scoring.
     pub fn is_empty(&self) -> bool {
         *self == Self::default()
     }
@@ -181,7 +198,7 @@ mod tests {
     #[test]
     fn stale_knob_names_are_rejected() {
         for stale in ["minStreakPower", "balancePenaltyPower", "countPower"] {
-            let json = format!(r#"{{"balancePower": 1.0, "{stale}": 0.8}}"#);
+            let json = format!(r#"{{"powers": {{"balancePower": 1.0, "{stale}": 0.8}}}}"#);
 
             assert!(
                 serde_json::from_str::<LayoutEvaluatorConfig>(&json).is_err(),
@@ -196,8 +213,8 @@ mod tests {
         let config: LayoutEvaluatorConfig = serde_json::from_str("{}").unwrap();
 
         assert_eq!(config, LayoutEvaluatorConfig::default());
-        assert_eq!(config.mean_streak_power, 0.0);
-        assert_eq!(config.switch_power, 0.0);
+        assert_eq!(config.powers.mean_streak_power, 0.0);
+        assert_eq!(config.powers.switch_power, 0.0);
         assert!(config.targets.is_empty());
     }
 
@@ -244,5 +261,16 @@ mod tests {
         let json = r#"{"targets": {"rowSwitchRation": 20}}"#;
 
         assert!(serde_json::from_str::<LayoutEvaluatorConfig>(json).is_err());
+    }
+
+    /// Power knobs are a first-class alternative to targets mode.
+    #[test]
+    fn power_knobs_deserialize_from_powers_block() {
+        let json = r#"{"powers": {"rowPower": 0.5, "meanStreakPower": 0.6}}"#;
+        let config: LayoutEvaluatorConfig = serde_json::from_str(json).unwrap();
+
+        assert_eq!(config.powers.row_power, 0.5);
+        assert_eq!(config.powers.mean_streak_power, 0.6);
+        assert!(config.targets.is_empty());
     }
 }

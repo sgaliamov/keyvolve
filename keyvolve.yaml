@@ -112,7 +112,7 @@ evaluate:
 
 evaluator:
   # Fitness multiplier; higher scales scores up, lower scales down.
-  fitnessScale: 100000000000
+  fitnessScale: 1000000000000
 
   # --- Targets mode: desired metric limits, in the percent units the CSV prints. ---
   # Ideal is 0 for every metric; `max` is the value that costs one full `weight`, which
@@ -141,8 +141,9 @@ evaluator:
     # balance (CSV: streak_imbalance) - unequal run lengths between hands
     streakImbalance: 1
 
-  # --- Legacy power knobs: used only when `targets` is absent. ---
+  # --- Power-knob mode: used only when `targets` is absent. ---
   # Each factor is (dimensionless ratio)^power: 0.0 = off, 1.0 = full strength.
+  # powers:
   # rowPower: 0.5
   # rowImbalancePower: 0.5
   # meanStreakPower: 0.6

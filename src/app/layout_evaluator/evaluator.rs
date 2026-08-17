@@ -278,7 +278,10 @@ mod tests {
             &row_switch_test_keyboard(),
             vec!["ad".to_string()],
             LayoutEvaluatorConfig {
-                row_power: 1.0,
+                powers: crate::app::PowerKnobs {
+                    row_power: 1.0,
+                    ..test_config().powers
+                },
                 ..test_config()
             },
         );
@@ -300,7 +303,10 @@ mod tests {
             &row_switch_test_keyboard(),
             vec!["ad".to_string()],
             LayoutEvaluatorConfig {
-                switch_power: 1.0,
+                powers: crate::app::PowerKnobs {
+                    switch_power: 1.0,
+                    ..test_config().powers
+                },
                 ..test_config()
             },
         );
@@ -393,17 +399,19 @@ mod tests {
         FxHashMap::from_iter([('a', 0), ('b', 1), ('c', 19), ('d', 5), ('e', 10)])
     }
 
-    /// Legacy power-mode knobs; `targets` stays empty so the power path runs.
+    /// Power-knob mode fixture; `targets` stays empty so this path runs.
     fn test_config() -> LayoutEvaluatorConfig {
         LayoutEvaluatorConfig {
             fitness_scale: 1_000_000.,
-            balance_power: 1.0,
-            streak_power: 1.0,
-            roll_imbalance_power: 0.0,
-            mean_streak_power: 1.0,
-            row_imbalance_power: 1.0,
-            row_power: 0.0,
-            switch_power: 0.0,
+            powers: crate::app::PowerKnobs {
+                balance_power: 1.0,
+                streak_power: 1.0,
+                roll_imbalance_power: 0.0,
+                mean_streak_power: 1.0,
+                row_imbalance_power: 1.0,
+                row_power: 0.0,
+                switch_power: 0.0,
+            },
             ..Default::default()
         }
     }
