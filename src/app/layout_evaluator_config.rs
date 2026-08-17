@@ -76,11 +76,7 @@ mod tests {
     /// penalty that no longer exists, so the load has to fail rather than default.
     #[test]
     fn stale_knob_names_are_rejected() {
-        for stale in [
-            "minStreakPower",
-            "balancePenaltyPower",
-            "countPower",
-        ] {
+        for stale in ["minStreakPower", "balancePenaltyPower", "countPower"] {
             let json = format!(r#"{{"balancePower": 1.0, "{stale}": 0.8}}"#);
 
             assert!(

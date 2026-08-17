@@ -50,7 +50,14 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
                             ));
                         }
                     }
-                    let layouts = eval.input.iter().flat_map(Layout::load).collect::<Vec<_>>();
+                    let layouts = eval
+                        .input
+                        .iter()
+                        .map(Layout::load)
+                        .collect::<Result<Vec<_>>>()?
+                        .into_iter()
+                        .flatten()
+                        .collect::<Vec<_>>();
                     info!("Loaded {} layouts", layouts.len());
                     evaluate::evaluate(evaluator, layouts, &eval, app)?
                 }
@@ -60,7 +67,7 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
                     ga.ranges = vec![vec![(EMPTY_SLOT, 'z'); 30]];
                     let mut seed: Vec<_> = vec![];
                     if let Some(layouts_path) = opt.input.clone() {
-                        let loaded = Layout::load(&layouts_path);
+                        let loaded = Layout::load(&layouts_path)?;
                         info!("Loaded {} seed layouts from file", loaded.len());
                         seed.extend(loaded.into_iter().map(layout_to_genome));
                     }

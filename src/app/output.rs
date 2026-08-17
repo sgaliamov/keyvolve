@@ -70,7 +70,7 @@ fn write_canonical(
     let existing = if overwrite {
         Vec::new()
     } else {
-        read_rows(path, side)
+        read_rows(path, side)?
     };
     let batch = layouts.iter().map(|(l, s, _)| to_side(l, s, side));
     let rows = dedup(existing.into_iter().chain(batch));
@@ -150,19 +150,20 @@ fn dedup(rows: impl Iterator<Item = (Layout, ScoreResult)>) -> Vec<String> {
 }
 
 /// Read persisted rows, canonicalized so `e` sits on `side`; skips header and blanks.
-fn read_rows(path: &Path, side: Side) -> Vec<(Layout, ScoreResult)> {
-    let Ok(content) = fs::read_to_string(path) else {
-        return Vec::new();
-    };
-    content
-        .lines()
-        .map(str::trim)
-        .filter(|line| !line.is_empty() && !line.starts_with("keys_1,"))
-        .filter_map(|line| {
-            let score = ScoreResult::from_csv(line)?;
-            Some(to_side(&Layout::new(line), &score, side))
-        })
-        .collect()
+fn read_rows(path: &Path, side: Side) -> Result<Vec<(Layout, ScoreResult)>> {
+    let content = fs::read_to_string(path)
+        .into_diagnostic()
+        .wrap_err("Failed to read layouts file")?;
+    let mut rows = Vec::new();
+    for line in content.lines().map(str::trim) {
+        if line.is_empty() || line.starts_with("keys_1,") {
+            continue;
+        }
+        let score = ScoreResult::from_csv(line)
+            .ok_or_else(|| miette::miette!("Invalid score row: {line}"))?;
+        rows.push(to_side(&Layout::try_new(line)?, &score, side));
+    }
+    Ok(rows)
 }
 
 /// Write the header plus all rows, truncating any existing file.
