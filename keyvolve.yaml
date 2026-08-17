@@ -113,21 +113,42 @@ evaluate:
 evaluator:
   # Fitness multiplier; higher scales scores up, lower scales down.
   fitnessScale: 100000000000
-  # Penalty knobs — each factor is (dimensionless ratio)^power:
-  #   0.0 = off, 1.0 = full strength, between = softer, above = stricter.
-  # level (CSV: row_switch_ratio) — penalizes row jumps inside a hand
-  rowPower: 0.2
-  # level (CSV: hand_switch_ratio/2 + row_switch_ratio) — penalizes combined hand alternation and row movement
-  switchPower: 0.2
-  # balance (CSV: row_switch_imbalance) — unequal row-step burden
-  rowImbalancePower: 0.1
-  # level (CSV: mean_streak, hand_switch_ratio) — rewards long same-hand runs; affects hand-switching frequency
-  meanStreakPower: 0.5
-  # balance (CSV: efforts_imbalance) — left/right effort asymmetry
-  balancePower: 0.1
-  # balance (CSV: roll_ratio) — unequal roll distribution between hands
-  rollImbalancePower: 0.1
-  # # balance (CSV: streak_ratio) — unequal run lengths between hands
+
+  # --- Targets mode: desired metric limits, in the percent units the CSV prints. ---
+  # Ideal is 0 for every metric; `max` is the value that costs one full `weight`, which
+  # is also what makes metrics of different scales comparable.
+  #   penalty = 1 + sum(weight * (|value| / max) ^ sharpness)
+  # All metrics on target -> penalty exactly 1.0 -> fitness = fitnessScale / effort.
+  # Bare number = max with weight 1; write `{ max: 1, weight: 2 }` only when one metric
+  # should give way before another. Delete the `targets:` block to fall back to the
+  # legacy power knobs below.
+  # sharpness: half the limit costs weight/16, double the limit costs 16*weight.
+  sharpness: 4
+  targets:
+    # level (CSV: row_switch_ratio) - row jumps inside a hand
+    rowSwitchRatio: 20
+    # level (CSV: hand_switch_ratio) - hand alternation; replaces meanStreakPower,
+    # since mean_streak = presses / (hand switches + words)
+    handSwitchRatio: 35
+    # balance (CSV: efforts_imbalance) - left/right effort asymmetry
+    effortsImbalance: 1
+    # balance (CSV: hands_imbalance) - left/right press-count asymmetry
+    handsImbalance: 1
+    # balance (CSV: roll_imbalance) - unequal roll distribution between hands
+    rollImbalance: 1
+    # balance (CSV: row_switch_imbalance) - unequal row-step burden
+    rowSwitchImbalance: 1
+    # balance (CSV: streak_imbalance) - unequal run lengths between hands
+    streakImbalance: 1
+
+  # --- Legacy power knobs: used only when `targets` is absent. ---
+  # Each factor is (dimensionless ratio)^power: 0.0 = off, 1.0 = full strength.
+  # rowPower: 0.5
+  # rowImbalancePower: 0.5
+  # meanStreakPower: 0.6
+  # balancePower: 0.5
+  # rollImbalancePower: 0.5
+  # switchPower: 0.2
   # streakPower: 1.0
 
 ga:
