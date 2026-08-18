@@ -102,7 +102,7 @@ evaluate:
   # One or more layout CSVs to score.
   input:
     - data/layouts.csv
-    # - data/seed.csv
+    - data/known-layouts.csv
   # Output CSV for scored layouts.
   output: data/layouts.csv
   # Number of best layouts printed to stdout.
@@ -125,18 +125,18 @@ evaluator:
   sharpness: 4
   targets:
     # level (CSV: row_switch_ratio) - row jumps inside a hand
-    rowSwitchRatio: 21
+    rowSwitchRatio: { max: 15, weight: 1 }
     # level (CSV: hand_switch_ratio) - hand alternation; replaces meanStreakPower,
     # since mean_streak = presses / (hand switches + words)
-    handSwitchRatio: { max: 35, weight: 3 }
+    handSwitchRatio: { max: 30, weight: 3 }
     # balance (CSV: efforts_imbalance) - left/right effort asymmetry
-    effortsImbalance: 2
+    effortsImbalance: 5
     # balance (CSV: hands_imbalance) - left/right press-count asymmetry
-    handsImbalance: 2
+    handsImbalance: 5
     # balance (CSV: roll_imbalance) - unequal roll distribution between hands
-    rollImbalance: 2
+    rollImbalance: 5
     # balance (CSV: row_switch_imbalance) - unequal row-step burden
-    rowSwitchImbalance: 2
+    rowSwitchImbalance: 5
     # balance (CSV: streak_imbalance) - unequal run lengths between hands
     streakImbalance: 5
 
