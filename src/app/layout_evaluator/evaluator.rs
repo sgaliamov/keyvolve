@@ -74,16 +74,8 @@ impl LayoutEvaluator {
     /// Seed cost for a word's first character: self-effort baseline, one key press.
     fn score_first(&self, c: char, keys: &Keys) -> ScoreResult {
         let key = slot(keys, c);
-        let left = key < 15;
         let effort = self.lookup(key, key);
-        ScoreResult {
-            effort,
-            left_count: left as u64,
-            right_count: !left as u64,
-            left_effort: if left { effort } else { 0. },
-            right_effort: if !left { effort } else { 0. },
-            ..Default::default()
-        }
+        ScoreResult::press(key, effort)
     }
 
     /// Cost of one adjacent character pair within a word. Effort charged on the
@@ -105,21 +97,15 @@ impl LayoutEvaluator {
             (self.lookup(kb, kb), 1, 0)
         };
 
-        ScoreResult {
-            effort,
-            fitness: 0.0,
-            hand_switches,
-            // Row steps only occur same-hand; charge them to that hand.
-            left_row_switch_cost: if b_left { row_cost } else { 0 },
-            right_row_switch_cost: if !b_left { row_cost } else { 0 },
-            left_count: b_left as u64,
-            right_count: !b_left as u64,
-            // Same-hand bigram lands wholly on one hand; alternating pairs add to neither.
-            left_rolls: (same_hand && a_left) as u64,
-            right_rolls: (same_hand && !a_left) as u64,
-            left_effort: if b_left { effort } else { 0. },
-            right_effort: if !b_left { effort } else { 0. },
-        }
+        let mut score = ScoreResult::press(kb, effort);
+        score.hand_switches = hand_switches;
+        // Row steps only occur same-hand; charge them to that hand.
+        score.left_row_switch_cost = if b_left { row_cost } else { 0 };
+        score.right_row_switch_cost = if !b_left { row_cost } else { 0 };
+        // Same-hand bigram lands wholly on one hand; alternating pairs add to neither.
+        score.left_rolls = (same_hand && a_left) as u64;
+        score.right_rolls = (same_hand && !a_left) as u64;
+        score
     }
 
     /// Score the corpus: raw effort scaled by uniform multiplicative penalty factors.

@@ -164,9 +164,15 @@ pub fn line_to_keys(line: &str) -> Result<Keys> {
     }
 
     if keys.len() != 26 {
+        let preview = line.split(',')
+            .take(7)
+            .map(str::trim)
+            .collect::<Vec<_>>()
+            .join(" | ");
         return Err(miette!(
-            "layout must contain all 26 keys, got {}",
-            keys.len()
+            "layout must contain all 26 keys, got {} | row: [{}]",
+            keys.len(),
+            preview
         ));
     }
 
