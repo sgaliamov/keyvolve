@@ -1,15 +1,9 @@
 keys_1,keys_2,keys_3,keys_4,keys_5,keys_6,name
 _ql_p,arenb,zwhj_,_fudk,gsito,vcymx,arensito-1*
 ql_p_,arenb,zw_hj,_fudk,gsito,vcymx,arensito-2
-qwert,asdfg,zxcvb,yuiop,hjkl_,nm___,qwerty-1
-qwert,asdfg,zxcvb,yuio_,hjklp,nm___,qwerty-2
-___py,aoeui,_qjkx,fgcrl,dhtns,bmwvz,dworak-modern
-___py,aoeui,zqjkx,fgcrl,dhtns,bmwv_,dworak-2
-qwfpg,arstd,zxcvb,jluy_,hneio,km___,colemak
-qwfpb,arstg,xcdvz,jluy_,mneio,kh___,colemak-angle-mod
-qwfpb,arstg,zxcdv,jluy_,mneio,kh___,colemak-ortho
 wcdlk,rsthv,qbgmx,jyou_,pneia,zf___,apt
 qwjfg,asetd,zxcvb,ypul_,hnior,km___,asset
+
 wpdfg,rntsy,bkcvz,qxou_,mhaei,ml___,blaze-rowstag
 wpdfg,rntsy,zbkcv,qxou_,mhaei,jl___,blaze-colstag
 qhou_,jieay,xk___,glrfb,dtsnp,vmcwz,breakl-43
@@ -22,6 +16,11 @@ qwyrf,dsatn,zxcvj,mlubp,hoei_,gk___,carpax-qwyrfm
 _ymdg,aersf,xzcvj,_wh__,ktnio,bpluq,capewell-0.9.2
 qwkrf,dsatn,zxcvb,yuijp,hoeil,gm___,carpax-qwkrfy
 qplcj,rntsg,zbmwv,xfou_,yheia,kd___,ctgap
+qwfpg,arstd,zxcvb,jluy_,hneio,km___,colemak
+qwfpb,arstg,xcdvz,jluy_,mneio,kh___,colemak-angle-mod
+qwfpb,arstg,zxcdv,jluy_,mneio,kh___,colemak-ortho
+___py,aoeui,_qjkx,fgcrl,dhtns,bmwvz,dworak-modern
+___py,aoeui,zqjkx,fgcrl,dhtns,bmwv_,dworak-2
 vlhkq,srntw,zxmdb,jfou_,ycaei,pg___,dhorf
 byou_,hiae_,kjxw_,qdngv,ztrsc,_mlfp,engram-v2025*
 byou_,ciae_,gxjk_,zldwv,qhtsn,_rmfp,engrammer*
@@ -35,6 +34,7 @@ wlrbz,shnt_,fmvc_,_qudj,_aeio,gpxky,halmak
 wchfv,rsntg,xmldb,_yujq,kieoa,zp___,hands-down-alt
 wfmpv,rsntg,xcldb,z_j_q,_aeih,_uiyk,hands-down-neu*
 qchmz,rsntg,xbldp,kyoj_,wueai,vf___,hands-down-referece
+xympb,nhstg,vfcdk,jwouq,zreia,_l___,hyperdeath
 yclmk,isrtg,qvwdj,zfu__,pneao,bh___,isrt-standard
 yclmk,isrtg,vwdjq,zfu__,pneao,bh___,isrt-angle-mod
 vlndk,tsrhf,zxpb_,qwouj,gcaei,my___,kuntem
@@ -44,6 +44,7 @@ vmlcp,strdy,xkjgw,bquo_,fneai,zh___,magic-study*
 blcwv,nrstg,xzkmj,qfou_,yheia,pd___,meteorite
 ypouj,inea_,qz___,kdlcw,mhtsr,bfgvx,mtgap-1
 _fhdk,oantg,qxbpz,jcul_,mseri,yw_v_,mtgap-2
+ycfmk,rsitw,xfpdv,jhoq_,bneau,zl___,neauwr-bits
 zmrlf,nthsb,xqwkv,jyou_,cdeia,pg___,nokwts
 qwdfk,asetg,zxcvb,jurl_,ynioh,pm___,norman
 qwfdp,asetg,zxcvb,yulk_,hmoir,jm___,notarise-ts
@@ -53,6 +54,8 @@ ywflm,ursnh,zxcvj,kpoq_,dteai,bg___,poqtea
 qwerf,asdtg,zxcvb,jylk_,huoip,nm___,qwerf-2007
 qwert,asdfg,zxcvb,yuio_,hjklp,nm___,qwerty-p
 qwert,asdfg,zxcvb,yuiop,hjkl_,nm___,qwerty
+qwert,asdfg,zxcvb,yuiop,hjkl_,nm___,qwerty-1
+qwert,asdfg,zxcvb,yuio_,hjklp,nm___,qwerty-2
 qwprf,asdtg,zxcvb,jukl_,hnioe,jm___,qwpr
 fdlgv,sthcy,zkmpw,qruo_,bneai,xj___,rain
 frdpv,sntcb,zxkgw,qjuoy,_heai,ml___,recurva
@@ -69,6 +72,4 @@ qdrwb,ashtg,zxmcv,jfup_,yneoi,kl___,workman
 fmlcv,strdp,zkqgw,xjuoy,_naei,bh___,xanthor
 xprty,qsdfn,zwcvb,kuioj,hael_,gm___,xpert-one
 xprty,qsdfn,mwcvl,kuioj,daeb_,gz___,xpert-express
-ycfmk,rsitw,xfpdv,jhoq_,bneau,zl___,neauwr-bits
-xympb,nhstg,vfcdk,jwouq,zreia,_l___,hyperdeath
 zoinx,_aer_,q_u_j,kdcfv,lhrsb,ympgw,zoinx
