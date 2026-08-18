@@ -164,7 +164,8 @@ pub fn line_to_keys(line: &str) -> Result<Keys> {
     }
 
     if keys.len() != 26 {
-        let preview = line.split(',')
+        let preview = line
+            .split(',')
             .take(7)
             .map(str::trim)
             .collect::<Vec<_>>()
