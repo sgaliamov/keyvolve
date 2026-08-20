@@ -102,9 +102,11 @@ evaluate:
   # One or more layout CSVs to score.
   input:
     - data/layouts.csv
-    # - data/known-layouts.csv
+    - data/known-layouts.csv
+    - data/seed.csv
   # Output CSV for scored layouts.
-  output: data/layouts.csv
+  # output: data/layouts.csv
+  output: data/layouts-all.csv
   # Number of best layouts printed to stdout.
   print: 10
   # Orientation used when saving layouts; left mirrors twin layouts.

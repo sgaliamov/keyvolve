@@ -131,10 +131,18 @@ fn mirror_slot(i: usize) -> usize {
 
 pub fn line_to_keys(line: &str) -> Result<Keys> {
     let groups = line.split(',').map(str::trim).collect_vec();
+    let preview = line
+        .split(',')
+        .take(7)
+        .map(str::trim)
+        .collect::<Vec<_>>()
+        .join(" | ");
+
     if groups.len() < 6 {
         return Err(miette!(
-            "layout row needs 6 key groups, got {}",
-            groups.len()
+            "layout row needs 6 key groups, got {} | row: [{}]",
+            groups.len(),
+            preview
         ));
     }
 
@@ -143,9 +151,10 @@ pub fn line_to_keys(line: &str) -> Result<Keys> {
         let chars = group.chars().collect_vec();
         if chars.len() != 5 {
             return Err(miette!(
-                "layout group {} must have 5 slots, got {}",
+                "layout group {} must have 5 slots, got {} | row: [{}]",
                 group_idx + 1,
-                chars.len()
+                chars.len(),
+                preview
             ));
         }
 
@@ -154,22 +163,16 @@ pub fn line_to_keys(line: &str) -> Result<Keys> {
                 continue;
             }
             if !c.is_ascii_alphabetic() {
-                return Err(miette!("invalid layout key {c:?}"));
+                return Err(miette!("invalid layout key {c:?} | row: [{}]", preview));
             }
             let pos = (group_idx * 5 + slot_idx) as u8;
             if keys.insert(c, pos).is_some() {
-                return Err(miette!("duplicate layout key {c:?}"));
+                return Err(miette!("duplicate layout key {c:?} | row: [{}]", preview));
             }
         }
     }
 
     if keys.len() != 26 {
-        let preview = line
-            .split(',')
-            .take(7)
-            .map(str::trim)
-            .collect::<Vec<_>>()
-            .join(" | ");
         return Err(miette!(
             "layout must contain all 26 keys, got {} | row: [{}]",
             keys.len(),
