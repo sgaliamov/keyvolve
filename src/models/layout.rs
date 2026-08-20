@@ -173,9 +173,19 @@ pub fn line_to_keys(line: &str) -> Result<Keys> {
     }
 
     if keys.len() != 26 {
+        use rustc_hash::FxHashSet;
+        let all_letters: FxHashSet<char> = ('a'..='z').collect();
+        let mut missing: Vec<char> = all_letters
+            .iter()
+            .filter(|c| !keys.contains_key(c))
+            .copied()
+            .collect();
+        missing.sort_unstable();
+        let missing_str: String = missing.iter().collect();
         return Err(miette!(
-            "layout must contain all 26 keys, got {} | row: [{}]",
+            "layout must contain all 26 keys, got {} | missing: {} | row: [{}]",
             keys.len(),
+            missing_str,
             preview
         ));
     }
@@ -187,7 +197,7 @@ pub fn line_to_keys(line: &str) -> Result<Keys> {
 const HOME_ROW: [usize; 10] = [5, 6, 7, 8, 9, 20, 21, 22, 23, 24];
 
 /// Explicit name from the CSV column after the six key groups. `None` when absent
-/// or numeric — old headerless rows store fitness there, not a name.
+/// or numeric — old headless rows store fitness there, not a name.
 pub fn name_field(line: &str) -> Option<&str> {
     line.split(',')
         .nth(6)
