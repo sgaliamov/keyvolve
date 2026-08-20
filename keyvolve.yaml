@@ -114,7 +114,7 @@ evaluate:
 
 evaluator:
   # Fitness multiplier; higher scales scores up, lower scales down.
-  fitnessScale: 1000000000000
+  fitnessScale: 1000000000000000
 
   # --- Targets mode: desired metric limits, in the percent units the CSV prints. ---
   # Ideal is 0 for every metric; `max` is the value that costs one full `weight`, which
