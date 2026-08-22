@@ -1,7 +1,7 @@
 use crate::app::LayoutEvaluatorConfig;
-use crate::app::layout_evaluator::corpus::CorpusCounts;
-use crate::app::layout_evaluator::keys::{row_distance, slot};
-use crate::app::layout_evaluator::penalty::{breakdown, penalty};
+use crate::app::evaluator::corpus::CorpusCounts;
+use crate::app::evaluator::keys::{row_distance, slot};
+use crate::app::evaluator::penalty::{breakdown, penalty};
 #[cfg(test)]
 use crate::app::synthesise::CachedSourceStats;
 use crate::models::{Keyboard, Keys, ScoreResult};

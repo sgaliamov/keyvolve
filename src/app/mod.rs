@@ -1,6 +1,6 @@
 pub mod evaluate;
+mod evaluator;
 pub mod frequencies;
-mod layout_evaluator;
 pub mod merge;
 mod optimization;
 mod output;
@@ -9,8 +9,8 @@ mod run;
 pub mod synthesise;
 
 pub use evaluate::*;
+pub use evaluator::*;
 pub use frequencies::*;
-pub use layout_evaluator::*;
 pub use merge::*;
 pub use optimization::*;
 pub use output::*;
