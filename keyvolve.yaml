@@ -102,11 +102,11 @@ evaluate:
   # One or more layout CSVs to score.
   input:
     - data/layouts.csv
-    - data/known-layouts.csv
-    - data/seed.csv
+    # - data/known-layouts.csv
+    # - data/seed.csv
   # Output CSV for scored layouts.
-  # output: data/layouts.csv
-  output: data/layouts-all.csv
+  output: data/layouts.csv
+  # output: data/layouts-all.csv
   # Number of best layouts printed to stdout.
   print: 10
   # Orientation used when saving layouts; left mirrors twin layouts.
@@ -125,22 +125,22 @@ evaluator:
   # Bare number = max with weight 1; write `{ max: 1, weight: 2 }` when a metric should give way last.
   rowSwitchRatio: { max: 15, weight: 1 }
   handSwitchRatio: { max: 30, weight: 3 }
-  effortsImbalance: 5
-  handsImbalance: 5
-  rollImbalance: 5
-  rowSwitchImbalance: 5
-  streakImbalance: 5
-  topRowRatio: { max: 30, weight: 1 }
+  effortsImbalance: { max: 5, weight: 1 }
+  handsImbalance: { max: 5, weight: 1 }
+  rollImbalance: { max: 5, weight: 1 }
+  rowSwitchImbalance: { max: 5, weight: 1 }
+  streakImbalance: { max: 5, weight: 1 }
+  topRowRatio: { max: 25, weight: 1 }
   homeRowRatio: { max: 60, weight: 1 }
-  # Home row left/right balance (absolute value); controls asymmetry in home row effort
-  homeRowBalance: 15
   bottomRowRatio: { max: 15, weight: 1 }
+  # Home row left/right balance (absolute value); controls asymmetry in home row effort
+  homeRowBalance: { max: 15, weight: 0.5 }
   # Left-hand column ratios (left c1=pinky through c5=index); right-hand mirrors left
-  c1Ratio: 7
-  c2Ratio: 11.5
-  c3Ratio: 13
-  c4Ratio: 10.5
-  c5Ratio: 8
+  c1Ratio: { max: 8, weight: 0.75 }
+  c2Ratio: { max: 11.5, weight: 0.75 }
+  c3Ratio: { max: 13, weight: 0.75 }
+  c4Ratio: { max: 10.5, weight: 0.75 }
+  c5Ratio: { max: 7, weight: 0.75 }
 
 ga:
   # Mutation probability applied per genome element.
