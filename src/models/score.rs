@@ -181,6 +181,60 @@ impl ScoreResult {
         )
     }
 
+    // Column ratios: effort share per column (left: pinky→thumb, right: index→thumb)
+
+    /// Left column 1 (pinky) effort share: left_column_effort[0] / total_effort.
+    /// Range: [0.0, 1.0]. 0 = unused, 1.0 = all effort on left pinky.
+    pub fn left_c1_ratio(&self) -> f64 {
+        crate::math::ratio(self.left_column_effort[0], self.effort)
+    }
+
+    /// Left column 2 (ring) effort share.
+    pub fn left_c2_ratio(&self) -> f64 {
+        crate::math::ratio(self.left_column_effort[1], self.effort)
+    }
+
+    /// Left column 3 (middle) effort share.
+    pub fn left_c3_ratio(&self) -> f64 {
+        crate::math::ratio(self.left_column_effort[2], self.effort)
+    }
+
+    /// Left column 4 (index) effort share.
+    pub fn left_c4_ratio(&self) -> f64 {
+        crate::math::ratio(self.left_column_effort[3], self.effort)
+    }
+
+    /// Left column 5 (thumb) effort share.
+    pub fn left_c5_ratio(&self) -> f64 {
+        crate::math::ratio(self.left_column_effort[4], self.effort)
+    }
+
+    /// Right column 1 (index) effort share: right_column_effort[0] / total_effort.
+    /// Range: [0.0, 1.0]. 0 = unused, 1.0 = all effort on right index.
+    pub fn right_c1_ratio(&self) -> f64 {
+        crate::math::ratio(self.right_column_effort[0], self.effort)
+    }
+
+    /// Right column 2 (middle) effort share.
+    pub fn right_c2_ratio(&self) -> f64 {
+        crate::math::ratio(self.right_column_effort[1], self.effort)
+    }
+
+    /// Right column 3 (ring) effort share.
+    pub fn right_c3_ratio(&self) -> f64 {
+        crate::math::ratio(self.right_column_effort[2], self.effort)
+    }
+
+    /// Right column 4 (pinky) effort share.
+    pub fn right_c4_ratio(&self) -> f64 {
+        crate::math::ratio(self.right_column_effort[3], self.effort)
+    }
+
+    /// Right column 5 (thumb) effort share.
+    pub fn right_c5_ratio(&self) -> f64 {
+        crate::math::ratio(self.right_column_effort[4], self.effort)
+    }
+
     /// Format a 5-column ratio list for display.
     fn format_ratio_list(values: [f64; 5]) -> String {
         values
@@ -383,16 +437,16 @@ impl ScoreResult {
             self.right_rolls.to_string(),
             format!("{:.2}", self.left_streak()),
             format!("{:.2}", self.right_streak()),
-            format!("{:.2}%", self.left_column_effort_ratios()[0] * 100.0),
-            format!("{:.2}%", self.left_column_effort_ratios()[1] * 100.0),
-            format!("{:.2}%", self.left_column_effort_ratios()[2] * 100.0),
-            format!("{:.2}%", self.left_column_effort_ratios()[3] * 100.0),
-            format!("{:.2}%", self.left_column_effort_ratios()[4] * 100.0),
-            format!("{:.2}%", self.right_column_effort_ratios()[0] * 100.0),
-            format!("{:.2}%", self.right_column_effort_ratios()[1] * 100.0),
-            format!("{:.2}%", self.right_column_effort_ratios()[2] * 100.0),
-            format!("{:.2}%", self.right_column_effort_ratios()[3] * 100.0),
-            format!("{:.2}%", self.right_column_effort_ratios()[4] * 100.0),
+            format!("{:.2}%", self.left_c1_ratio() * 100.0),
+            format!("{:.2}%", self.left_c2_ratio() * 100.0),
+            format!("{:.2}%", self.left_c3_ratio() * 100.0),
+            format!("{:.2}%", self.left_c4_ratio() * 100.0),
+            format!("{:.2}%", self.left_c5_ratio() * 100.0),
+            format!("{:.2}%", self.right_c1_ratio() * 100.0),
+            format!("{:.2}%", self.right_c2_ratio() * 100.0),
+            format!("{:.2}%", self.right_c3_ratio() * 100.0),
+            format!("{:.2}%", self.right_c4_ratio() * 100.0),
+            format!("{:.2}%", self.right_c5_ratio() * 100.0),
             format!("{:.2}%", self.row_effort_ratios()[0].0 * 100.0),
             format!("{:.2}%", self.row_effort_ratios()[1].0 * 100.0),
             format!("{:.2}%", self.row_effort_ratios()[2].0 * 100.0),

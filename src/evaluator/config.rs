@@ -60,6 +60,46 @@ fn default_bottom_row_ratio() -> Option<Target> {
     })
 }
 
+/// Serde default for column 1 (pinky) ratio target: 7%.
+fn default_c1_ratio() -> Option<Target> {
+    Some(Target {
+        max: 7.0,
+        weight: default_weight(),
+    })
+}
+
+/// Serde default for column 2 (ring) ratio target: 11.5%.
+fn default_c2_ratio() -> Option<Target> {
+    Some(Target {
+        max: 11.5,
+        weight: default_weight(),
+    })
+}
+
+/// Serde default for column 3 (middle) ratio target: 13%.
+fn default_c3_ratio() -> Option<Target> {
+    Some(Target {
+        max: 13.0,
+        weight: default_weight(),
+    })
+}
+
+/// Serde default for column 4 (index) ratio target: 10.5%.
+fn default_c4_ratio() -> Option<Target> {
+    Some(Target {
+        max: 10.5,
+        weight: default_weight(),
+    })
+}
+
+/// Serde default for column 5 (index) ratio target: 8%.
+fn default_c5_ratio() -> Option<Target> {
+    Some(Target {
+        max: 8.0,
+        weight: default_weight(),
+    })
+}
+
 /// Desired limits per metric, in the percent units the CSV prints.
 #[derive(Debug, Clone, Copy, Default, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields, default)]
@@ -96,6 +136,27 @@ pub struct Targets {
     /// Limit for `bottom_row_ratio`: bottom row effort share. Default: 15%.
     #[serde(default = "default_bottom_row_ratio")]
     pub bottom_row_ratio: Option<Target>,
+
+    /// Limit for left column 1 (pinky) effort share. Default: 18%.
+    #[serde(default = "default_c1_ratio")]
+    pub c1_ratio: Option<Target>,
+
+    /// Limit for left column 2 (ring) effort share. Default: 19%.
+    #[serde(default = "default_c2_ratio")]
+    pub c2_ratio: Option<Target>,
+
+    /// Limit for left column 3 (middle) effort share. Default: 20%.
+    #[serde(default = "default_c3_ratio")]
+    pub c3_ratio: Option<Target>,
+
+    /// Limit for left column 4 (index) effort share. Default: 22%.
+    #[serde(default = "default_c4_ratio")]
+    pub c4_ratio: Option<Target>,
+
+    /// Limit for left column 5 (index) effort share. Default: 21%.
+    /// Right-hand column targets are computed/mirrored from left-hand values.
+    #[serde(default = "default_c5_ratio")]
+    pub c5_ratio: Option<Target>,
 }
 
 impl Targets {

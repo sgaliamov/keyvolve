@@ -19,7 +19,7 @@
 //! a metric that should give way last. `sharpness` shapes the whole trade-off: at `4`, half
 //! the limit costs `weight / 16` and double the limit costs `16 · weight`.
 //!
-//! # Seven + three metrics
+//! # Seven + three + ten metrics
 //!
 //! | metric               | meaning                          |
 //! |----------------------|----------------------------------|
@@ -33,6 +33,16 @@
 //! | `top_row_ratio`      | top row effort share (default: 25%) |
 //! | `home_row_ratio`     | home row effort share (default: 60%) |
 //! | `bottom_row_ratio`   | bottom row effort share (default: 15%) |
+//! | `left_c1_ratio`      | left pinky effort share (default: 18%) |
+//! | `left_c2_ratio`      | left ring effort share (default: 19%) |
+//! | `left_c3_ratio`      | left middle effort share (default: 20%) |
+//! | `left_c4_ratio`      | left index effort share (default: 22%) |
+//! | `left_c5_ratio`      | left thumb effort share (default: 21%) |
+//! | `right_c1_ratio`     | right index effort share (mirrored from left) |
+//! | `right_c2_ratio`     | right middle effort share (mirrored from left) |
+//! | `right_c3_ratio`     | right ring effort share (mirrored from left) |
+//! | `right_c4_ratio`     | right pinky effort share (mirrored from left) |
+//! | `right_c5_ratio`     | right thumb effort share (mirrored from left) |
 //!
 //! # Why no `mean_streak` target
 //!
@@ -116,6 +126,16 @@ fn terms<'a>(
             t.bottom_row_ratio,
             r.bottom_row_ratio() * 100.0,
         ),
+        ("left_c1_ratio", t.c1_ratio, r.left_c1_ratio() * 100.0),
+        ("left_c2_ratio", t.c2_ratio, r.left_c2_ratio() * 100.0),
+        ("left_c3_ratio", t.c3_ratio, r.left_c3_ratio() * 100.0),
+        ("left_c4_ratio", t.c4_ratio, r.left_c4_ratio() * 100.0),
+        ("left_c5_ratio", t.c5_ratio, r.left_c5_ratio() * 100.0),
+        ("right_c1_ratio", t.c1_ratio, r.right_c1_ratio() * 100.0),
+        ("right_c2_ratio", t.c2_ratio, r.right_c2_ratio() * 100.0),
+        ("right_c3_ratio", t.c3_ratio, r.right_c3_ratio() * 100.0),
+        ("right_c4_ratio", t.c4_ratio, r.right_c4_ratio() * 100.0),
+        ("right_c5_ratio", t.c5_ratio, r.right_c5_ratio() * 100.0),
     ]
     .into_iter()
     .filter_map(move |(name, target, value)| {
@@ -270,7 +290,7 @@ mod tests {
         let terms = breakdown(&targets_config(), &skewed());
 
         assert!(terms.windows(2).all(|w| w[0].1 >= w[1].1));
-        assert_eq!(terms.len(), 10);
+        assert_eq!(terms.len(), 20);
     }
 
     /// Every metric limited, all weights at 1 — the recommended starting point.
@@ -290,6 +310,11 @@ mod tests {
                 top_row_ratio: limit(25.0),
                 home_row_ratio: limit(60.0),
                 bottom_row_ratio: limit(15.0),
+                c1_ratio: limit(7.0),
+                c2_ratio: limit(11.5),
+                c3_ratio: limit(13.0),
+                c4_ratio: limit(10.5),
+                c5_ratio: limit(8.0),
             },
             ..Default::default()
         }
