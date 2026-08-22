@@ -54,7 +54,7 @@
 //! Fitness stays comparable across corpus sizes; `W/P` shifts it slightly across corpora
 //! with different average word length.
 
-use crate::app::LayoutEvaluatorConfig;
+use crate::evaluator::LayoutEvaluatorConfig;
 use crate::models::ScoreResult;
 use itertools::Itertools;
 
@@ -126,7 +126,7 @@ fn terms<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::app::{Target, Targets};
+    use crate::evaluator::{Target, Targets};
 
     /// A layout skewed on every axis, so no factor sits at its neutral value.
     fn skewed() -> ScoreResult {

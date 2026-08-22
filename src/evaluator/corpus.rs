@@ -1,4 +1,4 @@
-use crate::app::synthesise::CachedSourceStats;
+use crate::modes::synthesise::CachedSourceStats;
 use rustc_hash::FxHashMap;
 
 /// Compact corpus counts: first chars plus adjacent pairs.

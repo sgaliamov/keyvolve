@@ -1,5 +1,5 @@
-use crate::app::optimization::{place_letters, unplace_units};
-use crate::app::{GaContext, KeysGenome, KeysIndividual};
+use crate::modes::evaluate::optimization::{GaContext, KeysGenome, KeysIndividual};
+use crate::modes::evaluate::optimization::{place_letters, unplace_units};
 use rand::seq::SliceRandom;
 
 const MUTATION_ATTEMPTS: usize = 3;

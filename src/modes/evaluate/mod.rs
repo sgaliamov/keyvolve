@@ -1,7 +1,9 @@
 pub mod config;
+pub mod optimization;
 use crate::{
-    app::{LayoutEvaluator, write_layouts},
+    evaluator::LayoutEvaluator,
     models::{Layout, ScoreResult},
+    output::write_layouts,
 };
 use cliffa::cli::AppHandle;
 pub use config::*;

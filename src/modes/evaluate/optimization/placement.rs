@@ -1,6 +1,8 @@
-use crate::app::EMPTY_SLOT;
-use crate::app::optimization::{OptimizationCache, OptimizationConfig, are_roll_neighbors};
+use crate::evaluator::EMPTY_SLOT;
 use crate::models::slot_row;
+use crate::modes::evaluate::optimization::{
+    OptimizationCache, OptimizationConfig, are_roll_neighbors,
+};
 use rand::seq::SliceRandom;
 use rustc_hash::FxHashSet;
 
@@ -335,8 +337,8 @@ pub fn place_constrained(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::app::EMPTY_SLOT;
-    use crate::app::optimization::config::{OptimizationCache, OptimizationConfig};
+    use crate::evaluator::EMPTY_SLOT;
+    use crate::modes::evaluate::optimization::config::{OptimizationCache, OptimizationConfig};
     use rand::SeedableRng;
     use rand::rngs::StdRng;
     use rustc_hash::{FxHashMap, FxHashSet};

@@ -1,4 +1,4 @@
-use crate::app::Side;
+use crate::output::Side;
 use serde::Deserialize;
 use std::path::PathBuf;
 

@@ -1,5 +1,7 @@
-use crate::app::optimization::{OptimizationCache, place_letters};
-use crate::app::{EMPTY_SLOT, GaContext, KeysGenome, OptimizationConfig};
+use crate::evaluator::EMPTY_SLOT;
+use crate::modes::evaluate::optimization::{
+    GaContext, KeysGenome, OptimizationCache, OptimizationConfig, place_letters,
+};
 use rand::seq::SliceRandom;
 
 /// Generate a genome for optimization, respecting frozen/blocked/roll constraints.
@@ -40,7 +42,7 @@ fn constrained_keys(opt: &OptimizationConfig, cache: &OptimizationCache) -> Keys
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::app::optimization::{OptimizationConfig, are_roll_neighbors};
+    use crate::modes::evaluate::optimization::{OptimizationConfig, are_roll_neighbors};
     use rustc_hash::FxHashSet;
 
     fn run(opt: &OptimizationConfig) -> KeysGenome {
@@ -155,7 +157,7 @@ mod tests {
     /// char must satisfy `is_slot_allowed` after generation AND after mutation.
     #[test]
     fn real_config_respects_allowed() {
-        use crate::app::optimization::{place_letters, unplace_units};
+        use crate::modes::evaluate::optimization::{place_letters, unplace_units};
         use rand::seq::SliceRandom;
 
         let json = r#"{

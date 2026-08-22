@@ -1,5 +1,9 @@
-use crate::app::{LayoutEvaluator, OptimizationConfig, Side, write_layouts};
 use crate::models::{Layout, ScoreResult};
+use crate::{
+    evaluator::LayoutEvaluator,
+    modes::evaluate::optimization::OptimizationConfig,
+    output::{Side, write_layouts},
+};
 use cliffa::cli::AppHandle;
 use darwin::{GeneticAlgorithm, Individual, NoopCrossover};
 use itertools::Itertools;

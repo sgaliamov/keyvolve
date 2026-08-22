@@ -1,5 +1,5 @@
 use super::fit::{expected_score, information_score};
-use crate::app::rank::{RankConfig, RankState};
+use crate::modes::rank::{RankConfig, RankState};
 use rand::RngExt;
 use rand::seq::SliceRandom;
 use std::collections::{BTreeMap, VecDeque};
@@ -288,7 +288,7 @@ pub fn find_cycle(state: &RankState, winner: usize, loser: usize) -> Option<Vec<
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::app::rank::Answer;
+    use crate::modes::rank::Answer;
     use rand::{RngExt, SeedableRng, rngs::StdRng};
 
     #[test]

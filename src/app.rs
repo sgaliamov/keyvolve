@@ -1,8 +1,9 @@
-use crate::app::{evaluate, frequencies, merge, rank, synthesise, synthesise::read_stats_cache};
+use crate::modes::{evaluate, frequencies, merge, rank, synthesise, synthesise::read_stats_cache};
 use crate::{
     Config, Mode,
-    app::{CorpusCounts, EMPTY_SLOT, LayoutEvaluator, LayoutEvaluatorConfig, optimize},
+    evaluator::{CorpusCounts, EMPTY_SLOT, LayoutEvaluator, LayoutEvaluatorConfig},
     models::{Keyboard, Layout},
+    modes::evaluate::optimization::optimize,
 };
 use cliffa::cli::AppHandle;
 use miette::{Context, Result};

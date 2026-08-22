@@ -1,4 +1,4 @@
-use crate::app::EMPTY_SLOT;
+use crate::evaluator::EMPTY_SLOT;
 use crate::models::slot_row;
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::Deserialize;

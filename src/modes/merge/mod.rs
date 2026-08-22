@@ -1,6 +1,6 @@
 pub mod config;
 
-use crate::app::synthesise::{
+use crate::modes::synthesise::{
     CachedSourceStats, CorpusStatsCounter, filter_stats_bigrams, stats_cache_path,
     write_stats_cache,
 };

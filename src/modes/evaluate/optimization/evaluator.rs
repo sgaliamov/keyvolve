@@ -1,5 +1,5 @@
-use crate::app::{GaContext, KeysIndividual};
 use crate::models::{Layout, ScoreResult};
+use crate::modes::evaluate::optimization::{GaContext, KeysIndividual};
 
 type CorpusEvalResult = (f64, Option<ScoreResult>);
 

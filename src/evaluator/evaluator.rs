@@ -1,10 +1,10 @@
-use crate::app::LayoutEvaluatorConfig;
-use crate::app::evaluator::corpus::CorpusCounts;
-use crate::app::evaluator::keys::{row_distance, slot};
-use crate::app::evaluator::penalty::{breakdown, penalty};
-#[cfg(test)]
-use crate::app::synthesise::CachedSourceStats;
+use crate::evaluator::LayoutEvaluatorConfig;
+use crate::evaluator::corpus::CorpusCounts;
+use crate::evaluator::keys::{row_distance, slot};
+use crate::evaluator::penalty::{breakdown, penalty};
 use crate::models::{Keyboard, Keys, ScoreResult};
+#[cfg(test)]
+use crate::modes::synthesise::CachedSourceStats;
 #[cfg(test)]
 use itertools::Itertools;
 use rustc_hash::FxHashMap;
@@ -282,7 +282,7 @@ mod tests {
 
     #[test]
     fn counts_from_cached_stats_match_direct_counts() {
-        use crate::app::synthesise::CorpusStatsCounter;
+        use crate::modes::synthesise::CorpusStatsCounter;
 
         let words = ["abc", "cab", "aa", "bca", "cc"];
         let mut direct = CorpusCounts::default();

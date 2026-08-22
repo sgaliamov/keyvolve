@@ -1,5 +1,5 @@
 use super::fit::fit_bradley_terry;
-use crate::app::rank::RankConfig;
+use crate::modes::rank::RankConfig;
 use miette::{Context, IntoDiagnostic, Result};
 use serde::{Deserialize, Serialize};
 use std::fs::OpenOptions;

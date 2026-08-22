@@ -1,5 +1,5 @@
-use crate::app::GaContext;
 use crate::models::Layout;
+use crate::modes::evaluate::optimization::GaContext;
 
 /// Progress callback for optimize mode. Returns `false` to stop early.
 pub fn callback(ctx: &GaContext) -> bool {

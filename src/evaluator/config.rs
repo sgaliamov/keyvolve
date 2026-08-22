@@ -3,7 +3,7 @@ use serde::Deserialize;
 
 /// Static scoring configuration for desired metric limits.
 /// Penalty = 1 + Σ weight · (|value| / max) ^ sharpness.
-/// See [`crate::app::layout_evaluator::penalty`] for the algebra.
+/// See [`crate::layout_evaluator::penalty`] for the algebra.
 #[derive(Debug, Clone, Copy, Default, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct LayoutEvaluatorConfig {

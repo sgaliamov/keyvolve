@@ -1,4 +1,4 @@
-use crate::app::synthesise::counter::{CorpusScore, CorpusStats, score_stats};
+use crate::modes::synthesise::counter::{CorpusScore, CorpusStats, score_stats};
 use miette::{Context, IntoDiagnostic, Result};
 use serde::{Deserialize, Serialize};
 use std::{

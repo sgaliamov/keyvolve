@@ -1,4 +1,4 @@
-use crate::app::rank::{HAND_SLOTS, QWERTY, RankConfig, RankState, head_to_head, majority_edges};
+use crate::modes::rank::{HAND_SLOTS, QWERTY, RankConfig, RankState, head_to_head, majority_edges};
 use miette::{IntoDiagnostic, Result};
 use std::fmt::Write as _;
 use std::path::Path;
@@ -721,17 +721,17 @@ mod tests {
         for (index, item) in state.items.iter_mut().enumerate().skip(3) {
             item.rating = 900.0 - index as f64;
         }
-        state.history.push(crate::app::rank::Answer {
+        state.history.push(crate::modes::rank::Answer {
             a: 1,
             b: 0,
             score: 1.0,
         });
-        state.history.push(crate::app::rank::Answer {
+        state.history.push(crate::modes::rank::Answer {
             a: 0,
             b: 2,
             score: 1.0,
         });
-        state.history.push(crate::app::rank::Answer {
+        state.history.push(crate::modes::rank::Answer {
             a: 1,
             b: 2,
             score: 1.0,
