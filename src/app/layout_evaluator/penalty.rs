@@ -19,7 +19,7 @@
 //! a metric that should give way last. `sharpness` shapes the whole trade-off: at `4`, half
 //! the limit costs `weight / 16` and double the limit costs `16 · weight`.
 //!
-//! # Seven metrics
+//! # Seven + three metrics
 //!
 //! | metric               | meaning                          |
 //! |----------------------|----------------------------------|
@@ -30,6 +30,9 @@
 //! | `roll_imbalance`     | left/right roll asymmetry        |
 //! | `row_switch_imbalance` | left/right row-step asymmetry  |
 //! | `streak_imbalance`   | left/right run-length asymmetry  |
+//! | `top_row_ratio`      | top row effort share (default: 25%) |
+//! | `home_row_ratio`     | home row effort share (default: 60%) |
+//! | `bottom_row_ratio`   | bottom row effort share (default: 15%) |
 //!
 //! # Why no `mean_streak` target
 //!
@@ -102,6 +105,17 @@ fn terms<'a>(
             r.row_switch_imbalance(),
         ),
         ("streak_imbalance", t.streak_imbalance, r.streak_imbalance()),
+        ("top_row_ratio", t.top_row_ratio, r.top_row_ratio() * 100.0),
+        (
+            "home_row_ratio",
+            t.home_row_ratio,
+            r.home_row_ratio() * 100.0,
+        ),
+        (
+            "bottom_row_ratio",
+            t.bottom_row_ratio,
+            r.bottom_row_ratio() * 100.0,
+        ),
     ]
     .into_iter()
     .filter_map(move |(name, target, value)| {
@@ -256,7 +270,7 @@ mod tests {
         let terms = breakdown(&targets_config(), &skewed());
 
         assert!(terms.windows(2).all(|w| w[0].1 >= w[1].1));
-        assert_eq!(terms.len(), 7);
+        assert_eq!(terms.len(), 10);
     }
 
     /// Every metric limited, all weights at 1 — the recommended starting point.
@@ -273,6 +287,9 @@ mod tests {
                 roll_imbalance: limit(1.0),
                 row_switch_imbalance: limit(1.0),
                 streak_imbalance: limit(1.0),
+                top_row_ratio: limit(25.0),
+                home_row_ratio: limit(60.0),
+                bottom_row_ratio: limit(15.0),
             },
             ..Default::default()
         }

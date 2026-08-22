@@ -130,6 +130,9 @@ evaluator:
   rollImbalance: 5
   rowSwitchImbalance: 5
   streakImbalance: 5
+  topRowRatio: { max: 30, weight: 1 }
+  homeRowRatio: { max: 60, weight: 1 }
+  bottomRowRatio: { max: 15, weight: 1 }
 
 ga:
   # Mutation probability applied per genome element.

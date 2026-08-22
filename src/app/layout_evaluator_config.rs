@@ -36,6 +36,30 @@ fn default_weight() -> f64 {
     1.0
 }
 
+/// Serde default for top row ratio target: 25%.
+fn default_top_row_ratio() -> Option<Target> {
+    Some(Target {
+        max: 25.0,
+        weight: default_weight(),
+    })
+}
+
+/// Serde default for home row ratio target: 60%.
+fn default_home_row_ratio() -> Option<Target> {
+    Some(Target {
+        max: 60.0,
+        weight: default_weight(),
+    })
+}
+
+/// Serde default for bottom row ratio target: 15%.
+fn default_bottom_row_ratio() -> Option<Target> {
+    Some(Target {
+        max: 15.0,
+        weight: default_weight(),
+    })
+}
+
 /// Desired limits per metric, in the percent units the CSV prints.
 #[derive(Debug, Clone, Copy, Default, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields, default)]
@@ -60,6 +84,18 @@ pub struct Targets {
 
     /// Limit for `streak_imbalance`: left/right run-length asymmetry.
     pub streak_imbalance: Option<Target>,
+
+    /// Limit for `top_row_ratio`: top row effort share. Default: 25%.
+    #[serde(default = "default_top_row_ratio")]
+    pub top_row_ratio: Option<Target>,
+
+    /// Limit for `home_row_ratio`: home row effort share. Default: 60%.
+    #[serde(default = "default_home_row_ratio")]
+    pub home_row_ratio: Option<Target>,
+
+    /// Limit for `bottom_row_ratio`: bottom row effort share. Default: 15%.
+    #[serde(default = "default_bottom_row_ratio")]
+    pub bottom_row_ratio: Option<Target>,
 }
 
 impl Targets {
