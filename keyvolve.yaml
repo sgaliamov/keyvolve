@@ -132,6 +132,8 @@ evaluator:
   streakImbalance: 5
   topRowRatio: { max: 30, weight: 1 }
   homeRowRatio: { max: 60, weight: 1 }
+  # Home row left/right balance (absolute value); controls asymmetry in home row effort
+  homeRowBalance: 15
   bottomRowRatio: { max: 15, weight: 1 }
   # Left-hand column ratios (left c1=pinky through c5=index); right-hand mirrors left
   c1Ratio: 7

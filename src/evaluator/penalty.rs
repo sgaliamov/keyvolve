@@ -30,6 +30,7 @@
 //! | `roll_imbalance`     | left/right roll asymmetry        |
 //! | `row_switch_imbalance` | left/right row-step asymmetry  |
 //! | `streak_imbalance`   | left/right run-length asymmetry  |
+//! | `home_row_balance`   | home row left/right balance (absolute value) |
 //! | `top_row_ratio`      | top row effort share (default: 25%) |
 //! | `home_row_ratio`     | home row effort share (default: 60%) |
 //! | `bottom_row_ratio`   | bottom row effort share (default: 15%) |
@@ -115,6 +116,11 @@ fn terms<'a>(
             r.row_switch_imbalance(),
         ),
         ("streak_imbalance", t.streak_imbalance, r.streak_imbalance()),
+        (
+            "home_row_balance",
+            t.home_row_balance,
+            r.home_row_balance(),
+        ),
         ("top_row_ratio", t.top_row_ratio, r.top_row_ratio() * 100.0),
         (
             "home_row_ratio",
@@ -290,7 +296,7 @@ mod tests {
         let terms = breakdown(&targets_config(), &skewed());
 
         assert!(terms.windows(2).all(|w| w[0].1 >= w[1].1));
-        assert_eq!(terms.len(), 20);
+        assert_eq!(terms.len(), 21);
     }
 
     /// Every metric limited, all weights at 1 — the recommended starting point.
@@ -309,6 +315,7 @@ mod tests {
                 streak_imbalance: limit(1.0),
                 top_row_ratio: limit(25.0),
                 home_row_ratio: limit(60.0),
+                home_row_balance: limit(15.0),
                 bottom_row_ratio: limit(15.0),
                 c1_ratio: limit(7.0),
                 c2_ratio: limit(11.5),

@@ -52,6 +52,14 @@ fn default_home_row_ratio() -> Option<Target> {
     })
 }
 
+/// Serde default for home row balance target: 15%.
+fn default_home_row_balance() -> Option<Target> {
+    Some(Target {
+        max: 15.0,
+        weight: default_weight(),
+    })
+}
+
 /// Serde default for bottom row ratio target: 15%.
 fn default_bottom_row_ratio() -> Option<Target> {
     Some(Target {
@@ -132,6 +140,10 @@ pub struct Targets {
     /// Limit for `home_row_ratio`: home row effort share. Default: 60%.
     #[serde(default = "default_home_row_ratio")]
     pub home_row_ratio: Option<Target>,
+
+    /// Limit for `home_row_balance`: home row left/right balance (absolute value). Default: 15%.
+    #[serde(default = "default_home_row_balance")]
+    pub home_row_balance: Option<Target>,
 
     /// Limit for `bottom_row_ratio`: bottom row effort share. Default: 15%.
     #[serde(default = "default_bottom_row_ratio")]

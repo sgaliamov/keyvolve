@@ -200,8 +200,28 @@ mod tests {
 
     // e-left layout (`e` in keys_2 → slot 7) plus a score row.
     fn e_left() -> (Layout, ScoreResult) {
-        let line = "_mub_,lreop,wfydx,_htc_,kinas,qgvzj,5378.69,0.00%,0.96,40%,24%,-13.33%,34%,1.10,1.85,47%,52%,49%,50%,15.0,7.0,8.0,100,200,17,7,5,30,40,1.43,1.25";
-        (Layout::new(line), ScoreResult::from_csv(line).unwrap())
+        use crate::models::ScoreResult;
+        
+        let score = ScoreResult {
+            fitness: 5378.69,
+            effort: 10000.0,
+            left_count: 100,
+            right_count: 200,
+            left_rolls: 30,
+            right_rolls: 40,
+            hand_switches: 5,
+            left_row_switch_cost: 30,
+            right_row_switch_cost: 40,
+            left_effort: 5000.0,
+            right_effort: 5000.0,
+            left_column_effort: [1500.0, 1050.0, 1300.0, 1050.0, 100.0],
+            right_column_effort: [1500.0, 1050.0, 1300.0, 1050.0, 100.0],
+            left_row_effort: [2500.0, 6000.0, 1500.0],
+            right_row_effort: [2500.0, 6000.0, 1500.0],
+        };
+        
+        let csv_line = format!("_mub_,lreop,wfydx,_htc_,kinas,qgvzj,, {}", score.to_csv());
+        (Layout::new(&csv_line), score)
     }
 
     #[test]

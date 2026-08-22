@@ -154,6 +154,15 @@ impl ScoreResult {
         })
     }
 
+    /// Home row left/right balance as signed percent: asymmetry in home row effort between hands.
+    /// Range: (-∞, ∞). 0% = balanced. Positive = right-lean, negative = left-lean.
+    pub fn home_row_balance(&self) -> f64 {
+        crate::math::signed_imbalance_percent(
+            self.left_row_effort[1],
+            self.right_row_effort[1],
+        )
+    }
+
     /// Top row total effort share: (left_top + right_top) / total_effort.
     /// Range: [0.0, 1.0]. 0 = unused, 1.0 = all effort on top row.
     pub fn top_row_ratio(&self) -> f64 {
@@ -417,24 +426,11 @@ impl ScoreResult {
             Self::format_imbalance(self.row_switch_imbalance()),
             format!("{:.2}%", self.hand_switch_ratio() * 100.0),
             Self::format_imbalance(self.hands_imbalance()),
+            format!("{:.2}", self.effort),
             Self::format_imbalance(self.efforts_imbalance()),
             Self::format_imbalance(self.roll_imbalance()),
             format!("{:.2}", self.mean_streak()),
             Self::format_imbalance(self.streak_imbalance()),
-            format!("{:.2}%", self.left_effort_ratio() * 100.0),
-            format!("{:.2}%", self.right_effort_ratio() * 100.0),
-            format!("{:.2}%", self.left_count_ratio() * 100.0),
-            format!("{:.2}%", self.right_count_ratio() * 100.0),
-            format!("{:.2}", self.effort),
-            format!("{:.2}", self.left_effort),
-            format!("{:.2}", self.right_effort),
-            self.left_count.to_string(),
-            self.right_count.to_string(),
-            self.hand_switches.to_string(),
-            self.left_row_switch_cost.to_string(),
-            self.right_row_switch_cost.to_string(),
-            self.left_rolls.to_string(),
-            self.right_rolls.to_string(),
             format!("{:.2}", self.left_streak()),
             format!("{:.2}", self.right_streak()),
             format!("{:.2}%", self.left_c1_ratio() * 100.0),
@@ -447,35 +443,39 @@ impl ScoreResult {
             format!("{:.2}%", self.right_c3_ratio() * 100.0),
             format!("{:.2}%", self.right_c4_ratio() * 100.0),
             format!("{:.2}%", self.right_c5_ratio() * 100.0),
+            format!("{:.2}%", self.top_row_ratio() * 100.0),
+            format!("{:.2}%", self.home_row_ratio() * 100.0),
+            format!("{:.2}%", self.bottom_row_ratio() * 100.0),
+            Self::format_imbalance(self.row_balances()[0]),
+            Self::format_imbalance(self.home_row_balance()),
+            Self::format_imbalance(self.row_balances()[2]),
+            // Remaining columns
+            format!("{:.2}%", self.left_effort_ratio() * 100.0),
+            format!("{:.2}%", self.right_effort_ratio() * 100.0),
+            format!("{:.2}%", self.left_count_ratio() * 100.0),
+            format!("{:.2}%", self.right_count_ratio() * 100.0),
+            format!("{:.2}", self.left_effort),
+            format!("{:.2}", self.right_effort),
+            self.left_count.to_string(),
+            self.right_count.to_string(),
+            self.hand_switches.to_string(),
+            self.left_row_switch_cost.to_string(),
+            self.right_row_switch_cost.to_string(),
+            self.left_rolls.to_string(),
+            self.right_rolls.to_string(),
             format!("{:.2}%", self.row_effort_ratios()[0].0 * 100.0),
             format!("{:.2}%", self.row_effort_ratios()[1].0 * 100.0),
             format!("{:.2}%", self.row_effort_ratios()[2].0 * 100.0),
             format!("{:.2}%", self.row_effort_ratios()[0].1 * 100.0),
             format!("{:.2}%", self.row_effort_ratios()[1].1 * 100.0),
             format!("{:.2}%", self.row_effort_ratios()[2].1 * 100.0),
-            format!("{:.2}%", self.top_row_ratio() * 100.0),
-            format!("{:.2}%", self.home_row_ratio() * 100.0),
-            format!("{:.2}%", self.bottom_row_ratio() * 100.0),
-            Self::format_imbalance(self.row_balances()[0]),
-            Self::format_imbalance(self.row_balances()[1]),
-            Self::format_imbalance(self.row_balances()[2]),
         ]
         .join(",")
     }
 
     /// CSV header matching [`to_csv`] column order.
-    /// Columns: fitness (normalized quality), row_switch_ratio (row jumps %), row_switch_imbalance (hand row asymmetry),
-    /// hand_switch_ratio (hand alternation %), hands_imbalance (left/right count %), efforts_imbalance (left/right effort %),
-    /// roll_imbalance (left/right roll %), mean_streak (avg consecutive presses per hand), streak_imbalance (left/right streak %),
-    /// left_effort_ratio (left % of total), right_effort_ratio (right % of total),
-    /// left_count_ratio (left % of bigrams), right_count_ratio (right % of bigrams),
-    /// effort (raw total), left_effort/right_effort (per-hand), left_count/right_count (bigrams per hand),
-    /// hand_switches (transitions), left_row_switch_cost/right_row_switch_cost (weighted jumps),
-    /// left_rolls/right_rolls (same-hand bigrams), left_streak/right_streak (avg run length),
-    /// column effort ratios (left/right c1→c5), row effort ratios (left/right top→bottom,
-    /// plus row totals), row balances (top/home/bottom).
     pub fn csv_header() -> &'static str {
-        "fitness,row_switch_ratio,row_switch_imbalance,hand_switch_ratio,hands_imbalance,efforts_imbalance,roll_imbalance,mean_streak,streak_imbalance,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,effort,left_effort,right_effort,left_count,right_count,hand_switches,left_row_switch_cost,right_row_switch_cost,left_rolls,right_rolls,left_streak,right_streak,left_c1_ratio,left_c2_ratio,left_c3_ratio,left_c4_ratio,left_c5_ratio,right_c1_ratio,right_c2_ratio,right_c3_ratio,right_c4_ratio,right_c5_ratio,left_top_row_ratio,left_home_row_ratio,left_bottom_row_ratio,right_top_row_ratio,right_home_row_ratio,right_bottom_row_ratio,top_row_ratio,home_row_ratio,bottom_row_ratio,left_row_balance,home_row_balance,bottom_row_balance"
+        "fitness,row_switch_ratio,row_switch_imbalance,hand_switch_ratio,hands_imbalance,effort,efforts_imbalance,roll_imbalance,mean_streak,streak_imbalance,left_streak,right_streak,left_c1_ratio,left_c2_ratio,left_c3_ratio,left_c4_ratio,left_c5_ratio,right_c1_ratio,right_c2_ratio,right_c3_ratio,right_c4_ratio,right_c5_ratio,top_row_ratio,home_row_ratio,bottom_row_ratio,left_row_balance,home_row_balance,bottom_row_balance,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,left_effort,right_effort,left_count,right_count,hand_switches,left_row_switch_cost,right_row_switch_cost,left_rolls,right_rolls,left_top_row_ratio,left_home_row_ratio,left_bottom_row_ratio,right_top_row_ratio,right_home_row_ratio,right_bottom_row_ratio"
     }
 
     /// Parse the raw (non-derived) fields from a persisted CSV row, skipping the
@@ -489,42 +489,42 @@ impl ScoreResult {
             6
         };
         let c: Vec<&str> = line.split(',').skip(skip).map(str::trim).collect();
-        let effort = c.get(13)?.parse::<f64>().ok()?;
+        let effort = c.get(5)?.parse::<f64>().ok()?;
         Some(ScoreResult {
             fitness: c.first()?.parse().ok()?,
             effort,
-            left_effort: c.get(14)?.parse().ok()?,
-            right_effort: c.get(15)?.parse().ok()?,
-            left_count: c.get(16)?.parse().ok()?,
-            right_count: c.get(17)?.parse().ok()?,
-            hand_switches: c.get(18)?.parse().ok()?,
-            left_row_switch_cost: c.get(19)?.parse().ok()?,
-            right_row_switch_cost: c.get(20)?.parse().ok()?,
-            left_rolls: c.get(21)?.parse().ok()?,
-            right_rolls: c.get(22)?.parse().ok()?,
+            left_effort: c.get(32)?.parse().ok()?,
+            right_effort: c.get(33)?.parse().ok()?,
+            left_count: c.get(34)?.parse().ok()?,
+            right_count: c.get(35)?.parse().ok()?,
+            hand_switches: c.get(36)?.parse().ok()?,
+            left_row_switch_cost: c.get(37)?.parse().ok()?,
+            right_row_switch_cost: c.get(38)?.parse().ok()?,
+            left_rolls: c.get(39)?.parse().ok()?,
+            right_rolls: c.get(40)?.parse().ok()?,
             left_column_effort: [
-                Self::parse_bucket(c.get(25), effort),
-                Self::parse_bucket(c.get(26), effort),
-                Self::parse_bucket(c.get(27), effort),
-                Self::parse_bucket(c.get(28), effort),
-                Self::parse_bucket(c.get(29), effort),
+                Self::parse_bucket(c.get(12), effort),
+                Self::parse_bucket(c.get(13), effort),
+                Self::parse_bucket(c.get(14), effort),
+                Self::parse_bucket(c.get(15), effort),
+                Self::parse_bucket(c.get(16), effort),
             ],
             right_column_effort: [
-                Self::parse_bucket(c.get(30), effort),
-                Self::parse_bucket(c.get(31), effort),
-                Self::parse_bucket(c.get(32), effort),
-                Self::parse_bucket(c.get(33), effort),
-                Self::parse_bucket(c.get(34), effort),
+                Self::parse_bucket(c.get(17), effort),
+                Self::parse_bucket(c.get(18), effort),
+                Self::parse_bucket(c.get(19), effort),
+                Self::parse_bucket(c.get(20), effort),
+                Self::parse_bucket(c.get(21), effort),
             ],
             left_row_effort: [
-                Self::parse_bucket(c.get(35), effort),
-                Self::parse_bucket(c.get(36), effort),
-                Self::parse_bucket(c.get(37), effort),
+                Self::parse_bucket(c.get(41), effort),
+                Self::parse_bucket(c.get(42), effort),
+                Self::parse_bucket(c.get(43), effort),
             ],
             right_row_effort: [
-                Self::parse_bucket(c.get(38), effort),
-                Self::parse_bucket(c.get(39), effort),
-                Self::parse_bucket(c.get(40), effort),
+                Self::parse_bucket(c.get(44), effort),
+                Self::parse_bucket(c.get(45), effort),
+                Self::parse_bucket(c.get(46), effort),
             ],
         })
     }
