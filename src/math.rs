@@ -7,19 +7,9 @@ pub fn ratio(value: f64, total: f64) -> f64 {
     if total == 0.0 { 0.0 } else { value / total }
 }
 
-/// Symmetric imbalance multiplier `max(a, b) / min(a, b)`: `1.0` when balanced
-/// or when either side is `0` (an empty side carries no imbalance to penalize).
-pub fn imbalance_ratio(a: f64, b: f64) -> f64 {
-    match (a.max(b), a.min(b)) {
-        (_, 0.0) => 1.0,
-        (hi, lo) => hi / lo,
-    }
-}
-
 /// Directional imbalance as a percent: how far the `left/right` ratio strays
 /// from parity. `0%` when balanced or when `right == 0`. Negative = left-heavy,
-/// positive = right-heavy. Asymmetric by direction (unlike [`imbalance_ratio`],
-/// `left` and `right` are not interchangeable).
+/// positive = right-heavy.
 pub fn signed_imbalance_percent(left: f64, right: f64) -> f64 {
     if right == 0.0 {
         0.0
@@ -46,21 +36,6 @@ mod tests {
     fn ratio_guards_zero_total() {
         assert_eq!(ratio(5.0, 0.0), 0.0);
         assert_eq!(ratio(3.0, 6.0), 0.5);
-    }
-
-    #[test]
-    fn imbalance_ratio_is_neutral_when_balanced_or_one_sided() {
-        assert_eq!(imbalance_ratio(0., 0.), 1.0);
-        assert_eq!(imbalance_ratio(5., 0.), 1.0);
-        assert_eq!(imbalance_ratio(0., 5.), 1.0);
-        assert_eq!(imbalance_ratio(3., 3.), 1.0);
-    }
-
-    #[test]
-    fn imbalance_ratio_grows_with_imbalance() {
-        assert_eq!(imbalance_ratio(3., 1.), 3.0);
-        assert_eq!(imbalance_ratio(1., 3.), 3.0);
-        assert!(imbalance_ratio(3., 2.) < imbalance_ratio(3., 1.));
     }
 
     #[test]
