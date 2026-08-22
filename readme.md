@@ -18,14 +18,11 @@ dimensionless multiplier built from corpus metrics — see below.
 
 ### Scoring
 - Bigram effort table precomputed from `keyboard.json`: per-key effort groups + pair costs + symmetry (left-hand pairs mirrored to right automatically).
-- Corpus penalty, two modes (`evaluator:` in `keyvolve.yaml`):
-  - **targets** — one limit per metric in the percent units the CSV prints:
-    `penalty = 1 + Σ weight · (|value| / max) ^ sharpness`. Every metric on target → `1.0`.
-    `max` normalizes metrics against each other; `weight` (default 1) only decides which
-    metric gives way first. A `handSwitchRatio` limit replaces the old `meanStreakPower`,
-    since `mean_streak = presses / (hand switches + words)`.
-  - **powers** (used when `targets` is absent) — one `factor ^ power` per knob,
-    multiplied together.
+- Corpus penalty: one limit per metric in the percent units the CSV prints:
+  `penalty = 1 + Σ weight · (|value| / max) ^ sharpness`. Every metric on target → `1.0`.
+  `max` normalizes metrics against each other; `weight` (default 1) only decides which
+  metric gives way first. A `handSwitchRatio` limit replaces the old `meanStreakPower`,
+  since `mean_streak = presses / (hand switches + words)`.
 - Corpus: synthesised fake-word file (built from real text via `Synthesise` mode), not raw text — keeps evaluation fast.
 
 ### GA engine (darwin crate)

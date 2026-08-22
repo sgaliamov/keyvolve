@@ -258,55 +258,6 @@ mod tests {
         assert_close(score.effort, 5.0);
     }
 
-    #[test]
-    fn score_corpus_applies_row_power_factor() {
-        let evaluator = LayoutEvaluator::new(
-            &row_switch_test_keyboard(),
-            vec!["ad".to_string()],
-            LayoutEvaluatorConfig {
-                powers: crate::app::PowerKnobs {
-                    row_power: 1.0,
-                    ..test_config().powers
-                },
-                ..test_config()
-            },
-        );
-
-        let score = evaluator.score_corpus(&test_keys());
-
-        assert_eq!(score.row_switch_distance(), 1);
-        // "ad": left-hand bigram with 1 row step. First char 'a' (left, cost 1) + bigram 'ad'
-        // (same-hand, cost 1+1). Total: 3 effort, 2 presses (left_count).
-        // Row factor: (1 + row_distance/total_presses)^row_power = (1 + 1/2)^1 = 1.5.
-        // Mean streak divisor: 2^1 = 2. Penalty = 1.5 / 2 = 0.75.
-        // Fitness = 1e6 / (3 · 0.75) = 444_444.44.
-        assert_close(score.fitness, 444_444.44);
-    }
-
-    #[test]
-    fn score_corpus_applies_switch_power_factor() {
-        let evaluator = LayoutEvaluator::new(
-            &row_switch_test_keyboard(),
-            vec!["ad".to_string()],
-            LayoutEvaluatorConfig {
-                powers: crate::app::PowerKnobs {
-                    switch_power: 1.0,
-                    ..test_config().powers
-                },
-                ..test_config()
-            },
-        );
-
-        let score = evaluator.score_corpus(&test_keys());
-
-        assert_eq!(score.row_switch_distance(), 1);
-        // "ad": hand_switch_ratio = 0/2 = 0.0, row_switch_ratio = 1/2 = 0.5.
-        // Combined factor: (1 + 0.0 + 0.5)^1 = 1.5.
-        // Mean streak divisor: 2^1 = 2. Penalty = 1.5 / 2 = 0.75.
-        // Fitness = 1e6 / (3 · 0.75) = 444_444.44.
-        assert_close(score.fitness, 444_444.44);
-    }
-
     /// A run ends only at a hand switch or a word boundary, so `runs = switches + words`
     /// and `mean_streak = presses / runs`. Checked across layouts that spread the same
     /// corpus over the hands differently: the identity is structural, not a coincidence.
@@ -385,19 +336,10 @@ mod tests {
         FxHashMap::from_iter([('a', 0), ('b', 1), ('c', 19), ('d', 5), ('e', 10)])
     }
 
-    /// Power-knob mode fixture; `targets` stays empty so this path runs.
+    /// Minimal config fixture for evaluator tests; targets empty.
     fn test_config() -> LayoutEvaluatorConfig {
         LayoutEvaluatorConfig {
             fitness_scale: 1_000_000.,
-            powers: crate::app::PowerKnobs {
-                balance_power: 1.0,
-                streak_power: 1.0,
-                roll_imbalance_power: 0.0,
-                mean_streak_power: 1.0,
-                row_imbalance_power: 1.0,
-                row_power: 0.0,
-                switch_power: 0.0,
-            },
             ..Default::default()
         }
     }

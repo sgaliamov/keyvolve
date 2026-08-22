@@ -116,42 +116,20 @@ evaluator:
   # Fitness multiplier; higher scales scores up, lower scales down.
   fitnessScale: 1000000000000000
 
-  # --- Targets mode: desired metric limits, in the percent units the CSV prints. ---
-  # Ideal is 0 for every metric; `max` is the value that costs one full `weight`, which
-  # is also what makes metrics of different scales comparable.
-  #   penalty = 1 + sum(weight * (|value| / max) ^ sharpness)
-  # All metrics on target -> penalty exactly 1.0 -> fitness = fitnessScale / effort.
-  # Bare number = max with weight 1; write `{ max: 1, weight: 2 }` only when one metric
-  # should give way before another. Delete the `targets:` block to use `powers:` below.
-  # sharpness: half the limit costs weight/16, double the limit costs 16*weight.
+  # Curve steepness: term = weight · (|value| / max) ^ sharpness.
+  # 1.0 = linear, higher = forgiving under the limit and brutal over it.
   sharpness: 4
-  targets:
-    # level (CSV: row_switch_ratio) - row jumps inside a hand
-    rowSwitchRatio: { max: 15, weight: 1 }
-    # level (CSV: hand_switch_ratio) - hand alternation; replaces meanStreakPower,
-    # since mean_streak = presses / (hand switches + words)
-    handSwitchRatio: { max: 30, weight: 3 }
-    # balance (CSV: efforts_imbalance) - left/right effort asymmetry
-    effortsImbalance: 5
-    # balance (CSV: hands_imbalance) - left/right press-count asymmetry
-    handsImbalance: 5
-    # balance (CSV: roll_imbalance) - unequal roll distribution between hands
-    rollImbalance: 5
-    # balance (CSV: row_switch_imbalance) - unequal row-step burden
-    rowSwitchImbalance: 5
-    # balance (CSV: streak_imbalance) - unequal run lengths between hands
-    streakImbalance: 5
 
-  # --- Power-knob mode: used only when `targets` is absent. ---
-  # Each factor is (dimensionless ratio)^power: 0.0 = off, 1.0 = full strength.
-  # powers:
-  #   rowPower: 0.5
-  #   rowImbalancePower: 0.5
-  #   meanStreakPower: 0.6
-  #   balancePower: 0.5
-  #   rollImbalancePower: 0.5
-  #   switchPower: 0.2
-  #   streakPower: 1.0
+  # Desired metric limits, in the percent units the CSV prints. Ideal is 0 for every metric.
+  # `max` is the value that costs one full `weight`, also normalizes metrics against each other.
+  # Bare number = max with weight 1; write `{ max: 1, weight: 2 }` when a metric should give way last.
+  rowSwitchRatio: { max: 15, weight: 1 }
+  handSwitchRatio: { max: 30, weight: 3 }
+  effortsImbalance: 5
+  handsImbalance: 5
+  rollImbalance: 5
+  rowSwitchImbalance: 5
+  streakImbalance: 5
 
 ga:
   # Mutation probability applied per genome element.

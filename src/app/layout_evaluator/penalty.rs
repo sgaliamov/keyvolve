@@ -1,12 +1,8 @@
 //! Corpus-level penalty: the dimensionless multiplier that turns raw effort into fitness.
 //!
-//! Two modes, picked by whether [`Targets`] holds anything.
-//!
-//! # Targets mode
-//!
-//! One number per metric: `max`, the value you would still accept, written in the percent
-//! units the CSV prints. It is not a wall — it is the normalizer that makes 20% row
-//! switches comparable to 1% effort imbalance:
+//! One metric, one number: `max`, the value you would still accept, written in the percent
+//! units the CSV prints. It is not a wall — it is the normalizer that makes 20% row switches
+//! comparable to 1% effort imbalance:
 //!
 //! ```text
 //! deviation = |value| / max          0 = perfect, 1 = at the limit, >1 = over it
@@ -23,70 +19,31 @@
 //! a metric that should give way last. `sharpness` shapes the whole trade-off: at `4`, half
 //! the limit costs `weight / 16` and double the limit costs `16 · weight`.
 //!
-//! ## Where the power knobs went
+//! # Seven metrics
 //!
-//! | power knob           | target replacement                       |
-//! |----------------------|------------------------------------------|
-//! | `row_power`          | `row_switch_ratio`                       |
-//! | `switch_power`       | `row_switch_ratio` + `hand_switch_ratio` |
-//! | `mean_streak_power`  | `hand_switch_ratio` (same trait inverted)|
-//! | `balance_power`      | `efforts_imbalance` + `hands_imbalance`  |
-//! | `roll_imbalance_power` | `roll_imbalance`                       |
-//! | `row_imbalance_power`  | `row_switch_imbalance`                 |
-//! | `streak_power`         | `streak_imbalance`                     |
+//! | metric               | meaning                          |
+//! |----------------------|----------------------------------|
+//! | `row_switch_ratio`   | row jumps inside a hand          |
+//! | `hand_switch_ratio`  | hand alternation (replaces `mean_streak_power`) |
+//! | `efforts_imbalance`  | left/right effort asymmetry      |
+//! | `hands_imbalance`    | left/right press-count asymmetry |
+//! | `roll_imbalance`     | left/right roll asymmetry        |
+//! | `row_switch_imbalance` | left/right row-step asymmetry  |
+//! | `streak_imbalance`   | left/right run-length asymmetry  |
 //!
-//! # Powers mode
-//!
-//! Every knob is one scheme — `factor ^ power`, where `factor` is dimensionless and
-//! `>= 1.0` means "worse". `0.0` = off, `1.0` = full, between = softer, above = stricter.
-//! With every power at `0.0` the penalty is exactly `1.0`, so knobs never leak a bias.
-//!
-//! One or two knobs per metric family (level and optional balance):
-//!
-//! | family         | level (how much)                | balance (how evenly split) |
-//! |----------------|---------------------------------|----------------------------|
-//! | effort         | implicit: fitness divides by it | `balance_power`              |
-//! | rolls          | -                               | `roll_imbalance_power`      |
-//! | same-hand runs | `mean_streak_power`             | `streak_power`             |
-//! | row jumps      | `row_power`                     | `row_imbalance_power`      |
-//! | switches+rows  | `switch_power`                  | -                          |
-//!
-//! # Why there is no `mean_streak` target, and no `switch_power` twin
+//! # Why no `mean_streak` target
 //!
 //! A run ends exactly when the hand switches or the word ends, so run count *is* switch
-//! count. With `P` presses, `S` hand switches, `W` words and `rolls` same-hand bigrams:
+//! count. With `P` presses, `S` hand switches, `W` words:
 //!
 //! ```text
-//! rolls + S = P − W          a word of n chars yields n − 1 bigrams
-//! runs      = P − rolls      definition of a run (see crate::math::streak)
-//!           = S + W          substitute
-//!
-//! mean_streak = P / runs = P / (S + W)
+//! mean_streak = P / (S + W)
+//! 1 / mean_streak = (S + W) / P = hand_switch_ratio + W / P
 //! ```
 //!
-//! Dividing by it is therefore already a hand-switch penalty:
-//!
-//! ```text
-//! 1 / mean_streak^p = ((S + W) / P)^p = (hand_switch_ratio + W/P)^p
-//! ```
-//!
-//! `W/P` is fixed for a corpus, so the factor is strictly monotone in `S`. A separate
-//! `(1 + hand_switch_ratio)^q` factor would penalize the same trait twice with two knobs.
-//! The divisor form in powers mode discriminates harder: `mean_streak`
-//! spans `[1, P/W]` (~5x on typical corpora) against `[1, 2]` for `1 + hand_switch_ratio`.
-//! Proven by `mean_streak_equals_presses_over_runs` and
-//! `mean_streak_falls_as_hand_switches_rise`.
-//!
-//! Targets mode keeps only the "lower is better" half of that pair: a `hand_switch_ratio`
-//! limit *is* the `mean_streak` knob. To convert a wish, `mean_streak >= m` means
-//! `hand_switch_ratio <= 1/m − W/P`; in practice both columns sit side by side in the CSV,
-//! so read the pair off a real run instead.
-//!
-//! # Direction
-//!
-//! Powers mode rewards *long same-hand runs* — it pushes against hand alternation.
-//! Invert the divisor into a multiplier to flip that preference. Targets mode expresses the
-//! same preference as a `hand_switch_ratio` limit.
+//! `W/P` is fixed for a corpus, so both formulations are monotone in the same variable `S`.
+//! To convert a wish, `mean_streak >= m` means `hand_switch_ratio <= 1/m − W/P`; in practice
+//! both columns sit side by side in the CSV, so read the pair off a real run instead.
 //!
 //! # Corpus invariance
 //!
@@ -95,18 +52,13 @@
 //! with different average word length.
 
 use crate::app::LayoutEvaluatorConfig;
-use crate::math::imbalance_ratio;
 use crate::models::ScoreResult;
 use itertools::Itertools;
 
 /// Penalty multiplier for a scored corpus. `1.0` = neutral, higher = worse layout.
-/// Targets configured → normalized-deviation sum; otherwise the power knobs.
 /// See the module docs for the algebra behind each factor.
 pub fn penalty(config: &LayoutEvaluatorConfig, r: &ScoreResult) -> f64 {
-    match config.targets.is_empty() {
-        true => powers(config, r),
-        false => 1.0 + terms(config, r).map(|(_, cost)| cost).sum::<f64>(),
-    }
+    1.0 + terms(config, r).map(|(_, cost)| cost).sum::<f64>()
 }
 
 /// Per-metric penalty contribution, worst first — the tuning aid that says which limit is
@@ -157,171 +109,10 @@ fn terms<'a>(
     })
 }
 
-/// Power-knob penalty: one `factor ^ power` per knob, multiplied together.
-fn powers(config: &LayoutEvaluatorConfig, r: &ScoreResult) -> f64 {
-    let p = config.powers;
-    // Level: row jumps cost, long same-hand runs pay back.
-    // `max(1.0)` keeps an empty corpus neutral, where `mean_streak` is `0.0`.
-    let row_jumps = (1.0 + r.row_switch_ratio()).powf(p.row_power);
-    // Hand switches are weighted by 0.5 so this term stays comparable to row-switch ratio.
-    let switch_factor =
-        (1.0 + r.hand_switch_ratio() / 2.0 + r.row_switch_ratio()).powf(p.switch_power);
-
-    let rows = imbalance_ratio(
-        r.left_row_switch_cost as f64,
-        r.right_row_switch_cost as f64,
-    )
-    .powf(p.row_imbalance_power);
-
-    let runs = r.mean_streak().powf(p.mean_streak_power).max(1.0);
-
-    // Balance: both hands should carry comparable effort load.
-    let efforts = imbalance_ratio(r.left_effort, r.right_effort).powf(p.balance_power);
-
-    let counts = imbalance_ratio(r.left_count as f64, r.right_count as f64).powf(p.balance_power);
-
-    let rolls =
-        imbalance_ratio(r.left_rolls as f64, r.right_rolls as f64).powf(p.roll_imbalance_power);
-
-    let streaks = imbalance_ratio(r.left_streak(), r.right_streak()).powf(p.streak_power);
-
-    efforts * counts * streaks * rolls * rows * row_jumps * switch_factor / runs
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::app::{PowerKnobs, Target, Targets};
-
-    /// One 8-press word under four hand patterns. Rolls and switches trade off, so
-    /// `mean_streak` drops monotonically as alternation rises — it *is* a switch penalty.
-    #[test]
-    fn mean_streak_falls_as_hand_switches_rise() {
-        let sample = |left, right, left_rolls, right_rolls| ScoreResult {
-            left_count: left,
-            right_count: right,
-            left_rolls,
-            right_rolls,
-            ..Default::default()
-        };
-
-        assert_eq!(sample(8, 0, 7, 0).mean_streak(), 8.0); // LLLLLLLL
-        assert_eq!(sample(4, 4, 3, 3).mean_streak(), 4.0); // LLLLRRRR
-        assert_eq!(sample(4, 4, 2, 2).mean_streak(), 2.0); // LLRRLLRR
-        assert_eq!(sample(4, 4, 0, 0).mean_streak(), 1.0); // LRLRLRLR
-    }
-
-    /// Every power at `0.0` must bottom out at a neutral multiplier: a knob turned off
-    /// may not leak a bias into fitness.
-    #[test]
-    fn zero_powers_leave_penalty_neutral() {
-        let config = LayoutEvaluatorConfig {
-            powers: PowerKnobs {
-                balance_power: 0.0,
-                streak_power: 0.0,
-                roll_imbalance_power: 0.0,
-                mean_streak_power: 0.0,
-                row_imbalance_power: 0.0,
-                row_power: 0.0,
-                switch_power: 0.0,
-            },
-            ..Default::default()
-        };
-
-        assert_eq!(penalty(&config, &skewed()), 1.0);
-    }
-
-    /// Each knob at full strength must move the penalty the way its docs promise:
-    /// balance and row-jump knobs punish, the streak-level knob rewards.
-    #[test]
-    fn each_power_moves_penalty_in_its_documented_direction() {
-        let off = LayoutEvaluatorConfig {
-            powers: PowerKnobs {
-                balance_power: 0.0,
-                streak_power: 0.0,
-                roll_imbalance_power: 0.0,
-                mean_streak_power: 0.0,
-                row_imbalance_power: 0.0,
-                row_power: 0.0,
-                switch_power: 0.0,
-            },
-            ..Default::default()
-        };
-        let neutral = penalty(&off, &skewed());
-        let with = |f: fn(&mut LayoutEvaluatorConfig)| {
-            let mut config = off;
-            f(&mut config);
-            penalty(&config, &skewed())
-        };
-
-        assert!(with(|c| c.powers.balance_power = 1.0) > neutral);
-        assert!(with(|c| c.powers.streak_power = 1.0) > neutral);
-        assert!(with(|c| c.powers.roll_imbalance_power = 1.0) > neutral);
-        assert!(with(|c| c.powers.row_imbalance_power = 1.0) > neutral);
-        assert!(with(|c| c.powers.row_power = 1.0) > neutral);
-        assert!(with(|c| c.powers.switch_power = 1.0) > neutral);
-        assert!(with(|c| c.powers.mean_streak_power = 1.0) < neutral);
-    }
-
-    /// Raising a power past `1.0` must sharpen an existing penalty, lowering it must soften.
-    #[test]
-    fn subunit_power_softens_and_superunit_sharpens() {
-        let scaled = |power: f64| {
-            penalty(
-                &LayoutEvaluatorConfig {
-                    powers: PowerKnobs {
-                        balance_power: power,
-                        streak_power: 0.0,
-                        roll_imbalance_power: 0.0,
-                        mean_streak_power: 0.0,
-                        row_imbalance_power: 0.0,
-                        row_power: 0.0,
-                        switch_power: 0.0,
-                    },
-                    ..Default::default()
-                },
-                &skewed(),
-            )
-        };
-
-        assert!(scaled(0.5) < scaled(1.0));
-        assert!(scaled(1.0) < scaled(2.0));
-    }
-
-    /// Combined switch+row knob should rise with either hand switching or row movement.
-    /// Hand-switch ratio contributes at half weight.
-    #[test]
-    fn switch_power_penalizes_combined_switch_and_row_ratios() {
-        let config = LayoutEvaluatorConfig {
-            powers: PowerKnobs {
-                balance_power: 0.0,
-                streak_power: 0.0,
-                roll_imbalance_power: 0.0,
-                mean_streak_power: 0.0,
-                row_imbalance_power: 0.0,
-                row_power: 0.0,
-                switch_power: 1.0,
-            },
-            ..Default::default()
-        };
-        let neutral = ScoreResult {
-            left_count: 10,
-            right_count: 10,
-            ..Default::default()
-        };
-        let combined = ScoreResult {
-            left_count: 10,
-            right_count: 10,
-            hand_switches: 5,        // 5 / 20 = 0.25
-            left_row_switch_cost: 3, // 5 / 20 = 0.25 total row ratio
-            right_row_switch_cost: 2,
-            ..Default::default()
-        };
-
-        assert_eq!(penalty(&config, &neutral), 1.0);
-        // 1 + (0.25 / 2) + 0.25 = 1.375
-        assert_eq!(penalty(&config, &combined), 1.375);
-    }
+    use crate::app::{Target, Targets};
 
     /// A layout skewed on every axis, so no factor sits at its neutral value.
     fn skewed() -> ScoreResult {
@@ -457,25 +248,6 @@ mod tests {
         assert_eq!(terms.len(), 1);
         assert_eq!(terms[0].0, "row_switch_ratio");
         assert_eq!(only_row, 1.0 + terms[0].1);
-    }
-
-    /// A filled `targets` block owns scoring; the power knobs stay silent.
-    #[test]
-    fn targets_override_the_power_knobs() {
-        let both = LayoutEvaluatorConfig {
-            powers: PowerKnobs {
-                balance_power: 1.0,
-                mean_streak_power: 1.0,
-                row_power: 1.0,
-                ..Default::default()
-            },
-            ..targets_config()
-        };
-
-        assert_eq!(
-            penalty(&both, &skewed()),
-            penalty(&targets_config(), &skewed())
-        );
     }
 
     /// Breakdown ranks offenders so the loudest metric is obvious while tuning.
