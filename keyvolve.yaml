@@ -8,10 +8,16 @@ merge:
   input: data/samples
   # Output merged corpus file; overwritten if it exists.
   output: data/samples/merged.txt
+  # Optional: Stats directory for saving merged frequency data. Defaults to output/../stats.
+  # stats: data/stats
   # Shuffle merged words before writing. false keeps source order.
   shuffle: false
+  # Optional: Random seed for reproducible shuffling.
+  # seed: 12345
   # Number of merged lines printed as preview.
   print: 50
+  # Optional: Minimum bigram frequency kept in saved corpus stats. Default: 0.0001.
+  # min_frequency: 0.0001
 
 frequencies:
   # Root folder to scan for matching files.
@@ -28,6 +34,12 @@ synthesise:
   text: data/samples/merged.txt
   # Output fake-word corpus file.
   output: data/synthesised/sample-10000000.txt
+  # Optional: Stats directory for saving frequency data. Defaults to output/../stats.
+  # stats: data/stats
+  # Optional: Minimum accepted relative frequency. Pairs below this are dropped. Default: 0.0001.
+  # min_frequency: 0.0001
+  # Optional: Random seed for reproducible sampling.
+  # seed: 42
   sample:
     # Total words to sample from the source corpus.
     target: 10000000
@@ -43,15 +55,22 @@ optimization:
   maxGroups: 1
   # Number of layouts kept per home-row group in final ranked output.
   itemsPerGroup: 1
+
+  # Optional: Slot indices that must remain empty (blocked).
   # blocked: [0, 14, 19, 25]
+
+  # Optional: Characters pinned to specific slot indices.
   # frozen:
   #   h: 5
+
+  # Optional: Allowed slot indices for specific characters (white-list constraints).
+  # If specified, only these slots can be used; other slots are forbidden for that char.
   # allowed:
   #   e: [6, 7, 8]
-  # t: [1, 2, 3, 6, 7, 8]
-  # a: [1, 2, 3, 6, 7, 8]
-  # i: [1, 2, 3, 6, 7, 8]
-  # o: [1, 2, 3, 6, 7, 8]
+  #   t: [1, 2, 3, 6, 7, 8]
+  #   a: [1, 2, 3, 6, 7, 8]
+  #   i: [1, 2, 3, 6, 7, 8]
+  #   o: [1, 2, 3, 6, 7, 8]
   #   n: [1, 2, 3, 6, 7, 8]
   #   r: [1, 2, 3, 6, 7, 8]
   #   s: [1, 2, 3, 6, 7, 8]
@@ -60,9 +79,14 @@ optimization:
   #   x: [5, 10, 11, 14]
   #   z: [10, 11, 14]
   #   q: [10, 11, 14]
-  #
+
+  # Optional: Character pairs that must be placed adjacent (rolls/same-hand digraphs).
   # rolls: ['er', 'th']
+
+  # Optional: Characters that prefer left-hand placement.
   # left: [e, o]
+
+  # Optional: Characters that prefer right-hand placement.
   # right: [a, i]
 
 rank:
@@ -70,33 +94,40 @@ rank:
   output: data/keyboard.json
   # Persisted session state for resuming the ranking run.
   session: data/rank-session.json
-  # Chance of auditing a comparison during refinement.
+  # Optional: CSV visual report path; defaults to output with .csv extension.
+  # report: data/rank-report.csv
+  # Probability of an audit question (consistency re-check of settled pairs). Default: 0.0.
   auditRate: 0.15
-  # Minimum comparisons needed before stopping.
+  # Minimum comparisons needed before stopping. Default: 10.
   minMatches: 10
-  # Hard cap on comparisons per item.
+  # Hard cap on comparisons per item. Default: 30.
   maxMatches: 30
-  # Max allowed deviation before confidence is considered weak.
+  # Max allowed deviation before confidence is considered weak. Default: 170.0.
   maxDeviation: 98.5
-  # Margin before the ranking path goes uphill.
+  # Optional: Lower bound for fixed-tier efforts. Default: 1.0.
+  # effortMin: 1.0
+  # Optional: Upper bound for fixed-tier efforts. Default: 10.0.
+  # effortMax: 10.0
+  # Margin before the ranking path goes uphill. Default: 100.0.
   uphillGap: 50
-  # Thin tail margin used when collapsing adjacent tiers.
+  # Thin tail margin used when collapsing adjacent tiers. Default: 1.0.
   thinMargin: 1.0
-  # Weight given to forced answers.
+  # Weight given to forced answers. Default: 3.
   forcedAnswerWeight: 2
-  # Optional: ask this exact comparison first once (CLI override: --rank.forceCheckPair AF-VE)
+  # Optional: Ask this exact comparison first once (format: AB-CD). Default: none.
   # forceCheckPair: AF-VE
-  # Raise to merge more adjacent tail pairs into the same tier.
-  # Fixed effort tier count; boundaries minimize within-tier rating variance.
+  # Fixed effort tier count; boundaries minimize within-tier rating variance. Default: 10.
   tierCount: 30
-  # Shaping exponent for tier effort spacing (rating-anchored curve).
-  #   1.0 = linear: effort gaps mirror rating gaps exactly (default).
+  # Shaping exponent for tier effort spacing (rating-anchored curve). Default: 1.0.
+  #   1.0 = linear: effort gaps mirror rating gaps exactly.
   #   > 1 = easy tiers cluster near effortMin, hard tiers spread out
   #         (small penalty differences among good bigrams, harsh tail).
   #   < 1 = easy tiers spread out, hard tiers compress near effortMax
   #         (strong differentiation among good bigrams, flat tail).
   # Endpoints always pinned: best tier = effortMin, worst = effortMax.
   effortGamma: 0.8
+  # Optional: Random seed for reproducible question order.
+  # seed: 42
 
 evaluate:
   # One or more layout CSVs to score.
@@ -122,24 +153,71 @@ evaluator:
 
   # Desired metric goals, in the percent units the CSV prints.
   # `max` rewards lower values; `target` rewards proximity to `value`.
+  # Form: { type: max|target, value: <number>, weight: <number> }
+
+  # Ratio of row-switch cost to total effort. Penalizes vertical jumps within a hand.
+  # type: max — lower is better.
   rowSwitchRatio: { type: max, value: 15, weight: 1 }
+
+  # Ratio of hand-switch cost to total effort. Penalizes hand alternation.
+  # type: max — lower is better.
   handSwitchRatio: { type: max, value: 30, weight: 3 }
+
+  # Left/right effort asymmetry (absolute percentage-point difference).
+  # type: max — lower is better.
   effortsImbalance: { type: max, value: 5, weight: 1 }
+
+  # Left/right key-press count asymmetry (absolute percentage-point difference).
+  # type: max — lower is better.
   handsImbalance: { type: max, value: 5, weight: 1 }
+
+  # Left/right roll count asymmetry (absolute percentage-point difference).
+  # type: max — lower is better.
   rollImbalance: { type: max, value: 5, weight: 1 }
+
+  # Left/right row-switch cost asymmetry (absolute percentage-point difference).
+  # type: max — lower is better.
   rowSwitchImbalance: { type: max, value: 5, weight: 1 }
-  streakImbalance: { type: max, value: 5, weight: 1 }
-  # Home row left/right balance (absolute value); controls asymmetry in home row effort
-  homeRowBalance: { type: max, value: 15, weight: 0.5 }
-  topRowRatio: { type: target, value: 25, weight: 1 }
-  homeRowRatio: { type: target, value: 65, weight: 1 }
-  # bottomRowRatio: { type: target, value: 15, weight: 1 }
-  # Left-hand column ratios (left c1=pinky through c5=index); right-hand mirrors left
+
+  # Left/right streak-length asymmetry (absolute percentage-point difference).
+  # type: max — lower is better.
+  streakImbalance: { type: max, value: 5, weight: 0.75 }
+
+  # Home row left/right balance (absolute value). Penalizes asymmetry in home row effort.
+  # type: max — lower is better (zero asymmetry is ideal).
+  homeRowBalance: { type: max, value: 10, weight: 0.5 }
+
+  # Top row effort share (percentage). Rewards layouts close to target.
+  # type: target — proximity to value is better; symmetric penalty around target.
+  topRowRatio: { type: target, value: 25, weight: 2 }
+
+  # Home row effort share (percentage). Rewards layouts close to target.
+  # type: target — proximity to value is better; symmetric penalty around target.
+  homeRowRatio: { type: target, value: 65, weight: 2 }
+
+  # Bottom row effort share (percentage). Optional; uncomment to include.
+  # type: target — proximity to value is better; symmetric penalty around target.
+  bottomRowRatio: { type: target, value: 15, weight: 1 }
+
+  # Left-hand column ratios (left c1=pinky through c5=index); right-hand mirrors left.
+  # Each column's effort share in percentage. type: target — proximity is better.
+  # Deviation: |value - target| / 100 (percentage-point units).
+
+  # Column 1 (pinky) effort share (percentage). Left hand only; right auto-mirrored.
   c1Ratio: { type: target, value: 6, weight: 0.75 }
+
+  # Column 2 (ring) effort share (percentage). Left hand only; right auto-mirrored.
   c2Ratio: { type: target, value: 9, weight: 0.75 }
+
+  # Column 3 (middle) effort share (percentage). Left hand only; right auto-mirrored.
   c3Ratio: { type: target, value: 13, weight: 0.75 }
+
+  # Column 4 (index) effort share (percentage). Left hand only; right auto-mirrored.
   c4Ratio: { type: target, value: 13, weight: 0.75 }
-  # c5Ratio: { type: target, value: 7, weight: 0.75 }
+
+  # Column 5 (index) effort share (percentage). Optional; uncomment to include.
+  # Left hand only; right auto-mirrored.
+  c5Ratio: { type: max, value: 7, weight: 0.75 }
 
 ga:
   # Mutation probability applied per genome element.
@@ -160,3 +238,14 @@ ga:
   dumpRatio: 0.8
   # Keep or delete dump files after runs.
   keepDump: false
+
+# ============================================================================
+# MODE: Operation mode for this run
+# ============================================================================
+# Uncomment one of the following to set the active mode; default is Evaluate.
+# mode: Optimize    # Run the genetic algorithm to optimize the keyboard layout
+# mode: Evaluate    # Evaluate the score of specific layouts (default)
+# mode: Synthesise  # Build digraph frequency CSV and synthesise a fake-word corpus
+# mode: Merge       # Merge all .txt files in a folder into one cleaned file
+# mode: Frequencies # Count per-key char frequencies across files in a folder
+# mode: Rank        # Interactively rank bigram pairs to calibrate keyboard efforts
