@@ -193,11 +193,11 @@ evaluator:
 
   # Home row effort share (percentage). Rewards layouts close to target.
   # type: target — proximity to value is better; symmetric penalty around target.
-  homeRowRatio: { type: target, value: 65, weight: 1 }
+  homeRowRatio: { type: target, value: 60, weight: 2 }
 
   # Bottom row effort share (percentage). Optional; uncomment to include.
   # type: target — proximity to value is better; symmetric penalty around target.
-  bottomRowRatio: { type: target, value: 10, weight: 2 }
+  bottomRowRatio: { type: target, value: 10, weight: 3 }
 
   # Left-hand column ratios (left c1=pinky through c5=index); right-hand mirrors left.
   # Each column's effort share in percentage. type: target — proximity is better.
