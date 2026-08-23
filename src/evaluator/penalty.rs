@@ -1,13 +1,17 @@
 //! Corpus-level penalty: the dimensionless multiplier that turns raw effort into fitness.
 //!
 //! Each metric configures a `value`, `weight`, and `type`. Limits use `type: max`;
-//! distributions use `type: target`:
+//! distributions use `type: target` with an optional `tolerance` (default 5pp):
 //!
 //! ```text
 //! max deviation    = |metric| / value
-//! target deviation = |metric - value| / 100
+//! target deviation = |metric - value| / tolerance
 //! penalty   = 1 + Σ weight · deviation^sharpness
 //! ```
+//!
+//! Both kinds share the same algebra: deviation `1.0` at the accepted edge (the limit,
+//! or `tolerance` points from the target) costs exactly `weight`; inside the edge the
+//! cost fades to nothing, outside it walls up with `sharpness`.
 //!
 //! The `1` is the neutral element of a *multiplier*, not an added cost: with every metric
 //! on target each term is `0`, the penalty is exactly `1.0`, and fitness falls back to the
@@ -17,6 +21,14 @@
 //! Lower is better for `max`; closer is better for `target`. `weight` defaults to `1`.
 //! `sharpness` shapes the whole trade-off: for `max` at `4`, half the limit costs
 //! `weight / 16` and double the limit costs `16 · weight`.
+//!
+//! # Tuning with the breakdown table
+//!
+//! [`breakdown`] emits one [`TermReport`] per configured metric; [`table`] renders them.
+//! `share` says who pays the penalty now; `pressure` (marginal cost per percentage point)
+//! says who wins the next point of movement. A metric resting off its goal has lower
+//! pressure than its opponents — raise its weight or tighten its tolerance. Two off-goal
+//! metrics with matching pressures signal a physical conflict no weight can fix.
 //!
 //! # Eight caps + thirteen distribution targets
 //!
@@ -65,21 +77,78 @@
 //! with different average word length.
 
 use crate::evaluator::LayoutEvaluatorConfig;
-use crate::models::ScoreResult;
+use crate::models::{ScoreResult, Target};
 use itertools::Itertools;
+
+/// One metric's diagnostic row: what it reads, what it wants, what it costs.
+#[derive(Debug, Clone, Copy)]
+pub struct TermReport {
+    /// Metric name as printed in the CSV.
+    pub name: &'static str,
+
+    /// Measured value, percent units.
+    pub value: f64,
+
+    /// Configured limit or target point.
+    pub goal: f64,
+
+    /// Normalized deviation; `1.0` at the accepted edge.
+    pub deviation: f64,
+
+    /// Penalty contribution: `weight · deviation^sharpness`.
+    pub cost: f64,
+
+    /// Marginal cost per percentage point: `weight · sharpness · deviation^(s−1) / norm`.
+    /// The term's pull in the tug-of-war — a metric rests off goal when its pressure is
+    /// lower than what the opposing terms (and raw effort) gain from the same move.
+    pub pressure: f64,
+}
 
 /// Penalty multiplier for a scored corpus. `1.0` = neutral, higher = worse layout.
 /// See the module docs for the algebra behind each factor.
 pub fn penalty(config: &LayoutEvaluatorConfig, r: &ScoreResult) -> f64 {
-    1.0 + terms(config, r).map(|(_, cost)| cost).sum::<f64>()
+    1.0 + terms(config, r).map(|t| t.cost).sum::<f64>()
 }
 
-/// Per-metric penalty contribution, worst first — the tuning aid that says which limit is
-/// losing and therefore which weight (if any) is worth raising.
-pub fn breakdown(config: &LayoutEvaluatorConfig, r: &ScoreResult) -> Vec<(&'static str, f64)> {
+/// Per-metric diagnostics, worst first — the tuning aid that says which goal is losing
+/// and therefore which weight or tolerance is worth adjusting.
+pub fn breakdown(config: &LayoutEvaluatorConfig, r: &ScoreResult) -> Vec<TermReport> {
     terms(config, r)
-        .sorted_by(|a, b| b.1.total_cmp(&a.1))
+        .sorted_by(|a, b| b.cost.total_cmp(&a.cost))
         .collect()
+}
+
+/// Render breakdown rows as an aligned table with a share-of-penalty column.
+pub fn table(terms: &[TermReport]) -> String {
+    let total: f64 = terms.iter().map(|t| t.cost).sum();
+    let share = |cost: f64| {
+        if total > 0.0 {
+            100.0 * cost / total
+        } else {
+            0.0
+        }
+    };
+
+    let header = format!(
+        "{:<22}{:>9}{:>9}{:>8}{:>12}{:>8}{:>12}",
+        "metric", "value", "goal", "dev", "cost", "share", "pressure"
+    );
+
+    terms
+        .iter()
+        .map(|t| {
+            format!(
+                "{:<22}{:>9.2}{:>9.2}{:>8.2}{:>12.4}{:>7.1}%{:>12.4}",
+                t.name,
+                t.value,
+                t.goal,
+                t.deviation,
+                t.cost,
+                share(t.cost),
+                t.pressure
+            )
+        })
+        .fold(header, |acc, row| acc + "\n" + &row)
 }
 
 /// Metric name paired with its penalty contribution; metrics without a target drop out.
@@ -88,7 +157,7 @@ pub fn breakdown(config: &LayoutEvaluatorConfig, r: &ScoreResult) -> Vec<(&'stat
 fn terms<'a>(
     config: &'a LayoutEvaluatorConfig,
     r: &ScoreResult,
-) -> impl Iterator<Item = (&'static str, f64)> + 'a {
+) -> impl Iterator<Item = TermReport> + 'a {
     let t = config.targets;
 
     [
@@ -140,14 +209,27 @@ fn terms<'a>(
     ]
     .into_iter()
     .filter_map(move |(name, target, value)| {
-        target.map(|t| (name, t.weight * t.deviation(value).powf(config.sharpness)))
+        target.map(|t| report(name, t, value, config.sharpness))
     })
+}
+
+/// Build one diagnostic row from a configured goal and its measured value.
+fn report(name: &'static str, t: Target, value: f64, sharpness: f64) -> TermReport {
+    let deviation = t.deviation(value);
+    TermReport {
+        name,
+        value,
+        goal: t.value,
+        deviation,
+        cost: t.weight * deviation.powf(sharpness),
+        pressure: t.weight * sharpness * deviation.powf(sharpness - 1.0) / t.norm(),
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::evaluator::{Target, TargetType, Targets};
+    use crate::models::Targets;
 
     /// A layout skewed on every axis, so no factor sits at its neutral value.
     fn skewed() -> ScoreResult {
@@ -195,11 +277,7 @@ mod tests {
         let config = LayoutEvaluatorConfig {
             sharpness: 4.0,
             targets: Targets {
-                hand_switch_ratio: Some(Target {
-                    value: 35.0,
-                    weight: 3.0,
-                    kind: TargetType::Max,
-                }),
+                hand_switch_ratio: Some(Target::max(35.0, 3.0)),
                 ..Default::default()
             },
             ..Default::default()
@@ -222,11 +300,7 @@ mod tests {
         let config = LayoutEvaluatorConfig {
             sharpness: 4.0,
             targets: Targets {
-                hand_switch_ratio: Some(Target {
-                    value: 35.0,
-                    weight: 1.0,
-                    kind: TargetType::Max,
-                }),
+                hand_switch_ratio: Some(Target::max(35.0, 1.0)),
                 ..Default::default()
             },
             ..Default::default()
@@ -261,11 +335,7 @@ mod tests {
                 &LayoutEvaluatorConfig {
                     sharpness,
                     targets: Targets {
-                        hand_switch_ratio: Some(Target {
-                            value: 35.0,
-                            weight: 1.0,
-                            kind: TargetType::Max,
-                        }),
+                        hand_switch_ratio: Some(Target::max(35.0, 1.0)),
                         ..Default::default()
                     },
                     ..Default::default()
@@ -287,17 +357,14 @@ mod tests {
         assert!(scaled(4.0, 14) > scaled(2.0, 14)); // above it
     }
 
-    /// Distribution goals reward closeness, not values below the configured point.
+    /// Distribution goals reward closeness, not values below the configured point,
+    /// and cost exactly their weight at the tolerance edge — same algebra as `max`.
     #[test]
     fn target_metric_penalizes_both_sides_symmetrically() {
         let config = LayoutEvaluatorConfig {
             sharpness: 2.0,
             targets: Targets {
-                top_row_ratio: Some(Target {
-                    value: 25.0,
-                    weight: 1.0,
-                    kind: TargetType::Target,
-                }),
+                top_row_ratio: Some(Target::target(25.0, 1.0)),
                 ..Default::default()
             },
             ..Default::default()
@@ -313,7 +380,39 @@ mod tests {
             penalty(&config, &score(20.0)),
             penalty(&config, &score(30.0))
         );
+        // 5pp miss = tolerance edge = weight on top of neutral 1.
+        assert_eq!(penalty(&config, &score(20.0)), 2.0);
         assert!(penalty(&config, &score(0.0)) > penalty(&config, &score(20.0)));
+    }
+
+    /// Tighter tolerance walls up sooner: the same miss costs more.
+    #[test]
+    fn tighter_tolerance_raises_the_cost_of_the_same_miss() {
+        let with_tolerance = |tolerance| {
+            let config = LayoutEvaluatorConfig {
+                sharpness: 4.0,
+                targets: Targets {
+                    top_row_ratio: Some(Target {
+                        tolerance,
+                        ..Target::target(25.0, 1.0)
+                    }),
+                    ..Default::default()
+                },
+                ..Default::default()
+            };
+            penalty(
+                &config,
+                &ScoreResult {
+                    effort: 100.0,
+                    left_row_effort: [20.0, 0.0, 0.0],
+                    ..Default::default()
+                },
+            )
+        };
+
+        // 5pp miss: tolerance 5 → dev 1 → cost 1; tolerance 2.5 → dev 2 → cost 16.
+        assert_eq!(with_tolerance(5.0), 2.0);
+        assert_eq!(with_tolerance(2.5), 17.0);
     }
 
     /// Metrics without a target contribute nothing, whatever they read.
@@ -321,11 +420,7 @@ mod tests {
     fn metrics_without_a_target_are_ignored() {
         let config = LayoutEvaluatorConfig {
             targets: Targets {
-                row_switch_ratio: Some(Target {
-                    value: 20.0,
-                    weight: 1.0,
-                    kind: TargetType::Max,
-                }),
+                row_switch_ratio: Some(Target::max(20.0, 1.0)),
                 ..Default::default()
             },
             ..Default::default()
@@ -336,8 +431,8 @@ mod tests {
         let terms = breakdown(&config, &skewed());
 
         assert_eq!(terms.len(), 1);
-        assert_eq!(terms[0].0, "row_switch_ratio");
-        assert_eq!(only_row, 1.0 + terms[0].1);
+        assert_eq!(terms[0].name, "row_switch_ratio");
+        assert_eq!(only_row, 1.0 + terms[0].cost);
     }
 
     /// Breakdown ranks offenders so the loudest metric is obvious while tuning.
@@ -345,26 +440,54 @@ mod tests {
     fn breakdown_lists_worst_offender_first() {
         let terms = breakdown(&targets_config(), &skewed());
 
-        assert!(terms.windows(2).all(|w| w[0].1 >= w[1].1));
+        assert!(terms.windows(2).all(|w| w[0].cost >= w[1].cost));
         assert_eq!(terms.len(), 21);
+    }
+
+    /// Pressure is zero at the goal and grows with the miss — the "who wins the next
+    /// percentage point" number the tuning table is built around.
+    #[test]
+    fn pressure_is_zero_at_goal_and_grows_off_it() {
+        let config = LayoutEvaluatorConfig {
+            sharpness: 4.0,
+            targets: Targets {
+                top_row_ratio: Some(Target::target(25.0, 1.0)),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let term = |top| {
+            let score = ScoreResult {
+                effort: 100.0,
+                left_row_effort: [top, 0.0, 0.0],
+                ..Default::default()
+            };
+            breakdown(&config, &score)[0]
+        };
+
+        assert_eq!(term(25.0).pressure, 0.0);
+        // At the tolerance edge: w · s · dev^(s−1) / tol = 1 · 4 · 1 / 5.
+        assert_eq!(term(20.0).pressure, 0.8);
+        assert!(term(15.0).pressure > term(20.0).pressure);
+    }
+
+    /// The table renders one aligned row per term plus a header.
+    #[test]
+    fn table_renders_header_and_rows() {
+        let terms = breakdown(&targets_config(), &skewed());
+        let rendered = table(&terms);
+        let lines: Vec<_> = rendered.lines().collect();
+
+        assert_eq!(lines.len(), terms.len() + 1);
+        assert!(lines[0].starts_with("metric"));
+        assert!(lines[1].starts_with(terms[0].name));
+        assert!(lines[1].contains('%'));
     }
 
     /// Every metric configured, all weights at 1 — the recommended starting point.
     fn targets_config() -> LayoutEvaluatorConfig {
-        let limit = |value| {
-            Some(Target {
-                value,
-                weight: 1.0,
-                kind: TargetType::Max,
-            })
-        };
-        let target = |value| {
-            Some(Target {
-                value,
-                weight: 1.0,
-                kind: TargetType::Target,
-            })
-        };
+        let limit = |value| Some(Target::max(value, 1.0));
+        let target = |value| Some(Target::target(value, 1.0));
 
         LayoutEvaluatorConfig {
             sharpness: 4.0,

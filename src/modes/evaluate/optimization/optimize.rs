@@ -35,6 +35,8 @@ pub fn optimize(
     let output_path = opt_cfg.output.clone();
     let max_groups = opt_cfg.max_groups;
     let items_per_group = opt_cfg.items_per_group;
+    // Retained for the post-run penalty breakdown; the original moves into GA state.
+    let breakdown_evaluator = evaluator.clone();
 
     GeneticAlgorithm::set_state(
         &mut ga,
@@ -62,6 +64,11 @@ pub fn optimize(
             (Layout::from_keys(&ind.genome), score, *pool)
         })
         .collect();
+
+    // Tuning aid: where the champion pays penalty and which term wins the tug-of-war.
+    if let Some((layout, score, _)) = rows.first() {
+        crate::modes::evaluate::log_breakdown(&breakdown_evaluator, layout, score);
+    }
 
     // Only save layouts if run completed naturally; don't save on abortion.
     if app.should_finish() {

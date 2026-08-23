@@ -1,4 +1,4 @@
-use super::target::{Target, TargetType, default_weight};
+use super::target::Target;
 use serde::Deserialize;
 
 /// Desired goals per metric, in the percent units the CSV prints.
@@ -73,83 +73,47 @@ impl Targets {
 
 /// Serde default for top row ratio target: 25%.
 fn default_top_row_ratio() -> Option<Target> {
-    Some(Target {
-        value: 25.0,
-        weight: default_weight(),
-        kind: TargetType::Target,
-    })
+    Some(Target::target(25.0, 1.0))
 }
 
 /// Serde default for home row ratio target: 60%.
 fn default_home_row_ratio() -> Option<Target> {
-    Some(Target {
-        value: 60.0,
-        weight: default_weight(),
-        kind: TargetType::Target,
-    })
+    Some(Target::target(60.0, 1.0))
 }
 
 /// Serde default for home row balance target: 15%.
 fn default_home_row_balance() -> Option<Target> {
-    Some(Target {
-        value: 15.0,
-        weight: default_weight(),
-        kind: TargetType::Max,
-    })
+    Some(Target::max(15.0, 1.0))
 }
 
 /// Serde default for bottom row ratio target: 15%.
 fn default_bottom_row_ratio() -> Option<Target> {
-    Some(Target {
-        value: 15.0,
-        weight: default_weight(),
-        kind: TargetType::Target,
-    })
+    Some(Target::target(15.0, 1.0))
 }
 
 /// Serde default for column 1 (pinky) ratio target: 7%.
 fn default_c1_ratio() -> Option<Target> {
-    Some(Target {
-        value: 7.0,
-        weight: default_weight(),
-        kind: TargetType::Target,
-    })
+    Some(Target::target(7.0, 1.0))
 }
 
 /// Serde default for column 2 (ring) ratio target: 11.5%.
 fn default_c2_ratio() -> Option<Target> {
-    Some(Target {
-        value: 11.5,
-        weight: default_weight(),
-        kind: TargetType::Target,
-    })
+    Some(Target::target(11.5, 1.0))
 }
 
 /// Serde default for column 3 (middle) ratio target: 13%.
 fn default_c3_ratio() -> Option<Target> {
-    Some(Target {
-        value: 13.0,
-        weight: default_weight(),
-        kind: TargetType::Target,
-    })
+    Some(Target::target(13.0, 1.0))
 }
 
 /// Serde default for column 4 (index) ratio target: 10.5%.
 fn default_c4_ratio() -> Option<Target> {
-    Some(Target {
-        value: 10.5,
-        weight: default_weight(),
-        kind: TargetType::Target,
-    })
+    Some(Target::target(10.5, 1.0))
 }
 
 /// Serde default for column 5 (index) ratio target: 8%.
 fn default_c5_ratio() -> Option<Target> {
-    Some(Target {
-        value: 8.0,
-        weight: default_weight(),
-        kind: TargetType::Target,
-    })
+    Some(Target::target(8.0, 1.0))
 }
 
 #[cfg(test)]
@@ -162,11 +126,7 @@ mod tests {
         assert!(Targets::default().is_empty());
         assert!(
             !Targets {
-                top_row_ratio: Some(Target {
-                    value: 25.0,
-                    weight: 1.0,
-                    kind: TargetType::Target,
-                }),
+                top_row_ratio: Some(Target::target(25.0, 1.0)),
                 ..Default::default()
             }
             .is_empty()

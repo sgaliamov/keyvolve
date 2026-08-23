@@ -7,6 +7,7 @@ pub mod penalty;
 pub use crate::models::{Target, TargetType, Targets};
 pub use config::LayoutEvaluatorConfig;
 pub use corpus::CorpusCounts;
+pub use penalty::TermReport;
 
 use crate::models::{Keyboard, Keys, ScoreResult};
 #[cfg(test)]
@@ -144,9 +145,8 @@ impl LayoutEvaluator {
         result
     }
 
-    /// Per-metric penalty contributions for a scored layout, worst first. Empty in
-    /// powers mode, where the factors are not attributable to single metrics.
-    pub fn breakdown(&self, score: &ScoreResult) -> Vec<(&'static str, f64)> {
+    /// Per-metric penalty diagnostics for a scored layout, worst first.
+    pub fn breakdown(&self, score: &ScoreResult) -> Vec<TermReport> {
         breakdown(&self.config, score)
     }
 

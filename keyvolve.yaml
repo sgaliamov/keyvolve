@@ -153,7 +153,17 @@ evaluator:
 
   # Desired metric goals, in the percent units the CSV prints.
   # `max` rewards lower values; `target` rewards proximity to `value`.
-  # Form: { type: max|target, value: <number>, weight: <number> }
+  # Form: { type: max|target, value: <number>, weight: <number>, tolerance: <number> }
+  #
+  # tolerance (target type only, default 5): accepted miss in percentage points.
+  # Cost = weight exactly `tolerance` points from `value`; inside ~free, outside walls
+  # up with sharpness. Tighten to pin a metric, loosen to let effort win.
+  # Example: { type: target, value: 10, tolerance: 2 }  # 4pp miss already costs 16x weight
+  #
+  # Tuning: read the "penalty breakdown" table logged for the best layout.
+  # `share` says who pays now; `pressure` says who wins the next percentage point.
+  # A metric stuck off goal with tiny pressure needs more weight or tighter tolerance;
+  # two off-goal metrics with similar pressures are a physical conflict — relax one.
 
   # Ratio of row-switch cost to total effort. Penalizes vertical jumps within a hand.
   # type: max — lower is better.
@@ -201,7 +211,7 @@ evaluator:
 
   # Left-hand column ratios (left c1=pinky through c5=index); right-hand mirrors left.
   # Each column's effort share in percentage. type: target — proximity is better.
-  # Deviation: |value - target| / 100 (percentage-point units).
+  # Deviation: |value - target| / tolerance (default tolerance: 5pp).
 
   # Column 1 (pinky) effort share (percentage). Left hand only; right auto-mirrored.
   c1Ratio: { type: target, value: 6, weight: 0.75 }

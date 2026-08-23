@@ -1,13 +1,12 @@
 pub mod config;
 pub mod optimization;
 use crate::{
-    evaluator::LayoutEvaluator,
+    evaluator::{LayoutEvaluator, penalty::table},
     models::{Layout, ScoreResult},
     output::write_layouts,
 };
 use cliffa::cli::AppHandle;
 pub use config::*;
-use itertools::Itertools;
 use miette::Result;
 use rayon::prelude::*;
 use tracing::info;
@@ -38,25 +37,20 @@ pub fn evaluate(
             .unwrap_or(std::cmp::Ordering::Equal)
     });
 
-    log_breakdown(&evaluator, scored.first());
+    if let Some((layout, score, _)) = scored.first() {
+        log_breakdown(&evaluator, layout, score);
+    }
 
     write_layouts(&scored, cfg.print, cfg.output.as_deref(), true, cfg.e_side)
 }
 
-/// Report which targets the best layout pays for; silent in powers mode.
-fn log_breakdown(evaluator: &LayoutEvaluator, best: Option<&(Layout, ScoreResult, usize)>) {
-    let Some((layout, score, _)) = best else {
-        return;
-    };
-
+/// Log the per-metric penalty table for a layout — the tuning aid that shows which
+/// goal pays what and which term wins the next percentage point.
+pub fn log_breakdown(evaluator: &LayoutEvaluator, layout: &Layout, score: &ScoreResult) {
     let terms = evaluator.breakdown(score);
     if terms.is_empty() {
         return;
     }
 
-    let costs = terms
-        .iter()
-        .map(|(m, cost)| format!("{m} {cost:.3}"))
-        .join(", ");
-    info!("{layout} penalty terms: {costs}");
+    info!("{layout} penalty breakdown:\n{}", table(&terms));
 }

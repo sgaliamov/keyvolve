@@ -34,7 +34,7 @@ fn default_sharpness() -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{Target, TargetType};
+    use crate::models::Target;
 
     /// Target behavior is explicit and uses the neutral `value` field name.
     #[test]
@@ -46,44 +46,9 @@ mod tests {
 
         assert_eq!(
             config.targets.row_switch_ratio,
-            Some(Target {
-                value: 20.0,
-                weight: 1.0,
-                kind: TargetType::Max,
-            })
+            Some(Target::max(20.0, 1.0))
         );
         assert!(!config.targets.is_empty());
-    }
-
-    /// Max deviation measures the metric in accepted-limit units.
-    #[test]
-    fn max_deviation_normalizes_against_the_limit() {
-        let target = Target {
-            value: 20.0,
-            weight: 1.0,
-            kind: TargetType::Max,
-        };
-
-        assert_eq!(target.deviation(0.0), 0.0);
-        assert_eq!(target.deviation(10.0), 0.5);
-        assert_eq!(target.deviation(20.0), 1.0);
-        assert_eq!(target.deviation(40.0), 2.0);
-        // Sign carries direction, not cost.
-        assert_eq!(target.deviation(-20.0), 1.0);
-    }
-
-    /// Point targets penalize equal percentage-point misses symmetrically.
-    #[test]
-    fn target_deviation_is_symmetric_around_value() {
-        let target = Target {
-            value: 25.0,
-            weight: 1.0,
-            kind: TargetType::Target,
-        };
-
-        assert_eq!(target.deviation(25.0), 0.0);
-        assert_eq!(target.deviation(20.0), 0.05);
-        assert_eq!(target.deviation(30.0), 0.05);
     }
 
     /// Ambiguous legacy forms must fail instead of silently choosing behavior.
