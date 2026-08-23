@@ -1,11 +1,11 @@
 //! Corpus-level penalty: the dimensionless multiplier that turns raw effort into fitness.
 //!
-//! One metric, one number: `max`, the value you would still accept, written in the percent
-//! units the CSV prints. It is not a wall — it is the normalizer that makes 20% row switches
-//! comparable to 1% effort imbalance:
+//! Each metric configures a `value`, `weight`, and `type`. Limits use `type: max`;
+//! distributions use `type: target`:
 //!
 //! ```text
-//! deviation = |value| / max          0 = perfect, 1 = at the limit, >1 = over it
+//! max deviation    = |metric| / value
+//! target deviation = |metric - value| / 100
 //! penalty   = 1 + Σ weight · deviation^sharpness
 //! ```
 //!
@@ -14,12 +14,11 @@
 //! effort-only ideal `scale / effort`. It also guards the divide, since a penalty near `0`
 //! would send fitness to infinity and drown out effort.
 //!
-//! Lower is always better for every metric here, so there is no lower bound. `weight`
-//! defaults to `1`, meaning each metric costs the same at its own limit; raise it only for
-//! a metric that should give way last. `sharpness` shapes the whole trade-off: at `4`, half
-//! the limit costs `weight / 16` and double the limit costs `16 · weight`.
+//! Lower is better for `max`; closer is better for `target`. `weight` defaults to `1`.
+//! `sharpness` shapes the whole trade-off: for `max` at `4`, half the limit costs
+//! `weight / 16` and double the limit costs `16 · weight`.
 //!
-//! # Seven + three + ten metrics
+//! # Eight caps + thirteen distribution targets
 //!
 //! | metric               | meaning                          |
 //! |----------------------|----------------------------------|
@@ -31,19 +30,19 @@
 //! | `row_switch_imbalance` | left/right row-step asymmetry  |
 //! | `streak_imbalance`   | left/right run-length asymmetry  |
 //! | `home_row_balance`   | home row left/right balance (absolute value) |
-//! | `top_row_ratio`      | top row effort share (default: 25%) |
-//! | `home_row_ratio`     | home row effort share (default: 60%) |
-//! | `bottom_row_ratio`   | bottom row effort share (default: 15%) |
-//! | `left_c1_ratio`      | left pinky effort share (default: 18%) |
-//! | `left_c2_ratio`      | left ring effort share (default: 19%) |
-//! | `left_c3_ratio`      | left middle effort share (default: 20%) |
-//! | `left_c4_ratio`      | left index effort share (default: 22%) |
-//! | `left_c5_ratio`      | left thumb effort share (default: 21%) |
+//! | `top_row_ratio`      | top row effort share target (default: 25%) |
+//! | `home_row_ratio`     | home row effort share target (default: 60%) |
+//! | `bottom_row_ratio`   | bottom row effort share target (default: 15%) |
+//! | `left_c1_ratio`      | left pinky effort share target (default: 7%) |
+//! | `left_c2_ratio`      | left ring effort share target (default: 11.5%) |
+//! | `left_c3_ratio`      | left middle effort share target (default: 13%) |
+//! | `left_c4_ratio`      | left index effort share target (default: 10.5%) |
+//! | `left_c5_ratio`      | left index effort share target (default: 8%) |
 //! | `right_c1_ratio`     | right index effort share (mirrored from left) |
 //! | `right_c2_ratio`     | right middle effort share (mirrored from left) |
 //! | `right_c3_ratio`     | right ring effort share (mirrored from left) |
 //! | `right_c4_ratio`     | right pinky effort share (mirrored from left) |
-//! | `right_c5_ratio`     | right thumb effort share (mirrored from left) |
+//! | `right_c5_ratio`     | right index effort share (mirrored from left) |
 //!
 //! # Why no `mean_streak` target
 //!
@@ -85,7 +84,7 @@ pub fn breakdown(config: &LayoutEvaluatorConfig, r: &ScoreResult) -> Vec<(&'stat
 
 /// Metric name paired with its penalty contribution; metrics without a target drop out.
 /// Values are normalized to percent: `*_ratio` metrics are fractions and scale by 100,
-/// `*_imbalance` metrics already come as percent. Sign is dropped by `Target::deviation`.
+/// `*_imbalance` metrics already come as percent. Behavior comes from each target's type.
 fn terms<'a>(
     config: &'a LayoutEvaluatorConfig,
     r: &ScoreResult,
@@ -116,11 +115,7 @@ fn terms<'a>(
             r.row_switch_imbalance(),
         ),
         ("streak_imbalance", t.streak_imbalance, r.streak_imbalance()),
-        (
-            "home_row_balance",
-            t.home_row_balance,
-            r.home_row_balance(),
-        ),
+        ("home_row_balance", t.home_row_balance, r.home_row_balance()),
         ("top_row_ratio", t.top_row_ratio, r.top_row_ratio() * 100.0),
         (
             "home_row_ratio",
@@ -152,7 +147,7 @@ fn terms<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::evaluator::{Target, Targets};
+    use crate::evaluator::{Target, TargetType, Targets};
 
     /// A layout skewed on every axis, so no factor sits at its neutral value.
     fn skewed() -> ScoreResult {
@@ -180,8 +175,13 @@ mod tests {
             right_count: 10,
             left_rolls: 5,
             right_rolls: 5,
-            left_effort: 20.0,
-            right_effort: 20.0,
+            effort: 100.0,
+            left_effort: 50.0,
+            right_effort: 50.0,
+            left_column_effort: [7.0, 11.5, 13.0, 10.5, 8.0],
+            right_column_effort: [7.0, 11.5, 13.0, 10.5, 8.0],
+            left_row_effort: [12.5, 30.0, 7.5],
+            right_row_effort: [12.5, 30.0, 7.5],
             ..Default::default()
         };
 
@@ -189,15 +189,16 @@ mod tests {
     }
 
     /// A metric sitting exactly on its limit costs exactly its weight — that is what
-    /// makes `max` a normalizer and `weight` a plain statement of priority.
+    /// makes the configured `value` a normalizer and `weight` a plain priority.
     #[test]
     fn metric_at_its_limit_costs_its_weight() {
         let config = LayoutEvaluatorConfig {
             sharpness: 4.0,
             targets: Targets {
                 hand_switch_ratio: Some(Target {
-                    max: 35.0,
+                    value: 35.0,
                     weight: 3.0,
+                    kind: TargetType::Max,
                 }),
                 ..Default::default()
             },
@@ -218,7 +219,18 @@ mod tests {
     /// of raising deviation to `sharpness`.
     #[test]
     fn cost_stays_small_below_the_limit_and_grows_above_it() {
-        let config = targets_config();
+        let config = LayoutEvaluatorConfig {
+            sharpness: 4.0,
+            targets: Targets {
+                hand_switch_ratio: Some(Target {
+                    value: 35.0,
+                    weight: 1.0,
+                    kind: TargetType::Max,
+                }),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
         let with_switches = |switches| {
             penalty(
                 &config,
@@ -248,7 +260,15 @@ mod tests {
             penalty(
                 &LayoutEvaluatorConfig {
                     sharpness,
-                    ..targets_config()
+                    targets: Targets {
+                        hand_switch_ratio: Some(Target {
+                            value: 35.0,
+                            weight: 1.0,
+                            kind: TargetType::Max,
+                        }),
+                        ..Default::default()
+                    },
+                    ..Default::default()
                 },
                 &ScoreResult {
                     left_count: 10,
@@ -267,14 +287,44 @@ mod tests {
         assert!(scaled(4.0, 14) > scaled(2.0, 14)); // above it
     }
 
+    /// Distribution goals reward closeness, not values below the configured point.
+    #[test]
+    fn target_metric_penalizes_both_sides_symmetrically() {
+        let config = LayoutEvaluatorConfig {
+            sharpness: 2.0,
+            targets: Targets {
+                top_row_ratio: Some(Target {
+                    value: 25.0,
+                    weight: 1.0,
+                    kind: TargetType::Target,
+                }),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let score = |top| ScoreResult {
+            effort: 100.0,
+            left_row_effort: [top, 0.0, 0.0],
+            ..Default::default()
+        };
+
+        assert_eq!(penalty(&config, &score(25.0)), 1.0);
+        assert_eq!(
+            penalty(&config, &score(20.0)),
+            penalty(&config, &score(30.0))
+        );
+        assert!(penalty(&config, &score(0.0)) > penalty(&config, &score(20.0)));
+    }
+
     /// Metrics without a target contribute nothing, whatever they read.
     #[test]
     fn metrics_without_a_target_are_ignored() {
         let config = LayoutEvaluatorConfig {
             targets: Targets {
                 row_switch_ratio: Some(Target {
-                    max: 20.0,
+                    value: 20.0,
                     weight: 1.0,
+                    kind: TargetType::Max,
                 }),
                 ..Default::default()
             },
@@ -299,9 +349,22 @@ mod tests {
         assert_eq!(terms.len(), 21);
     }
 
-    /// Every metric limited, all weights at 1 — the recommended starting point.
+    /// Every metric configured, all weights at 1 — the recommended starting point.
     fn targets_config() -> LayoutEvaluatorConfig {
-        let limit = |max| Some(Target { max, weight: 1.0 });
+        let limit = |value| {
+            Some(Target {
+                value,
+                weight: 1.0,
+                kind: TargetType::Max,
+            })
+        };
+        let target = |value| {
+            Some(Target {
+                value,
+                weight: 1.0,
+                kind: TargetType::Target,
+            })
+        };
 
         LayoutEvaluatorConfig {
             sharpness: 4.0,
@@ -313,15 +376,15 @@ mod tests {
                 roll_imbalance: limit(1.0),
                 row_switch_imbalance: limit(1.0),
                 streak_imbalance: limit(1.0),
-                top_row_ratio: limit(25.0),
-                home_row_ratio: limit(60.0),
+                top_row_ratio: target(25.0),
+                home_row_ratio: target(60.0),
                 home_row_balance: limit(15.0),
-                bottom_row_ratio: limit(15.0),
-                c1_ratio: limit(7.0),
-                c2_ratio: limit(11.5),
-                c3_ratio: limit(13.0),
-                c4_ratio: limit(10.5),
-                c5_ratio: limit(8.0),
+                bottom_row_ratio: target(15.0),
+                c1_ratio: target(7.0),
+                c2_ratio: target(11.5),
+                c3_ratio: target(13.0),
+                c4_ratio: target(10.5),
+                c5_ratio: target(8.0),
             },
             ..Default::default()
         }

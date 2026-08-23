@@ -1,8 +1,8 @@
 use crate::math::ratio;
 use serde::Deserialize;
 
-/// Static scoring configuration for desired metric limits.
-/// Penalty = 1 + Σ weight · (|value| / max) ^ sharpness.
+/// Static scoring configuration for desired metric goals.
+/// Penalty = 1 + Σ weight · deviation ^ sharpness.
 /// See [`crate::layout_evaluator::penalty`] for the algebra.
 #[derive(Debug, Clone, Copy, Default, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -16,7 +16,7 @@ pub struct LayoutEvaluatorConfig {
     #[serde(default = "default_sharpness")]
     pub sharpness: f64,
 
-    /// Desired limits per metric, in the percent units the CSV prints.
+    /// Desired goals per metric, in the percent units the CSV prints.
     #[serde(flatten, default)]
     pub targets: Targets,
 }
@@ -39,76 +39,85 @@ fn default_weight() -> f64 {
 /// Serde default for top row ratio target: 25%.
 fn default_top_row_ratio() -> Option<Target> {
     Some(Target {
-        max: 25.0,
+        value: 25.0,
         weight: default_weight(),
+        kind: TargetType::Target,
     })
 }
 
 /// Serde default for home row ratio target: 60%.
 fn default_home_row_ratio() -> Option<Target> {
     Some(Target {
-        max: 60.0,
+        value: 60.0,
         weight: default_weight(),
+        kind: TargetType::Target,
     })
 }
 
 /// Serde default for home row balance target: 15%.
 fn default_home_row_balance() -> Option<Target> {
     Some(Target {
-        max: 15.0,
+        value: 15.0,
         weight: default_weight(),
+        kind: TargetType::Max,
     })
 }
 
 /// Serde default for bottom row ratio target: 15%.
 fn default_bottom_row_ratio() -> Option<Target> {
     Some(Target {
-        max: 15.0,
+        value: 15.0,
         weight: default_weight(),
+        kind: TargetType::Target,
     })
 }
 
 /// Serde default for column 1 (pinky) ratio target: 7%.
 fn default_c1_ratio() -> Option<Target> {
     Some(Target {
-        max: 7.0,
+        value: 7.0,
         weight: default_weight(),
+        kind: TargetType::Target,
     })
 }
 
 /// Serde default for column 2 (ring) ratio target: 11.5%.
 fn default_c2_ratio() -> Option<Target> {
     Some(Target {
-        max: 11.5,
+        value: 11.5,
         weight: default_weight(),
+        kind: TargetType::Target,
     })
 }
 
 /// Serde default for column 3 (middle) ratio target: 13%.
 fn default_c3_ratio() -> Option<Target> {
     Some(Target {
-        max: 13.0,
+        value: 13.0,
         weight: default_weight(),
+        kind: TargetType::Target,
     })
 }
 
 /// Serde default for column 4 (index) ratio target: 10.5%.
 fn default_c4_ratio() -> Option<Target> {
     Some(Target {
-        max: 10.5,
+        value: 10.5,
         weight: default_weight(),
+        kind: TargetType::Target,
     })
 }
 
 /// Serde default for column 5 (index) ratio target: 8%.
 fn default_c5_ratio() -> Option<Target> {
     Some(Target {
-        max: 8.0,
+        value: 8.0,
         weight: default_weight(),
+        kind: TargetType::Target,
     })
 }
 
-/// Desired limits per metric, in the percent units the CSV prints.
+/// Desired goals per metric, in the percent units the CSV prints.
 #[derive(Debug, Clone, Copy, Default, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields, default)]
 pub struct Targets {
@@ -133,11 +142,11 @@ pub struct Targets {
     /// Limit for `streak_imbalance`: left/right run-length asymmetry.
     pub streak_imbalance: Option<Target>,
 
-    /// Limit for `top_row_ratio`: top row effort share. Default: 25%.
+    /// Target for `top_row_ratio`: top row effort share. Default: 25%.
     #[serde(default = "default_top_row_ratio")]
     pub top_row_ratio: Option<Target>,
 
-    /// Limit for `home_row_ratio`: home row effort share. Default: 60%.
+    /// Target for `home_row_ratio`: home row effort share. Default: 60%.
     #[serde(default = "default_home_row_ratio")]
     pub home_row_ratio: Option<Target>,
 
@@ -145,27 +154,27 @@ pub struct Targets {
     #[serde(default = "default_home_row_balance")]
     pub home_row_balance: Option<Target>,
 
-    /// Limit for `bottom_row_ratio`: bottom row effort share. Default: 15%.
+    /// Target for `bottom_row_ratio`: bottom row effort share. Default: 15%.
     #[serde(default = "default_bottom_row_ratio")]
     pub bottom_row_ratio: Option<Target>,
 
-    /// Limit for left column 1 (pinky) effort share. Default: 18%.
+    /// Target for left column 1 (pinky) effort share. Default: 7%.
     #[serde(default = "default_c1_ratio")]
     pub c1_ratio: Option<Target>,
 
-    /// Limit for left column 2 (ring) effort share. Default: 19%.
+    /// Target for left column 2 (ring) effort share. Default: 11.5%.
     #[serde(default = "default_c2_ratio")]
     pub c2_ratio: Option<Target>,
 
-    /// Limit for left column 3 (middle) effort share. Default: 20%.
+    /// Target for left column 3 (middle) effort share. Default: 13%.
     #[serde(default = "default_c3_ratio")]
     pub c3_ratio: Option<Target>,
 
-    /// Limit for left column 4 (index) effort share. Default: 22%.
+    /// Target for left column 4 (index) effort share. Default: 10.5%.
     #[serde(default = "default_c4_ratio")]
     pub c4_ratio: Option<Target>,
 
-    /// Limit for left column 5 (index) effort share. Default: 21%.
+    /// Target for left column 5 (index) effort share. Default: 8%.
     /// Right-hand column targets are computed/mirrored from left-hand values.
     #[serde(default = "default_c5_ratio")]
     pub c5_ratio: Option<Target>,
@@ -178,48 +187,38 @@ impl Targets {
     }
 }
 
-/// Desired limit for one metric. The ideal is always `0`; `max` is the value that
-/// costs one full `weight`, which also normalizes metrics against each other.
-/// YAML accepts a bare number (`rowSwitchRatio: 20`) or `{ max: 20, weight: 2 }`.
+/// Behavior used to measure one metric's deviation.
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq)]
-#[serde(from = "TargetSpec")]
-pub struct Target {
-    /// Value that counts as one full unit of pain; also the scale normalizer.
-    pub max: f64,
+#[serde(rename_all = "camelCase")]
+pub enum TargetType {
+    /// Lower is better; `value` is the accepted upper limit.
+    Max,
+    /// Closer is better; `value` is the desired point.
+    Target,
+}
 
-    /// Priority against the other metrics. Only needed when one metric should
-    /// give way before another.
+/// Desired goal for one metric.
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct Target {
+    /// Limit or target point, selected by `type`.
+    pub value: f64,
+
+    /// Priority against the other metrics.
+    #[serde(default = "default_weight")]
     pub weight: f64,
+
+    /// Deviation behavior, serialized as YAML key `type`.
+    #[serde(rename = "type")]
+    pub kind: TargetType,
 }
 
 impl Target {
-    /// Normalized deviation: `0` = perfect, `1` = at the limit, `>1` = over it.
-    /// Sign is dropped — magnitude is what costs.
+    /// Normalized deviation: zero at the ideal for the selected behavior.
     pub fn deviation(&self, value: f64) -> f64 {
-        ratio(value.abs(), self.max)
-    }
-}
-
-/// Deserialization shim accepting the bare-number shorthand alongside the full form.
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase", untagged)]
-enum TargetSpec {
-    Max(f64),
-    Full {
-        max: f64,
-        #[serde(default = "default_weight")]
-        weight: f64,
-    },
-}
-
-impl From<TargetSpec> for Target {
-    fn from(spec: TargetSpec) -> Self {
-        match spec {
-            TargetSpec::Max(max) => Target {
-                max,
-                weight: default_weight(),
-            },
-            TargetSpec::Full { max, weight } => Target { max, weight },
+        match self.kind {
+            TargetType::Max => ratio(value.abs(), self.value),
+            TargetType::Target => (value - self.value).abs() / 100.0,
         }
     }
 }
@@ -228,32 +227,32 @@ impl From<TargetSpec> for Target {
 mod tests {
     use super::*;
 
-    /// A bare number is the common case: a limit with default priority. It must
-    /// parse into the same target as the explicit form.
+    /// Target behavior is explicit and uses the neutral `value` field name.
     #[test]
-    fn bare_number_and_full_target_forms_agree() {
-        let bare: LayoutEvaluatorConfig =
-            serde_json::from_str(r#"{"rowSwitchRatio": 20}"#).unwrap();
-        let full: LayoutEvaluatorConfig =
-            serde_json::from_str(r#"{"rowSwitchRatio": {"max": 20, "weight": 1}}"#).unwrap();
+    fn explicit_target_form_parses() {
+        let config: LayoutEvaluatorConfig = serde_json::from_str(
+            r#"{"rowSwitchRatio": {"type": "max", "value": 20, "weight": 1}}"#,
+        )
+        .unwrap();
 
-        assert_eq!(bare, full);
         assert_eq!(
-            bare.targets.row_switch_ratio,
+            config.targets.row_switch_ratio,
             Some(Target {
-                max: 20.0,
-                weight: 1.0
+                value: 20.0,
+                weight: 1.0,
+                kind: TargetType::Max,
             })
         );
-        assert!(!bare.targets.is_empty());
+        assert!(!config.targets.is_empty());
     }
 
-    /// Deviation is the metric measured in "limits": on target, at the limit, over it.
+    /// Max deviation measures the metric in accepted-limit units.
     #[test]
-    fn deviation_normalizes_against_the_limit() {
+    fn max_deviation_normalizes_against_the_limit() {
         let target = Target {
-            max: 20.0,
+            value: 20.0,
             weight: 1.0,
+            kind: TargetType::Max,
         };
 
         assert_eq!(target.deviation(0.0), 0.0);
@@ -264,10 +263,34 @@ mod tests {
         assert_eq!(target.deviation(-20.0), 1.0);
     }
 
+    /// Point targets penalize equal percentage-point misses symmetrically.
+    #[test]
+    fn target_deviation_is_symmetric_around_value() {
+        let target = Target {
+            value: 25.0,
+            weight: 1.0,
+            kind: TargetType::Target,
+        };
+
+        assert_eq!(target.deviation(25.0), 0.0);
+        assert_eq!(target.deviation(20.0), 0.05);
+        assert_eq!(target.deviation(30.0), 0.05);
+    }
+
+    /// Ambiguous legacy forms must fail instead of silently choosing behavior.
+    #[test]
+    fn target_type_and_value_are_required() {
+        let bare = r#"{"rowSwitchRatio": 20}"#;
+        let old = r#"{"rowSwitchRatio": {"max": 20, "weight": 1}}"#;
+
+        assert!(serde_json::from_str::<LayoutEvaluatorConfig>(bare).is_err());
+        assert!(serde_json::from_str::<LayoutEvaluatorConfig>(old).is_err());
+    }
+
     /// A misspelled metric name must fail the load, not silently score nothing.
     #[test]
     fn unknown_target_names_are_rejected() {
-        let json = r#"{"rowSwitchRation": 20}"#;
+        let json = r#"{"rowSwitchRation": {"type": "max", "value": 20, "weight": 1}}"#;
 
         assert!(serde_json::from_str::<LayoutEvaluatorConfig>(json).is_err());
     }

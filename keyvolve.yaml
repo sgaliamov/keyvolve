@@ -116,31 +116,30 @@ evaluator:
   # Fitness multiplier; higher scales scores up, lower scales down.
   fitnessScale: 1000000000000000
 
-  # Curve steepness: term = weight · (|value| / max) ^ sharpness.
+  # Curve steepness: term = weight · deviation ^ sharpness.
   # 1.0 = linear, higher = forgiving under the limit and brutal over it.
   sharpness: 4
 
-  # Desired metric limits, in the percent units the CSV prints. Ideal is 0 for every metric.
-  # `max` is the value that costs one full `weight`, also normalizes metrics against each other.
-  # Bare number = max with weight 1; write `{ max: 1, weight: 2 }` when a metric should give way last.
-  rowSwitchRatio: { max: 15, weight: 1 }
-  handSwitchRatio: { max: 30, weight: 3 }
-  effortsImbalance: { max: 5, weight: 1 }
-  handsImbalance: { max: 5, weight: 1 }
-  rollImbalance: { max: 5, weight: 1 }
-  rowSwitchImbalance: { max: 5, weight: 1 }
-  streakImbalance: { max: 5, weight: 1 }
-  topRowRatio: { max: 25, weight: 1 }
-  homeRowRatio: { max: 60, weight: 1 }
-  bottomRowRatio: { max: 15, weight: 1 }
+  # Desired metric goals, in the percent units the CSV prints.
+  # `max` rewards lower values; `target` rewards proximity to `value`.
+  rowSwitchRatio: { type: max, value: 15, weight: 1 }
+  handSwitchRatio: { type: max, value: 30, weight: 3 }
+  effortsImbalance: { type: max, value: 5, weight: 1 }
+  handsImbalance: { type: max, value: 5, weight: 1 }
+  rollImbalance: { type: max, value: 5, weight: 1 }
+  rowSwitchImbalance: { type: max, value: 5, weight: 1 }
+  streakImbalance: { type: max, value: 5, weight: 1 }
   # Home row left/right balance (absolute value); controls asymmetry in home row effort
-  homeRowBalance: { max: 15, weight: 0.5 }
+  homeRowBalance: { type: max, value: 15, weight: 0.5 }
+  topRowRatio: { type: target, value: 25, weight: 1 }
+  homeRowRatio: { type: target, value: 65, weight: 1 }
+  # bottomRowRatio: { type: target, value: 15, weight: 1 }
   # Left-hand column ratios (left c1=pinky through c5=index); right-hand mirrors left
-  c1Ratio: { max: 8, weight: 0.75 }
-  c2Ratio: { max: 11.5, weight: 0.75 }
-  c3Ratio: { max: 13, weight: 0.75 }
-  c4Ratio: { max: 10.5, weight: 0.75 }
-  c5Ratio: { max: 7, weight: 0.75 }
+  c1Ratio: { type: target, value: 6, weight: 0.75 }
+  c2Ratio: { type: target, value: 9, weight: 0.75 }
+  c3Ratio: { type: target, value: 13, weight: 0.75 }
+  c4Ratio: { type: target, value: 13, weight: 0.75 }
+  # c5Ratio: { type: target, value: 7, weight: 0.75 }
 
 ga:
   # Mutation probability applied per genome element.

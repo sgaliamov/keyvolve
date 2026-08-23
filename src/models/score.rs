@@ -157,10 +157,7 @@ impl ScoreResult {
     /// Home row left/right balance as signed percent: asymmetry in home row effort between hands.
     /// Range: (-∞, ∞). 0% = balanced. Positive = right-lean, negative = left-lean.
     pub fn home_row_balance(&self) -> f64 {
-        crate::math::signed_imbalance_percent(
-            self.left_row_effort[1],
-            self.right_row_effort[1],
-        )
+        crate::math::signed_imbalance_percent(self.left_row_effort[1], self.right_row_effort[1])
     }
 
     /// Top row total effort share: (left_top + right_top) / total_effort.
