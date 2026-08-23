@@ -41,7 +41,7 @@ pub fn optimize(
         OptimizerState {
             cache: opt_cfg.cache(),
             evaluator,
-            app,
+            app: app.clone(),
             optimization: opt_cfg,
         },
     );
@@ -62,6 +62,12 @@ pub fn optimize(
             (Layout::from_keys(&ind.genome), score, *pool)
         })
         .collect();
+
+    // Only save layouts if run completed naturally; don't save on abortion.
+    if app.should_finish() {
+        info!("Run aborted; layouts not saved");
+        return Ok(());
+    }
 
     write_layouts(&rows, rows.len(), output_path.as_deref(), false, Side::Any)
 }
