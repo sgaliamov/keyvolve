@@ -193,7 +193,7 @@ evaluator:
 
   # Home row effort share (percentage). Rewards layouts close to target.
   # type: target — proximity to value is better; symmetric penalty around target.
-  homeRowRatio: { type: target, value: 65, weight: 2 }
+  homeRowRatio: { type: target, value: 65, weight: 1 }
 
   # Bottom row effort share (percentage). Optional; uncomment to include.
   # type: target — proximity to value is better; symmetric penalty around target.
@@ -210,14 +210,14 @@ evaluator:
   c2Ratio: { type: target, value: 9, weight: 0.75 }
 
   # Column 3 (middle) effort share (percentage). Left hand only; right auto-mirrored.
-  c3Ratio: { type: target, value: 13, weight: 0.75 }
+  c3Ratio: { type: target, value: 14, weight: 0.75 }
 
   # Column 4 (index) effort share (percentage). Left hand only; right auto-mirrored.
-  c4Ratio: { type: target, value: 13, weight: 0.75 }
+  c4Ratio: { type: target, value: 14, weight: 0.75 }
 
   # Column 5 (index) effort share (percentage). Optional; uncomment to include.
   # Left hand only; right auto-mirrored.
-  c5Ratio: { type: max, value: 7, weight: 0.75 }
+  c5Ratio: { type: target, value: 7, weight: 0.75 }
 
 ga:
   # Mutation probability applied per genome element.
