@@ -4,7 +4,8 @@ pub mod keys;
 pub mod penalty;
 
 #[allow(unused_imports)]
-pub use config::{LayoutEvaluatorConfig, Target, TargetType, Targets};
+pub use crate::models::{Target, TargetType, Targets};
+pub use config::LayoutEvaluatorConfig;
 pub use corpus::CorpusCounts;
 
 use crate::models::{Keyboard, Keys, ScoreResult};
