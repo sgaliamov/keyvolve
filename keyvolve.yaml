@@ -149,7 +149,7 @@ evaluator:
 
   # Curve steepness: term = weight · deviation ^ sharpness.
   # 1.0 = linear, higher = forgiving under the limit and brutal over it.
-  sharpness: 4
+  sharpness: 2
 
   # Desired metric goals, in the percent units the CSV prints.
   # `max` rewards lower values; `target` rewards proximity to `value`.
@@ -189,15 +189,15 @@ evaluator:
 
   # Top row effort share (percentage). Rewards layouts close to target.
   # type: target — proximity to value is better; symmetric penalty around target.
-  topRowRatio: { type: target, value: 20, weight: 1 }
+  topRowRatio: { type: target, value: 25, weight: 1 }
 
   # Home row effort share (percentage). Rewards layouts close to target.
   # type: target — proximity to value is better; symmetric penalty around target.
-  homeRowRatio: { type: target, value: 60, weight: 2 }
+  homeRowRatio: { type: target, value: 65, weight: 2 }
 
   # Bottom row effort share (percentage). Optional; uncomment to include.
   # type: target — proximity to value is better; symmetric penalty around target.
-  bottomRowRatio: { type: target, value: 10, weight: 3 }
+  bottomRowRatio: { type: target, value: 10, weight: 1 }
 
   # Left-hand column ratios (left c1=pinky through c5=index); right-hand mirrors left.
   # Each column's effort share in percentage. type: target — proximity is better.
