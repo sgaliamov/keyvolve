@@ -149,7 +149,7 @@ evaluator:
 
   # Curve steepness: term = weight · deviation ^ sharpness.
   # 1.0 = linear, higher = forgiving under the limit and brutal over it.
-  sharpness: 2
+  sharpness: 4
 
   # Desired metric goals, in the percent units the CSV prints.
   # `max` rewards lower values; `target` rewards proximity to `value`.
@@ -171,7 +171,7 @@ evaluator:
 
   # Ratio of hand-switch cost to total effort. Penalizes hand alternation.
   # type: max — lower is better.
-  handSwitchRatio: { type: max, value: 30, weight: 3 }
+  handSwitchRatio: { type: max, value: 35, weight: 3 }
 
   # Left/right effort asymmetry (absolute percentage-point difference).
   # type: max — lower is better.
