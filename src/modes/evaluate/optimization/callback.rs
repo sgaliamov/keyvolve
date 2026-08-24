@@ -32,6 +32,59 @@ pub fn callback(ctx: &GaContext) -> bool {
         None => String::new(),
     };
 
-    println!("{:>3}: {} | {}{}", ctx.generation, name, score_str, div_str);
+    println!(
+        "{}",
+        format_progress_line(
+            format!("{:>3}: {}", ctx.generation, name),
+            score_str,
+            div_str,
+        )
+    );
     true
+}
+
+fn format_progress_line(prefix: String, score: String, suffix: String) -> String {
+    if score.is_empty() {
+        return format!("{prefix}{suffix}");
+    }
+
+    let indent = "     ".to_string();
+    let mut out = String::new();
+
+    out.push_str(&prefix);
+    out.push('\n');
+
+    let mut lines = score.lines();
+    if let Some(first) = lines.next() {
+        out.push_str(first);
+        out.push_str(&suffix);
+    }
+
+    for line in lines {
+        out.push('\n');
+        out.push_str(&indent);
+        out.push_str(line);
+    }
+
+    out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::format_progress_line;
+
+    #[test]
+    fn formats_multiline_progress_with_alignment() {
+        let out = format_progress_line(
+            "  7: alpha | ".to_string(),
+            "first\nsecond\nthird".to_string(),
+            " | δ: 1.2345".to_string(),
+        );
+
+        let lines: Vec<_> = out.lines().collect();
+        assert_eq!(lines[0], "  7: alpha | ");
+        assert_eq!(lines[1], "first | δ: 1.2345");
+        assert_eq!(lines[2], "     second");
+        assert_eq!(lines[3], "     third");
+    }
 }

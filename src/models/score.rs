@@ -529,9 +529,9 @@ impl ScoreResult {
 
 impl std::fmt::Display for ScoreResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
+        writeln!(
             f,
-            "φ {:.4} | ↕ {:05.2}% | ⇄ {:05.2}% | ⟳Δ {:+06.2}% | Δ {:+06.2}% | εΔ {:+06.2}% | ↕↔ {:+06.2}% | →Δ {:+06.2}% | → {:.2} | ε {:.2} | cL [{}] | cR [{}] | rT [{}] | rH [{}] | rB [{}] | bal [{}]",
+            "φ {:.4} | ↕ {:05.2}% | ⇄ {:05.2}% | ⟳Δ {:+06.2}% | Δ {:+06.2}% | εΔ {:+06.2}% | ↕↔ {:+06.2}% | →Δ {:+06.2}% | → {:.2} | ε {:.2}",
             self.fitness,
             self.row_switch_ratio() * 100.0,
             self.hand_switch_ratio() * 100.0,
@@ -542,11 +542,23 @@ impl std::fmt::Display for ScoreResult {
             self.streak_imbalance(),
             self.mean_streak(),
             self.effort,
+        )?;
+        writeln!(
+            f,
+            "cL [{}] | cR [{}]",
             Self::format_ratio_list(self.left_column_effort_ratios()),
             Self::format_ratio_list(self.right_column_effort_ratios()),
+        )?;
+        writeln!(
+            f,
+            "rT [{}] | rH [{}] | rB [{}]",
             Self::format_row_triplet(self.row_effort_ratios()[0]),
             Self::format_row_triplet(self.row_effort_ratios()[1]),
             Self::format_row_triplet(self.row_effort_ratios()[2]),
+        )?;
+        write!(
+            f,
+            "bal [{}]",
             Self::format_balance_list(self.row_balances()),
         )
     }
