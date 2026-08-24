@@ -56,6 +56,7 @@ fn format_progress_line(prefix: String, score: String, suffix: String) -> String
 
     let mut lines = score.lines();
     if let Some(first) = lines.next() {
+        out.push_str(&indent);
         out.push_str(first);
         out.push_str(&suffix);
     }
@@ -83,7 +84,7 @@ mod tests {
 
         let lines: Vec<_> = out.lines().collect();
         assert_eq!(lines[0], "  7: alpha | ");
-        assert_eq!(lines[1], "first | δ: 1.2345");
+        assert_eq!(lines[1], "     first | δ: 1.2345");
         assert_eq!(lines[2], "     second");
         assert_eq!(lines[3], "     third");
     }

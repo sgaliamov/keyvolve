@@ -42,26 +42,26 @@ pub struct Targets {
     #[serde(default = "default_bottom_row_ratio")]
     pub bottom_row_ratio: Option<Target>,
 
-    /// Target for left column 1 (pinky) effort share. Default: 7%.
-    #[serde(default = "default_c1_ratio")]
-    pub c1_ratio: Option<Target>,
+    /// Target for left pinky effort share. Default: 7%.
+    #[serde(default = "default_pinky_ratio")]
+    pub pinky_ratio: Option<Target>,
 
-    /// Target for left column 2 (ring) effort share. Default: 11.5%.
-    #[serde(default = "default_c2_ratio")]
-    pub c2_ratio: Option<Target>,
+    /// Target for left ring effort share. Default: 11.5%.
+    #[serde(default = "default_ring_ratio")]
+    pub ring_ratio: Option<Target>,
 
-    /// Target for left column 3 (middle) effort share. Default: 13%.
-    #[serde(default = "default_c3_ratio")]
-    pub c3_ratio: Option<Target>,
+    /// Target for left middle effort share. Default: 13%.
+    #[serde(default = "default_middle_ratio")]
+    pub middle_ratio: Option<Target>,
 
-    /// Target for left column 4 (index) effort share. Default: 10.5%.
-    #[serde(default = "default_c4_ratio")]
-    pub c4_ratio: Option<Target>,
+    /// Target for left index (inner) effort share. Default: 10.5%.
+    #[serde(default = "default_index_inner_ratio")]
+    pub index_inner_ratio: Option<Target>,
 
-    /// Target for left column 5 (index) effort share. Default: 8%.
+    /// Target for left index (outer) effort share. Default: 8%.
     /// Right-hand column targets are computed/mirrored from left-hand values.
-    #[serde(default = "default_c5_ratio")]
-    pub c5_ratio: Option<Target>,
+    #[serde(default = "default_index_outer_ratio")]
+    pub index_outer_ratio: Option<Target>,
 }
 
 impl Targets {
@@ -91,28 +91,28 @@ fn default_bottom_row_ratio() -> Option<Target> {
     Some(Target::target(15.0, 1.0))
 }
 
-/// Serde default for column 1 (pinky) ratio target: 7%.
-fn default_c1_ratio() -> Option<Target> {
+/// Serde default for pinky ratio target: 7%.
+fn default_pinky_ratio() -> Option<Target> {
     Some(Target::target(7.0, 1.0))
 }
 
-/// Serde default for column 2 (ring) ratio target: 11.5%.
-fn default_c2_ratio() -> Option<Target> {
+/// Serde default for ring ratio target: 11.5%.
+fn default_ring_ratio() -> Option<Target> {
     Some(Target::target(11.5, 1.0))
 }
 
-/// Serde default for column 3 (middle) ratio target: 13%.
-fn default_c3_ratio() -> Option<Target> {
+/// Serde default for middle ratio target: 13%.
+fn default_middle_ratio() -> Option<Target> {
     Some(Target::target(13.0, 1.0))
 }
 
-/// Serde default for column 4 (index) ratio target: 10.5%.
-fn default_c4_ratio() -> Option<Target> {
+/// Serde default for index inner ratio target: 10.5%.
+fn default_index_inner_ratio() -> Option<Target> {
     Some(Target::target(10.5, 1.0))
 }
 
-/// Serde default for column 5 (index) ratio target: 8%.
-fn default_c5_ratio() -> Option<Target> {
+/// Serde default for index outer ratio target: 8%.
+fn default_index_outer_ratio() -> Option<Target> {
     Some(Target::target(8.0, 1.0))
 }
 

@@ -187,57 +187,57 @@ impl ScoreResult {
         )
     }
 
-    // Column ratios: effort share per column (left: pinky→thumb, right: index→thumb)
+    // Column ratios: effort share per column (left: pinky→index-outer, right: index-inner→pinky)
 
-    /// Left column 1 (pinky) effort share: left_column_effort[0] / total_effort.
+    /// Left pinky effort share: left_column_effort[0] / total_effort.
     /// Range: [0.0, 1.0]. 0 = unused, 1.0 = all effort on left pinky.
-    pub fn left_c1_ratio(&self) -> f64 {
+    pub fn left_pinky_ratio(&self) -> f64 {
         crate::math::ratio(self.left_column_effort[0], self.effort)
     }
 
-    /// Left column 2 (ring) effort share.
-    pub fn left_c2_ratio(&self) -> f64 {
+    /// Left ring effort share.
+    pub fn left_ring_ratio(&self) -> f64 {
         crate::math::ratio(self.left_column_effort[1], self.effort)
     }
 
-    /// Left column 3 (middle) effort share.
-    pub fn left_c3_ratio(&self) -> f64 {
+    /// Left middle effort share.
+    pub fn left_middle_ratio(&self) -> f64 {
         crate::math::ratio(self.left_column_effort[2], self.effort)
     }
 
-    /// Left column 4 (index) effort share.
-    pub fn left_c4_ratio(&self) -> f64 {
+    /// Left index (inner) effort share.
+    pub fn left_index_inner_ratio(&self) -> f64 {
         crate::math::ratio(self.left_column_effort[3], self.effort)
     }
 
-    /// Left column 5 (thumb) effort share.
-    pub fn left_c5_ratio(&self) -> f64 {
+    /// Left index (outer) effort share.
+    pub fn left_index_outer_ratio(&self) -> f64 {
         crate::math::ratio(self.left_column_effort[4], self.effort)
     }
 
-    /// Right column 1 (index) effort share: right_column_effort[0] / total_effort.
-    /// Range: [0.0, 1.0]. 0 = unused, 1.0 = all effort on right index.
-    pub fn right_c1_ratio(&self) -> f64 {
+    /// Right index (outer) effort share: right_column_effort[0] / total_effort.
+    /// Range: [0.0, 1.0]. 0 = unused, 1.0 = all effort on right index outer.
+    pub fn right_index_outer_ratio(&self) -> f64 {
         crate::math::ratio(self.right_column_effort[0], self.effort)
     }
 
-    /// Right column 2 (middle) effort share.
-    pub fn right_c2_ratio(&self) -> f64 {
+    /// Right index (inner) effort share.
+    pub fn right_index_inner_ratio(&self) -> f64 {
         crate::math::ratio(self.right_column_effort[1], self.effort)
     }
 
-    /// Right column 3 (ring) effort share.
-    pub fn right_c3_ratio(&self) -> f64 {
+    /// Right middle effort share.
+    pub fn right_middle_ratio(&self) -> f64 {
         crate::math::ratio(self.right_column_effort[2], self.effort)
     }
 
-    /// Right column 4 (pinky) effort share.
-    pub fn right_c4_ratio(&self) -> f64 {
+    /// Right ring effort share.
+    pub fn right_ring_ratio(&self) -> f64 {
         crate::math::ratio(self.right_column_effort[3], self.effort)
     }
 
-    /// Right column 5 (thumb) effort share.
-    pub fn right_c5_ratio(&self) -> f64 {
+    /// Right pinky effort share.
+    pub fn right_pinky_ratio(&self) -> f64 {
         crate::math::ratio(self.right_column_effort[4], self.effort)
     }
 
@@ -430,16 +430,16 @@ impl ScoreResult {
             Self::format_imbalance(self.streak_imbalance()),
             format!("{:.2}", self.left_streak()),
             format!("{:.2}", self.right_streak()),
-            format!("{:.2}%", self.left_c1_ratio() * 100.0),
-            format!("{:.2}%", self.left_c2_ratio() * 100.0),
-            format!("{:.2}%", self.left_c3_ratio() * 100.0),
-            format!("{:.2}%", self.left_c4_ratio() * 100.0),
-            format!("{:.2}%", self.left_c5_ratio() * 100.0),
-            format!("{:.2}%", self.right_c1_ratio() * 100.0),
-            format!("{:.2}%", self.right_c2_ratio() * 100.0),
-            format!("{:.2}%", self.right_c3_ratio() * 100.0),
-            format!("{:.2}%", self.right_c4_ratio() * 100.0),
-            format!("{:.2}%", self.right_c5_ratio() * 100.0),
+            format!("{:.2}%", self.left_pinky_ratio() * 100.0),
+            format!("{:.2}%", self.left_ring_ratio() * 100.0),
+            format!("{:.2}%", self.left_middle_ratio() * 100.0),
+            format!("{:.2}%", self.left_index_inner_ratio() * 100.0),
+            format!("{:.2}%", self.left_index_outer_ratio() * 100.0),
+            format!("{:.2}%", self.right_index_outer_ratio() * 100.0),
+            format!("{:.2}%", self.right_index_inner_ratio() * 100.0),
+            format!("{:.2}%", self.right_middle_ratio() * 100.0),
+            format!("{:.2}%", self.right_ring_ratio() * 100.0),
+            format!("{:.2}%", self.right_pinky_ratio() * 100.0),
             format!("{:.2}%", self.top_row_ratio() * 100.0),
             format!("{:.2}%", self.home_row_ratio() * 100.0),
             format!("{:.2}%", self.bottom_row_ratio() * 100.0),
@@ -472,7 +472,7 @@ impl ScoreResult {
 
     /// CSV header matching [`to_csv`] column order.
     pub fn csv_header() -> &'static str {
-        "fitness,row_switch_ratio,row_switch_imbalance,hand_switch_ratio,hands_imbalance,effort,efforts_imbalance,roll_imbalance,mean_streak,streak_imbalance,left_streak,right_streak,left_c1_ratio,left_c2_ratio,left_c3_ratio,left_c4_ratio,left_c5_ratio,right_c1_ratio,right_c2_ratio,right_c3_ratio,right_c4_ratio,right_c5_ratio,top_row_ratio,home_row_ratio,bottom_row_ratio,left_row_balance,home_row_balance,bottom_row_balance,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,left_effort,right_effort,left_count,right_count,hand_switches,left_row_switch_cost,right_row_switch_cost,left_rolls,right_rolls,left_top_row_ratio,left_home_row_ratio,left_bottom_row_ratio,right_top_row_ratio,right_home_row_ratio,right_bottom_row_ratio"
+        "fitness,row_switch_ratio,row_switch_imbalance,hand_switch_ratio,hands_imbalance,effort,efforts_imbalance,roll_imbalance,mean_streak,streak_imbalance,left_streak,right_streak,left_pinky_ratio,left_ring_ratio,left_middle_ratio,left_index_inner_ratio,left_index_outer_ratio,right_index_outer_ratio,right_index_inner_ratio,right_middle_ratio,right_ring_ratio,right_pinky_ratio,top_row_ratio,home_row_ratio,bottom_row_ratio,left_row_balance,home_row_balance,bottom_row_balance,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,left_effort,right_effort,left_count,right_count,hand_switches,left_row_switch_cost,right_row_switch_cost,left_rolls,right_rolls,left_top_row_ratio,left_home_row_ratio,left_bottom_row_ratio,right_top_row_ratio,right_home_row_ratio,right_bottom_row_ratio"
     }
 
     /// Parse the raw (non-derived) fields from a persisted CSV row, skipping the
@@ -801,7 +801,7 @@ mod tests {
         let csv = format!("k1,k2,k3,k4,k5,k6,{}", s.to_csv());
         let parsed = ScoreResult::from_csv(&csv).unwrap();
 
-        assert!(ScoreResult::csv_header().contains("left_c1_ratio"));
+        assert!(ScoreResult::csv_header().contains("left_pinky_ratio"));
         assert!(ScoreResult::csv_header().contains("left_row_balance"));
         assert_eq!(parsed.effort, s.effort);
         assert_eq!(parsed.left_count, s.left_count);

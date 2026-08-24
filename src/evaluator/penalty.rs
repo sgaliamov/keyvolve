@@ -45,16 +45,16 @@
 //! | `top_row_ratio`      | top row effort share target (default: 25%) |
 //! | `home_row_ratio`     | home row effort share target (default: 60%) |
 //! | `bottom_row_ratio`   | bottom row effort share target (default: 15%) |
-//! | `left_c1_ratio`      | left pinky effort share target (default: 7%) |
-//! | `left_c2_ratio`      | left ring effort share target (default: 11.5%) |
-//! | `left_c3_ratio`      | left middle effort share target (default: 13%) |
-//! | `left_c4_ratio`      | left index effort share target (default: 10.5%) |
-//! | `left_c5_ratio`      | left index effort share target (default: 8%) |
-//! | `right_c1_ratio`     | right index effort share (mirrored from left) |
-//! | `right_c2_ratio`     | right middle effort share (mirrored from left) |
-//! | `right_c3_ratio`     | right ring effort share (mirrored from left) |
-//! | `right_c4_ratio`     | right pinky effort share (mirrored from left) |
-//! | `right_c5_ratio`     | right index effort share (mirrored from left) |
+//! | `left_pinky_ratio`      | left pinky effort share target (default: 7%) |
+//! | `left_ring_ratio`       | left ring effort share target (default: 11.5%) |
+//! | `left_middle_ratio`     | left middle effort share target (default: 13%) |
+//! | `left_index_inner_ratio`| left index (inner) effort share target (default: 10.5%) |
+//! | `left_index_outer_ratio`| left index (outer) effort share target (default: 8%) |
+//! | `right_index_inner_ratio` | right index (inner) effort share (mirrored from left) |
+//! | `right_middle_ratio`    | right middle effort share (mirrored from left) |
+//! | `right_ring_ratio`      | right ring effort share (mirrored from left) |
+//! | `right_pinky_ratio`     | right pinky effort share (mirrored from left) |
+//! | `right_index_outer_ratio` | right index (outer) effort share (mirrored from left) |
 //!
 //! # Why no `mean_streak` target
 //!
@@ -196,16 +196,16 @@ fn terms<'a>(
             t.bottom_row_ratio,
             r.bottom_row_ratio() * 100.0,
         ),
-        ("left_c1_ratio", t.c1_ratio, r.left_c1_ratio() * 100.0),
-        ("left_c2_ratio", t.c2_ratio, r.left_c2_ratio() * 100.0),
-        ("left_c3_ratio", t.c3_ratio, r.left_c3_ratio() * 100.0),
-        ("left_c4_ratio", t.c4_ratio, r.left_c4_ratio() * 100.0),
-        ("left_c5_ratio", t.c5_ratio, r.left_c5_ratio() * 100.0),
-        ("right_c1_ratio", t.c1_ratio, r.right_c1_ratio() * 100.0),
-        ("right_c2_ratio", t.c2_ratio, r.right_c2_ratio() * 100.0),
-        ("right_c3_ratio", t.c3_ratio, r.right_c3_ratio() * 100.0),
-        ("right_c4_ratio", t.c4_ratio, r.right_c4_ratio() * 100.0),
-        ("right_c5_ratio", t.c5_ratio, r.right_c5_ratio() * 100.0),
+        ("left_pinky_ratio", t.pinky_ratio, r.left_pinky_ratio() * 100.0),
+        ("left_ring_ratio", t.ring_ratio, r.left_ring_ratio() * 100.0),
+        ("left_middle_ratio", t.middle_ratio, r.left_middle_ratio() * 100.0),
+        ("left_index_inner_ratio", t.index_inner_ratio, r.left_index_inner_ratio() * 100.0),
+        ("left_index_outer_ratio", t.index_outer_ratio, r.left_index_outer_ratio() * 100.0),
+        ("right_index_inner_ratio", t.index_inner_ratio, r.right_index_inner_ratio() * 100.0),
+        ("right_middle_ratio", t.middle_ratio, r.right_middle_ratio() * 100.0),
+        ("right_ring_ratio", t.ring_ratio, r.right_ring_ratio() * 100.0),
+        ("right_pinky_ratio", t.pinky_ratio, r.right_pinky_ratio() * 100.0),
+        ("right_index_outer_ratio", t.index_outer_ratio, r.right_index_outer_ratio() * 100.0),
     ]
     .into_iter()
     .filter_map(move |(name, target, value)| {
@@ -261,7 +261,7 @@ mod tests {
             left_effort: 50.0,
             right_effort: 50.0,
             left_column_effort: [7.0, 11.5, 13.0, 10.5, 8.0],
-            right_column_effort: [7.0, 11.5, 13.0, 10.5, 8.0],
+            right_column_effort: [10.5, 13.0, 11.5, 7.0, 8.0],
             left_row_effort: [12.5, 30.0, 7.5],
             right_row_effort: [12.5, 30.0, 7.5],
             ..Default::default()
@@ -503,11 +503,11 @@ mod tests {
                 home_row_ratio: target(60.0),
                 home_row_balance: limit(15.0),
                 bottom_row_ratio: target(15.0),
-                c1_ratio: target(7.0),
-                c2_ratio: target(11.5),
-                c3_ratio: target(13.0),
-                c4_ratio: target(10.5),
-                c5_ratio: target(8.0),
+                pinky_ratio: target(7.0),
+                ring_ratio: target(11.5),
+                middle_ratio: target(13.0),
+                index_inner_ratio: target(10.5),
+                index_outer_ratio: target(8.0),
             },
             ..Default::default()
         }
