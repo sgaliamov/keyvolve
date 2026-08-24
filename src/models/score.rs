@@ -34,10 +34,11 @@ pub struct ScoreResult {
     /// Effort accumulated on the right hand.
     pub right_effort: f64,
 
-    /// Effort by left-hand column: inner → outer, 5 slots.
+    /// Effort by left-hand column, finger order: pinky → index-outer, 5 slots.
     pub left_column_effort: [f64; 5],
 
-    /// Effort by right-hand column: inner → outer, 5 slots.
+    /// Effort by right-hand column, finger order: pinky → index-outer, 5 slots.
+    /// Same index = same finger as [`Self::left_column_effort`].
     pub right_column_effort: [f64; 5],
 
     /// Effort by left-hand row: top, home, bottom.
@@ -52,9 +53,12 @@ fn hand_index(slot: u8) -> usize {
     (slot / 15) as usize
 }
 
+/// Finger-order column (0 = pinky … 4 = index-outer) regardless of hand.
+/// Right-hand slots run index-outer → pinky physically, so they are reversed.
 #[inline]
 fn column_index(slot: u8) -> usize {
-    (slot % 5) as usize
+    let physical = (slot % 5) as usize;
+    if slot < 15 { physical } else { 4 - physical }
 }
 
 #[inline]
@@ -119,13 +123,13 @@ impl ScoreResult {
         crate::math::ratio(self.right_effort, self.left_effort + self.right_effort)
     }
 
-    /// Left hand column effort shares, inner → outer.
+    /// Left hand column effort shares, finger order: pinky → index-outer.
     pub fn left_column_effort_ratios(&self) -> [f64; 5] {
         self.left_column_effort
             .map(|v| crate::math::ratio(v, self.effort))
     }
 
-    /// Right hand column effort shares, inner → outer.
+    /// Right hand column effort shares, finger order: pinky → index-outer.
     pub fn right_column_effort_ratios(&self) -> [f64; 5] {
         self.right_column_effort
             .map(|v| crate::math::ratio(v, self.effort))
@@ -187,7 +191,7 @@ impl ScoreResult {
         )
     }
 
-    // Column ratios: effort share per column (left: pinky→index-outer, right: index-inner→pinky)
+    // Column ratios: effort share per finger column (pinky → index-outer, both hands)
 
     /// Left pinky effort share: left_column_effort[0] / total_effort.
     /// Range: [0.0, 1.0]. 0 = unused, 1.0 = all effort on left pinky.
@@ -215,14 +219,14 @@ impl ScoreResult {
         crate::math::ratio(self.left_column_effort[4], self.effort)
     }
 
-    /// Right index (outer) effort share: right_column_effort[0] / total_effort.
-    /// Range: [0.0, 1.0]. 0 = unused, 1.0 = all effort on right index outer.
-    pub fn right_index_outer_ratio(&self) -> f64 {
+    /// Right pinky effort share: right_column_effort[0] / total_effort.
+    /// Range: [0.0, 1.0]. 0 = unused, 1.0 = all effort on right pinky.
+    pub fn right_pinky_ratio(&self) -> f64 {
         crate::math::ratio(self.right_column_effort[0], self.effort)
     }
 
-    /// Right index (inner) effort share.
-    pub fn right_index_inner_ratio(&self) -> f64 {
+    /// Right ring effort share.
+    pub fn right_ring_ratio(&self) -> f64 {
         crate::math::ratio(self.right_column_effort[1], self.effort)
     }
 
@@ -231,13 +235,13 @@ impl ScoreResult {
         crate::math::ratio(self.right_column_effort[2], self.effort)
     }
 
-    /// Right ring effort share.
-    pub fn right_ring_ratio(&self) -> f64 {
+    /// Right index (inner) effort share.
+    pub fn right_index_inner_ratio(&self) -> f64 {
         crate::math::ratio(self.right_column_effort[3], self.effort)
     }
 
-    /// Right pinky effort share.
-    pub fn right_pinky_ratio(&self) -> f64 {
+    /// Right index (outer) effort share.
+    pub fn right_index_outer_ratio(&self) -> f64 {
         crate::math::ratio(self.right_column_effort[4], self.effort)
     }
 
@@ -372,6 +376,8 @@ impl ScoreResult {
             right_row_switch_cost: self.left_row_switch_cost,
             left_effort: self.right_effort,
             right_effort: self.left_effort,
+            // Column arrays are finger-ordered on both hands, so a plain swap
+            // keeps every share attached to the same finger.
             left_column_effort: self.right_column_effort,
             right_column_effort: self.left_column_effort,
             left_row_effort: self.right_row_effort,
@@ -506,12 +512,14 @@ impl ScoreResult {
                 Self::parse_bucket(c.get(15), effort),
                 Self::parse_bucket(c.get(16), effort),
             ],
+            // CSV keeps right-hand columns in physical order (index-outer → pinky);
+            // reverse into finger order.
             right_column_effort: [
-                Self::parse_bucket(c.get(17), effort),
-                Self::parse_bucket(c.get(18), effort),
-                Self::parse_bucket(c.get(19), effort),
-                Self::parse_bucket(c.get(20), effort),
                 Self::parse_bucket(c.get(21), effort),
+                Self::parse_bucket(c.get(20), effort),
+                Self::parse_bucket(c.get(19), effort),
+                Self::parse_bucket(c.get(18), effort),
+                Self::parse_bucket(c.get(17), effort),
             ],
             left_row_effort: [
                 Self::parse_bucket(c.get(41), effort),
@@ -543,11 +551,14 @@ impl std::fmt::Display for ScoreResult {
             self.mean_streak(),
             self.effort,
         )?;
+        // cR shown in physical order (index-outer → pinky) to match keyboard geometry.
+        let mut right_columns = self.right_column_effort_ratios();
+        right_columns.reverse();
         writeln!(
             f,
             "cL [{}] | cR [{}]",
             Self::format_ratio_list(self.left_column_effort_ratios()),
-            Self::format_ratio_list(self.right_column_effort_ratios()),
+            Self::format_ratio_list(right_columns),
         )?;
         writeln!(
             f,
@@ -635,6 +646,8 @@ mod tests {
             right_rolls: 7,
             left_effort: 1.0,
             right_effort: 2.0,
+            left_column_effort: [1.0, 2.0, 3.0, 4.0, 5.0],
+            right_column_effort: [6.0, 7.0, 8.0, 9.0, 10.0],
             ..Default::default()
         };
         let m = s.mirror();
@@ -645,10 +658,14 @@ mod tests {
         assert_eq!(m.right_rolls, 4);
         assert_eq!(m.left_effort, 2.0);
         assert_eq!(m.right_effort, 1.0);
+        // Finger order preserved: pinky stays pinky across the swap.
+        assert_eq!(m.left_column_effort, [6.0, 7.0, 8.0, 9.0, 10.0]);
+        assert_eq!(m.right_column_effort, [1.0, 2.0, 3.0, 4.0, 5.0]);
     }
 
     #[test]
     fn press_tracks_columns_and_rows() {
+        // Slot 3 = left index-inner (finger col 3); slot 18 = right ring (finger col 1).
         let left = ScoreResult::press(3, 2.5);
         let right = ScoreResult::press(18, 1.5);
 
@@ -657,7 +674,7 @@ mod tests {
         assert_eq!(left.left_row_effort[0], 2.5);
 
         assert_eq!(right.right_count, 1);
-        assert_eq!(right.right_column_effort[3], 1.5);
+        assert_eq!(right.right_column_effort[1], 1.5);
         assert_eq!(right.right_row_effort[0], 1.5);
     }
 
@@ -806,5 +823,7 @@ mod tests {
         assert_eq!(parsed.effort, s.effort);
         assert_eq!(parsed.left_count, s.left_count);
         assert_eq!(parsed.right_count, s.right_count);
+        // CSV stores right columns in physical order; roundtrip restores finger order.
+        assert_eq!(parsed.right_column_effort, s.right_column_effort);
     }
 }

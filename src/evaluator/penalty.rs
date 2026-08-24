@@ -45,16 +45,16 @@
 //! | `top_row_ratio`      | top row effort share target (default: 25%) |
 //! | `home_row_ratio`     | home row effort share target (default: 60%) |
 //! | `bottom_row_ratio`   | bottom row effort share target (default: 15%) |
-//! | `left_pinky_ratio`      | left pinky effort share target (default: 7%) |
-//! | `left_ring_ratio`       | left ring effort share target (default: 11.5%) |
-//! | `left_middle_ratio`     | left middle effort share target (default: 13%) |
-//! | `left_index_inner_ratio`| left index (inner) effort share target (default: 10.5%) |
-//! | `left_index_outer_ratio`| left index (outer) effort share target (default: 8%) |
-//! | `right_index_inner_ratio` | right index (inner) effort share (mirrored from left) |
-//! | `right_middle_ratio`    | right middle effort share (mirrored from left) |
-//! | `right_ring_ratio`      | right ring effort share (mirrored from left) |
-//! | `right_pinky_ratio`     | right pinky effort share (mirrored from left) |
-//! | `right_index_outer_ratio` | right index (outer) effort share (mirrored from left) |
+//! | `left_pinky_ratio`       | left pinky effort share target (default: 7%) |
+//! | `left_ring_ratio`        | left ring effort share target (default: 11.5%) |
+//! | `left_middle_ratio`      | left middle effort share target (default: 13%) |
+//! | `left_index_inner_ratio` | left index (inner) effort share target (default: 10.5%) |
+//! | `left_index_outer_ratio` | left index (outer) effort share target (default: 8%) |
+//! | `right_pinky_ratio`      | right pinky effort share (same per-finger target) |
+//! | `right_ring_ratio`       | right ring effort share (same per-finger target) |
+//! | `right_middle_ratio`     | right middle effort share (same per-finger target) |
+//! | `right_index_inner_ratio`| right index (inner) effort share (same per-finger target) |
+//! | `right_index_outer_ratio`| right index (outer) effort share (same per-finger target) |
 //!
 //! # Why no `mean_streak` target
 //!
@@ -196,16 +196,52 @@ fn terms<'a>(
             t.bottom_row_ratio,
             r.bottom_row_ratio() * 100.0,
         ),
-        ("left_pinky_ratio", t.pinky_ratio, r.left_pinky_ratio() * 100.0),
+        (
+            "left_pinky_ratio",
+            t.pinky_ratio,
+            r.left_pinky_ratio() * 100.0,
+        ),
         ("left_ring_ratio", t.ring_ratio, r.left_ring_ratio() * 100.0),
-        ("left_middle_ratio", t.middle_ratio, r.left_middle_ratio() * 100.0),
-        ("left_index_inner_ratio", t.index_inner_ratio, r.left_index_inner_ratio() * 100.0),
-        ("left_index_outer_ratio", t.index_outer_ratio, r.left_index_outer_ratio() * 100.0),
-        ("right_index_inner_ratio", t.index_inner_ratio, r.right_index_inner_ratio() * 100.0),
-        ("right_middle_ratio", t.middle_ratio, r.right_middle_ratio() * 100.0),
-        ("right_ring_ratio", t.ring_ratio, r.right_ring_ratio() * 100.0),
-        ("right_pinky_ratio", t.pinky_ratio, r.right_pinky_ratio() * 100.0),
-        ("right_index_outer_ratio", t.index_outer_ratio, r.right_index_outer_ratio() * 100.0),
+        (
+            "left_middle_ratio",
+            t.middle_ratio,
+            r.left_middle_ratio() * 100.0,
+        ),
+        (
+            "left_index_inner_ratio",
+            t.index_inner_ratio,
+            r.left_index_inner_ratio() * 100.0,
+        ),
+        (
+            "left_index_outer_ratio",
+            t.index_outer_ratio,
+            r.left_index_outer_ratio() * 100.0,
+        ),
+        (
+            "right_pinky_ratio",
+            t.pinky_ratio,
+            r.right_pinky_ratio() * 100.0,
+        ),
+        (
+            "right_ring_ratio",
+            t.ring_ratio,
+            r.right_ring_ratio() * 100.0,
+        ),
+        (
+            "right_middle_ratio",
+            t.middle_ratio,
+            r.right_middle_ratio() * 100.0,
+        ),
+        (
+            "right_index_inner_ratio",
+            t.index_inner_ratio,
+            r.right_index_inner_ratio() * 100.0,
+        ),
+        (
+            "right_index_outer_ratio",
+            t.index_outer_ratio,
+            r.right_index_outer_ratio() * 100.0,
+        ),
     ]
     .into_iter()
     .filter_map(move |(name, target, value)| {
@@ -261,7 +297,7 @@ mod tests {
             left_effort: 50.0,
             right_effort: 50.0,
             left_column_effort: [7.0, 11.5, 13.0, 10.5, 8.0],
-            right_column_effort: [10.5, 13.0, 11.5, 7.0, 8.0],
+            right_column_effort: [7.0, 11.5, 13.0, 10.5, 8.0],
             left_row_effort: [12.5, 30.0, 7.5],
             right_row_effort: [12.5, 30.0, 7.5],
             ..Default::default()

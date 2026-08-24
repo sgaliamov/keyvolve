@@ -98,7 +98,8 @@ impl Layout {
 }
 
 impl fmt::Display for Layout {
-    /// Reconstruct comma-separated layout string (positions 0–14 left; 15–29 right, stored inner→outer per group).
+    /// Reconstruct comma-separated layout string (positions 0–14 left; 15–29 right,
+    /// each right group stored index-outer → pinky, i.e. physical left-to-right).
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let slots = self.slots();
         let left = slots[..15]
@@ -246,14 +247,15 @@ mod layout_test {
 
     #[test]
     fn right_block_anchors_slot_15_to_29() {
-        // Right hand starts at slot 15 (top-left, inner) and ends at slot 29 (bottom-right, outer).
+        // Right hand starts at slot 15 (top-left, index-outer column) and ends at
+        // slot 29 (bottom-right, pinky column).
         let line = "abcde, fghij, klmno, pqrst, uvwxy, ____z";
         let keys = line_to_keys(line).unwrap();
 
         assert_eq!(keys[&'a'], 0); // left top-left
         assert_eq!(keys[&'o'], 14); // left bottom-right
         assert_eq!(keys[&'p'], 15); // right top-left (start)
-        assert_eq!(keys[&'t'], 19); // right top-right — locks inner→outer direction
+        assert_eq!(keys[&'t'], 19); // right top-right — locks index-outer → pinky direction
         assert_eq!(keys[&'z'], 29); // right bottom-right (end)
     }
 
