@@ -167,11 +167,11 @@ evaluator:
 
   # Ratio of row-switch cost to total effort. Penalizes vertical jumps within a hand.
   # type: max — lower is better.
-  rowSwitchRatio: { type: max, value: 15, weight: 1 }
+  rowSwitchRatio: { type: max, value: 17, weight: 1 }
 
   # Ratio of hand-switch cost to total effort. Penalizes hand alternation.
   # type: max — lower is better.
-  handSwitchRatio: { type: max, value: 35, weight: 3 }
+  handSwitchRatio: { type: max, value: 36, weight: 2 }
 
   # Left/right effort asymmetry (absolute percentage-point difference).
   # type: max — lower is better.
@@ -209,25 +209,25 @@ evaluator:
   # type: target — proximity to value is better; symmetric penalty around target.
   bottomRowRatio: { type: target, value: 10, weight: 1 }
 
-  # Left-hand column ratios (left c1=pinky through c5=index); right-hand mirrors left.
+  # Left-hand column ratios (pinky, ring, middle, index-inner, index-outer); right-hand mirrors left.
   # Each column's effort share in percentage. type: target — proximity is better.
   # Deviation: |value - target| / tolerance (default tolerance: 5pp).
 
-  # Column 1 (pinky) effort share (percentage). Left hand only; right auto-mirrored.
-  c1Ratio: { type: target, value: 6, weight: 0.75 }
+  # Pinky (column 1) effort share (percentage).
+  pinkyRatio: { type: target, value: 5, weight: 0.75 }
 
-  # Column 2 (ring) effort share (percentage). Left hand only; right auto-mirrored.
-  c2Ratio: { type: target, value: 9, weight: 0.75 }
+  # Ring (column 2) effort share (percentage).
+  ringRatio: { type: target, value: 9, weight: 0.75 }
 
-  # Column 3 (middle) effort share (percentage). Left hand only; right auto-mirrored.
-  c3Ratio: { type: target, value: 14, weight: 0.75 }
+  # Middle (column 3) effort share (percentage).
+  middleRatio: { type: target, value: 14.5, weight: 1.0 }
 
-  # Column 4 (index) effort share (percentage). Left hand only; right auto-mirrored.
-  c4Ratio: { type: target, value: 14, weight: 0.75 }
+  # Index inner (column 4) effort share (percentage).
+  indexInnerRatio: { type: target, value: 14.5, weight: 1.0 }
 
-  # Column 5 (index) effort share (percentage). Optional; uncomment to include.
+  # Index outer (column 5) effort share (percentage).
   # Left hand only; right auto-mirrored.
-  c5Ratio: { type: target, value: 7, weight: 0.75 }
+  indexOuterRatio: { type: target, value: 7, weight: 0.75 }
 
 ga:
   # Mutation probability applied per genome element.
