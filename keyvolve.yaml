@@ -171,7 +171,7 @@ evaluator:
 
   # Ratio of hand-switch cost to total effort. Penalizes hand alternation.
   # type: max — lower is better.
-  handSwitchRatio: { type: max, value: 36, weight: 2 }
+  handSwitchRatio: { type: max, value: 37, weight: 2 }
 
   # Left/right effort asymmetry (absolute percentage-point difference).
   # type: max — lower is better.
@@ -199,7 +199,7 @@ evaluator:
 
   # Top row effort share (percentage). Rewards layouts close to target.
   # type: target — proximity to value is better; symmetric penalty around target.
-  topRowRatio: { type: target, value: 25, weight: 1 }
+  topRowRatio: { type: target, value: 24, weight: 1 }
 
   # Home row effort share (percentage). Rewards layouts close to target.
   # type: target — proximity to value is better; symmetric penalty around target.
@@ -207,27 +207,27 @@ evaluator:
 
   # Bottom row effort share (percentage). Optional; uncomment to include.
   # type: target — proximity to value is better; symmetric penalty around target.
-  bottomRowRatio: { type: target, value: 10, weight: 1 }
+  bottomRowRatio: { type: target, value: 11, weight: 1 }
 
   # Left-hand column ratios (pinky, ring, middle, index-inner, index-outer); right-hand mirrors left.
   # Each column's effort share in percentage. type: target — proximity is better.
   # Deviation: |value - target| / tolerance (default tolerance: 5pp).
 
   # Pinky (column 1) effort share (percentage).
-  pinkyRatio: { type: target, value: 5, weight: 0.75 }
+  pinkyRatio: { type: target, value: 5, weight: 1 }
 
   # Ring (column 2) effort share (percentage).
   ringRatio: { type: target, value: 9, weight: 0.75 }
 
   # Middle (column 3) effort share (percentage).
-  middleRatio: { type: target, value: 14.5, weight: 1.0 }
+  middleRatio: { type: target, value: 15, weight: 1.0 }
 
   # Index inner (column 4) effort share (percentage).
-  indexInnerRatio: { type: target, value: 14.5, weight: 1.0 }
+  indexInnerRatio: { type: target, value: 13, weight: 1.0 }
 
   # Index outer (column 5) effort share (percentage).
   # Left hand only; right auto-mirrored.
-  indexOuterRatio: { type: target, value: 7, weight: 0.75 }
+  indexOuterRatio: { type: target, value: 8, weight: 0.75 }
 
 ga:
   # Mutation probability applied per genome element.
