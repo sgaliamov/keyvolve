@@ -245,6 +245,49 @@ impl ScoreResult {
         crate::math::ratio(self.right_column_effort[4], self.effort)
     }
 
+    // Column balances: left/right effort skew per finger (0% = balanced).
+
+    /// Pinky left/right balance as signed percent: asymmetry in pinky column effort
+    /// between hands. Range: (-∞, ∞). 0% = balanced, positive = left-lean.
+    pub fn pinky_balance(&self) -> f64 {
+        crate::math::signed_imbalance_percent(
+            self.left_column_effort[0],
+            self.right_column_effort[0],
+        )
+    }
+
+    /// Ring left/right balance as signed percent.
+    pub fn ring_balance(&self) -> f64 {
+        crate::math::signed_imbalance_percent(
+            self.left_column_effort[1],
+            self.right_column_effort[1],
+        )
+    }
+
+    /// Middle left/right balance as signed percent.
+    pub fn middle_balance(&self) -> f64 {
+        crate::math::signed_imbalance_percent(
+            self.left_column_effort[2],
+            self.right_column_effort[2],
+        )
+    }
+
+    /// Index (inner) left/right balance as signed percent.
+    pub fn index_inner_balance(&self) -> f64 {
+        crate::math::signed_imbalance_percent(
+            self.left_column_effort[3],
+            self.right_column_effort[3],
+        )
+    }
+
+    /// Index (outer) left/right balance as signed percent.
+    pub fn index_outer_balance(&self) -> f64 {
+        crate::math::signed_imbalance_percent(
+            self.left_column_effort[4],
+            self.right_column_effort[4],
+        )
+    }
+
     /// Format a 5-column ratio list for display.
     fn format_ratio_list(values: [f64; 5]) -> String {
         values
@@ -449,6 +492,11 @@ impl ScoreResult {
             format!("{:.2}%", self.top_row_ratio() * 100.0),
             format!("{:.2}%", self.home_row_ratio() * 100.0),
             format!("{:.2}%", self.bottom_row_ratio() * 100.0),
+            Self::format_imbalance(self.pinky_balance()),
+            Self::format_imbalance(self.ring_balance()),
+            Self::format_imbalance(self.middle_balance()),
+            Self::format_imbalance(self.index_inner_balance()),
+            Self::format_imbalance(self.index_outer_balance()),
             Self::format_imbalance(self.row_balances()[0]),
             Self::format_imbalance(self.home_row_balance()),
             Self::format_imbalance(self.row_balances()[2]),
@@ -478,7 +526,7 @@ impl ScoreResult {
 
     /// CSV header matching [`to_csv`] column order.
     pub fn csv_header() -> &'static str {
-        "fitness,row_switch_ratio,row_switch_imbalance,hand_switch_ratio,hands_imbalance,effort,efforts_imbalance,roll_imbalance,mean_streak,streak_imbalance,left_streak,right_streak,left_pinky_ratio,left_ring_ratio,left_middle_ratio,left_index_inner_ratio,left_index_outer_ratio,right_index_outer_ratio,right_index_inner_ratio,right_middle_ratio,right_ring_ratio,right_pinky_ratio,top_row_ratio,home_row_ratio,bottom_row_ratio,left_row_balance,home_row_balance,bottom_row_balance,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,left_effort,right_effort,left_count,right_count,hand_switches,left_row_switch_cost,right_row_switch_cost,left_rolls,right_rolls,left_top_row_ratio,left_home_row_ratio,left_bottom_row_ratio,right_top_row_ratio,right_home_row_ratio,right_bottom_row_ratio"
+        "fitness,row_switch_ratio,row_switch_imbalance,hand_switch_ratio,hands_imbalance,effort,efforts_imbalance,roll_imbalance,mean_streak,streak_imbalance,left_streak,right_streak,left_pinky_ratio,left_ring_ratio,left_middle_ratio,left_index_inner_ratio,left_index_outer_ratio,right_index_outer_ratio,right_index_inner_ratio,right_middle_ratio,right_ring_ratio,right_pinky_ratio,top_row_ratio,home_row_ratio,bottom_row_ratio,pinky_balance,ring_balance,middle_balance,index_inner_balance,index_outer_balance,left_row_balance,home_row_balance,bottom_row_balance,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,left_effort,right_effort,left_count,right_count,hand_switches,left_row_switch_cost,right_row_switch_cost,left_rolls,right_rolls,left_top_row_ratio,left_home_row_ratio,left_bottom_row_ratio,right_top_row_ratio,right_home_row_ratio,right_bottom_row_ratio"
     }
 
     /// Parse the raw (non-derived) fields from a persisted CSV row, skipping the
@@ -496,15 +544,15 @@ impl ScoreResult {
         Some(ScoreResult {
             fitness: c.first()?.parse().ok()?,
             effort,
-            left_effort: c.get(32)?.parse().ok()?,
-            right_effort: c.get(33)?.parse().ok()?,
-            left_count: c.get(34)?.parse().ok()?,
-            right_count: c.get(35)?.parse().ok()?,
-            hand_switches: c.get(36)?.parse().ok()?,
-            left_row_switch_cost: c.get(37)?.parse().ok()?,
-            right_row_switch_cost: c.get(38)?.parse().ok()?,
-            left_rolls: c.get(39)?.parse().ok()?,
-            right_rolls: c.get(40)?.parse().ok()?,
+            left_effort: c.get(37)?.parse().ok()?,
+            right_effort: c.get(38)?.parse().ok()?,
+            left_count: c.get(39)?.parse().ok()?,
+            right_count: c.get(40)?.parse().ok()?,
+            hand_switches: c.get(41)?.parse().ok()?,
+            left_row_switch_cost: c.get(42)?.parse().ok()?,
+            right_row_switch_cost: c.get(43)?.parse().ok()?,
+            left_rolls: c.get(44)?.parse().ok()?,
+            right_rolls: c.get(45)?.parse().ok()?,
             left_column_effort: [
                 Self::parse_bucket(c.get(12), effort),
                 Self::parse_bucket(c.get(13), effort),
@@ -522,14 +570,14 @@ impl ScoreResult {
                 Self::parse_bucket(c.get(17), effort),
             ],
             left_row_effort: [
-                Self::parse_bucket(c.get(41), effort),
-                Self::parse_bucket(c.get(42), effort),
-                Self::parse_bucket(c.get(43), effort),
+                Self::parse_bucket(c.get(46), effort),
+                Self::parse_bucket(c.get(47), effort),
+                Self::parse_bucket(c.get(48), effort),
             ],
             right_row_effort: [
-                Self::parse_bucket(c.get(44), effort),
-                Self::parse_bucket(c.get(45), effort),
-                Self::parse_bucket(c.get(46), effort),
+                Self::parse_bucket(c.get(49), effort),
+                Self::parse_bucket(c.get(50), effort),
+                Self::parse_bucket(c.get(51), effort),
             ],
         })
     }
@@ -695,6 +743,28 @@ mod tests {
         // Unused hand → 0.0, no division blowup.
         assert_eq!(ScoreResult::default().left_streak(), 0.0);
         assert_eq!(ScoreResult::default().right_streak(), 0.0);
+    }
+
+    #[test]
+    fn column_balance_measures_left_right_finger_skew() {
+        let balanced = ScoreResult {
+            left_column_effort: [1.0, 2.0, 3.0, 4.0, 5.0],
+            right_column_effort: [1.0, 2.0, 3.0, 4.0, 5.0],
+            ..Default::default()
+        };
+        assert_eq!(balanced.pinky_balance(), 0.0);
+        assert_eq!(balanced.ring_balance(), 0.0);
+        assert_eq!(balanced.middle_balance(), 0.0);
+        assert_eq!(balanced.index_inner_balance(), 0.0);
+        assert_eq!(balanced.index_outer_balance(), 0.0);
+
+        // Left pinky column carries double the right pinky's effort: +100% skew.
+        let skewed = ScoreResult {
+            left_column_effort: [6.0, 0.0, 0.0, 0.0, 0.0],
+            right_column_effort: [3.0, 0.0, 0.0, 0.0, 0.0],
+            ..Default::default()
+        };
+        assert!((skewed.pinky_balance() - 100.0).abs() < 1e-9);
     }
 
     #[test]

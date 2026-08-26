@@ -229,6 +229,25 @@ evaluator:
   # Left hand only; right auto-mirrored.
   indexOuterRatio: { type: target, value: 8, weight: 0.75 }
 
+  # Per-finger left/right effort balance (percent skew, signed). Penalizes each
+  # finger's asymmetry between hands independently of the shared ratio target above.
+  # type: max — lower is better (zero skew is ideal).
+
+  # Pinky left/right balance.
+  pinkyBalance: { type: max, value: 3, weight: 0.5 }
+
+  # Ring left/right balance.
+  ringBalance: { type: max, value: 3, weight: 0.5 }
+
+  # Middle left/right balance.
+  middleBalance: { type: max, value: 3, weight: 0.5 }
+
+  # Index inner left/right balance.
+  indexInnerBalance: { type: max, value: 3, weight: 0.5 }
+
+  # Index outer left/right balance.
+  indexOuterBalance: { type: max, value: 3, weight: 0.5 }
+
 ga:
   # Mutation probability applied per genome element.
   mutationRatio: 0.6

@@ -30,7 +30,7 @@
 //! pressure than its opponents — raise its weight or tighten its tolerance. Two off-goal
 //! metrics with matching pressures signal a physical conflict no weight can fix.
 //!
-//! # Eight caps + thirteen distribution targets
+//! # Thirteen caps + eight distribution targets
 //!
 //! | metric               | meaning                          |
 //! |----------------------|----------------------------------|
@@ -42,6 +42,11 @@
 //! | `row_switch_imbalance` | left/right row-step asymmetry  |
 //! | `streak_imbalance`   | left/right run-length asymmetry  |
 //! | `home_row_balance`   | home row left/right balance (absolute value) |
+//! | `pinky_balance`      | pinky column left/right balance (default: 3%) |
+//! | `ring_balance`       | ring column left/right balance (default: 3%) |
+//! | `middle_balance`     | middle column left/right balance (default: 3%) |
+//! | `index_inner_balance`| index-inner column left/right balance (default: 3%) |
+//! | `index_outer_balance`| index-outer column left/right balance (default: 3%) |
 //! | `top_row_ratio`      | top row effort share target (default: 25%) |
 //! | `home_row_ratio`     | home row effort share target (default: 60%) |
 //! | `bottom_row_ratio`   | bottom row effort share target (default: 15%) |
@@ -241,6 +246,19 @@ fn terms<'a>(
             "right_index_outer_ratio",
             t.index_outer_ratio,
             r.right_index_outer_ratio() * 100.0,
+        ),
+        ("pinky_balance", t.pinky_balance, r.pinky_balance()),
+        ("ring_balance", t.ring_balance, r.ring_balance()),
+        ("middle_balance", t.middle_balance, r.middle_balance()),
+        (
+            "index_inner_balance",
+            t.index_inner_balance,
+            r.index_inner_balance(),
+        ),
+        (
+            "index_outer_balance",
+            t.index_outer_balance,
+            r.index_outer_balance(),
         ),
     ]
     .into_iter()
@@ -477,7 +495,7 @@ mod tests {
         let terms = breakdown(&targets_config(), &skewed());
 
         assert!(terms.windows(2).all(|w| w[0].cost >= w[1].cost));
-        assert_eq!(terms.len(), 21);
+        assert_eq!(terms.len(), 26);
     }
 
     /// Pressure is zero at the goal and grows with the miss — the "who wins the next
@@ -544,6 +562,11 @@ mod tests {
                 middle_ratio: target(13.0),
                 index_inner_ratio: target(10.5),
                 index_outer_ratio: target(8.0),
+                pinky_balance: limit(3.0),
+                ring_balance: limit(3.0),
+                middle_balance: limit(3.0),
+                index_inner_balance: limit(3.0),
+                index_outer_balance: limit(3.0),
             },
             ..Default::default()
         }

@@ -62,6 +62,26 @@ pub struct Targets {
     /// Right-hand column targets are computed/mirrored from left-hand values.
     #[serde(default = "default_index_outer_ratio")]
     pub index_outer_ratio: Option<Target>,
+
+    /// Limit for `pinky_balance`: pinky column left/right effort asymmetry. Default: 3%.
+    #[serde(default = "default_column_balance")]
+    pub pinky_balance: Option<Target>,
+
+    /// Limit for `ring_balance`: ring column left/right effort asymmetry. Default: 3%.
+    #[serde(default = "default_column_balance")]
+    pub ring_balance: Option<Target>,
+
+    /// Limit for `middle_balance`: middle column left/right effort asymmetry. Default: 3%.
+    #[serde(default = "default_column_balance")]
+    pub middle_balance: Option<Target>,
+
+    /// Limit for `index_inner_balance`: index-inner column left/right effort asymmetry. Default: 3%.
+    #[serde(default = "default_column_balance")]
+    pub index_inner_balance: Option<Target>,
+
+    /// Limit for `index_outer_balance`: index-outer column left/right effort asymmetry. Default: 3%.
+    #[serde(default = "default_column_balance")]
+    pub index_outer_balance: Option<Target>,
 }
 
 impl Targets {
@@ -114,6 +134,11 @@ fn default_index_inner_ratio() -> Option<Target> {
 /// Serde default for index outer ratio target: 8%.
 fn default_index_outer_ratio() -> Option<Target> {
     Some(Target::target(8.0, 1.0))
+}
+
+/// Serde default for per-finger column balance targets: 3% max skew, weight 0.5.
+fn default_column_balance() -> Option<Target> {
+    Some(Target::max(3.0, 0.5))
 }
 
 #[cfg(test)]
