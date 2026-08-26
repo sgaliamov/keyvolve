@@ -57,7 +57,7 @@ optimization:
   itemsPerGroup: 1
 
   # Optional: Slot indices that must remain empty (blocked).
-  # blocked: [0, 14, 19, 25]
+  blocked: [0, 19]
 
   # Optional: Characters pinned to specific slot indices.
   # frozen:
@@ -171,7 +171,7 @@ evaluator:
 
   # Ratio of hand-switch cost to total effort. Penalizes hand alternation.
   # type: max — lower is better.
-  handSwitchRatio: { type: max, value: 37, weight: 1 }
+  handSwitchRatio: { type: max, value: 36, weight: 1 }
 
   # Left/right effort asymmetry (absolute percentage-point difference).
   # type: max — lower is better.
