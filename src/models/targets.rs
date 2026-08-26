@@ -136,9 +136,9 @@ fn default_index_outer_ratio() -> Option<Target> {
     Some(Target::target(8.0, 1.0))
 }
 
-/// Serde default for per-finger column balance targets: 3% max skew, weight 0.5.
+/// Serde default for per-finger column balance targets: 15% max skew, weight 0.5.
 fn default_column_balance() -> Option<Target> {
-    Some(Target::max(3.0, 0.5))
+    Some(Target::max(15.0, 0.5))
 }
 
 #[cfg(test)]

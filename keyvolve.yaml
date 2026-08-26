@@ -57,7 +57,7 @@ optimization:
   itemsPerGroup: 1
 
   # Optional: Slot indices that must remain empty (blocked).
-  blocked: [0, 19]
+  # blocked: [0, 19]
 
   # Optional: Characters pinned to specific slot indices.
   # frozen:
@@ -234,19 +234,19 @@ evaluator:
   # type: max — lower is better (zero skew is ideal).
 
   # Pinky left/right balance.
-  pinkyBalance: { type: max, value: 3, weight: 0.5 }
+  pinkyBalance: { type: max, value: 15, weight: 0.5 }
 
   # Ring left/right balance.
-  ringBalance: { type: max, value: 3, weight: 0.5 }
+  ringBalance: { type: max, value: 15, weight: 0.5 }
 
   # Middle left/right balance.
-  middleBalance: { type: max, value: 3, weight: 0.5 }
+  middleBalance: { type: max, value: 15, weight: 0.5 }
 
   # Index inner left/right balance.
-  indexInnerBalance: { type: max, value: 3, weight: 0.5 }
+  indexInnerBalance: { type: max, value: 15, weight: 0.5 }
 
   # Index outer left/right balance.
-  indexOuterBalance: { type: max, value: 3, weight: 0.5 }
+  indexOuterBalance: { type: max, value: 15, weight: 0.5 }
 
 ga:
   # Mutation probability applied per genome element.
