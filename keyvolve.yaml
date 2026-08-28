@@ -52,12 +52,12 @@ optimization:
   # Mutants produced per parent each generation.
   mutationCount: 10
   # Max home-row groups kept in final ranked output.
-  maxGroups: 1
+  maxGroups: 10
   # Number of layouts kept per home-row group in final ranked output.
-  itemsPerGroup: 1
+  itemsPerGroup: 3
 
   # Optional: Slot indices that must remain empty (blocked).
-  # blocked: [0, 19]
+  blocked: [19]
 
   # Optional: Characters pinned to specific slot indices.
   # frozen:
@@ -141,7 +141,7 @@ evaluate:
   # Number of best layouts printed to stdout.
   print: 10
   # Orientation used when saving layouts; left mirrors twin layouts.
-  eSide: left
+  # eSide: left
 
 evaluator:
   # Fitness multiplier; higher scales scores up, lower scales down.
@@ -214,16 +214,16 @@ evaluator:
   # Deviation: |value - target| / tolerance (default tolerance: 5pp).
 
   # Pinky (column 1) effort share (percentage).
-  pinkyRatio: { type: target, value: 6, weight: 1 }
+  pinkyRatio: { type: target, value: 4, weight: 1 }
 
   # Ring (column 2) effort share (percentage).
-  ringRatio: { type: target, value: 9, weight: 0.75 }
+  ringRatio: { type: target, value: 10, weight: 0.75 }
 
   # Middle (column 3) effort share (percentage).
   middleRatio: { type: target, value: 15, weight: 0.75 }
 
   # Index inner (column 4) effort share (percentage).
-  indexInnerRatio: { type: target, value: 13, weight: 0.75 }
+  indexInnerRatio: { type: target, value: 14, weight: 0.75 }
 
   # Index outer (column 5) effort share (percentage).
   # Left hand only; right auto-mirrored.
