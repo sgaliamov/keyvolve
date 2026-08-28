@@ -1,7 +1,15 @@
+mod callback;
+mod config;
+mod evaluator;
+mod generate;
+mod mutate;
+mod placement;
+mod types;
+
 use crate::models::{Layout, ScoreResult};
 use crate::{
     evaluator::LayoutEvaluator,
-    modes::evaluate::optimization::OptimizationConfig,
+    modes::log_breakdown,
     output::{Side, write_layouts},
 };
 use cliffa::cli::AppHandle;
@@ -10,13 +18,19 @@ use itertools::Itertools;
 use miette::Result;
 use rayon::prelude::*;
 
-use super::{OptimizerState, callback, evaluator as evaluator_fn, generate, mutate};
+pub use callback::*;
+pub use config::*;
+pub use generate::*;
+pub use mutate::*;
+pub use placement::*;
+pub use types::*;
 
 /// Physical slot indices for the home (middle) row — left 5–9, right 20–24.
 const HOME_ROW: [usize; 10] = [5, 6, 7, 8, 9, 20, 21, 22, 23, 24];
 
+/// Run optimization and persist grouped winners.
 pub fn optimize(
-    evaluator: LayoutEvaluator,
+    layout_evaluator: LayoutEvaluator,
     ga_cfg: darwin::Config<char>,
     opt_cfg: OptimizationConfig,
     app: AppHandle,
@@ -28,7 +42,7 @@ pub fn optimize(
         generate,
         mutate,
         NoopCrossover,
-        evaluator_fn,
+        evaluator::evaluator,
         callback,
     );
 
@@ -36,13 +50,13 @@ pub fn optimize(
     let max_groups = opt_cfg.max_groups;
     let items_per_group = opt_cfg.items_per_group;
     // Retained for the post-run penalty breakdown; the original moves into GA state.
-    let breakdown_evaluator = evaluator.clone();
+    let breakdown_evaluator = layout_evaluator.clone();
 
     GeneticAlgorithm::set_state(
         &mut ga,
         OptimizerState {
             cache: opt_cfg.cache(),
-            evaluator,
+            evaluator: layout_evaluator,
             app: app.clone(),
             optimization: opt_cfg,
         },
@@ -52,8 +66,6 @@ pub fn optimize(
     info!("Running genetic algorithm");
     let pools = ga.run();
     info!("Algorithm complete");
-
-    let pools = &pools;
 
     let top = top_by_home_row(pools, max_groups, items_per_group);
 
@@ -67,7 +79,7 @@ pub fn optimize(
 
     // Tuning aid: where the champion pays penalty and which term wins the tug-of-war.
     if let Some((layout, score, _)) = rows.first() {
-        crate::modes::evaluate::log_breakdown(&breakdown_evaluator, layout, score);
+        log_breakdown(&breakdown_evaluator, layout, score);
     }
 
     // Only save layouts if run completed naturally; don't save on abortion.

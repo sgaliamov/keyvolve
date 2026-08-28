@@ -60,7 +60,7 @@ fn write_canonical(
                 .then_some((layout, score, *pool))
         })
         .take(to_print)
-        .for_each(|(layout, score, pool)| println!("[pool {pool:>2}] {layout} | {score}"));
+        .for_each(|(layout, score, pool)| println!("\n{layout} [pool {pool:>2}]\n{score}"));
 
     let Some(path) = output_path else {
         return Ok(());

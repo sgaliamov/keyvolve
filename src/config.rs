@@ -1,9 +1,10 @@
+use crate::evaluator::LayoutEvaluatorConfig;
 use crate::modes::evaluate::EvaluateConfig;
 use crate::modes::frequencies::FrequenciesConfig;
 use crate::modes::merge::MergeConfig;
+use crate::modes::optimize::OptimizationConfig;
 use crate::modes::rank::RankConfig;
 use crate::modes::synthesise::SynthesiseConfig;
-use crate::{evaluator::LayoutEvaluatorConfig, modes::evaluate::optimization::OptimizationConfig};
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]

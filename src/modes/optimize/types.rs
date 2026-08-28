@@ -1,5 +1,5 @@
-use crate::modes::evaluate::optimization::OptimizationCache;
-use crate::modes::evaluate::optimization::OptimizationConfig;
+use crate::modes::optimize::OptimizationCache;
+use crate::modes::optimize::OptimizationConfig;
 use crate::{evaluator::LayoutEvaluator, models::ScoreResult};
 use cliffa::cli::AppHandle;
 

@@ -1,9 +1,10 @@
-use crate::modes::{evaluate, frequencies, merge, rank, synthesise, synthesise::read_stats_cache};
+use crate::modes::{
+    evaluate, frequencies, merge, optimize, rank, synthesise, synthesise::read_stats_cache,
+};
 use crate::{
     Config, Mode,
     evaluator::{CorpusCounts, EMPTY_SLOT, LayoutEvaluator, LayoutEvaluatorConfig},
     models::{Keyboard, Layout},
-    modes::evaluate::optimization::optimize,
 };
 use cliffa::cli::AppHandle;
 use miette::{Context, Result};
@@ -73,7 +74,7 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
                         seed.extend(loaded.into_iter().map(layout_to_genome));
                     }
                     ga.seed = seed;
-                    optimize(evaluator, ga, opt, app)?;
+                    optimize::optimize(evaluator, ga, opt, app)?;
                 }
                 Mode::Synthesise | Mode::Merge | Mode::Frequencies | Mode::Rank => unreachable!(),
             }
