@@ -57,7 +57,7 @@ optimization:
   itemsPerGroup: 3
 
   # Optional: Slot indices that must remain empty (blocked).
-  blocked: [19]
+  # blocked: [19]
 
   # Optional: Characters pinned to specific slot indices.
   # frozen:
@@ -209,25 +209,26 @@ evaluator:
   # type: target — proximity to value is better; symmetric penalty around target.
   bottomRowRatio: { type: target, value: 13, weight: 1 }
 
-  # Left-hand column ratios (pinky, ring, middle, index-inner, index-outer); right-hand mirrors left.
-  # Each column's effort share in percentage. type: target — proximity is better.
-  # Deviation: |value - target| / tolerance (default tolerance: 5pp).
+  # Left-hand column caps (pinky, ring, middle, index-inner, index-outer); right-hand mirrors left.
+  # Each column's effort share cap in percentage. type: max — upper bound only, no pull-up.
+  # Below the cap cost fades (deviation^sharpness); effort map decides placement, caps guard fatigue.
+  # Caps ≈ p75 of per-finger share among best evaluated layouts.
 
-  # Pinky (column 1) effort share (percentage).
-  pinkyRatio: { type: target, value: 4, weight: 1 }
+  # Pinky (column 1) effort share cap.
+  pinkyRatio: { type: max, value: 7, weight: 1 }
 
-  # Ring (column 2) effort share (percentage).
-  ringRatio: { type: target, value: 10, weight: 0.75 }
+  # Ring (column 2) effort share cap.
+  ringRatio: { type: max, value: 13, weight: 0.75 }
 
-  # Middle (column 3) effort share (percentage).
-  middleRatio: { type: target, value: 15, weight: 0.75 }
+  # Middle (column 3) effort share cap.
+  middleRatio: { type: max, value: 17, weight: 0.75 }
 
-  # Index inner (column 4) effort share (percentage).
-  indexInnerRatio: { type: target, value: 14, weight: 0.75 }
+  # Index inner (column 4) effort share cap.
+  indexInnerRatio: { type: max, value: 15, weight: 0.75 }
 
-  # Index outer (column 5) effort share (percentage).
+  # Index outer (column 5) effort share cap.
   # Left hand only; right auto-mirrored.
-  indexOuterRatio: { type: target, value: 7, weight: 1.0 }
+  indexOuterRatio: { type: max, value: 8, weight: 1.0 }
 
   # Per-finger left/right effort balance (percent skew, signed). Penalizes each
   # finger's asymmetry between hands independently of the shared ratio target above.

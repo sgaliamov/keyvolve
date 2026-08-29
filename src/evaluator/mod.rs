@@ -105,14 +105,14 @@ impl LayoutEvaluator {
         } else {
             // Hands alternate: key `a` was already counted in the previous press.
             // Charge `b` as an independent press (self-effort, like the first letter).
-            // The switch is recorded; its price lives in the `mean_streak_power` factor
-            // at corpus level, since a switch is exactly what ends a run.
+            // The switch is recorded; row position on the other hand does not matter here.
+            // Its price lives in the hand-switch factor at corpus level.
             (self.lookup(kb, kb), 1, 0)
         };
 
         let mut score = ScoreResult::press(kb, effort);
         score.hand_switches = hand_switches;
-        // Row steps only occur same-hand; charge them to that hand.
+        // Row steps only matter same-hand; alternating hands ignore row distance.
         score.left_row_switch_cost = if b_left { row_cost } else { 0 };
         score.right_row_switch_cost = if !b_left { row_cost } else { 0 };
         // Same-hand bigram lands wholly on one hand; alternating pairs add to neither.
