@@ -668,12 +668,10 @@ impl ScoreResult {
                 self.index_inner_balance(),
                 self.index_outer_balance(),
             ]),
-            // Row effort ratios (sum of both hands, ` │ ` separated)
-            Self::format_ratio_array(&[
-                self.row_effort_ratios()[0].2, // top
-                self.row_effort_ratios()[1].2, // home
-                self.row_effort_ratios()[2].2, // bottom
-            ]),
+            // Row effort ratios (separate columns)
+            format!("{:05.2}%", self.row_effort_ratios()[0].2 * 100.0),
+            format!("{:05.2}%", self.row_effort_ratios()[1].2 * 100.0),
+            format!("{:05.2}%", self.row_effort_ratios()[2].2 * 100.0),
             // Row balances (grouped, ` │ ` separated)
             Self::format_imbalance_array(&[
                 self.row_balances()[0],
@@ -700,7 +698,7 @@ impl ScoreResult {
 
     /// CSV header matching [`to_csv`] column order.
     pub fn csv_header() -> &'static str {
-        "fitness,row_switch_ratio,row_switch_imbalance,hand_switch_ratio,hands_imbalance,effort,efforts_imbalance,roll_imbalance,mean_streak,streak_imbalance,left_streak,right_streak,left_column_effort_ratio,right_column_effort_ratio,left_column_press_ratio,right_column_press_ratio,column_balance,row_effort_ratio,row_balance,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,left_effort,right_effort,left_count,right_count,hand_switches,left_row_switch_cost,right_row_switch_cost,left_rolls,right_rolls"
+        "fitness,row_switch_ratio,row_switch_imbalance,hand_switch_ratio,hands_imbalance,effort,efforts_imbalance,roll_imbalance,mean_streak,streak_imbalance,left_streak,right_streak,left_column_effort_ratio,right_column_effort_ratio,left_column_press_ratio,right_column_press_ratio,column_balance,top_row_effort_ratio,home_row_effort_ratio,bottom_row_effort_ratio,row_balance,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,left_effort,right_effort,left_count,right_count,hand_switches,left_row_switch_cost,right_row_switch_cost,left_rolls,right_rolls"
     }
 
     /// Parse the raw (non-derived) fields from a persisted CSV row, skipping the
@@ -720,15 +718,15 @@ impl ScoreResult {
         Some(ScoreResult {
             fitness: c.first()?.parse().ok()?,
             effort,
-            left_effort: c.get(23)?.parse().ok()?,
-            right_effort: c.get(24)?.parse().ok()?,
-            left_count: c.get(25)?.parse().ok()?,
-            right_count: c.get(26)?.parse().ok()?,
-            hand_switches: c.get(27)?.parse().ok()?,
-            left_row_switch_cost: c.get(28)?.parse().ok()?,
-            right_row_switch_cost: c.get(29)?.parse().ok()?,
-            left_rolls: c.get(30)?.parse().ok()?,
-            right_rolls: c.get(31)?.parse().ok()?,
+            left_effort: c.get(25)?.parse().ok()?,
+            right_effort: c.get(26)?.parse().ok()?,
+            left_count: c.get(27)?.parse().ok()?,
+            right_count: c.get(28)?.parse().ok()?,
+            hand_switches: c.get(29)?.parse().ok()?,
+            left_row_switch_cost: c.get(30)?.parse().ok()?,
+            right_row_switch_cost: c.get(31)?.parse().ok()?,
+            left_rolls: c.get(32)?.parse().ok()?,
+            right_rolls: c.get(33)?.parse().ok()?,
             // Column/row efforts are per-corpus (recomputed during scoring).
             // Initialize to zero; they'll be regenerated if needed.
             left_column_effort: [0.0; 5],

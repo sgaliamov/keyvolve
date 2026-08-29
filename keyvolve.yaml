@@ -199,15 +199,15 @@ evaluator:
 
   # Top row effort share (percentage). Rewards layouts close to target.
   # type: target — proximity to value is better; symmetric penalty around target.
-  topRowRatio: { type: target, value: 24, weight: 1 }
+  topRowRatio: { type: target, value: 25, weight: 1 }
 
   # Home row effort share (percentage). Rewards layouts close to target.
   # type: target — proximity to value is better; symmetric penalty around target.
-  homeRowRatio: { type: target, value: 63, weight: 2 }
+  homeRowRatio: { type: target, value: 64, weight: 2 }
 
   # Bottom row effort share (percentage). Optional; uncomment to include.
   # type: target — proximity to value is better; symmetric penalty around target.
-  bottomRowRatio: { type: target, value: 13, weight: 1 }
+  bottomRowRatio: { type: target, value: 11, weight: 1 }
 
   # Left-hand column caps (pinky, ring, middle, index-inner, index-outer); right-hand mirrors left.
   # Each column's effort share cap in percentage. type: max — upper bound only, no pull-up.
@@ -220,10 +220,10 @@ evaluator:
   ringRatio: { type: max, value: 10, weight: 1.0 }
 
   # Middle (column 3) effort share cap.
-  middleRatio: { type: max, value: 11.5, weight: 1.0 }
+  middleRatio: { type: max, value: 11, weight: 1.0 }
 
   # Index inner (column 4) effort share cap.
-  indexInnerRatio: { type: max, value: 11.5, weight: 1.0 }
+  indexInnerRatio: { type: max, value: 12, weight: 1.0 }
 
   # Index outer (column 5) effort share cap.
   # Left hand only; right auto-mirrored.
