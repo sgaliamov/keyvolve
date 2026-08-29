@@ -28,6 +28,21 @@ Keyboard layout optimizer. Uses `darwin` (island-model GA, local crate) to evolv
 - `data/synthesised` — fake-word corpus used during optimization.
 - Config entry point: `keyvolve.yaml` → deserialized into `Config`.
 
+## Coding style
+
+Short, smart, elegant — but sane.
+Pattern matching, immutable state, functional/fluent style where readable.
+Idiomatic Rust. Meaningful names; short (`x`, `i`) in simple closures or repetitive cases.
+Remove unnecessary code. Minimalistic. Every method/type gets short comment.
+Don't remove existing comments unless they are wrong or misleading.
+Always sort methods by importance. Helpers and private methods go at the bottom.
+All `PhantomData` → one field: `__: PhantomData<(B, Q)>,`.
+`Copy` types → pass by value.
+Keep `mod.rs` for declarations/reexports mainly.
+Prefer `pub use crate::...` over `use super::...`, and reexport submodules as `pub use module::*;`.
+Avoid `pub(xxx)` unless necessary.
+After edits run `./scripts/lint.ps1` and `./scripts/test.ps1`.
+Do not commit code unless I request explicitly.
 
 ## Response style
 
@@ -48,18 +63,4 @@ Arrows for causality: X → Y. One word when one word enough. Use symbols (→, 
 **Code/commits/PRs/comments:** normal mode always.
 **"stop caveman" / "normal mode":** revert persona until end of session.
 
-## Coding style
-
-Short, smart, elegant — but sane.
-Pattern matching, immutable state, functional/fluent style where readable.
-Idiomatic Rust. Meaningful names; short (`x`, `i`) in simple closures or repetitive cases.
-Remove unnecessary code. Minimalistic. Every method/type gets short comment.
-Don't remove existing comments unless they are wrong or misleading.
-Always sort methods by importance. Helpers and private methods go at the bottom.
-All `PhantomData` → one field: `__: PhantomData<(B, Q)>,`.
-`Copy` types → pass by value.
-Keep `mod.rs` for declarations/reexports mainly.
-Prefer `pub use crate::...` over `use super::...`, and reexport submodules as `pub use module::*;`.
-Avoid `pub(xxx)` unless necessary.
-After edits run `./scripts/lint.ps1` and `./scripts/test.ps1`.
-Do not commit code unless I request explicitly.
+When user asks a question, this is a question, not a command, not a request for implementation. Answer directly, concisely, technically.
