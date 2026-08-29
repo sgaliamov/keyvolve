@@ -1,14 +1,12 @@
+use crate::models::Keys;
 use itertools::Itertools;
 use miette::{IntoDiagnostic, Result, miette};
-use rustc_hash::FxHashMap;
 use std::{
     fmt,
     fs::File,
     io::{self, BufRead},
     path::Path,
 };
-
-pub type Keys = FxHashMap<char, u8>;
 
 #[derive(Clone)]
 pub struct Layout {

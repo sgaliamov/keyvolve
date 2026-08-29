@@ -1,5 +1,13 @@
-use crate::models::Keys;
-use crate::models::slot_row;
+use rustc_hash::FxHashMap;
+
+/// char → physical slot index (0–29).
+pub type Keys = FxHashMap<char, u8>;
+
+/// Row index within a hand (0 = top, 2 = bottom).
+#[inline]
+pub fn slot_row(slot: u8) -> u8 {
+    (slot % 15) / 5
+}
 
 /// Slot for `c`; panic names the offending char so corpus/layout mismatches are debuggable.
 #[inline]

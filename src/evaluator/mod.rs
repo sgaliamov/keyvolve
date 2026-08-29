@@ -1,21 +1,20 @@
 mod config;
 pub mod corpus;
-pub mod keys;
 pub mod penalty;
+mod term_report;
 
 #[allow(unused_imports)]
 pub use crate::models::{Target, TargetType, Targets};
 pub use config::LayoutEvaluatorConfig;
 pub use corpus::CorpusCounts;
-pub use penalty::TermReport;
+pub use term_report::TermReport;
 
-use crate::models::{Keyboard, Keys, ScoreResult};
+use crate::models::{Keyboard, Keys, ScoreResult, row_distance, slot};
 #[cfg(test)]
 use crate::modes::synthesise::CachedSourceStats;
 #[cfg(test)]
 use itertools::Itertools;
-use keys::{row_distance, slot};
-use penalty::{breakdown, penalty};
+use penalty::penalty;
 use rustc_hash::FxHashMap;
 
 /// Evaluates layouts by scoring a corpus against a precomputed bigram effort table.
@@ -62,6 +61,11 @@ impl LayoutEvaluator {
             config,
             counts,
         }
+    }
+
+    /// Static scoring knobs for diagnostics and penalty tuning.
+    pub fn config(&self) -> &LayoutEvaluatorConfig {
+        &self.config
     }
 
     /// Score a single word against a layout. Test-only; production scores via
