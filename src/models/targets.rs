@@ -111,29 +111,29 @@ fn default_bottom_row_ratio() -> Option<Target> {
     Some(Target::target(15.0, 1.0))
 }
 
-/// Serde default for pinky ratio target: 7%.
+/// Serde default for pinky ratio target: 10%.
 fn default_pinky_ratio() -> Option<Target> {
-    Some(Target::target(7.0, 1.0))
+    Some(Target::target(10.0, 1.0))
 }
 
-/// Serde default for ring ratio target: 11.5%.
+/// Serde default for ring ratio target: 10%.
 fn default_ring_ratio() -> Option<Target> {
-    Some(Target::target(11.5, 1.0))
+    Some(Target::target(10.0, 1.0))
 }
 
-/// Serde default for middle ratio target: 13%.
+/// Serde default for middle ratio target: 10%.
 fn default_middle_ratio() -> Option<Target> {
-    Some(Target::target(13.0, 1.0))
+    Some(Target::target(10.0, 1.0))
 }
 
-/// Serde default for index inner ratio target: 10.5%.
+/// Serde default for index inner ratio target: 10%.
 fn default_index_inner_ratio() -> Option<Target> {
-    Some(Target::target(10.5, 1.0))
+    Some(Target::target(10.0, 1.0))
 }
 
-/// Serde default for index outer ratio target: 8%.
+/// Serde default for index outer ratio target: 10%.
 fn default_index_outer_ratio() -> Option<Target> {
-    Some(Target::target(8.0, 1.0))
+    Some(Target::target(10.0, 1.0))
 }
 
 /// Serde default for per-finger column balance targets: 15% max skew, weight 0.5.
