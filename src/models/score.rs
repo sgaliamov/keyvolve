@@ -654,9 +654,12 @@ impl ScoreResult {
                 self.right_ring_ratio(),
                 self.right_pinky_ratio(),
             ]),
-            // Column press ratios (grouped by hand, ` │ ` separated)
+            // Column press ratios (grouped by hand, ` │ ` separated, right reversed for display)
             Self::format_ratio_array(&self.left_column_press_ratios()),
-            Self::format_ratio_array(&self.right_column_press_ratios()),
+            Self::format_ratio_array(&{
+                let r = self.right_column_press_ratios();
+                [r[4], r[3], r[2], r[1], r[0]]
+            }),
             // Column balances (grouped, ` │ ` separated)
             Self::format_imbalance_array(&[
                 self.pinky_balance(),
