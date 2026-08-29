@@ -57,7 +57,7 @@ optimization:
   itemsPerGroup: 3
 
   # Optional: Slot indices that must remain empty (blocked).
-  # blocked: [19]
+  blocked: [0, 19, 29]
 
   # Optional: Characters pinned to specific slot indices.
   # frozen:
