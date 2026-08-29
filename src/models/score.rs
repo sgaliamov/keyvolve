@@ -1,3 +1,6 @@
+use crate::evaluator::{LayoutEvaluatorConfig, TermReport};
+use crate::models::Target;
+
 /// Full breakdown of a scoring pass over a word or corpus.
 #[derive(Debug, Clone, Default)]
 pub struct ScoreResult {
@@ -91,6 +94,142 @@ impl ScoreResult {
         }
 
         score
+    }
+
+    /// Per-metric penalty diagnostics for a scored layout, worst first.
+    pub fn breakdown(&self, config: &LayoutEvaluatorConfig) -> Vec<TermReport> {
+        let t = config.targets;
+        let report = |name: &'static str, target: Target, value: f64| {
+            let deviation = target.deviation(value);
+            TermReport {
+                name,
+                value,
+                goal: target.value,
+                deviation,
+                cost: target.weight * deviation.powf(config.sharpness),
+                pressure: target.weight * config.sharpness * deviation.powf(config.sharpness - 1.0)
+                    / target.norm(),
+            }
+        };
+
+        let mut terms = [
+            (
+                "row_switch_ratio",
+                t.row_switch_ratio,
+                self.row_switch_ratio() * 100.0,
+            ),
+            (
+                "hand_switch_ratio",
+                t.hand_switch_ratio,
+                self.hand_switch_ratio() * 100.0,
+            ),
+            (
+                "efforts_imbalance",
+                t.efforts_imbalance,
+                self.efforts_imbalance(),
+            ),
+            ("hands_imbalance", t.hands_imbalance, self.hands_imbalance()),
+            ("roll_imbalance", t.roll_imbalance, self.roll_imbalance()),
+            (
+                "row_switch_imbalance",
+                t.row_switch_imbalance,
+                self.row_switch_imbalance(),
+            ),
+            (
+                "streak_imbalance",
+                t.streak_imbalance,
+                self.streak_imbalance(),
+            ),
+            (
+                "home_row_balance",
+                t.home_row_balance,
+                self.home_row_balance(),
+            ),
+            (
+                "top_row_ratio",
+                t.top_row_ratio,
+                self.top_row_ratio() * 100.0,
+            ),
+            (
+                "home_row_ratio",
+                t.home_row_ratio,
+                self.home_row_ratio() * 100.0,
+            ),
+            (
+                "bottom_row_ratio",
+                t.bottom_row_ratio,
+                self.bottom_row_ratio() * 100.0,
+            ),
+            (
+                "left_pinky_ratio",
+                t.pinky_ratio,
+                self.left_pinky_ratio() * 100.0,
+            ),
+            (
+                "left_ring_ratio",
+                t.ring_ratio,
+                self.left_ring_ratio() * 100.0,
+            ),
+            (
+                "left_middle_ratio",
+                t.middle_ratio,
+                self.left_middle_ratio() * 100.0,
+            ),
+            (
+                "left_index_inner_ratio",
+                t.index_inner_ratio,
+                self.left_index_inner_ratio() * 100.0,
+            ),
+            (
+                "left_index_outer_ratio",
+                t.index_outer_ratio,
+                self.left_index_outer_ratio() * 100.0,
+            ),
+            (
+                "right_pinky_ratio",
+                t.pinky_ratio,
+                self.right_pinky_ratio() * 100.0,
+            ),
+            (
+                "right_ring_ratio",
+                t.ring_ratio,
+                self.right_ring_ratio() * 100.0,
+            ),
+            (
+                "right_middle_ratio",
+                t.middle_ratio,
+                self.right_middle_ratio() * 100.0,
+            ),
+            (
+                "right_index_inner_ratio",
+                t.index_inner_ratio,
+                self.right_index_inner_ratio() * 100.0,
+            ),
+            (
+                "right_index_outer_ratio",
+                t.index_outer_ratio,
+                self.right_index_outer_ratio() * 100.0,
+            ),
+            ("pinky_balance", t.pinky_balance, self.pinky_balance()),
+            ("ring_balance", t.ring_balance, self.ring_balance()),
+            ("middle_balance", t.middle_balance, self.middle_balance()),
+            (
+                "index_inner_balance",
+                t.index_inner_balance,
+                self.index_inner_balance(),
+            ),
+            (
+                "index_outer_balance",
+                t.index_outer_balance,
+                self.index_outer_balance(),
+            ),
+        ]
+        .into_iter()
+        .filter_map(|(name, target, value)| target.map(|target| report(name, target, value)))
+        .collect::<Vec<_>>();
+
+        terms.sort_by(|a, b| b.cost.total_cmp(&a.cost));
+        terms
     }
 
     // Ratios: normalized per-hand shares (0-1 range).

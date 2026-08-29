@@ -24,7 +24,7 @@
 //!
 //! # Tuning with the breakdown table
 //!
-//! [`breakdown`] emits one [`TermReport`] per configured metric; [`table`] renders them.
+//! [`ScoreResult::breakdown`] emits one [`TermReport`] per configured metric; [`table`] renders them.
 //! `share` says who pays the penalty now; `pressure` (marginal cost per percentage point)
 //! says who wins the next point of movement. A metric resting off its goal has lower
 //! pressure than its opponents — raise its weight or tighten its tolerance. Two off-goal
@@ -88,14 +88,6 @@ use crate::models::{ScoreResult, Target};
 /// See the module docs for the algebra behind each factor.
 pub fn penalty(config: &LayoutEvaluatorConfig, r: &ScoreResult) -> f64 {
     1.0 + terms(config, r).map(|t| t.cost).sum::<f64>()
-}
-
-/// Per-metric diagnostics, worst first — the tuning aid that says which goal is losing
-/// and therefore which weight or tolerance is worth adjusting.
-pub fn breakdown(config: &LayoutEvaluatorConfig, r: &ScoreResult) -> Vec<TermReport> {
-    terms(config, r)
-        .sorted_by(|a, b| b.cost.total_cmp(&a.cost))
-        .collect()
 }
 
 /// Render breakdown rows as an aligned table with a share-of-penalty column.
@@ -457,7 +449,7 @@ mod tests {
 
         // `skewed` has no row switches relative to nothing else configured.
         let only_row = penalty(&config, &skewed());
-        let terms = breakdown(&config, &skewed());
+        let terms = skewed().breakdown(&config);
 
         assert_eq!(terms.len(), 1);
         assert_eq!(terms[0].name, "row_switch_ratio");
@@ -467,7 +459,7 @@ mod tests {
     /// Breakdown ranks offenders so the loudest metric is obvious while tuning.
     #[test]
     fn breakdown_lists_worst_offender_first() {
-        let terms = breakdown(&targets_config(), &skewed());
+        let terms = skewed().breakdown(&targets_config());
 
         assert!(terms.windows(2).all(|w| w[0].cost >= w[1].cost));
         assert_eq!(terms.len(), 26);
@@ -491,7 +483,7 @@ mod tests {
                 left_row_effort: [top, 0.0, 0.0],
                 ..Default::default()
             };
-            breakdown(&config, &score)[0]
+            score.breakdown(&config)[0]
         };
 
         assert_eq!(term(25.0).pressure, 0.0);
@@ -503,7 +495,7 @@ mod tests {
     /// The table renders one aligned row per term plus a header.
     #[test]
     fn table_renders_header_and_rows() {
-        let terms = breakdown(&targets_config(), &skewed());
+        let terms = skewed().breakdown(&targets_config());
         let rendered = table(&terms);
         let lines: Vec<_> = rendered.lines().collect();
 

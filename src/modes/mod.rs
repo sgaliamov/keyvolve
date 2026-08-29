@@ -12,7 +12,7 @@ use tracing::info;
 
 /// Log the per-metric penalty table for a layout.
 pub fn log_breakdown(evaluator: &LayoutEvaluator, layout: &Layout, score: &ScoreResult) {
-    let terms = evaluator.breakdown(score);
+    let terms = score.breakdown(evaluator.config());
     if terms.is_empty() {
         return;
     }

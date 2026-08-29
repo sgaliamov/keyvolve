@@ -149,11 +149,6 @@ impl LayoutEvaluator {
         result
     }
 
-    /// Per-metric penalty diagnostics for a scored layout, worst first.
-    pub fn breakdown(&self, score: &ScoreResult) -> Vec<TermReport> {
-        breakdown(&self.config, score)
-    }
-
     /// Look up precomputed bigram effort. Right-hand pairs were expanded at init by `Keyboard::expand_pairs`.
     #[inline]
     fn lookup(&self, from: u8, to: u8) -> f64 {
