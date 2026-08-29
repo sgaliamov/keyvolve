@@ -167,7 +167,7 @@ evaluator:
 
   # Ratio of row-switch cost to total effort. Penalizes vertical jumps within a hand.
   # type: max — lower is better.
-  rowSwitchRatio: { type: max, value: 17, weight: 1 }
+  rowSwitchRatio: { type: max, value: 20, weight: 1 }
 
   # Ratio of hand-switch cost to total effort. Penalizes hand alternation.
   # type: max — lower is better.
