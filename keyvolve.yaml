@@ -57,7 +57,7 @@ optimization:
   itemsPerGroup: 3
 
   # Optional: Slot indices that must remain empty (blocked).
-  blocked: [0, 19, 29]
+  # blocked: [29]
 
   # Optional: Characters pinned to specific slot indices.
   # frozen:
@@ -141,7 +141,7 @@ evaluate:
   # Number of best layouts printed to stdout.
   print: 10
   # Orientation used when saving layouts; left mirrors twin layouts.
-  # eSide: left
+  eSide: any
 
 evaluator:
   # Fitness multiplier; higher scales scores up, lower scales down.
@@ -203,11 +203,11 @@ evaluator:
 
   # Home row effort share (percentage). Rewards layouts close to target.
   # type: target — proximity to value is better; symmetric penalty around target.
-  homeRowRatio: { type: target, value: 64, weight: 2 }
+  homeRowRatio: { type: target, value: 63, weight: 2 }
 
   # Bottom row effort share (percentage). Optional; uncomment to include.
   # type: target — proximity to value is better; symmetric penalty around target.
-  bottomRowRatio: { type: target, value: 11, weight: 1 }
+  bottomRowRatio: { type: target, value: 12, weight: 1 }
 
   # Left-hand column caps (pinky, ring, middle, index-inner, index-outer); right-hand mirrors left.
   # Each column's effort share cap in percentage. type: max — upper bound only, no pull-up.
