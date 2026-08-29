@@ -215,20 +215,20 @@ evaluator:
   # Caps ≈ p75 of per-finger share among best evaluated layouts.
 
   # Pinky (column 1) effort share cap.
-  pinkyRatio: { type: max, value: 7, weight: 1 }
+  pinkyRatio: { type: max, value: 10, weight: 1 }
 
   # Ring (column 2) effort share cap.
-  ringRatio: { type: max, value: 13, weight: 0.75 }
+  ringRatio: { type: max, value: 10, weight: 1.0 }
 
   # Middle (column 3) effort share cap.
-  middleRatio: { type: max, value: 17, weight: 0.75 }
+  middleRatio: { type: max, value: 10, weight: 1.0 }
 
   # Index inner (column 4) effort share cap.
-  indexInnerRatio: { type: max, value: 15, weight: 0.75 }
+  indexInnerRatio: { type: max, value: 10, weight: 1.0 }
 
   # Index outer (column 5) effort share cap.
   # Left hand only; right auto-mirrored.
-  indexOuterRatio: { type: max, value: 8, weight: 1.0 }
+  indexOuterRatio: { type: max, value: 10, weight: 1.0 }
 
   # Per-finger left/right effort balance (percent skew, signed). Penalizes each
   # finger's asymmetry between hands independently of the shared ratio target above.
