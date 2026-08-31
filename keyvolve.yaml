@@ -1,81 +1,283 @@
+# Keyboard effort table + pair costs used by scoring and layout fitness.
 keyboard: data/keyboard.json
+# Cached corpus stats JSON; required for evaluate/optimize.
 stats: data/stats/merged.source-stats.json
 
 merge:
+  # Folder of raw .txt files to clean and merge into one corpus.
   input: data/samples
+  # Output merged corpus file; overwritten if it exists.
   output: data/samples/merged.txt
+  # Optional: Stats directory for saving merged frequency data. Defaults to output/../stats.
+  # stats: data/stats
+  # Shuffle merged words before writing. false keeps source order.
   shuffle: false
+  # Optional: Random seed for reproducible shuffling.
+  # seed: 12345
+  # Number of merged lines printed as preview.
   print: 50
+  # Optional: Minimum bigram frequency kept in saved corpus stats. Default: 0.0001.
+  # min_frequency: 0.0001
 
 frequencies:
+  # Root folder to scan for matching files.
   input: 'C:/Users/Admin/'
+  # File globs to count characters from.
   masks: ['*.js', '*.ts', '*.cs', '*.cpp', '*.h', '*.rs', '*.py']
+  # CSV output for per-character frequencies.
   output: data/stats/frequencies.csv
+  # Number of rows printed to stdout.
   print: 10
 
 synthesise:
+  # Source text file used to build the fake-word corpus.
   text: data/samples/merged.txt
+  # Output fake-word corpus file.
   output: data/synthesised/sample-10000000.txt
-  method: sample
-  digraph:
-    target: 64000
-    maxWordLen: 5
+  # Optional: Stats directory for saving frequency data. Defaults to output/../stats.
+  # stats: data/stats
+  # Optional: Minimum accepted relative frequency. Pairs below this are dropped. Default: 0.0001.
+  # min_frequency: 0.0001
+  # Optional: Random seed for reproducible sampling.
+  # seed: 42
   sample:
+    # Total words to sample from the source corpus.
     target: 10000000
-  markov:
-    target: 64000
-    maxWordLen: 15
-    attempts: 256
 
 optimization:
-  text: data/synthesised/sample-5000000.txt
-  # input: data/seed.csv
-  # input: data/layouts.csv
+  # Seed layout CSVs to load before GA starts; null means none.
+  input: null
+  # Layout CSV written after optimization.
   output: data/layouts.csv
+  # Mutants produced per parent each generation.
   mutationCount: 10
-  maxGroups: 100
-  blocked: [0, 14, 19, 25]
+  # Max home-row groups kept in final ranked output.
+  maxGroups: 5
+  # Number of layouts kept per home-row group in final ranked output.
+  itemsPerGroup: 1
+
+  # Optional: Slot indices that must remain empty (blocked).
+  # blocked: [0, 27, 28, 29]
+
+  # Optional: Characters pinned to specific slot indices.
   # frozen:
-  #   h: 5
-  allowed:
-    e: [6, 7, 8]
-    t: [1, 2, 3, 6, 7, 8, 13]
-    a: [1, 2, 3, 6, 7, 8]
-    i: [1, 2, 3, 6, 7, 8]
-    o: [1, 2, 3, 6, 7, 8]
-    n: [1, 2, 3, 6, 7, 8]
-    r: [1, 2, 3, 6, 7, 8]
-    s: [1, 2, 3, 6, 7, 8]
-    h: [1, 2, 3, 5, 6, 7, 8, 12, 13]
-    j: [5, 10, 11, 14]
-    x: [5, 10, 11, 14]
-    z: [10, 11, 14]
-    q: [10, 11, 14]
-  rolls: ['er', 'th']
+  #   z: 10
+  #   x: 11
+  #   c: 12
+  #   v: 13
+
+  # Optional: Allowed slot indices for specific characters (white-list constraints).
+  # If specified, only these slots can be used; other slots are forbidden for that char.
+  # allowed:
+  #   e: [6, 7, 8]
+  #   t: [1, 2, 3, 6, 7, 8]
+  #   a: [1, 2, 3, 6, 7, 8]
+  #   i: [1, 2, 3, 6, 7, 8]
+  #   o: [1, 2, 3, 6, 7, 8]
+  #   n: [1, 2, 3, 6, 7, 8]
+  #   r: [1, 2, 3, 6, 7, 8]
+  #   s: [1, 2, 3, 6, 7, 8]
+  #   h: [1, 2, 3, 5, 6, 7, 8, 12, 13]
+  #   j: [5, 10, 11, 14]
+  #   x: [5, 10, 11, 14]
+  #   z: [10, 11, 14]
+  #   q: [10, 11, 14]
+
+  # Optional: Character pairs that must be placed adjacent (rolls/same-hand digraphs).
+  # rolls: ['er', 'th']
+
+  # Optional: Characters that prefer left-hand placement.
   # left: [e, o]
+
+  # Optional: Characters that prefer right-hand placement.
   # right: [a, i]
 
+rank:
+  # Ranked keyboard JSON output from the calibration session.
+  output: data/keyboard.json
+  # Persisted session state for resuming the ranking run.
+  session: data/rank-session.json
+  # Optional: CSV visual report path; defaults to output with .csv extension.
+  # report: data/rank-report.csv
+  # Probability of an audit question (consistency re-check of settled pairs). Default: 0.0.
+  auditRate: 0.15
+  # Minimum comparisons needed before stopping. Default: 10.
+  minMatches: 10
+  # Hard cap on comparisons per item. Default: 30.
+  maxMatches: 30
+  # Max allowed deviation before confidence is considered weak. Default: 170.0.
+  maxDeviation: 98.5
+  # Optional: Lower bound for fixed-tier efforts. Default: 1.0.
+  # effortMin: 1.0
+  # Optional: Upper bound for fixed-tier efforts. Default: 10.0.
+  # effortMax: 10.0
+  # Margin before the ranking path goes uphill. Default: 100.0.
+  uphillGap: 50
+  # Thin tail margin used when collapsing adjacent tiers. Default: 1.0.
+  thinMargin: 1.0
+  # Weight given to forced answers. Default: 3.
+  forcedAnswerWeight: 2
+  # Optional: Ask this exact comparison first once (format: AB-CD). Default: none.
+  # forceCheckPair: AF-VE
+  # Fixed effort tier count; boundaries minimize within-tier rating variance. Default: 10.
+  tierCount: 30
+  # Shaping exponent for tier effort spacing (rating-anchored curve). Default: 1.0.
+  #   1.0 = linear: effort gaps mirror rating gaps exactly.
+  #   > 1 = easy tiers cluster near effortMin, hard tiers spread out
+  #         (small penalty differences among good bigrams, harsh tail).
+  #   < 1 = easy tiers spread out, hard tiers compress near effortMax
+  #         (strong differentiation among good bigrams, flat tail).
+  # Endpoints always pinned: best tier = effortMin, worst = effortMax.
+  effortGamma: 0.8
+  # Optional: Random seed for reproducible question order.
+  # seed: 42
+
 evaluate:
-  # text: 'data\synthesised\sample-1000000'
-  text: 'data\samples\merged.txt'
-  input: data/layouts.csv
+  # One or more layout CSVs to score.
+  input:
+    - data/layouts.csv
+    # - data/known-layouts.csv
+    # - data/seed.csv
+  # Output CSV for scored layouts.
   output: data/layouts.csv
-  # input: data/seed.csv
-  # output: data/seed.csv
+  # output: data/layouts-all.csv
+  # Number of best layouts printed to stdout.
   print: 10
-  eSide: left
+  # Orientation used when saving layouts; left mirrors twin layouts.
+  eSide: any
 
 evaluator:
-  fitnessScale: 10000
-  rowCost: 7
-  switchCost: 1
+  # Fitness multiplier; higher scales scores up, lower scales down.
+  fitnessScale: 1000000000000000
+
+  # Curve steepness: term = weight · deviation ^ sharpness.
+  # 1.0 = linear, higher = forgiving under the limit and brutal over it.
+  sharpness: 4
+
+  # Desired metric goals, in the percent units the CSV prints.
+  # `max` rewards lower values; `target` rewards proximity to `value`.
+  # Form: { type: max|target, value: <number>, weight: <number>, tolerance: <number> }
+  #
+  # tolerance (target type only, default 5): accepted miss in percentage points.
+  # Cost = weight exactly `tolerance` points from `value`; inside ~free, outside walls
+  # up with sharpness. Tighten to pin a metric, loosen to let effort win.
+  # Example: { type: target, value: 10, tolerance: 2 }  # 4pp miss already costs 16x weight
+  #
+  # Tuning: read the "penalty breakdown" table logged for the best layout.
+  # `share` says who pays now; `pressure` says who wins the next percentage point.
+  # A metric stuck off goal with tiny pressure needs more weight or tighter tolerance;
+  # two off-goal metrics with similar pressures are a physical conflict — relax one.
+
+  # Ratio of row-switch cost to total effort. Penalizes vertical jumps within a hand.
+  # type: max — lower is better.
+  rowSwitchRatio: { type: max, value: 20, weight: 1 }
+
+  # Ratio of hand-switch cost to total effort. Penalizes hand alternation.
+  # type: max — lower is better.
+  handSwitchRatio: { type: max, value: 36, weight: 2 }
+
+  # Left/right effort asymmetry (absolute percentage-point difference).
+  # type: max — lower is better.
+  effortsImbalance: { type: max, value: 5, weight: 1 }
+
+  # Left/right key-press count asymmetry (absolute percentage-point difference).
+  # type: max — lower is better.
+  handsImbalance: { type: max, value: 5, weight: 1 }
+
+  # Left/right roll count asymmetry (absolute percentage-point difference).
+  # type: max — lower is better.
+  rollImbalance: { type: max, value: 5, weight: 1 }
+
+  # Left/right row-switch cost asymmetry (absolute percentage-point difference).
+  # type: max — lower is better.
+  rowSwitchImbalance: { type: max, value: 5, weight: 1 }
+
+  # Left/right streak-length asymmetry (absolute percentage-point difference).
+  # type: max — lower is better.
+  streakImbalance: { type: max, value: 5, weight: 0.75 }
+
+  # # Home row left/right balance (absolute value). Penalizes asymmetry in home row effort.
+  # # type: max — lower is better (zero asymmetry is ideal).
+  # homeRowBalance: { type: max, value: 10, weight: 0.5 }
+
+  # Top row effort share (percentage). Rewards layouts close to target.
+  # type: target — proximity to value is better; symmetric penalty around target.
+  topRowRatio: { type: target, value: 25, weight: 1 }
+
+  # Home row effort share (percentage). Rewards layouts close to target.
+  # type: target — proximity to value is better; symmetric penalty around target.
+  homeRowRatio: { type: target, value: 63, weight: 2 }
+
+  # Bottom row effort share (percentage). Optional; uncomment to include.
+  # type: target — proximity to value is better; symmetric penalty around target.
+  bottomRowRatio: { type: target, value: 12, weight: 1 }
+
+  # Left-hand column caps (pinky, ring, middle, index-inner, index-outer); right-hand mirrors left.
+  # Each column's effort share cap in percentage. type: max — upper bound only, no pull-up.
+  # Below the cap cost fades (deviation^sharpness); effort map decides placement, caps guard fatigue.
+
+  # Pinky (column 1) effort share cap.
+  pinkyRatio: { type: max, value: 8, weight: 1.0 }
+
+  # Ring (column 2) effort share cap.
+  ringRatio: { type: max, value: 10, weight: 1.0 }
+
+  # Middle (column 3) effort share cap.
+  middleRatio: { type: max, value: 11, weight: 1.0 }
+
+  # Index inner (column 4) effort share cap.
+  indexInnerRatio: { type: max, value: 12, weight: 1.0 }
+
+  # Index outer (column 5) effort share cap.
+  # Left hand only; right auto-mirrored.
+  indexOuterRatio: { type: max, value: 9, weight: 1.0 }
+
+  # Per-finger left/right effort balance (percent skew, signed). Penalizes each
+  # finger's asymmetry between hands independently of the shared ratio target above.
+  # type: max — lower is better (zero skew is ideal).
+
+  # Pinky left/right balance.
+  pinkyBalance: { type: max, value: 10, weight: 0.25 }
+
+  # Ring left/right balance.
+  ringBalance: { type: max, value: 10, weight: 0.25 }
+
+  # Middle left/right balance.
+  middleBalance: { type: max, value: 10, weight: 0.25 }
+
+  # Index inner left/right balance.
+  indexInnerBalance: { type: max, value: 10, weight: 0.25 }
+
+  # Index outer left/right balance.
+  indexOuterBalance: { type: max, value: 10, weight: 0.25 }
 
 ga:
+  # Mutation probability applied per genome element.
   mutationRatio: 0.6
-  populationSize: 200
-  pools: 250
+  # Individuals per pool.
+  populationSize: 256
+  # Generations without improvement before stopping.
+  stagnationCount: 128
+  # Number of island pools evolved in parallel.
+  pools: 256
+  # Randomly generated individuals ratio per generation.
   randomRatio: 0.25
+  # Mutation steps applied to seeded layouts.
   seedMutation: 10
+  # Binary dump file for GA state snapshots.
   dump: data/dump.bin
+  # Probability of writing a dump snapshot.
   dumpRatio: 0.8
+  # Keep or delete dump files after runs.
   keepDump: false
+
+# ============================================================================
+# MODE: Operation mode for this run
+# ============================================================================
+# Uncomment one of the following to set the active mode; default is Evaluate.
+# mode: Optimize    # Run the genetic algorithm to optimize the keyboard layout
+# mode: Evaluate    # Evaluate the score of specific layouts (default)
+# mode: Synthesise  # Build digraph frequency CSV and synthesise a fake-word corpus
+# mode: Merge       # Merge all .txt files in a folder into one cleaned file
+# mode: Frequencies # Count per-key char frequencies across files in a folder
+# mode: Rank        # Interactively rank bigram pairs to calibrate keyboard efforts

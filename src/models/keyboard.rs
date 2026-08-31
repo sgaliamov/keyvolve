@@ -3,12 +3,6 @@ use rustc_hash::FxHashMap;
 use serde::Deserialize;
 use std::path::Path;
 
-/// Row index within a hand (0 = top, 2 = bottom).
-#[inline]
-pub fn slot_row(slot: u8) -> u8 {
-    (slot % 15) / 5
-}
-
 /// Represents the keyboard configuration loaded from `keyboard.json`.
 #[derive(Debug, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
@@ -48,8 +42,8 @@ impl Keyboard {
     ///         5  6  7  8  9              20 21 22 23 24
     ///        10 11 12 13 14              25 26 27 28 29
     /// ```
-    /// Left hand: col 0 = pinky, col 4 = index.
-    /// Right hand: col 0 (15) = index, col 4 (19) = pinky.
+    /// Left hand: col 0 = pinky, col 4 = index-outer.
+    /// Right hand: col 0 (15) = index-outer, col 4 (19) = pinky.
     /// Columns are mirrored: left-col-k ↔ right-col-(4-k).
     /// Mirror formula: `mirror(i) = (i/5)*5 + (4 - i%5) + 15`.
     fn expand_pairs(mut self) -> Self {

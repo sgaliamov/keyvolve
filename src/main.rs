@@ -1,6 +1,10 @@
 mod app;
 mod config;
+mod evaluator;
+mod math;
 mod models;
+mod modes;
+mod output;
 
 use cliffa::cli;
 pub use config::*;

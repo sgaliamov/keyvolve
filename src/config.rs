@@ -1,8 +1,10 @@
-use crate::app::evaluate::EvaluateConfig;
-use crate::app::frequencies::FrequenciesConfig;
-use crate::app::merge::MergeConfig;
-use crate::app::synthesise::SynthesiseConfig;
-use crate::app::{LayoutEvaluatorConfig, OptimizationConfig};
+use crate::evaluator::LayoutEvaluatorConfig;
+use crate::modes::evaluate::EvaluateConfig;
+use crate::modes::frequencies::FrequenciesConfig;
+use crate::modes::merge::MergeConfig;
+use crate::modes::optimize::OptimizationConfig;
+use crate::modes::rank::RankConfig;
+use crate::modes::synthesise::SynthesiseConfig;
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]
@@ -30,10 +32,8 @@ pub struct Config {
     #[serde(default)]
     pub evaluator: LayoutEvaluatorConfig,
 
-    /// Optional cached corpus stats JSON; when set, evaluation and optimization
-    /// build counts from it instead of streaming the corpus text.
-    #[serde(default)]
-    pub stats: Option<std::path::PathBuf>,
+    /// Cached corpus stats JSON used by evaluation and optimization.
+    pub stats: std::path::PathBuf,
 
     /// settings for `Mode::Merge`
     #[serde(default)]
@@ -46,6 +46,10 @@ pub struct Config {
     /// Optimization settings, including optional seed layouts input.
     #[serde(default)]
     pub optimization: OptimizationConfig,
+
+    /// settings for `Mode::Rank`
+    #[serde(default)]
+    pub rank: RankConfig,
 }
 
 #[derive(Debug, Default, Clone, Deserialize, PartialEq)]
@@ -66,4 +70,7 @@ pub enum Mode {
 
     /// Count per-key char frequencies (incl. punctuation) across files in a folder.
     Frequencies,
+
+    /// Interactively rank bigram pairs to calibrate keyboard efforts.
+    Rank,
 }

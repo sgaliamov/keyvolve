@@ -1,13 +1,12 @@
+use crate::models::Keys;
 use itertools::Itertools;
-use rustc_hash::FxHashMap;
+use miette::{IntoDiagnostic, Result, miette};
 use std::{
     fmt,
     fs::File,
     io::{self, BufRead},
     path::Path,
 };
-
-pub type Keys = FxHashMap<char, u8>;
 
 #[derive(Clone)]
 pub struct Layout {
@@ -19,12 +18,18 @@ pub struct Layout {
 impl Layout {
     /// Build from a layout/CSV line. Name = the `name` column when present,
     /// otherwise the home-row letters.
+    #[allow(dead_code)]
     pub fn new(line: &str) -> Self {
-        let keys = line_to_keys(line);
+        Self::try_new(line).unwrap_or_else(|e| panic!("invalid layout row: {e}"))
+    }
+
+    /// Fallible layout parser. Rejects malformed rows.
+    pub fn try_new(line: &str) -> Result<Self> {
+        let keys = line_to_keys(line)?;
         let name = name_field(line)
             .map(str::to_string)
             .unwrap_or_else(|| home_row_name(&keys));
-        Layout { keys, name }
+        Ok(Layout { keys, name })
     }
 
     /// Build from a 30-slot char array; name derived from the home row.
@@ -60,21 +65,24 @@ impl Layout {
         self.keys.get(&'e').is_some_and(|&p| p < 15)
     }
 
-    pub fn load(path: impl AsRef<Path>) -> Vec<Layout> {
+    pub fn load(path: impl AsRef<Path>) -> Result<Vec<Layout>> {
         let path = path.as_ref();
-        let Ok(file) = File::open(path) else {
-            return Vec::new();
-        };
+        let file = File::open(path).into_diagnostic()?;
 
         let mut seen = rustc_hash::FxHashSet::default();
-        io::BufReader::new(file)
-            .lines()
-            .map_while(Result::ok)
-            .filter(|line| !line.trim().is_empty())
-            .filter(|line| !is_header(line))
-            .filter(|line| seen.insert(line.splitn(7, ',').take(6).collect::<String>()))
-            .map(|line| Layout::new(line.trim()))
-            .collect_vec()
+        let mut layouts = Vec::new();
+        for line in io::BufReader::new(file).lines() {
+            let line = line.into_diagnostic()?;
+            let line = line.trim();
+            if line.is_empty() || is_header(line) {
+                continue;
+            }
+            if !seen.insert(line.splitn(7, ',').take(6).collect::<String>()) {
+                continue;
+            }
+            layouts.push(Layout::try_new(line)?);
+        }
+        Ok(layouts)
     }
 
     /// 30-slot character array; `_` marks an empty slot. Index = physical key position.
@@ -88,7 +96,8 @@ impl Layout {
 }
 
 impl fmt::Display for Layout {
-    /// Reconstruct comma-separated layout string (positions 0–14 left; 15–29 right, stored inner→outer per group).
+    /// Reconstruct comma-separated layout string (positions 0–14 left; 15–29 right,
+    /// each right group stored index-outer → pinky, i.e. physical left-to-right).
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let slots = self.slots();
         let left = slots[..15]
@@ -119,33 +128,75 @@ fn mirror_slot(i: usize) -> usize {
     }
 }
 
-pub fn line_to_keys(line: &str) -> Keys {
-    let parts = line.split(',');
-    let left = parts
-        .clone()
-        .take(3)
-        .flat_map(|part| part.trim().chars())
-        .enumerate()
-        .map(|(p, c)| (c, p as u8))
-        .collect_vec();
-    let len = left.len();
+pub fn line_to_keys(line: &str) -> Result<Keys> {
+    let groups = line.split(',').map(str::trim).collect_vec();
+    let preview = line
+        .split(',')
+        .take(7)
+        .map(str::trim)
+        .collect::<Vec<_>>()
+        .join(" | ");
 
-    parts
-        .skip(3)
-        .take(3)
-        .flat_map(|part| part.trim().chars())
-        .enumerate()
-        .map(|(p, c)| (c, (p + len) as u8))
-        .merge(left)
-        .filter(|(c, _)| c.is_alphabetic())
-        .collect()
+    if groups.len() < 6 {
+        return Err(miette!(
+            "layout row needs 6 key groups, got {} | row: [{}]",
+            groups.len(),
+            preview
+        ));
+    }
+
+    let mut keys = Keys::default();
+    for (group_idx, group) in groups.into_iter().take(6).enumerate() {
+        let chars = group.chars().collect_vec();
+        if chars.len() != 5 {
+            return Err(miette!(
+                "layout group {} must have 5 slots, got {} | row: [{}]",
+                group_idx + 1,
+                chars.len(),
+                preview
+            ));
+        }
+
+        for (slot_idx, c) in chars.into_iter().enumerate() {
+            if c == '_' {
+                continue;
+            }
+            if !c.is_ascii_alphabetic() {
+                return Err(miette!("invalid layout key {c:?} | row: [{}]", preview));
+            }
+            let pos = (group_idx * 5 + slot_idx) as u8;
+            if keys.insert(c, pos).is_some() {
+                return Err(miette!("duplicate layout key {c:?} | row: [{}]", preview));
+            }
+        }
+    }
+
+    if keys.len() != 26 {
+        use rustc_hash::FxHashSet;
+        let all_letters: FxHashSet<char> = ('a'..='z').collect();
+        let mut missing: Vec<char> = all_letters
+            .iter()
+            .filter(|c| !keys.contains_key(c))
+            .copied()
+            .collect();
+        missing.sort_unstable();
+        let missing_str: String = missing.iter().collect();
+        return Err(miette!(
+            "layout must contain all 26 keys, got {} | missing: {} | row: [{}]",
+            keys.len(),
+            missing_str,
+            preview
+        ));
+    }
+
+    Ok(keys)
 }
 
 /// Physical home-row slots — left 5–9, right 20–24.
 const HOME_ROW: [usize; 10] = [5, 6, 7, 8, 9, 20, 21, 22, 23, 24];
 
 /// Explicit name from the CSV column after the six key groups. `None` when absent
-/// or numeric — old headerless rows store fitness there, not a name.
+/// or numeric — old headless rows store fitness there, not a name.
 pub fn name_field(line: &str) -> Option<&str> {
     line.split(',')
         .nth(6)
@@ -173,7 +224,7 @@ mod layout_test {
     #[test]
     fn test_line_to_keys_basic() {
         let line = "zydpx, ralem, vbjuq, whtc_, fnosi, kg___, not used tail";
-        let keys = line_to_keys(line);
+        let keys = line_to_keys(line).unwrap();
 
         assert_eq!(keys.len(), 26);
         assert_eq!(keys[&'z'], 0);
@@ -187,35 +238,36 @@ mod layout_test {
     #[test]
     fn test_name() {
         let line = "zydpx,ralem,vbjuq,whtc_,fnosi,kg___,not used tail";
-        let layout = Layout::new(line);
+        let layout = Layout::try_new(line).unwrap();
 
         assert_eq!(layout.to_string(), "zydpx,ralem,vbjuq,whtc_,fnosi,kg___");
     }
 
     #[test]
     fn right_block_anchors_slot_15_to_29() {
-        // Right hand starts at slot 15 (top-left, inner) and ends at slot 29 (bottom-right, outer).
-        let line = "abcde, fghij, klmno, pqrst, _____, ____z";
-        let keys = line_to_keys(line);
+        // Right hand starts at slot 15 (top-left, index-outer column) and ends at
+        // slot 29 (bottom-right, pinky column).
+        let line = "abcde, fghij, klmno, pqrst, uvwxy, ____z";
+        let keys = line_to_keys(line).unwrap();
 
         assert_eq!(keys[&'a'], 0); // left top-left
         assert_eq!(keys[&'o'], 14); // left bottom-right
         assert_eq!(keys[&'p'], 15); // right top-left (start)
-        assert_eq!(keys[&'t'], 19); // right top-right — locks inner→outer direction
+        assert_eq!(keys[&'t'], 19); // right top-right — locks index-outer → pinky direction
         assert_eq!(keys[&'z'], 29); // right bottom-right (end)
     }
 
     #[test]
     fn display_round_trips_filled_bottom_right() {
         // Letter on slot 29 survives render at the bottom-right.
-        let line = "abcde,fghij,klmno,pqrst,_____,____z";
+        let line = "abcde,fghij,klmno,pqrst,uvwxy,____z";
 
-        assert_eq!(Layout::new(line).to_string(), line);
+        assert_eq!(Layout::try_new(line).unwrap().to_string(), line);
     }
 
     #[test]
     fn mirrored_is_an_involution() {
-        let layout = Layout::new("zydpx, ralem, vbjuq, whtc_, fnosi, kg___");
+        let layout = Layout::try_new("zydpx, ralem, vbjuq, whtc_, fnosi, kg___").unwrap();
 
         assert_eq!(layout.mirrored().mirrored().to_string(), layout.to_string());
     }
@@ -223,7 +275,7 @@ mod layout_test {
     #[test]
     fn mirrored_swaps_e_hand() {
         // `e` at slot 8 (left); mirroring moves it to the right hand.
-        let layout = Layout::new("zydpx, ralem, vbjuq, whtc_, fnosi, kg___");
+        let layout = Layout::try_new("zydpx, ralem, vbjuq, whtc_, fnosi, kg___").unwrap();
 
         assert!(layout.e_is_left());
         assert!(!layout.mirrored().e_is_left());
@@ -231,14 +283,15 @@ mod layout_test {
 
     #[test]
     fn new_derives_home_row_name_when_absent() {
-        let layout = Layout::new("abcde, fghij, klmno, pqrst, uvwxy, _____");
+        let layout = Layout::try_new("abcde, fghij, klmno, pqrst, uvwxy, z____").unwrap();
 
         assert_eq!(layout.name, "fghijuvwxy");
     }
 
     #[test]
     fn new_uses_explicit_name_column() {
-        let layout = Layout::new("abcde, fghij, klmno, pqrst, uvwxy, _____, dvorak, 12.5");
+        let layout =
+            Layout::try_new("abcde, fghij, klmno, pqrst, uvwxy, z____, dvorak, 12.5").unwrap();
 
         assert_eq!(layout.name, "dvorak");
     }
@@ -252,8 +305,24 @@ mod layout_test {
 
     #[test]
     fn mirrored_keeps_name() {
-        let layout = Layout::new("abcde, fghij, klmno, pqrst, uvwxy, _____, dvorak, 12.5");
+        let layout =
+            Layout::try_new("abcde, fghij, klmno, pqrst, uvwxy, z____, dvorak, 12.5").unwrap();
 
         assert_eq!(layout.mirrored().name, "dvorak");
+    }
+
+    #[test]
+    fn rejects_missing_group() {
+        assert!(Layout::try_new("abcde,fghij,klmno,pqrst,uvwxy").is_err());
+    }
+
+    #[test]
+    fn rejects_duplicate_key() {
+        assert!(Layout::try_new("abcde,fghij,klmno,pqrst,uvwxa,_____").is_err());
+    }
+
+    #[test]
+    fn rejects_bad_character() {
+        assert!(Layout::try_new("abcde,fghij,klmno,pqrst,uvwxy,____!").is_err());
     }
 }

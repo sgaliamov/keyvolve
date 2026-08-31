@@ -1,3 +1,6 @@
+use crate::evaluator::{LayoutEvaluatorConfig, TermReport};
+use crate::models::Target;
+
 /// Full breakdown of a scoring pass over a word or corpus.
 #[derive(Debug, Clone, Default)]
 pub struct ScoreResult {
@@ -33,147 +36,536 @@ pub struct ScoreResult {
 
     /// Effort accumulated on the right hand.
     pub right_effort: f64,
+
+    /// Effort by left-hand column, finger order: pinky → index-outer, 5 slots.
+    pub left_column_effort: [f64; 5],
+
+    /// Effort by right-hand column, finger order: pinky → index-outer, 5 slots.
+    /// Same index = same finger as [`Self::left_column_effort`].
+    pub right_column_effort: [f64; 5],
+
+    /// Press count by left-hand column, finger order: pinky → index-outer, 5 slots.
+    pub left_column_count: [u64; 5],
+
+    /// Press count by right-hand column, finger order: pinky → index-outer, 5 slots.
+    pub right_column_count: [u64; 5],
+
+    /// Effort by left-hand row: top, home, bottom.
+    pub left_row_effort: [f64; 3],
+
+    /// Effort by right-hand row: top, home, bottom.
+    pub right_row_effort: [f64; 3],
+}
+
+#[inline]
+fn hand_index(slot: u8) -> usize {
+    (slot / 15) as usize
+}
+
+/// Finger-order column (0 = pinky … 4 = index-outer) regardless of hand.
+/// Right-hand slots run index-outer → pinky physically, so they are reversed.
+#[inline]
+fn column_index(slot: u8) -> usize {
+    let physical = (slot % 5) as usize;
+    if slot < 15 { physical } else { 4 - physical }
+}
+
+#[inline]
+fn row_index(slot: u8) -> usize {
+    crate::models::slot_row(slot) as usize
 }
 
 impl ScoreResult {
-    /// Left share of same-hand counts.
+    /// Build one press worth of score from a physical slot and its effort.
+    pub(crate) fn press(slot: u8, effort: f64) -> Self {
+        let hand = hand_index(slot);
+        let column = column_index(slot);
+        let row = row_index(slot);
+
+        let mut score = ScoreResult {
+            effort,
+            left_count: (hand == 0) as u64,
+            right_count: (hand == 1) as u64,
+            left_effort: if hand == 0 { effort } else { 0.0 },
+            right_effort: if hand == 1 { effort } else { 0.0 },
+            ..Default::default()
+        };
+
+        if hand == 0 {
+            score.left_column_effort[column] = effort;
+            score.left_column_count[column] = 1;
+            score.left_row_effort[row] = effort;
+        } else {
+            score.right_column_effort[column] = effort;
+            score.right_column_count[column] = 1;
+            score.right_row_effort[row] = effort;
+        }
+
+        score
+    }
+
+    /// Per-metric penalty diagnostics for a scored layout, worst first.
+    pub fn breakdown(&self, config: &LayoutEvaluatorConfig) -> Vec<TermReport> {
+        let t = config.targets;
+        let report = |name: &'static str, target: Target, value: f64| {
+            let deviation = target.deviation(value);
+            TermReport {
+                name,
+                value,
+                goal: target.value,
+                deviation,
+                cost: target.weight * deviation.powf(config.sharpness),
+                pressure: target.weight * config.sharpness * deviation.powf(config.sharpness - 1.0)
+                    / target.norm(),
+            }
+        };
+
+        let mut terms = [
+            (
+                "row_switch_ratio",
+                t.row_switch_ratio,
+                self.row_switch_ratio() * 100.0,
+            ),
+            (
+                "hand_switch_ratio",
+                t.hand_switch_ratio,
+                self.hand_switch_ratio() * 100.0,
+            ),
+            (
+                "efforts_imbalance",
+                t.efforts_imbalance,
+                self.efforts_imbalance(),
+            ),
+            ("hands_imbalance", t.hands_imbalance, self.hands_imbalance()),
+            ("roll_imbalance", t.roll_imbalance, self.roll_imbalance()),
+            (
+                "row_switch_imbalance",
+                t.row_switch_imbalance,
+                self.row_switch_imbalance(),
+            ),
+            (
+                "streak_imbalance",
+                t.streak_imbalance,
+                self.streak_imbalance(),
+            ),
+            (
+                "home_row_balance",
+                t.home_row_balance,
+                self.home_row_balance(),
+            ),
+            (
+                "top_row_ratio",
+                t.top_row_ratio,
+                self.top_row_ratio() * 100.0,
+            ),
+            (
+                "home_row_ratio",
+                t.home_row_ratio,
+                self.home_row_ratio() * 100.0,
+            ),
+            (
+                "bottom_row_ratio",
+                t.bottom_row_ratio,
+                self.bottom_row_ratio() * 100.0,
+            ),
+            (
+                "left_pinky_ratio",
+                t.pinky_ratio,
+                self.left_pinky_ratio() * 100.0,
+            ),
+            (
+                "left_ring_ratio",
+                t.ring_ratio,
+                self.left_ring_ratio() * 100.0,
+            ),
+            (
+                "left_middle_ratio",
+                t.middle_ratio,
+                self.left_middle_ratio() * 100.0,
+            ),
+            (
+                "left_index_inner_ratio",
+                t.index_inner_ratio,
+                self.left_index_inner_ratio() * 100.0,
+            ),
+            (
+                "left_index_outer_ratio",
+                t.index_outer_ratio,
+                self.left_index_outer_ratio() * 100.0,
+            ),
+            (
+                "right_pinky_ratio",
+                t.pinky_ratio,
+                self.right_pinky_ratio() * 100.0,
+            ),
+            (
+                "right_ring_ratio",
+                t.ring_ratio,
+                self.right_ring_ratio() * 100.0,
+            ),
+            (
+                "right_middle_ratio",
+                t.middle_ratio,
+                self.right_middle_ratio() * 100.0,
+            ),
+            (
+                "right_index_inner_ratio",
+                t.index_inner_ratio,
+                self.right_index_inner_ratio() * 100.0,
+            ),
+            (
+                "right_index_outer_ratio",
+                t.index_outer_ratio,
+                self.right_index_outer_ratio() * 100.0,
+            ),
+            ("pinky_balance", t.pinky_balance, self.pinky_balance()),
+            ("ring_balance", t.ring_balance, self.ring_balance()),
+            ("middle_balance", t.middle_balance, self.middle_balance()),
+            (
+                "index_inner_balance",
+                t.index_inner_balance,
+                self.index_inner_balance(),
+            ),
+            (
+                "index_outer_balance",
+                t.index_outer_balance,
+                self.index_outer_balance(),
+            ),
+        ]
+        .into_iter()
+        .filter_map(|(name, target, value)| target.map(|target| report(name, target, value)))
+        .collect::<Vec<_>>();
+
+        terms.sort_by(|a, b| b.cost.total_cmp(&a.cost));
+        terms
+    }
+
+    // Ratios: normalized per-hand shares (0-1 range).
+
+    /// Left share of same-hand counts. Range: [0.0, 1.0], where 0 = unused left hand,
+    /// 1 = all bigrams on left.
     pub fn left_count_ratio(&self) -> f64 {
-        ratio(
+        crate::math::ratio(
             self.left_count as f64,
             (self.left_count + self.right_count) as f64,
         )
     }
 
-    /// Right share of same-hand counts.
+    /// Right share of same-hand counts. Range: [0.0, 1.0], where 0 = unused right hand,
+    /// 1 = all bigrams on right.
     pub fn right_count_ratio(&self) -> f64 {
-        ratio(
+        crate::math::ratio(
             self.right_count as f64,
             (self.left_count + self.right_count) as f64,
         )
     }
 
+    /// Left share of same-hand effort. Range: [0.0, 1.0], proportional to key travel distance.
+    pub fn left_effort_ratio(&self) -> f64 {
+        crate::math::ratio(self.left_effort, self.left_effort + self.right_effort)
+    }
+
+    /// Right share of same-hand effort. Range: [0.0, 1.0], proportional to key travel distance.
+    pub fn right_effort_ratio(&self) -> f64 {
+        crate::math::ratio(self.right_effort, self.left_effort + self.right_effort)
+    }
+
+    /// Left hand column effort shares, finger order: pinky → index-outer.
+    pub fn left_column_effort_ratios(&self) -> [f64; 5] {
+        self.left_column_effort
+            .map(|v| crate::math::ratio(v, self.effort))
+    }
+
+    /// Right hand column effort shares, finger order: pinky → index-outer.
+    pub fn right_column_effort_ratios(&self) -> [f64; 5] {
+        self.right_column_effort
+            .map(|v| crate::math::ratio(v, self.effort))
+    }
+
+    /// Left hand column press shares (ratio of total presses, both hands), finger order: pinky → index-outer.
+    pub fn left_column_press_ratios(&self) -> [f64; 5] {
+        let total = self.left_count + self.right_count;
+        self.left_column_count
+            .map(|c| crate::math::ratio(c as f64, total as f64))
+    }
+
+    /// Right hand column press shares (ratio of total presses, both hands), finger order: pinky → index-outer.
+    pub fn right_column_press_ratios(&self) -> [f64; 5] {
+        let total = self.left_count + self.right_count;
+        self.right_column_count
+            .map(|c| crate::math::ratio(c as f64, total as f64))
+    }
+
+    /// Row effort shares for both hands plus total, in top → bottom order.
+    pub fn row_effort_ratios(&self) -> [(f64, f64, f64); 3] {
+        core::array::from_fn(|row| {
+            let left = self.left_row_effort[row];
+            let right = self.right_row_effort[row];
+            (
+                crate::math::ratio(left, self.effort),
+                crate::math::ratio(right, self.effort),
+                crate::math::ratio(left + right, self.effort),
+            )
+        })
+    }
+
+    /// Left/right balance for top, home, bottom rows.
+    pub fn row_balances(&self) -> [f64; 3] {
+        core::array::from_fn(|row| {
+            crate::math::signed_imbalance_percent(
+                self.left_row_effort[row],
+                self.right_row_effort[row],
+            )
+        })
+    }
+
+    /// Home row left/right balance as signed percent: asymmetry in home row effort between hands.
+    /// Range: (-∞, ∞). 0% = balanced. Positive = right-lean, negative = left-lean.
+    pub fn home_row_balance(&self) -> f64 {
+        crate::math::signed_imbalance_percent(self.left_row_effort[1], self.right_row_effort[1])
+    }
+
+    /// Top row total effort share: (left_top + right_top) / total_effort.
+    /// Range: [0.0, 1.0]. 0 = unused, 1.0 = all effort on top row.
+    pub fn top_row_ratio(&self) -> f64 {
+        crate::math::ratio(
+            self.left_row_effort[0] + self.right_row_effort[0],
+            self.effort,
+        )
+    }
+
+    /// Home row total effort share: (left_home + right_home) / total_effort.
+    /// Range: [0.0, 1.0]. 0 = unused, 1.0 = all effort on home row.
+    pub fn home_row_ratio(&self) -> f64 {
+        crate::math::ratio(
+            self.left_row_effort[1] + self.right_row_effort[1],
+            self.effort,
+        )
+    }
+
+    /// Bottom row total effort share: (left_bottom + right_bottom) / total_effort.
+    /// Range: [0.0, 1.0]. 0 = unused, 1.0 = all effort on bottom row.
+    pub fn bottom_row_ratio(&self) -> f64 {
+        crate::math::ratio(
+            self.left_row_effort[2] + self.right_row_effort[2],
+            self.effort,
+        )
+    }
+
+    // Column ratios: effort share per finger column (pinky → index-outer, both hands)
+
+    /// Left pinky effort share: left_column_effort[0] / total_effort.
+    /// Range: [0.0, 1.0]. 0 = unused, 1.0 = all effort on left pinky.
+    pub fn left_pinky_ratio(&self) -> f64 {
+        crate::math::ratio(self.left_column_effort[0], self.effort)
+    }
+
+    /// Left ring effort share.
+    pub fn left_ring_ratio(&self) -> f64 {
+        crate::math::ratio(self.left_column_effort[1], self.effort)
+    }
+
+    /// Left middle effort share.
+    pub fn left_middle_ratio(&self) -> f64 {
+        crate::math::ratio(self.left_column_effort[2], self.effort)
+    }
+
+    /// Left index (inner) effort share.
+    pub fn left_index_inner_ratio(&self) -> f64 {
+        crate::math::ratio(self.left_column_effort[3], self.effort)
+    }
+
+    /// Left index (outer) effort share.
+    pub fn left_index_outer_ratio(&self) -> f64 {
+        crate::math::ratio(self.left_column_effort[4], self.effort)
+    }
+
+    /// Right pinky effort share: right_column_effort[0] / total_effort.
+    /// Range: [0.0, 1.0]. 0 = unused, 1.0 = all effort on right pinky.
+    pub fn right_pinky_ratio(&self) -> f64 {
+        crate::math::ratio(self.right_column_effort[0], self.effort)
+    }
+
+    /// Right ring effort share.
+    pub fn right_ring_ratio(&self) -> f64 {
+        crate::math::ratio(self.right_column_effort[1], self.effort)
+    }
+
+    /// Right middle effort share.
+    pub fn right_middle_ratio(&self) -> f64 {
+        crate::math::ratio(self.right_column_effort[2], self.effort)
+    }
+
+    /// Right index (inner) effort share.
+    pub fn right_index_inner_ratio(&self) -> f64 {
+        crate::math::ratio(self.right_column_effort[3], self.effort)
+    }
+
+    /// Right index (outer) effort share.
+    pub fn right_index_outer_ratio(&self) -> f64 {
+        crate::math::ratio(self.right_column_effort[4], self.effort)
+    }
+
+    // Column balances: left/right effort skew per finger (0% = balanced).
+
+    /// Pinky left/right balance as signed percent: asymmetry in pinky column effort
+    /// between hands. Range: (-∞, ∞). 0% = balanced, positive = left-lean.
+    pub fn pinky_balance(&self) -> f64 {
+        crate::math::signed_imbalance_percent(
+            self.left_column_effort[0],
+            self.right_column_effort[0],
+        )
+    }
+
+    /// Ring left/right balance as signed percent.
+    pub fn ring_balance(&self) -> f64 {
+        crate::math::signed_imbalance_percent(
+            self.left_column_effort[1],
+            self.right_column_effort[1],
+        )
+    }
+
+    /// Middle left/right balance as signed percent.
+    pub fn middle_balance(&self) -> f64 {
+        crate::math::signed_imbalance_percent(
+            self.left_column_effort[2],
+            self.right_column_effort[2],
+        )
+    }
+
+    /// Index (inner) left/right balance as signed percent.
+    pub fn index_inner_balance(&self) -> f64 {
+        crate::math::signed_imbalance_percent(
+            self.left_column_effort[3],
+            self.right_column_effort[3],
+        )
+    }
+
+    /// Index (outer) left/right balance as signed percent.
+    pub fn index_outer_balance(&self) -> f64 {
+        crate::math::signed_imbalance_percent(
+            self.left_column_effort[4],
+            self.right_column_effort[4],
+        )
+    }
+
+    /// Format a 5-column ratio list for display.
+    fn format_ratio_list(values: [f64; 5]) -> String {
+        values
+            .into_iter()
+            .map(|value| format!("{:05.2}%", value * 100.0))
+            .collect::<Vec<_>>()
+            .join(", ")
+    }
+
+    /// Format a row triplet as left/right/total effort ratios.
+    fn format_row_triplet(value: (f64, f64, f64)) -> String {
+        format!(
+            "{:05.2}%, {:05.2}%, {:05.2}%",
+            value.0 * 100.0,
+            value.1 * 100.0,
+            value.2 * 100.0,
+        )
+    }
+
+    /// Format row balances in top → bottom order.
+    fn format_balance_list(values: [f64; 3]) -> String {
+        values
+            .into_iter()
+            .map(|value| format!("{value:+06.2}%"))
+            .collect::<Vec<_>>()
+            .join(", ")
+    }
+
+    /// Share of hand switches among all bigram transitions. Range: [0.0, 1.0],
+    /// where 0 = no alternation, 1 = every transition switches hands.
+    pub fn hand_switch_ratio(&self) -> f64 {
+        crate::math::ratio(
+            self.hand_switches as f64,
+            (self.left_count + self.right_count) as f64,
+        )
+    }
+
+    // Imbalances: percent deviation from parity (0% = balanced).
+
     /// Hand imbalance as a percent: how far the left/right same-hand count ratio
-    /// strays from parity. 0% = balanced. Asymmetric by direction.
+    /// strays from parity. Range: [0.0, ∞). 0% = balanced, >0% = left-skewed,
+    /// <0% = right-skewed.
     pub fn hands_imbalance(&self) -> f64 {
-        if self.right_count == 0 {
-            0.0
-        } else {
-            (self.left_count as f64 / self.right_count as f64 - 1.0).abs() * 100.0
-        }
+        crate::math::signed_imbalance_percent(self.left_count as f64, self.right_count as f64)
     }
 
     /// Row-switch cost imbalance as a percent: how far the left/right row-switch
-    /// cost ratio strays from parity. 0% = balanced. Asymmetric by direction.
+    /// cost ratio strays from parity. Range: [0.0, ∞). 0% = balanced, asymmetric by sign.
     pub fn row_switch_imbalance(&self) -> f64 {
-        if self.right_row_switch_cost == 0 {
-            0.0
-        } else {
-            (self.left_row_switch_cost as f64 / self.right_row_switch_cost as f64 - 1.0).abs()
-                * 100.0
-        }
+        crate::math::signed_imbalance_percent(
+            self.left_row_switch_cost as f64,
+            self.right_row_switch_cost as f64,
+        )
     }
 
     /// Same-hand bigram imbalance as a percent: how far the left/right roll count
-    /// ratio strays from parity. 0% = balanced. Asymmetric by direction.
+    /// ratio strays from parity. Range: [0.0, ∞). 0% = balanced, asymmetric by sign.
     pub fn roll_imbalance(&self) -> f64 {
-        if self.right_rolls == 0 {
-            0.0
-        } else {
-            (self.left_rolls as f64 / self.right_rolls as f64 - 1.0).abs() * 100.0
-        }
+        crate::math::signed_imbalance_percent(self.left_rolls as f64, self.right_rolls as f64)
     }
 
-    /// Left share of same-hand effort.
-    pub fn left_effort_ratio(&self) -> f64 {
-        ratio(self.left_effort, self.left_effort + self.right_effort)
+    /// Effort imbalance as a percent: how far the left/right effort ratio
+    /// strays from parity. Range: [0.0, ∞). 0% = balanced, asymmetric by sign.
+    pub fn efforts_imbalance(&self) -> f64 {
+        crate::math::signed_imbalance_percent(self.left_effort, self.right_effort)
     }
 
-    /// Right share of same-hand effort.
-    pub fn right_effort_ratio(&self) -> f64 {
-        ratio(self.right_effort, self.left_effort + self.right_effort)
-    }
-
-    /// Share of hand switches among all bigram transitions.
-    pub fn hand_switch_ratio(&self) -> f64 {
-        ratio(
-            self.hand_switches as f64,
-            self.left_count as f64 + self.right_count as f64,
-        )
-    }
-
-    /// Total weighted row-switch cost, both hands.
-    pub fn row_switch_cost(&self) -> u64 {
-        self.left_row_switch_cost + self.right_row_switch_cost
-    }
-
-    /// Share of same-hand transitions that switch rows, weighted by jump severity.
-    pub fn row_switch_ratio(&self) -> f64 {
-        ratio(
-            self.row_switch_cost() as f64,
-            self.left_count.saturating_sub(1) as f64 + self.right_count.saturating_sub(1) as f64,
-        )
-    }
+    // Streaks: average consecutive-press run length per hand.
 
     /// Average left-hand streak: consecutive presses before leaving the hand.
     /// A run of length k yields k presses and k−1 rolls, so streak = presses / runs.
+    /// Range: [0.0, ∞). 0 = unused, 1.0 = constant alternation, >1 = sustained runs.
     pub fn left_streak(&self) -> f64 {
-        streak(self.left_count, self.left_rolls)
+        crate::math::streak(self.left_count, self.left_rolls)
     }
 
     /// Average right-hand streak: consecutive presses before leaving the hand.
+    /// Range: [0.0, ∞). 0 = unused, 1.0 = constant alternation, >1 = sustained runs.
     pub fn right_streak(&self) -> f64 {
-        streak(self.right_count, self.right_rolls)
+        crate::math::streak(self.right_count, self.right_rolls)
     }
 
-    /// Left/right streak ratio: >1 means left hand holds longer runs. `0.0` when
-    /// the right hand is unused.
-    pub fn streak_ratio(&self) -> f64 {
-        ratio(self.left_streak(), self.right_streak())
+    /// Streak imbalance as a percent: how far the left/right streak length ratio
+    /// strays from parity. Range: (-∞, ∞). 0% = balanced, >0% = left-lean (longer left runs),
+    /// <0% = right-lean (longer right runs).
+    pub fn streak_imbalance(&self) -> f64 {
+        crate::math::signed_imbalance_percent(self.left_streak(), self.right_streak())
     }
 
     /// Overall average streak: all presses over all runs, both hands.
+    /// Range: [0.0, ∞). 1.0 = every press switches hands, >1 = sustained multi-press runs.
     pub fn mean_streak(&self) -> f64 {
-        streak(
+        crate::math::streak(
             self.left_count + self.right_count,
             self.left_rolls + self.right_rolls,
         )
     }
 
-    /// Serialize as a CSV row (no header).
-    pub fn to_csv(&self) -> String {
-        format!(
-            "{:.6},{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2},{:.2},{:.2}%,{:.2}%,{:.2}%,{:.2}%,{:.2},{:.2},{:.2},{},{},{},{},{},{},{},{:.2},{:.2}",
-            self.fitness,
-            self.row_switch_ratio() * 100.0,
-            self.row_switch_imbalance(),
-            self.hand_switch_ratio() * 100.0,
-            self.hands_imbalance(),
-            self.roll_imbalance(),
-            self.mean_streak(),
-            self.streak_ratio(),
-            self.left_effort_ratio() * 100.0,
-            self.right_effort_ratio() * 100.0,
-            self.left_count_ratio() * 100.0,
-            self.right_count_ratio() * 100.0,
-            self.effort,
-            self.left_effort,
-            self.right_effort,
-            self.left_count,
-            self.right_count,
-            self.hand_switches,
-            self.left_row_switch_cost,
-            self.right_row_switch_cost,
-            self.left_rolls,
-            self.right_rolls,
-            self.left_streak(),
-            self.right_streak(),
+    // Aggregates: totals combining both hands.
+
+    /// Total vertical row-switch distance, both hands (adjacent row = 1, jump = 2).
+    pub fn row_switch_distance(&self) -> u64 {
+        self.left_row_switch_cost + self.right_row_switch_cost
+    }
+
+    /// Share of same-hand moves that cross rows, weighted by jump severity.
+    /// Average vertical distance per same-hand press. Numerator: total row-switch distance
+    /// (adjacent row = 1, jump = 2). Denominator: all same-hand presses. Range: [0.0, ∞).
+    /// 0 = every same-hand move stays in its row. Example: 8 distance / 16 presses = 0.5 avg distance per press.
+    pub fn row_switch_ratio(&self) -> f64 {
+        crate::math::ratio(
+            self.row_switch_distance() as f64,
+            (self.left_count + self.right_count) as f64,
         )
     }
 
-    /// CSV header matching [`to_csv`] column order.
-    pub fn csv_header() -> &'static str {
-        "fitness,row_switch_ratio,row_switch_imbalance,hand_switch_ratio,hands_imbalance,roll_imbalance,mean_streak,streak_ratio,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,effort,left_effort,right_effort,left_count,right_count,hand_switches,left_row_switch_cost,right_row_switch_cost,left_rolls,right_rolls,left_streak,right_streak"
-    }
+    // Transformations: generate derived scores.
 
     /// Hand-swapped score: left/right counts and efforts trade places. Symmetric
     /// fields (fitness, effort, switches) stay — a layout and its mirror score
@@ -188,13 +580,132 @@ impl ScoreResult {
             right_row_switch_cost: self.left_row_switch_cost,
             left_effort: self.right_effort,
             right_effort: self.left_effort,
+            // Column arrays are finger-ordered on both hands, so a plain swap
+            // keeps every share attached to the same finger.
+            left_column_effort: self.right_column_effort,
+            right_column_effort: self.left_column_effort,
+            left_row_effort: self.right_row_effort,
+            right_row_effort: self.left_row_effort,
             ..self.clone()
         }
     }
 
+    // CSV serialization: (de)serialize rows.
+
+    /// Format signed imbalance with directional symbol: negative = left (←), positive = right (→).
+    fn format_imbalance(value: f64) -> String {
+        let symbol = if value < 0.0 {
+            "→"
+        } else if value > 0.0 {
+            "←"
+        } else {
+            "·"
+        };
+        format!("{}{:06.2}%", symbol, value.abs())
+    }
+
+    /// Format an array of imbalances as a ` │ ` separated string with directional symbols.
+    /// Example: [-19.36, -8.31, -31.34] → "←19.36% │ ←8.31% │ ←31.34%"
+    fn format_imbalance_array(imbalances: &[f64]) -> String {
+        imbalances
+            .iter()
+            .map(|v| Self::format_imbalance(*v))
+            .collect::<Vec<_>>()
+            .join(" │ ")
+    }
+
+    /// Format an array of ratios as semicolon-separated percentages with ` │ ` visual separator.
+    /// Example: [0.0909, 0.0947, 0.0870] → "09.09% │ 09.47% │ 08.70%"
+    fn format_ratio_array(ratios: &[f64]) -> String {
+        ratios
+            .iter()
+            .map(|r| format!("{:05.2}%", r * 100.0))
+            .collect::<Vec<_>>()
+            .join(" │ ")
+    }
+
+    /// Serialize as a CSV row (no header).
+    pub fn to_csv(&self) -> String {
+        [
+            format!("{:.6}", self.fitness),
+            format!("{:.2}%", self.row_switch_ratio() * 100.0),
+            Self::format_imbalance(self.row_switch_imbalance()),
+            format!("{:.2}%", self.hand_switch_ratio() * 100.0),
+            Self::format_imbalance(self.hands_imbalance()),
+            format!("{:.2}", self.effort),
+            Self::format_imbalance(self.efforts_imbalance()),
+            Self::format_imbalance(self.roll_imbalance()),
+            format!("{:.2}", self.mean_streak()),
+            Self::format_imbalance(self.streak_imbalance()),
+            format!("{:.2}", self.left_streak()),
+            format!("{:.2}", self.right_streak()),
+            // Column effort ratios (grouped by hand, ` │ ` separated)
+            Self::format_ratio_array(&[
+                self.left_pinky_ratio(),
+                self.left_ring_ratio(),
+                self.left_middle_ratio(),
+                self.left_index_inner_ratio(),
+                self.left_index_outer_ratio(),
+            ]),
+            Self::format_ratio_array(&[
+                self.right_index_outer_ratio(),
+                self.right_index_inner_ratio(),
+                self.right_middle_ratio(),
+                self.right_ring_ratio(),
+                self.right_pinky_ratio(),
+            ]),
+            // Column press ratios (grouped by hand, ` │ ` separated, right reversed for display)
+            Self::format_ratio_array(&self.left_column_press_ratios()),
+            Self::format_ratio_array(&{
+                let r = self.right_column_press_ratios();
+                [r[4], r[3], r[2], r[1], r[0]]
+            }),
+            // Column balances (grouped, ` │ ` separated)
+            Self::format_imbalance_array(&[
+                self.pinky_balance(),
+                self.ring_balance(),
+                self.middle_balance(),
+                self.index_inner_balance(),
+                self.index_outer_balance(),
+            ]),
+            // Row effort ratios (separate columns)
+            format!("{:05.2}%", self.row_effort_ratios()[0].2 * 100.0),
+            format!("{:05.2}%", self.row_effort_ratios()[1].2 * 100.0),
+            format!("{:05.2}%", self.row_effort_ratios()[2].2 * 100.0),
+            // Row balances (grouped, ` │ ` separated)
+            Self::format_imbalance_array(&[
+                self.row_balances()[0],
+                self.home_row_balance(),
+                self.row_balances()[2],
+            ]),
+            // Remaining columns
+            format!("{:.2}%", self.left_effort_ratio() * 100.0),
+            format!("{:.2}%", self.right_effort_ratio() * 100.0),
+            format!("{:.2}%", self.left_count_ratio() * 100.0),
+            format!("{:.2}%", self.right_count_ratio() * 100.0),
+            format!("{:.2}", self.left_effort),
+            format!("{:.2}", self.right_effort),
+            self.left_count.to_string(),
+            self.right_count.to_string(),
+            self.hand_switches.to_string(),
+            self.left_row_switch_cost.to_string(),
+            self.right_row_switch_cost.to_string(),
+            self.left_rolls.to_string(),
+            self.right_rolls.to_string(),
+        ]
+        .join(",")
+    }
+
+    /// CSV header matching [`to_csv`] column order.
+    pub fn csv_header() -> &'static str {
+        "fitness,row_switch_ratio,row_switch_imbalance,hand_switch_ratio,hands_imbalance,effort,efforts_imbalance,roll_imbalance,mean_streak,streak_imbalance,left_streak,right_streak,left_column_effort_ratio,right_column_effort_ratio,left_column_press_ratio,right_column_press_ratio,column_balance,top_row_effort_ratio,home_row_effort_ratio,bottom_row_effort_ratio,row_balance,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,left_effort,right_effort,left_count,right_count,hand_switches,left_row_switch_cost,right_row_switch_cost,left_rolls,right_rolls"
+    }
+
     /// Parse the raw (non-derived) fields from a persisted CSV row, skipping the
-    /// six key columns plus the optional `name` column. Derived ratios are
-    /// recomputed by [`to_csv`], so they are ignored here. Returns `None` on a
+    /// six key columns plus the optional `name` column. Derived ratios (including grouped
+    /// column/row effort ratios, column/row balances, and column press ratios) are recomputed
+    /// by [`to_csv`], so they are ignored here. Column/row efforts and counts are per-corpus
+    /// and always zeros when loading (recomputed during scoring). Returns `None` on a
     /// malformed row.
     pub fn from_csv(line: &str) -> Option<Self> {
         let skip = if super::name_field(line).is_some() {
@@ -203,67 +714,68 @@ impl ScoreResult {
             6
         };
         let c: Vec<&str> = line.split(',').skip(skip).map(str::trim).collect();
+        let effort = c.get(5)?.parse::<f64>().ok()?;
         Some(ScoreResult {
             fitness: c.first()?.parse().ok()?,
-            effort: c.get(12)?.parse().ok()?,
-            left_effort: c.get(13)?.parse().ok()?,
-            right_effort: c.get(14)?.parse().ok()?,
-            left_count: c.get(15)?.parse().ok()?,
-            right_count: c.get(16)?.parse().ok()?,
-            hand_switches: c.get(17)?.parse().ok()?,
-            left_row_switch_cost: c.get(18)?.parse().ok()?,
-            right_row_switch_cost: c.get(19)?.parse().ok()?,
-            left_rolls: c.get(20)?.parse().ok()?,
-            right_rolls: c.get(21)?.parse().ok()?,
+            effort,
+            left_effort: c.get(25)?.parse().ok()?,
+            right_effort: c.get(26)?.parse().ok()?,
+            left_count: c.get(27)?.parse().ok()?,
+            right_count: c.get(28)?.parse().ok()?,
+            hand_switches: c.get(29)?.parse().ok()?,
+            left_row_switch_cost: c.get(30)?.parse().ok()?,
+            right_row_switch_cost: c.get(31)?.parse().ok()?,
+            left_rolls: c.get(32)?.parse().ok()?,
+            right_rolls: c.get(33)?.parse().ok()?,
+            // Column/row efforts are per-corpus (recomputed during scoring).
+            // Initialize to zero; they'll be regenerated if needed.
+            left_column_effort: [0.0; 5],
+            right_column_effort: [0.0; 5],
+            left_row_effort: [0.0; 3],
+            right_row_effort: [0.0; 3],
+            left_column_count: [0; 5],
+            right_column_count: [0; 5],
         })
     }
 }
 
 impl std::fmt::Display for ScoreResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
+        writeln!(
             f,
-            "φ {:.4} | ⟳Δ {:.2}% | Δ {:.2}% | ↕Δ {:.2}% | ↕ {:.2}% | ⇄ {:.2}% | →Δ {:.2} | → {:.2} | Lε {:.1}% | Rε {:.1}% | L# {:.1}% | R# {:.1}% | ε {:.2} | Lε {:.2} | Rε {:.2} | L# {} | R# {} | ⇄ {} | L↕ {} | R↕ {} | L⟳ {} | R⟳ {} | L→ {:.2} | R→ {:.2}",
+            "φ {:.4} | ↕ {:05.2}% | ⇄ {:05.2}% | ⟳Δ {:+06.2}% | Δ {:+06.2}% | εΔ {:+06.2}% | ↕↔ {:+06.2}% | →Δ {:+06.2}% | → {:.2} | ε {:.2}",
             self.fitness,
-            self.roll_imbalance(),
-            self.hands_imbalance(),
-            self.row_switch_imbalance(),
             self.row_switch_ratio() * 100.0,
             self.hand_switch_ratio() * 100.0,
-            self.streak_ratio(),
+            self.roll_imbalance(),
+            self.hands_imbalance(),
+            self.efforts_imbalance(),
+            self.row_switch_imbalance(),
+            self.streak_imbalance(),
             self.mean_streak(),
-            self.left_effort_ratio() * 100.0,
-            self.right_effort_ratio() * 100.0,
-            self.left_count_ratio() * 100.0,
-            self.right_count_ratio() * 100.0,
             self.effort,
-            self.left_effort,
-            self.right_effort,
-            self.left_count,
-            self.right_count,
-            self.hand_switches,
-            self.left_row_switch_cost,
-            self.right_row_switch_cost,
-            self.left_rolls,
-            self.right_rolls,
-            self.left_streak(),
-            self.right_streak(),
+        )?;
+        // cR shown in physical order (index-outer → pinky) to match keyboard geometry.
+        let mut right_columns = self.right_column_effort_ratios();
+        right_columns.reverse();
+        writeln!(
+            f,
+            "cL [{}] | cR [{}]",
+            Self::format_ratio_list(self.left_column_effort_ratios()),
+            Self::format_ratio_list(right_columns),
+        )?;
+        writeln!(
+            f,
+            "rT [{}] | rH [{}] | rB [{}]",
+            Self::format_row_triplet(self.row_effort_ratios()[0]),
+            Self::format_row_triplet(self.row_effort_ratios()[1]),
+            Self::format_row_triplet(self.row_effort_ratios()[2]),
+        )?;
+        write!(
+            f,
+            "bal [{}]",
+            Self::format_balance_list(self.row_balances()),
         )
-    }
-}
-
-/// Safe ratio helper.
-fn ratio(value: f64, total: f64) -> f64 {
-    if total == 0.0 { 0.0 } else { value / total }
-}
-
-/// Average run length from presses and same-hand transitions. Every press starts
-/// a run or continues one; continuations are exactly the rolls, so
-/// runs = count − rolls and streak = count / runs. `0.0` for an unused hand.
-fn streak(count: u64, rolls: u64) -> f64 {
-    match count.saturating_sub(rolls) {
-        0 => 0.0,
-        runs => count as f64 / runs as f64,
     }
 }
 
@@ -283,6 +795,24 @@ impl std::ops::Add for ScoreResult {
             right_row_switch_cost: self.right_row_switch_cost + other.right_row_switch_cost,
             left_effort: self.left_effort + other.left_effort,
             right_effort: self.right_effort + other.right_effort,
+            left_column_effort: core::array::from_fn(|i| {
+                self.left_column_effort[i] + other.left_column_effort[i]
+            }),
+            right_column_effort: core::array::from_fn(|i| {
+                self.right_column_effort[i] + other.right_column_effort[i]
+            }),
+            left_column_count: core::array::from_fn(|i| {
+                self.left_column_count[i] + other.left_column_count[i]
+            }),
+            right_column_count: core::array::from_fn(|i| {
+                self.right_column_count[i] + other.right_column_count[i]
+            }),
+            left_row_effort: core::array::from_fn(|i| {
+                self.left_row_effort[i] + other.left_row_effort[i]
+            }),
+            right_row_effort: core::array::from_fn(|i| {
+                self.right_row_effort[i] + other.right_row_effort[i]
+            }),
         }
     }
 }
@@ -305,6 +835,12 @@ impl std::ops::Mul<u64> for ScoreResult {
             right_row_switch_cost: self.right_row_switch_cost * n,
             left_effort: self.left_effort * f,
             right_effort: self.right_effort * f,
+            left_column_effort: self.left_column_effort.map(|v| v * f),
+            right_column_effort: self.right_column_effort.map(|v| v * f),
+            left_column_count: self.left_column_count.map(|v| v * n),
+            right_column_count: self.right_column_count.map(|v| v * n),
+            left_row_effort: self.left_row_effort.map(|v| v * f),
+            right_row_effort: self.right_row_effort.map(|v| v * f),
         }
     }
 }
@@ -322,6 +858,8 @@ mod tests {
             right_rolls: 7,
             left_effort: 1.0,
             right_effort: 2.0,
+            left_column_effort: [1.0, 2.0, 3.0, 4.0, 5.0],
+            right_column_effort: [6.0, 7.0, 8.0, 9.0, 10.0],
             ..Default::default()
         };
         let m = s.mirror();
@@ -332,6 +870,24 @@ mod tests {
         assert_eq!(m.right_rolls, 4);
         assert_eq!(m.left_effort, 2.0);
         assert_eq!(m.right_effort, 1.0);
+        // Finger order preserved: pinky stays pinky across the swap.
+        assert_eq!(m.left_column_effort, [6.0, 7.0, 8.0, 9.0, 10.0]);
+        assert_eq!(m.right_column_effort, [1.0, 2.0, 3.0, 4.0, 5.0]);
+    }
+
+    #[test]
+    fn press_tracks_columns_and_rows() {
+        // Slot 3 = left index-inner (finger col 3); slot 18 = right ring (finger col 1).
+        let left = ScoreResult::press(3, 2.5);
+        let right = ScoreResult::press(18, 1.5);
+
+        assert_eq!(left.left_count, 1);
+        assert_eq!(left.left_column_effort[3], 2.5);
+        assert_eq!(left.left_row_effort[0], 2.5);
+
+        assert_eq!(right.right_count, 1);
+        assert_eq!(right.right_column_effort[1], 1.5);
+        assert_eq!(right.right_row_effort[0], 1.5);
     }
 
     #[test]
@@ -347,11 +903,32 @@ mod tests {
         };
         assert_eq!(s.left_streak(), 4.0);
         assert_eq!(s.right_streak(), 1.0);
-        assert_eq!(s.streak_ratio(), 4.0);
 
         // Unused hand → 0.0, no division blowup.
         assert_eq!(ScoreResult::default().left_streak(), 0.0);
-        assert_eq!(ScoreResult::default().streak_ratio(), 0.0);
+        assert_eq!(ScoreResult::default().right_streak(), 0.0);
+    }
+
+    #[test]
+    fn column_balance_measures_left_right_finger_skew() {
+        let balanced = ScoreResult {
+            left_column_effort: [1.0, 2.0, 3.0, 4.0, 5.0],
+            right_column_effort: [1.0, 2.0, 3.0, 4.0, 5.0],
+            ..Default::default()
+        };
+        assert_eq!(balanced.pinky_balance(), 0.0);
+        assert_eq!(balanced.ring_balance(), 0.0);
+        assert_eq!(balanced.middle_balance(), 0.0);
+        assert_eq!(balanced.index_inner_balance(), 0.0);
+        assert_eq!(balanced.index_outer_balance(), 0.0);
+
+        // Left pinky column carries double the right pinky's effort: +100% skew.
+        let skewed = ScoreResult {
+            left_column_effort: [6.0, 0.0, 0.0, 0.0, 0.0],
+            right_column_effort: [3.0, 0.0, 0.0, 0.0, 0.0],
+            ..Default::default()
+        };
+        assert!((skewed.pinky_balance() - 100.0).abs() < 1e-9);
     }
 
     #[test]
@@ -363,7 +940,7 @@ mod tests {
         };
         assert_eq!(balanced.roll_imbalance(), 0.0);
 
-        // 6/3 - 1 = 1 → 100%.
+        // 6/3 - 1 = 1 → 100% (left-heavy, positive).
         let skewed = ScoreResult {
             left_rolls: 6,
             right_rolls: 3,
@@ -381,6 +958,58 @@ mod tests {
     }
 
     #[test]
+    fn directional_symbols_show_which_hand_is_heavier() {
+        // Left-heavy: left_rolls > right_rolls → negative value → ← symbol.
+        let left_heavy = ScoreResult {
+            left_rolls: 9,
+            right_rolls: 3,
+            ..Default::default()
+        };
+        // 9/3 - 1 = 2 → 200% (left-heavy, positive because left > right).
+        assert_eq!(left_heavy.roll_imbalance(), 200.0);
+
+        // Right-heavy: left_rolls < right_rolls → negative value → → symbol.
+        let right_heavy = ScoreResult {
+            left_rolls: 2,
+            right_rolls: 8,
+            ..Default::default()
+        };
+        // 2/8 - 1 = -0.75 → -75% (right-heavy, negative because left < right).
+        assert!((right_heavy.roll_imbalance() - (-75.0)).abs() < 1e-9);
+
+        // Balanced: left_rolls == right_rolls → 0.0 → · symbol.
+        let balanced = ScoreResult {
+            left_rolls: 5,
+            right_rolls: 5,
+            ..Default::default()
+        };
+        assert_eq!(balanced.roll_imbalance(), 0.0);
+    }
+
+    #[test]
+    fn row_switch_ratio_is_cost_per_same_hand_move() {
+        // Row cost only accrues on same-hand bigrams, denominator is all same-hand counts.
+        let sample = |left_rolls, right_rolls, left_cost, right_cost| ScoreResult {
+            left_count: 8,
+            right_count: 8,
+            left_rolls,
+            right_rolls,
+            left_row_switch_cost: left_cost,
+            right_row_switch_cost: right_cost,
+            ..Default::default()
+        };
+
+        // Every same-hand move stays in its row: 0 cost / 16 counts = 0.0.
+        assert_eq!(sample(3, 3, 0, 0).row_switch_ratio(), 0.0);
+        // Every same-hand move steps one row: 6 cost / 16 counts = 0.375.
+        assert_eq!(sample(3, 3, 3, 3).row_switch_ratio(), 0.375);
+        // Upper bound: every same-hand move jumps over a row, worth 2 each: 12 cost / 16 counts = 0.75.
+        assert_eq!(sample(3, 3, 6, 6).row_switch_ratio(), 0.75);
+        // Fully alternating layout has no same-hand moves to charge — 0.0, not NaN.
+        assert_eq!(sample(0, 0, 0, 0).row_switch_ratio(), 0.0);
+    }
+
+    #[test]
     fn from_csv_roundtrips_raw_fields() {
         let s = ScoreResult {
             effort: 10.0,
@@ -394,6 +1023,7 @@ mod tests {
             right_row_switch_cost: 3,
             left_effort: 4.0,
             right_effort: 6.0,
+            ..Default::default()
         };
         let check = |line: &str| {
             let parsed = ScoreResult::from_csv(line).unwrap();
@@ -413,5 +1043,19 @@ mod tests {
         // Old headerless rows (fitness right after keys) and new rows (name column).
         check(&format!("k1, k2, k3, k4, k5, k6, {}", s.to_csv()));
         check(&format!("k1, k2, k3, k4, k5, k6, homerow, {}", s.to_csv()));
+    }
+
+    #[test]
+    fn to_csv_roundtrips_new_buckets() {
+        let s =
+            ScoreResult::press(0, 1.0) + ScoreResult::press(3, 2.0) + ScoreResult::press(18, 3.0);
+        let csv = format!("k1,k2,k3,k4,k5,k6,{}", s.to_csv());
+        let parsed = ScoreResult::from_csv(&csv).unwrap();
+
+        assert!(ScoreResult::csv_header().contains("left_column_effort_ratio"));
+        assert!(ScoreResult::csv_header().contains("column_balance"));
+        assert_eq!(parsed.effort, s.effort);
+        assert_eq!(parsed.left_count, s.left_count);
+        assert_eq!(parsed.right_count, s.right_count);
     }
 }

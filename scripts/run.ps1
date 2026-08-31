@@ -2,12 +2,47 @@ param (
     [switch]
     [alias('d')]
     $dev,
+    [ValidateRange(1, 2147483647)]
+    [alias('r')]
+    [int]
+    $repeat = 1,
     [Parameter(ValueFromRemainingArguments=$true)]
     [string[]]
     $AppArgs
 )
 
 $ErrorActionPreference = 'Stop'
+
+function Invoke-SequentialRun {
+    param (
+        [string[]]
+        $CargoArgs,
+        [switch]
+        $BelowNormal
+    )
+
+    for ($i = 1; $i -le $repeat; $i++) {
+        if ($repeat -gt 1) {
+            Write-Host ("Run {0}/{1}" -f $i, $repeat)
+        }
+
+        if ($BelowNormal) {
+            # Set `BelowNormal` after the application started to be able to stop it with Ctrl+C.
+            Start-Job -ScriptBlock {
+                while ($true) {
+                    $process = Get-Process -Name "keyvolve" -ErrorAction SilentlyContinue
+                    if ($process) {
+                        $process.PriorityClass = "BelowNormal"
+                        break
+                    }
+                    Start-Sleep -Milliseconds 10000
+                }
+            } | Out-Null
+        }
+
+        & cargo @CargoArgs
+    }
+}
 
 if ($dev) {
     $Env:RUST_BACKTRACE = "full"
@@ -18,21 +53,9 @@ if ($dev) {
 
     $cargoArgs = @('run')
     if ($AppArgs -and $AppArgs.Count -gt 0) { $cargoArgs += '--'; $cargoArgs += $AppArgs }
-    & cargo @cargoArgs
+    Invoke-SequentialRun -CargoArgs $cargoArgs
 }
 else {
-    # Set `BelowNormal` after the application started to be able to stop it with Ctrl+C.
-    Start-Job -ScriptBlock {
-        while ($true) {
-            $process = Get-Process -Name "keyvolve" -ErrorAction SilentlyContinue
-            if ($process) {
-                $process.PriorityClass = "BelowNormal"
-                break
-            }
-            Start-Sleep -Milliseconds 10000
-        }
-    } | Out-Null
-
     $Env:RUST_BACKTRACE = 0
     $Env:RAYON_NUM_THREADS = 0
 
@@ -42,13 +65,13 @@ else {
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
     $cargoArgs = @('run','--release')
     if ($AppArgs -and $AppArgs.Count -gt 0) { $cargoArgs += '--'; $cargoArgs += $AppArgs }
-    & cargo @cargoArgs
+    Invoke-SequentialRun -CargoArgs $cargoArgs -BelowNormal
 
     $sw.Stop()
     $minutes = [int][Math]::Floor($sw.Elapsed.TotalMinutes)
     $seconds = $sw.Elapsed.Seconds
     $milliseconds = $sw.Elapsed.Milliseconds
 
-    Write-Host ('Execution time: {0:D2}:{1:D2}:{2:D3}' -f $minutes, $seconds, $milliseconds)
+    $label = if ($repeat -gt 1) { 'Total execution time' } else { 'Execution time' }
+    Write-Host ('{0}: {1:D2}:{2:D2}:{3:D3}' -f $label, $minutes, $seconds, $milliseconds)
 }
-
