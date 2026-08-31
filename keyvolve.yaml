@@ -136,11 +136,8 @@ evaluate:
   # One or more layout CSVs to score.
   input:
     - data/layouts.csv
-    # - data/known-layouts.csv
-    # - data/seed.csv
   # Output CSV for scored layouts.
   output: data/layouts.csv
-  # output: data/layouts-all.csv
   # Number of best layouts printed to stdout.
   print: 10
   # Orientation used when saving layouts; left mirrors twin layouts.
@@ -170,7 +167,7 @@ evaluator:
 
   # Ratio of row-switch cost to total effort. Penalizes vertical jumps within a hand.
   # type: max — lower is better.
-  rowSwitchRatio: { type: max, value: 20, weight: 1 }
+  rowSwitchRatio: { type: max, value: 18, weight: 1 }
 
   # Ratio of hand-switch cost to total effort. Penalizes hand alternation.
   # type: max — lower is better.
@@ -202,11 +199,11 @@ evaluator:
 
   # Top row effort share (percentage). Rewards layouts close to target.
   # type: target — proximity to value is better; symmetric penalty around target.
-  topRowRatio: { type: target, value: 25, weight: 1 }
+  topRowRatio: { type: target, value: 24, weight: 1 }
 
   # Home row effort share (percentage). Rewards layouts close to target.
   # type: target — proximity to value is better; symmetric penalty around target.
-  homeRowRatio: { type: target, value: 63, weight: 2 }
+  homeRowRatio: { type: target, value: 64, weight: 2 }
 
   # Bottom row effort share (percentage). Optional; uncomment to include.
   # type: target — proximity to value is better; symmetric penalty around target.
@@ -259,7 +256,7 @@ ga:
   # Generations without improvement before stopping.
   stagnationCount: 128
   # Number of island pools evolved in parallel.
-  pools: 256
+  pools: 128
   # Randomly generated individuals ratio per generation.
   randomRatio: 0.25
   # Mutation steps applied to seeded layouts.
