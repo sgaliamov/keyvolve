@@ -60,11 +60,11 @@ optimization:
   # blocked: [27, 28, 29]
 
   # # Optional: Characters pinned to specific slot indices.
-  frozen:
-    z: 10
-    x: 11
-    c: 12
-    v: 13
+  # frozen:
+  #   z: 10
+  #   x: 11
+  #   c: 12
+  #   v: 13
 
   # Optional: Allowed slot indices for specific characters (white-list constraints).
   # If specified, only these slots can be used; other slots are forbidden for that char.

@@ -27,7 +27,15 @@ Why create one perfect keyboard layout when everyone can design their own?
 I have own biases, for example, put ER and TH on one hand, and I committed to the idea to maximizing bigram efficiency.
 But someone may find it ridiculous.
 
+### Set by step guide how to use modes
+
+### Other languages and QMK
+
 
 ## Acknowledgements
 
 list used websites and resources here.
+
+## TODO
+
+clean not used modes
