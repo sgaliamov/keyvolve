@@ -73,10 +73,10 @@ optimization:
     #   e: [6, 7, 8]
 
   # Optional: Character pairs that must be placed adjacent (rolls/same-hand digraphs).
-  rolls: ['er', 'th']
+  # rolls: ['er', 'th']
 
   # Optional: Characters that prefer left-hand placement.
-  left: [x, c, v]
+  # left: [x, c, v]
 
   # Optional: Characters that prefer right-hand placement.
   # right: [a, i]
