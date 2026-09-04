@@ -31,6 +31,10 @@ But someone may find it ridiculous.
 
 ### Other languages and QMK
 
+1. the problem with other languages
+1. fast switch
+1. the problem with ctrl
+1. vim from ru
 
 ## Acknowledgements
 

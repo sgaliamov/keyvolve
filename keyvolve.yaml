@@ -58,6 +58,7 @@ optimization:
 
   # # Optional: Slot indices that must remain empty (blocked).
   # blocked: [27, 28, 29]
+  blocked: [29]
 
   # # Optional: Characters pinned to specific slot indices.
   # frozen:
@@ -70,26 +71,12 @@ optimization:
   # If specified, only these slots can be used; other slots are forbidden for that char.
   # allowed:
     #   e: [6, 7, 8]
-    #   t: [1, 2, 3, 6, 7, 8]
-    #   a: [1, 2, 3, 6, 7, 8]
-    #   i: [1, 2, 3, 6, 7, 8]
-    #   o: [1, 2, 3, 6, 7, 8]
-    #   n: [1, 2, 3, 6, 7, 8]
-    #   r: [1, 2, 3, 6, 7, 8]
-    #   s: [1, 2, 3, 6, 7, 8]
-    #   h: [1, 2, 3, 5, 6, 7, 8, 12, 13]
-    #   j: [5, 10, 11, 14]
-    # z: [10, 11, 12, 13, 14]
-    # x: [10, 11, 12, 13, 14]
-    # c: [10, 11, 12, 13, 14]
-    # v: [10, 11, 12, 13, 14]
-  #   q: [10, 11, 14]
 
   # Optional: Character pairs that must be placed adjacent (rolls/same-hand digraphs).
-  # rolls: ['er', 'th']
+  rolls: ['er', 'th']
 
   # Optional: Characters that prefer left-hand placement.
-  # left: [z, x, c, v]
+  left: [x, c, v]
 
   # Optional: Characters that prefer right-hand placement.
   # right: [a, i]
@@ -173,7 +160,7 @@ evaluator:
 
   # Ratio of hand-switch cost to total effort. Penalizes hand alternation.
   # type: max — lower is better.
-  handSwitchRatio: { type: max, value: 36, weight: 2 }
+  handSwitchRatio: { type: max, value: 37, weight: 3 }
 
   # Left/right effort asymmetry (absolute percentage-point difference).
   # type: max — lower is better.
@@ -216,16 +203,16 @@ evaluator:
   # Below the cap cost fades (deviation^sharpness); effort map decides placement, caps guard fatigue.
 
   # Pinky (column 1) effort share cap.
-  pinkyRatio: { type: max, value: 8, weight: 1.0 }
+  pinkyRatio: { type: max, value: 5.5, weight: 1.0 }
 
   # Ring (column 2) effort share cap.
   ringRatio: { type: max, value: 10, weight: 1.0 }
 
   # Middle (column 3) effort share cap.
-  middleRatio: { type: max, value: 11, weight: 1.0 }
+  middleRatio: { type: max, value: 13, weight: 1.0 }
 
   # Index inner (column 4) effort share cap.
-  indexInnerRatio: { type: max, value: 12, weight: 1.0 }
+  indexInnerRatio: { type: max, value: 12.5, weight: 1.0 }
 
   # Index outer (column 5) effort share cap.
   # Left hand only; right auto-mirrored.
