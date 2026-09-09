@@ -1,17 +1,53 @@
-param (
-    [switch]
-    [alias('d')]
-    $dev,
-    [ValidateRange(1, 2147483647)]
-    [alias('r')]
-    [int]
-    $repeat = 1,
-    [Parameter(ValueFromRemainingArguments=$true)]
-    [string[]]
-    $AppArgs
-)
-
 $ErrorActionPreference = 'Stop'
+
+$dev = $false
+$repeat = 1
+$AppArgs = [System.Collections.Generic.List[string]]::new()
+
+for ($i = 0; $i -lt $args.Count; $i++) {
+    $arg = [string]$args[$i]
+    $next = if ($i + 1 -lt $args.Count) { [string]$args[$i + 1] } else { $null }
+
+    if ($arg -eq '--') {
+        for ($j = $i + 1; $j -lt $args.Count; $j++) {
+            $AppArgs.Add([string]$args[$j])
+        }
+        break
+    }
+
+    if ($arg -in @('-d', '-dev')) {
+        $dev = $true
+        continue
+    }
+
+    if ($arg -match '^-r(?:epeat)?[:=](.+)$') {
+        $repeat = [int]$Matches[1]
+        if ($repeat -lt 1) {
+            throw "repeat must be at least 1."
+        }
+        continue
+    }
+
+    if ($arg -in @('-r', '-repeat')) {
+        if ($null -eq $next) {
+            throw "repeat requires a value."
+        }
+
+        $repeat = [int]$next
+        if ($repeat -lt 1) {
+            throw "repeat must be at least 1."
+        }
+        $i++
+        continue
+    }
+
+    while ($i + 1 -lt $args.Count -and ([string]$args[$i + 1]).StartsWith('.')) {
+        $arg += [string]$args[$i + 1]
+        $i++
+    }
+
+    $AppArgs.Add($arg)
+}
 
 function Invoke-SequentialRun {
     param (
@@ -52,7 +88,7 @@ if ($dev) {
     Clear-Host
 
     $cargoArgs = @('run')
-    if ($AppArgs -and $AppArgs.Count -gt 0) { $cargoArgs += '--'; $cargoArgs += $AppArgs }
+    if ($AppArgs.Count -gt 0) { $cargoArgs += '--'; $cargoArgs += $AppArgs }
     Invoke-SequentialRun -CargoArgs $cargoArgs
 }
 else {
@@ -64,7 +100,7 @@ else {
 
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
     $cargoArgs = @('run','--release')
-    if ($AppArgs -and $AppArgs.Count -gt 0) { $cargoArgs += '--'; $cargoArgs += $AppArgs }
+    if ($AppArgs.Count -gt 0) { $cargoArgs += '--'; $cargoArgs += $AppArgs }
     Invoke-SequentialRun -CargoArgs $cargoArgs -BelowNormal
 
     $sw.Stop()
