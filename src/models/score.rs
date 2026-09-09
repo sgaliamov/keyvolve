@@ -715,9 +715,12 @@ impl ScoreResult {
                 self.index_inner_balance(),
                 self.index_outer_balance(),
             ]),
-            // Finger row-switch ratios (grouped by hand, pinky → index).
+            // Finger row-switch ratios (grouped by hand, right reversed for physical display).
             Self::format_ratio_array(&self.left_finger_row_switch_ratios()),
-            Self::format_ratio_array(&self.right_finger_row_switch_ratios()),
+            Self::format_ratio_array(&{
+                let r = self.right_finger_row_switch_ratios();
+                [r[3], r[2], r[1], r[0]]
+            }),
             // Row effort ratios (separate columns)
             format!("{:05.2}%", self.row_effort_ratios()[0].2 * 100.0),
             format!("{:05.2}%", self.row_effort_ratios()[1].2 * 100.0),
@@ -1085,6 +1088,22 @@ mod tests {
 
         assert_eq!(s.left_finger_row_switch_ratios(), [0.5, 1.0, 0.0, 1.0]);
         assert_eq!(s.right_finger_row_switch_ratios(), [0.0, 0.0, 0.0, 1.25]);
+    }
+
+    #[test]
+    fn csv_formats_right_finger_row_switch_in_physical_order() {
+        let s = ScoreResult {
+            right_column_count: [1, 2, 4, 8, 16],
+            right_finger_row_switch_cost: [1, 2, 3, 4],
+            ..Default::default()
+        };
+
+        let csv = s.to_csv();
+        let columns = csv.split(',').map(str::trim).collect::<Vec<_>>();
+        assert_eq!(
+            columns[18], "16.67% │ 75.00% │ 100.00% │ 100.00%",
+            "right_finger_row_switch_ratio should be index→middle→ring→pinky"
+        );
     }
 
     #[test]
