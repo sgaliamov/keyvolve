@@ -50,11 +50,11 @@ pub struct ScoreResult {
     /// Press count by right-hand column, finger order: pinky → index-outer, 5 slots.
     pub right_column_count: [u64; 5],
 
-    /// Weighted row-switch cost by left-hand finger column, pinky → index-outer.
-    pub left_column_row_switch_cost: [u64; 5],
+    /// Weighted row-switch cost by left-hand finger, pinky → index (merged inner+outer).
+    pub left_finger_row_switch_cost: [u64; 4],
 
-    /// Weighted row-switch cost by right-hand finger column, pinky → index-outer.
-    pub right_column_row_switch_cost: [u64; 5],
+    /// Weighted row-switch cost by right-hand finger, pinky → index (merged inner+outer).
+    pub right_finger_row_switch_cost: [u64; 4],
 
     /// Effort by left-hand row: top, home, bottom.
     pub left_row_effort: [f64; 3],
@@ -303,23 +303,42 @@ impl ScoreResult {
     }
 
     /// Left finger row-switch ratios: weighted row-switch cost / finger press count.
-    pub fn left_column_row_switch_ratios(&self) -> [f64; 5] {
+    pub fn left_finger_row_switch_ratios(&self) -> [f64; 4] {
+        let counts = self.left_finger_press_counts();
         core::array::from_fn(|i| {
-            crate::math::ratio(
-                self.left_column_row_switch_cost[i] as f64,
-                self.left_column_count[i] as f64,
-            )
+            crate::math::ratio(self.left_finger_row_switch_cost[i] as f64, counts[i] as f64)
         })
     }
 
     /// Right finger row-switch ratios: weighted row-switch cost / finger press count.
-    pub fn right_column_row_switch_ratios(&self) -> [f64; 5] {
+    pub fn right_finger_row_switch_ratios(&self) -> [f64; 4] {
+        let counts = self.right_finger_press_counts();
         core::array::from_fn(|i| {
             crate::math::ratio(
-                self.right_column_row_switch_cost[i] as f64,
-                self.right_column_count[i] as f64,
+                self.right_finger_row_switch_cost[i] as f64,
+                counts[i] as f64,
             )
         })
+    }
+
+    /// Left-hand finger press counts, pinky → index with both index columns merged.
+    fn left_finger_press_counts(&self) -> [u64; 4] {
+        [
+            self.left_column_count[0],
+            self.left_column_count[1],
+            self.left_column_count[2],
+            self.left_column_count[3] + self.left_column_count[4],
+        ]
+    }
+
+    /// Right-hand finger press counts, pinky → index with both index columns merged.
+    fn right_finger_press_counts(&self) -> [u64; 4] {
+        [
+            self.right_column_count[0],
+            self.right_column_count[1],
+            self.right_column_count[2],
+            self.right_column_count[3] + self.right_column_count[4],
+        ]
     }
 
     /// Row effort shares for both hands plus total, in top → bottom order.
@@ -610,8 +629,8 @@ impl ScoreResult {
             // keeps every share attached to the same finger.
             left_column_effort: self.right_column_effort,
             right_column_effort: self.left_column_effort,
-            left_column_row_switch_cost: self.right_column_row_switch_cost,
-            right_column_row_switch_cost: self.left_column_row_switch_cost,
+            left_finger_row_switch_cost: self.right_finger_row_switch_cost,
+            right_finger_row_switch_cost: self.left_finger_row_switch_cost,
             left_row_effort: self.right_row_effort,
             right_row_effort: self.left_row_effort,
             ..self.clone()
@@ -696,12 +715,9 @@ impl ScoreResult {
                 self.index_inner_balance(),
                 self.index_outer_balance(),
             ]),
-            // Finger row-switch ratios (grouped by hand, right reversed for display)
-            Self::format_ratio_array(&self.left_column_row_switch_ratios()),
-            Self::format_ratio_array(&{
-                let r = self.right_column_row_switch_ratios();
-                [r[4], r[3], r[2], r[1], r[0]]
-            }),
+            // Finger row-switch ratios (grouped by hand, pinky → index).
+            Self::format_ratio_array(&self.left_finger_row_switch_ratios()),
+            Self::format_ratio_array(&self.right_finger_row_switch_ratios()),
             // Row effort ratios (separate columns)
             format!("{:05.2}%", self.row_effort_ratios()[0].2 * 100.0),
             format!("{:05.2}%", self.row_effort_ratios()[1].2 * 100.0),
@@ -732,7 +748,7 @@ impl ScoreResult {
 
     /// CSV header matching [`to_csv`] column order.
     pub fn csv_header() -> &'static str {
-        "fitness,row_switch_ratio,row_switch_imbalance,hand_switch_ratio,hands_imbalance,effort,efforts_imbalance,roll_imbalance,mean_streak,streak_imbalance,left_streak,right_streak,left_column_effort_ratio,right_column_effort_ratio,left_column_press_ratio,right_column_press_ratio,column_balance,left_column_row_switch_ratio,right_column_row_switch_ratio,top_row_effort_ratio,home_row_effort_ratio,bottom_row_effort_ratio,row_balance,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,left_effort,right_effort,left_count,right_count,hand_switches,left_row_switch_cost,right_row_switch_cost,left_rolls,right_rolls"
+        "fitness,row_switch_ratio,row_switch_imbalance,hand_switch_ratio,hands_imbalance,effort,efforts_imbalance,roll_imbalance,mean_streak,streak_imbalance,left_streak,right_streak,left_column_effort_ratio,right_column_effort_ratio,left_column_press_ratio,right_column_press_ratio,column_balance,left_finger_row_switch_ratio,right_finger_row_switch_ratio,top_row_effort_ratio,home_row_effort_ratio,bottom_row_effort_ratio,row_balance,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,left_effort,right_effort,left_count,right_count,hand_switches,left_row_switch_cost,right_row_switch_cost,left_rolls,right_rolls"
     }
 
     /// Parse the raw (non-derived) fields from a persisted CSV row, skipping the
@@ -769,8 +785,8 @@ impl ScoreResult {
             right_row_effort: [0.0; 3],
             left_column_count: [0; 5],
             right_column_count: [0; 5],
-            left_column_row_switch_cost: [0; 5],
-            right_column_row_switch_cost: [0; 5],
+            left_finger_row_switch_cost: [0; 4],
+            right_finger_row_switch_cost: [0; 4],
         })
     }
 }
@@ -843,11 +859,11 @@ impl std::ops::Add for ScoreResult {
             right_column_count: core::array::from_fn(|i| {
                 self.right_column_count[i] + other.right_column_count[i]
             }),
-            left_column_row_switch_cost: core::array::from_fn(|i| {
-                self.left_column_row_switch_cost[i] + other.left_column_row_switch_cost[i]
+            left_finger_row_switch_cost: core::array::from_fn(|i| {
+                self.left_finger_row_switch_cost[i] + other.left_finger_row_switch_cost[i]
             }),
-            right_column_row_switch_cost: core::array::from_fn(|i| {
-                self.right_column_row_switch_cost[i] + other.right_column_row_switch_cost[i]
+            right_finger_row_switch_cost: core::array::from_fn(|i| {
+                self.right_finger_row_switch_cost[i] + other.right_finger_row_switch_cost[i]
             }),
             left_row_effort: core::array::from_fn(|i| {
                 self.left_row_effort[i] + other.left_row_effort[i]
@@ -881,8 +897,8 @@ impl std::ops::Mul<u64> for ScoreResult {
             right_column_effort: self.right_column_effort.map(|v| v * f),
             left_column_count: self.left_column_count.map(|v| v * n),
             right_column_count: self.right_column_count.map(|v| v * n),
-            left_column_row_switch_cost: self.left_column_row_switch_cost.map(|v| v * n),
-            right_column_row_switch_cost: self.right_column_row_switch_cost.map(|v| v * n),
+            left_finger_row_switch_cost: self.left_finger_row_switch_cost.map(|v| v * n),
+            right_finger_row_switch_cost: self.right_finger_row_switch_cost.map(|v| v * n),
             left_row_effort: self.left_row_effort.map(|v| v * f),
             right_row_effort: self.right_row_effort.map(|v| v * f),
         }
@@ -904,8 +920,8 @@ mod tests {
             right_effort: 2.0,
             left_column_effort: [1.0, 2.0, 3.0, 4.0, 5.0],
             right_column_effort: [6.0, 7.0, 8.0, 9.0, 10.0],
-            left_column_row_switch_cost: [1, 2, 3, 4, 5],
-            right_column_row_switch_cost: [6, 7, 8, 9, 10],
+            left_finger_row_switch_cost: [1, 2, 3, 9],
+            right_finger_row_switch_cost: [6, 7, 8, 19],
             ..Default::default()
         };
         let m = s.mirror();
@@ -919,8 +935,8 @@ mod tests {
         // Finger order preserved: pinky stays pinky across the swap.
         assert_eq!(m.left_column_effort, [6.0, 7.0, 8.0, 9.0, 10.0]);
         assert_eq!(m.right_column_effort, [1.0, 2.0, 3.0, 4.0, 5.0]);
-        assert_eq!(m.left_column_row_switch_cost, [6, 7, 8, 9, 10]);
-        assert_eq!(m.right_column_row_switch_cost, [1, 2, 3, 4, 5]);
+        assert_eq!(m.left_finger_row_switch_cost, [6, 7, 8, 19]);
+        assert_eq!(m.right_finger_row_switch_cost, [1, 2, 3, 9]);
     }
 
     #[test]
@@ -1058,20 +1074,17 @@ mod tests {
     }
 
     #[test]
-    fn column_row_switch_ratio_is_weighted_cost_per_finger_press() {
+    fn finger_row_switch_ratio_is_weighted_cost_per_finger_press() {
         let s = ScoreResult {
-            left_column_count: [4, 2, 0, 0, 0],
+            left_column_count: [4, 2, 0, 3, 1],
             right_column_count: [0, 0, 0, 3, 1],
-            left_column_row_switch_cost: [2, 2, 0, 0, 0],
-            right_column_row_switch_cost: [0, 0, 0, 3, 2],
+            left_finger_row_switch_cost: [2, 2, 0, 4],
+            right_finger_row_switch_cost: [0, 0, 0, 5],
             ..Default::default()
         };
 
-        assert_eq!(s.left_column_row_switch_ratios(), [0.5, 1.0, 0.0, 0.0, 0.0]);
-        assert_eq!(
-            s.right_column_row_switch_ratios(),
-            [0.0, 0.0, 0.0, 1.0, 2.0]
-        );
+        assert_eq!(s.left_finger_row_switch_ratios(), [0.5, 1.0, 0.0, 1.0]);
+        assert_eq!(s.right_finger_row_switch_ratios(), [0.0, 0.0, 0.0, 1.25]);
     }
 
     #[test]
@@ -1119,7 +1132,7 @@ mod tests {
 
         assert!(ScoreResult::csv_header().contains("left_column_effort_ratio"));
         assert!(ScoreResult::csv_header().contains("column_balance"));
-        assert!(ScoreResult::csv_header().contains("left_column_row_switch_ratio"));
+        assert!(ScoreResult::csv_header().contains("left_finger_row_switch_ratio"));
         assert_eq!(parsed.effort, s.effort);
         assert_eq!(parsed.left_count, s.left_count);
         assert_eq!(parsed.right_count, s.right_count);

@@ -99,6 +99,9 @@ impl LayoutEvaluator {
         let a_left = ka < 15;
         let b_left = kb < 15;
         let same_hand = a_left == b_left;
+        let from_finger = logical_finger(ka);
+        let to_finger = logical_finger(kb);
+        let same_finger = same_hand && from_finger == to_finger;
 
         let (effort, hand_switches, row_cost) = if same_hand {
             (self.lookup(ka, kb), 0, row_distance(ka, kb))
@@ -111,17 +114,13 @@ impl LayoutEvaluator {
         };
 
         let mut score = ScoreResult::press(kb, effort);
-        let finger = if b_left {
-            (kb % 5) as usize
-        } else {
-            4 - (kb % 5) as usize
-        };
+        let finger_row_cost = if same_finger { row_cost } else { 0 };
         score.hand_switches = hand_switches;
         // Row steps only matter same-hand; alternating hands ignore row distance.
         score.left_row_switch_cost = if b_left { row_cost } else { 0 };
         score.right_row_switch_cost = if !b_left { row_cost } else { 0 };
-        score.left_column_row_switch_cost[finger] = if b_left { row_cost } else { 0 };
-        score.right_column_row_switch_cost[finger] = if !b_left { row_cost } else { 0 };
+        score.left_finger_row_switch_cost[to_finger] = if b_left { finger_row_cost } else { 0 };
+        score.right_finger_row_switch_cost[to_finger] = if !b_left { finger_row_cost } else { 0 };
         // Same-hand bigram lands wholly on one hand; alternating pairs add to neither.
         score.left_rolls = (same_hand && a_left) as u64;
         score.right_rolls = (same_hand && !a_left) as u64;
@@ -168,6 +167,17 @@ impl LayoutEvaluator {
 
 /// Placeholder char for empty/non-alpha genome slots.
 pub const EMPTY_SLOT: char = '`';
+
+/// Map physical slot to logical finger index: pinky, ring, middle, merged index.
+#[inline]
+fn logical_finger(slot: u8) -> usize {
+    let column = if slot < 15 {
+        (slot % 5) as usize
+    } else {
+        4 - (slot % 5) as usize
+    };
+    column.min(3)
+}
 
 #[cfg(test)]
 mod tests {
@@ -261,7 +271,7 @@ mod tests {
 
         assert_eq!(score.hand_switches, 0);
         assert_eq!(score.row_switch_distance(), 1);
-        assert_eq!(score.left_column_row_switch_cost, [1, 0, 0, 0, 0]);
+        assert_eq!(score.left_finger_row_switch_cost, [1, 0, 0, 0]);
         assert_close(score.effort, 3.0);
     }
 
@@ -274,6 +284,26 @@ mod tests {
         assert_eq!(score.hand_switches, 0);
         assert_eq!(score.row_switch_distance(), 2);
         assert_close(score.effort, 5.0);
+    }
+
+    #[test]
+    fn score_word_ignores_row_switch_when_finger_changes() {
+        let evaluator = LayoutEvaluator::new(&row_switch_test_keyboard(), vec![], test_config());
+
+        let score = evaluator.score_word("af", &test_keys());
+
+        assert_eq!(score.row_switch_distance(), 1);
+        assert_eq!(score.left_finger_row_switch_cost, [0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn score_word_treats_index_inner_outer_as_same_finger() {
+        let evaluator = LayoutEvaluator::new(&row_switch_test_keyboard(), vec![], test_config());
+
+        let score = evaluator.score_word("gh", &test_keys());
+
+        assert_eq!(score.row_switch_distance(), 1);
+        assert_eq!(score.left_finger_row_switch_cost, [0, 0, 0, 1]);
     }
 
     /// A run ends only at a hand switch or a word boundary, so `runs = switches + words`
@@ -340,9 +370,12 @@ mod tests {
             json!({
                 "efforts": [1.0, 2.0, 4.0],
                 "pairs": {
-                    "0": {"0": 0, "5": 1, "10": 2},
+                    "0": {"0": 0, "5": 1, "10": 2, "6": 1},
                     "5": {"5": 0},
-                    "10": {"10": 0}
+                    "10": {"10": 0},
+                    "3": {"3": 0, "9": 1},
+                    "9": {"9": 0},
+                    "6": {"6": 0}
                 }
             })
             .to_string(),
@@ -351,7 +384,16 @@ mod tests {
 
     /// Build tiny layout for evaluator tests.
     fn test_keys() -> Keys {
-        FxHashMap::from_iter([('a', 0), ('b', 1), ('c', 19), ('d', 5), ('e', 10)])
+        FxHashMap::from_iter([
+            ('a', 0),
+            ('b', 1),
+            ('c', 19),
+            ('d', 5),
+            ('e', 10),
+            ('f', 6),
+            ('g', 3),
+            ('h', 9),
+        ])
     }
 
     /// Minimal config fixture for evaluator tests; targets empty.
