@@ -1,5 +1,14 @@
 # Blog Post Title
 
+i want to write a blog post about my findings about designing my own keyboard layout.
+
+The structure will be:
+1. Introduction
+1. ToC and description
+1. Step by step guide how to use modes
+1. QMK tricks
+1. Conclusion
+
 ## Introduction
 
 I made my first DIY keyboard.
@@ -12,13 +21,29 @@ I made an attempt already a couple of years ago. But I realized that there is no
 
 One of the fastest typists use qwerty after all.
 
-But perfection is not about the performance. It's the journey itself.
-
 ## Main Content
 
 I will write it as a guide. How to start from scratch and design your own keyboard layout.
 
+### Methodology
+
+Why bigrams.
+
+Why lower land switch.
+
+Why balance.
+
+Stress on pinky.
+
 ### Modes
+
+First you need to get statistics about english letter frequency and bigram frequency.
+
+I used [TBD]
+
+### Configuration options
+
+
 
 ## Conclusion
 
@@ -26,6 +51,8 @@ Why create one perfect keyboard layout when everyone can design their own?
 
 I have own biases, for example, put ER and TH on one hand, and I committed to the idea to maximizing bigram efficiency.
 But someone may find it ridiculous.
+
+But perfection is not about the performance. It's the journey itself.
 
 ### Set by step guide how to use modes
 
