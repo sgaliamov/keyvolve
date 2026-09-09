@@ -111,10 +111,17 @@ impl LayoutEvaluator {
         };
 
         let mut score = ScoreResult::press(kb, effort);
+        let finger = if b_left {
+            (kb % 5) as usize
+        } else {
+            4 - (kb % 5) as usize
+        };
         score.hand_switches = hand_switches;
         // Row steps only matter same-hand; alternating hands ignore row distance.
         score.left_row_switch_cost = if b_left { row_cost } else { 0 };
         score.right_row_switch_cost = if !b_left { row_cost } else { 0 };
+        score.left_column_row_switch_cost[finger] = if b_left { row_cost } else { 0 };
+        score.right_column_row_switch_cost[finger] = if !b_left { row_cost } else { 0 };
         // Same-hand bigram lands wholly on one hand; alternating pairs add to neither.
         score.left_rolls = (same_hand && a_left) as u64;
         score.right_rolls = (same_hand && !a_left) as u64;
@@ -254,6 +261,7 @@ mod tests {
 
         assert_eq!(score.hand_switches, 0);
         assert_eq!(score.row_switch_distance(), 1);
+        assert_eq!(score.left_column_row_switch_cost, [1, 0, 0, 0, 0]);
         assert_close(score.effort, 3.0);
     }
 

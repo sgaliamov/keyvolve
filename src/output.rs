@@ -220,6 +220,8 @@ mod tests {
             right_row_effort: [2500.0, 6000.0, 1500.0],
             left_column_count: [20, 14, 26, 21, 19],
             right_column_count: [30, 42, 52, 63, 13],
+            left_column_row_switch_cost: [8, 7, 6, 5, 4],
+            right_column_row_switch_cost: [4, 5, 6, 7, 8],
         };
 
         let csv_line = format!("_mub_,lreop,wfydx,_htc_,kinas,qgvzj,, {}", score.to_csv());
