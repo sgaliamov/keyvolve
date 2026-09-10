@@ -546,6 +546,16 @@ impl ScoreResult {
         )
     }
 
+    /// Same-finger row-switch balances in pinky → index order.
+    pub fn finger_row_switch_balances(&self) -> [f64; 4] {
+        [
+            self.pinky_row_switch_balance(),
+            self.ring_row_switch_balance(),
+            self.middle_row_switch_balance(),
+            self.index_row_switch_balance(),
+        ]
+    }
+
     /// Format a 5-column ratio list for display.
     fn format_ratio_list(values: [f64; 5]) -> String {
         values
@@ -873,6 +883,11 @@ impl std::fmt::Display for ScoreResult {
         )?;
         writeln!(
             f,
+            "sΔ [{}]",
+            Self::format_imbalance_array(&self.finger_row_switch_balances()),
+        )?;
+        writeln!(
+            f,
             "rT [{}] | rH [{}] | rB [{}]",
             Self::format_row_triplet(self.row_effort_ratios()[0]),
             Self::format_row_triplet(self.row_effort_ratios()[1]),
@@ -1071,6 +1086,10 @@ mod tests {
         assert!((skewed.ring_row_switch_balance() - (-50.0)).abs() < 1e-9);
         assert!((skewed.middle_row_switch_balance() - (-50.0)).abs() < 1e-9);
         assert!((skewed.index_row_switch_balance() - (-75.0)).abs() < 1e-9);
+        assert_eq!(
+            skewed.finger_row_switch_balances(),
+            [100.0, -50.0, -50.0, -75.0]
+        );
     }
 
     #[test]
