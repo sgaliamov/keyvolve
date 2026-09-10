@@ -783,6 +783,8 @@ impl ScoreResult {
                 let r = self.right_finger_row_switch_ratios();
                 [r[3], r[2], r[1], r[0]]
             }),
+            // Finger row-switch balances (grouped, ` │ ` separated)
+            Self::format_imbalance_array(&self.finger_row_switch_balances()),
             // Row effort ratios (separate columns)
             format!("{:05.2}%", self.row_effort_ratios()[0].2 * 100.0),
             format!("{:05.2}%", self.row_effort_ratios()[1].2 * 100.0),
@@ -813,7 +815,7 @@ impl ScoreResult {
 
     /// CSV header matching [`to_csv`] column order.
     pub fn csv_header() -> &'static str {
-        "fitness,row_switch_ratio,row_switch_imbalance,hand_switch_ratio,hands_imbalance,effort,efforts_imbalance,roll_imbalance,mean_streak,streak_imbalance,left_streak,right_streak,left_column_effort_ratio,right_column_effort_ratio,left_column_press_ratio,right_column_press_ratio,column_balance,left_finger_row_switch_ratio,right_finger_row_switch_ratio,top_row_effort_ratio,home_row_effort_ratio,bottom_row_effort_ratio,row_balance,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,left_effort,right_effort,left_count,right_count,hand_switches,left_row_switch_cost,right_row_switch_cost,left_rolls,right_rolls"
+        "fitness,row_switch_ratio,row_switch_imbalance,hand_switch_ratio,hands_imbalance,effort,efforts_imbalance,roll_imbalance,mean_streak,streak_imbalance,left_streak,right_streak,left_column_effort_ratio,right_column_effort_ratio,left_column_press_ratio,right_column_press_ratio,column_balance,left_finger_row_switch_ratio,right_finger_row_switch_ratio,finger_row_switch_balance,top_row_effort_ratio,home_row_effort_ratio,bottom_row_effort_ratio,row_balance,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,left_effort,right_effort,left_count,right_count,hand_switches,left_row_switch_cost,right_row_switch_cost,left_rolls,right_rolls"
     }
 
     /// Parse the raw (non-derived) fields from a persisted CSV row, skipping the
@@ -833,15 +835,15 @@ impl ScoreResult {
         Some(ScoreResult {
             fitness: c.first()?.parse().ok()?,
             effort,
-            left_effort: c.get(27)?.parse().ok()?,
-            right_effort: c.get(28)?.parse().ok()?,
-            left_count: c.get(29)?.parse().ok()?,
-            right_count: c.get(30)?.parse().ok()?,
-            hand_switches: c.get(31)?.parse().ok()?,
-            left_row_switch_cost: c.get(32)?.parse().ok()?,
-            right_row_switch_cost: c.get(33)?.parse().ok()?,
-            left_rolls: c.get(34)?.parse().ok()?,
-            right_rolls: c.get(35)?.parse().ok()?,
+            left_effort: c.get(28)?.parse().ok()?,
+            right_effort: c.get(29)?.parse().ok()?,
+            left_count: c.get(30)?.parse().ok()?,
+            right_count: c.get(31)?.parse().ok()?,
+            hand_switches: c.get(32)?.parse().ok()?,
+            left_row_switch_cost: c.get(33)?.parse().ok()?,
+            right_row_switch_cost: c.get(34)?.parse().ok()?,
+            left_rolls: c.get(35)?.parse().ok()?,
+            right_rolls: c.get(36)?.parse().ok()?,
             // Column/row efforts are per-corpus (recomputed during scoring).
             // Initialize to zero; they'll be regenerated if needed.
             left_column_effort: [0.0; 5],
@@ -1201,6 +1203,19 @@ mod tests {
     }
 
     #[test]
+    fn csv_includes_finger_row_switch_balance_after_ratios() {
+        let s = ScoreResult {
+            left_finger_row_switch_cost: [6, 4, 3, 2],
+            right_finger_row_switch_cost: [3, 8, 6, 8],
+            ..Default::default()
+        };
+
+        let csv = s.to_csv();
+        let columns = csv.split(',').map(str::trim).collect::<Vec<_>>();
+        assert_eq!(columns[19], "←100.00% │ →050.00% │ →050.00% │ →075.00%");
+    }
+
+    #[test]
     fn from_csv_roundtrips_raw_fields() {
         let s = ScoreResult {
             effort: 10.0,
@@ -1246,6 +1261,7 @@ mod tests {
         assert!(ScoreResult::csv_header().contains("left_column_effort_ratio"));
         assert!(ScoreResult::csv_header().contains("column_balance"));
         assert!(ScoreResult::csv_header().contains("left_finger_row_switch_ratio"));
+        assert!(ScoreResult::csv_header().contains("finger_row_switch_balance"));
         assert_eq!(parsed.effort, s.effort);
         assert_eq!(parsed.left_count, s.left_count);
         assert_eq!(parsed.right_count, s.right_count);
