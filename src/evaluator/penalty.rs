@@ -30,7 +30,7 @@
 //! pressure than its opponents — raise its weight or tighten its tolerance. Two off-goal
 //! metrics with matching pressures signal a physical conflict no weight can fix.
 //!
-//! # Thirteen caps + eight distribution targets
+//! # Seventeen caps + eight distribution targets
 //!
 //! | metric               | meaning                          |
 //! |----------------------|----------------------------------|
@@ -47,6 +47,10 @@
 //! | `middle_balance`     | middle column left/right balance (default: 3%) |
 //! | `index_inner_balance`| index-inner column left/right balance (default: 3%) |
 //! | `index_outer_balance`| index-outer column left/right balance (default: 3%) |
+//! | `pinky_row_switch_balance` | pinky same-finger row-switch left/right balance |
+//! | `ring_row_switch_balance`  | ring same-finger row-switch left/right balance |
+//! | `middle_row_switch_balance`| middle same-finger row-switch left/right balance |
+//! | `index_row_switch_balance` | merged-index same-finger row-switch left/right balance |
 //! | `top_row_ratio`      | top row effort share target (default: 25%) |
 //! | `home_row_ratio`     | home row effort share target (default: 60%) |
 //! | `bottom_row_ratio`   | bottom row effort share target (default: 15%) |
@@ -227,6 +231,26 @@ fn terms<'a>(
             t.index_outer_balance,
             r.index_outer_balance(),
         ),
+        (
+            "pinky_row_switch_balance",
+            t.pinky_row_switch_balance,
+            r.pinky_row_switch_balance(),
+        ),
+        (
+            "ring_row_switch_balance",
+            t.ring_row_switch_balance,
+            r.ring_row_switch_balance(),
+        ),
+        (
+            "middle_row_switch_balance",
+            t.middle_row_switch_balance,
+            r.middle_row_switch_balance(),
+        ),
+        (
+            "index_row_switch_balance",
+            t.index_row_switch_balance,
+            r.index_row_switch_balance(),
+        ),
     ]
     .into_iter()
     .filter_map(move |(name, target, value)| {
@@ -263,6 +287,8 @@ mod tests {
             right_row_switch_cost: 1,
             left_effort: 30.0,
             right_effort: 10.0,
+            left_finger_row_switch_cost: [6, 4, 3, 2],
+            right_finger_row_switch_cost: [3, 8, 6, 8],
             ..Default::default()
         }
     }
@@ -285,6 +311,8 @@ mod tests {
             right_column_effort: [7.0, 11.5, 13.0, 10.5, 8.0],
             left_row_effort: [12.5, 30.0, 7.5],
             right_row_effort: [12.5, 30.0, 7.5],
+            left_finger_row_switch_cost: [4, 4, 4, 4],
+            right_finger_row_switch_cost: [4, 4, 4, 4],
             ..Default::default()
         };
 
@@ -462,7 +490,7 @@ mod tests {
         let terms = skewed().breakdown(&targets_config());
 
         assert!(terms.windows(2).all(|w| w[0].cost >= w[1].cost));
-        assert_eq!(terms.len(), 26);
+        assert_eq!(terms.len(), 30);
     }
 
     /// Pressure is zero at the goal and grows with the miss — the "who wins the next
@@ -505,6 +533,27 @@ mod tests {
         assert!(lines[1].contains('%'));
     }
 
+    /// Finger row-switch balance knobs use the same max-limit algebra as other balance caps.
+    #[test]
+    fn row_switch_balance_metric_at_limit_costs_its_weight() {
+        let config = LayoutEvaluatorConfig {
+            sharpness: 4.0,
+            targets: Targets {
+                pinky_row_switch_balance: Some(Target::max(10.0, 0.25)),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let score = ScoreResult {
+            left_finger_row_switch_cost: [11, 0, 0, 0],
+            right_finger_row_switch_cost: [10, 0, 0, 0],
+            ..Default::default()
+        };
+
+        assert!((score.pinky_row_switch_balance() - 10.0).abs() < 1e-9);
+        assert!((penalty(&config, &score) - 1.25).abs() < 1e-9);
+    }
+
     /// Every metric configured, all weights at 1 — the recommended starting point.
     fn targets_config() -> LayoutEvaluatorConfig {
         let limit = |value| Some(Target::max(value, 1.0));
@@ -534,6 +583,10 @@ mod tests {
                 middle_balance: limit(3.0),
                 index_inner_balance: limit(3.0),
                 index_outer_balance: limit(3.0),
+                pinky_row_switch_balance: limit(10.0),
+                ring_row_switch_balance: limit(10.0),
+                middle_row_switch_balance: limit(10.0),
+                index_row_switch_balance: limit(10.0),
             },
             ..Default::default()
         }

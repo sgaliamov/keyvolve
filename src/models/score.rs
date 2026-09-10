@@ -237,6 +237,26 @@ impl ScoreResult {
                 t.index_outer_balance,
                 self.index_outer_balance(),
             ),
+            (
+                "pinky_row_switch_balance",
+                t.pinky_row_switch_balance,
+                self.pinky_row_switch_balance(),
+            ),
+            (
+                "ring_row_switch_balance",
+                t.ring_row_switch_balance,
+                self.ring_row_switch_balance(),
+            ),
+            (
+                "middle_row_switch_balance",
+                t.middle_row_switch_balance,
+                self.middle_row_switch_balance(),
+            ),
+            (
+                "index_row_switch_balance",
+                t.index_row_switch_balance,
+                self.index_row_switch_balance(),
+            ),
         ]
         .into_iter()
         .filter_map(|(name, target, value)| target.map(|target| report(name, target, value)))
@@ -491,6 +511,38 @@ impl ScoreResult {
         crate::math::signed_imbalance_percent(
             self.left_column_effort[4],
             self.right_column_effort[4],
+        )
+    }
+
+    /// Pinky same-finger row-switch left/right balance as signed percent.
+    pub fn pinky_row_switch_balance(&self) -> f64 {
+        crate::math::signed_imbalance_percent(
+            self.left_finger_row_switch_cost[0] as f64,
+            self.right_finger_row_switch_cost[0] as f64,
+        )
+    }
+
+    /// Ring same-finger row-switch left/right balance as signed percent.
+    pub fn ring_row_switch_balance(&self) -> f64 {
+        crate::math::signed_imbalance_percent(
+            self.left_finger_row_switch_cost[1] as f64,
+            self.right_finger_row_switch_cost[1] as f64,
+        )
+    }
+
+    /// Middle same-finger row-switch left/right balance as signed percent.
+    pub fn middle_row_switch_balance(&self) -> f64 {
+        crate::math::signed_imbalance_percent(
+            self.left_finger_row_switch_cost[2] as f64,
+            self.right_finger_row_switch_cost[2] as f64,
+        )
+    }
+
+    /// Merged-index same-finger row-switch left/right balance as signed percent.
+    pub fn index_row_switch_balance(&self) -> f64 {
+        crate::math::signed_imbalance_percent(
+            self.left_finger_row_switch_cost[3] as f64,
+            self.right_finger_row_switch_cost[3] as f64,
         )
     }
 
@@ -996,6 +1048,29 @@ mod tests {
             ..Default::default()
         };
         assert!((skewed.pinky_balance() - 100.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn finger_row_switch_balance_measures_left_right_skew() {
+        let balanced = ScoreResult {
+            left_finger_row_switch_cost: [1, 2, 3, 4],
+            right_finger_row_switch_cost: [1, 2, 3, 4],
+            ..Default::default()
+        };
+        assert_eq!(balanced.pinky_row_switch_balance(), 0.0);
+        assert_eq!(balanced.ring_row_switch_balance(), 0.0);
+        assert_eq!(balanced.middle_row_switch_balance(), 0.0);
+        assert_eq!(balanced.index_row_switch_balance(), 0.0);
+
+        let skewed = ScoreResult {
+            left_finger_row_switch_cost: [6, 4, 3, 2],
+            right_finger_row_switch_cost: [3, 8, 6, 8],
+            ..Default::default()
+        };
+        assert!((skewed.pinky_row_switch_balance() - 100.0).abs() < 1e-9);
+        assert!((skewed.ring_row_switch_balance() - (-50.0)).abs() < 1e-9);
+        assert!((skewed.middle_row_switch_balance() - (-50.0)).abs() < 1e-9);
+        assert!((skewed.index_row_switch_balance() - (-75.0)).abs() < 1e-9);
     }
 
     #[test]

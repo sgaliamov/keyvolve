@@ -82,6 +82,18 @@ pub struct Targets {
     /// Limit for `index_outer_balance`: index-outer column left/right effort asymmetry. Default: 3%.
     #[serde(default = "default_column_balance")]
     pub index_outer_balance: Option<Target>,
+
+    /// Limit for `pinky_row_switch_balance`: pinky same-finger row-switch left/right asymmetry.
+    pub pinky_row_switch_balance: Option<Target>,
+
+    /// Limit for `ring_row_switch_balance`: ring same-finger row-switch left/right asymmetry.
+    pub ring_row_switch_balance: Option<Target>,
+
+    /// Limit for `middle_row_switch_balance`: middle same-finger row-switch left/right asymmetry.
+    pub middle_row_switch_balance: Option<Target>,
+
+    /// Limit for `index_row_switch_balance`: merged-index same-finger row-switch left/right asymmetry.
+    pub index_row_switch_balance: Option<Target>,
 }
 
 impl Targets {
@@ -155,6 +167,27 @@ mod tests {
                 ..Default::default()
             }
             .is_empty()
+        );
+    }
+
+    /// New row-switch balance knobs deserialize with camelCase names.
+    #[test]
+    fn finger_row_switch_balance_targets_parse() {
+        let targets: Targets = serde_json::from_str(
+            r#"{
+                "pinkyRowSwitchBalance": {"type": "max", "value": 10, "weight": 0.25},
+                "indexRowSwitchBalance": {"type": "max", "value": 12, "weight": 0.5}
+            }"#,
+        )
+        .unwrap();
+
+        assert_eq!(
+            targets.pinky_row_switch_balance,
+            Some(Target::max(10.0, 0.25))
+        );
+        assert_eq!(
+            targets.index_row_switch_balance,
+            Some(Target::max(12.0, 0.5))
         );
     }
 }

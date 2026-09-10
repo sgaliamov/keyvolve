@@ -237,6 +237,21 @@ evaluator:
   # Index outer left/right balance.
   indexOuterBalance: { type: max, value: 10, weight: 0.25 }
 
+  # Per-finger left/right same-finger row-switch balance (percent skew, signed).
+  # Uses same-finger row-switch cost only; index inner+outer are merged.
+
+  # Pinky left/right row-switch balance.
+  pinkyRowSwitchBalance: { type: max, value: 10, weight: 0.25 }
+
+  # Ring left/right row-switch balance.
+  ringRowSwitchBalance: { type: max, value: 10, weight: 0.25 }
+
+  # Middle left/right row-switch balance.
+  middleRowSwitchBalance: { type: max, value: 10, weight: 0.25 }
+
+  # Index left/right row-switch balance.
+  indexRowSwitchBalance: { type: max, value: 10, weight: 0.25 }
+
 ga:
   # Mutation probability applied per genome element.
   mutationRatio: 0.6
