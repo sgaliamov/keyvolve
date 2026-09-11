@@ -83,6 +83,22 @@ pub struct Targets {
     #[serde(default = "default_column_balance")]
     pub index_outer_balance: Option<Target>,
 
+    /// Limit for `pinky_row_switch_ratio`: pinky same-finger row-switch ratio cap.
+    #[serde(default = "default_pinky_row_switch_ratio")]
+    pub pinky_row_switch_ratio: Option<Target>,
+
+    /// Limit for `ring_row_switch_ratio`: ring same-finger row-switch ratio cap.
+    #[serde(default = "default_ring_row_switch_ratio")]
+    pub ring_row_switch_ratio: Option<Target>,
+
+    /// Limit for `middle_row_switch_ratio`: middle same-finger row-switch ratio cap.
+    #[serde(default = "default_middle_row_switch_ratio")]
+    pub middle_row_switch_ratio: Option<Target>,
+
+    /// Limit for `index_row_switch_ratio`: merged-index same-finger row-switch ratio cap.
+    #[serde(default = "default_index_row_switch_ratio")]
+    pub index_row_switch_ratio: Option<Target>,
+
     /// Limit for `pinky_row_switch_balance`: pinky same-finger row-switch left/right asymmetry.
     pub pinky_row_switch_balance: Option<Target>,
 
@@ -153,6 +169,26 @@ fn default_column_balance() -> Option<Target> {
     Some(Target::max(15.0, 0.5))
 }
 
+/// Serde default for pinky same-finger row-switch ratio cap: 8% of presses.
+fn default_pinky_row_switch_ratio() -> Option<Target> {
+    Some(Target::max(8.0, 0.75))
+}
+
+/// Serde default for ring same-finger row-switch ratio cap: 8% of presses.
+fn default_ring_row_switch_ratio() -> Option<Target> {
+    Some(Target::max(8.0, 0.75))
+}
+
+/// Serde default for middle same-finger row-switch ratio cap: 7% of presses.
+fn default_middle_row_switch_ratio() -> Option<Target> {
+    Some(Target::max(7.0, 0.75))
+}
+
+/// Serde default for merged-index same-finger row-switch ratio cap: 7% of presses.
+fn default_index_row_switch_ratio() -> Option<Target> {
+    Some(Target::max(7.0, 0.75))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -170,24 +206,31 @@ mod tests {
         );
     }
 
-    /// New row-switch balance knobs deserialize with camelCase names.
+    /// Same-finger row-switch ratio and balance knobs deserialize with camelCase names.
     #[test]
-    fn finger_row_switch_balance_targets_parse() {
+    fn finger_row_switch_targets_parse() {
         let targets: Targets = serde_json::from_str(
             r#"{
-                "pinkyRowSwitchBalance": {"type": "max", "value": 10, "weight": 0.25},
-                "indexRowSwitchBalance": {"type": "max", "value": 12, "weight": 0.5}
+                "pinkyRowSwitchRatio": {"type": "max", "value": 10, "weight": 0.25},
+                "ringRowSwitchRatio": {"type": "max", "value": 11, "weight": 0.3},
+                "middleRowSwitchBalance": {"type": "max", "value": 12, "weight": 0.4},
+                "indexRowSwitchBalance": {"type": "max", "value": 13, "weight": 0.5}
             }"#,
         )
         .unwrap();
 
         assert_eq!(
-            targets.pinky_row_switch_balance,
+            targets.pinky_row_switch_ratio,
             Some(Target::max(10.0, 0.25))
+        );
+        assert_eq!(targets.ring_row_switch_ratio, Some(Target::max(11.0, 0.3)));
+        assert_eq!(
+            targets.middle_row_switch_balance,
+            Some(Target::max(12.0, 0.4))
         );
         assert_eq!(
             targets.index_row_switch_balance,
-            Some(Target::max(12.0, 0.5))
+            Some(Target::max(13.0, 0.5))
         );
     }
 }

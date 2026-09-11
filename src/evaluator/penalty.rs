@@ -47,6 +47,14 @@
 //! | `middle_balance`     | middle column left/right balance (default: 3%) |
 //! | `index_inner_balance`| index-inner column left/right balance (default: 3%) |
 //! | `index_outer_balance`| index-outer column left/right balance (default: 3%) |
+//! | `left_pinky_row_switch_ratio` | pinky same-finger row-switch ratio cap on left hand |
+//! | `right_pinky_row_switch_ratio` | pinky same-finger row-switch ratio cap on right hand |
+//! | `left_ring_row_switch_ratio` | ring same-finger row-switch ratio cap on left hand |
+//! | `right_ring_row_switch_ratio` | ring same-finger row-switch ratio cap on right hand |
+//! | `left_middle_row_switch_ratio` | middle same-finger row-switch ratio cap on left hand |
+//! | `right_middle_row_switch_ratio` | middle same-finger row-switch ratio cap on right hand |
+//! | `left_index_row_switch_ratio` | merged-index same-finger row-switch ratio cap on left hand |
+//! | `right_index_row_switch_ratio` | merged-index same-finger row-switch ratio cap on right hand |
 //! | `pinky_row_switch_balance` | pinky same-finger row-switch left/right balance |
 //! | `ring_row_switch_balance`  | ring same-finger row-switch left/right balance |
 //! | `middle_row_switch_balance`| middle same-finger row-switch left/right balance |
@@ -217,6 +225,46 @@ fn terms<'a>(
             "right_index_outer_ratio",
             t.index_outer_ratio,
             r.right_index_outer_ratio() * 100.0,
+        ),
+        (
+            "left_pinky_row_switch_ratio",
+            t.pinky_row_switch_ratio,
+            r.left_pinky_row_switch_ratio() * 100.0,
+        ),
+        (
+            "left_ring_row_switch_ratio",
+            t.ring_row_switch_ratio,
+            r.left_ring_row_switch_ratio() * 100.0,
+        ),
+        (
+            "left_middle_row_switch_ratio",
+            t.middle_row_switch_ratio,
+            r.left_middle_row_switch_ratio() * 100.0,
+        ),
+        (
+            "left_index_row_switch_ratio",
+            t.index_row_switch_ratio,
+            r.left_index_row_switch_ratio() * 100.0,
+        ),
+        (
+            "right_pinky_row_switch_ratio",
+            t.pinky_row_switch_ratio,
+            r.right_pinky_row_switch_ratio() * 100.0,
+        ),
+        (
+            "right_ring_row_switch_ratio",
+            t.ring_row_switch_ratio,
+            r.right_ring_row_switch_ratio() * 100.0,
+        ),
+        (
+            "right_middle_row_switch_ratio",
+            t.middle_row_switch_ratio,
+            r.right_middle_row_switch_ratio() * 100.0,
+        ),
+        (
+            "right_index_row_switch_ratio",
+            t.index_row_switch_ratio,
+            r.right_index_row_switch_ratio() * 100.0,
         ),
         ("pinky_balance", t.pinky_balance, r.pinky_balance()),
         ("ring_balance", t.ring_balance, r.ring_balance()),
@@ -490,7 +538,7 @@ mod tests {
         let terms = skewed().breakdown(&targets_config());
 
         assert!(terms.windows(2).all(|w| w[0].cost >= w[1].cost));
-        assert_eq!(terms.len(), 30);
+        assert_eq!(terms.len(), 38);
     }
 
     /// Pressure is zero at the goal and grows with the miss — the "who wins the next
@@ -583,6 +631,10 @@ mod tests {
                 middle_balance: limit(3.0),
                 index_inner_balance: limit(3.0),
                 index_outer_balance: limit(3.0),
+                pinky_row_switch_ratio: limit(8.0),
+                ring_row_switch_ratio: limit(8.0),
+                middle_row_switch_ratio: limit(7.0),
+                index_row_switch_ratio: limit(7.0),
                 pinky_row_switch_balance: limit(10.0),
                 ring_row_switch_balance: limit(10.0),
                 middle_row_switch_balance: limit(10.0),

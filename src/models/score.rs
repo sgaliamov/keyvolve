@@ -225,6 +225,46 @@ impl ScoreResult {
                 t.index_outer_ratio,
                 self.right_index_outer_ratio() * 100.0,
             ),
+            (
+                "left_pinky_row_switch_ratio",
+                t.pinky_row_switch_ratio,
+                self.left_pinky_row_switch_ratio() * 100.0,
+            ),
+            (
+                "left_ring_row_switch_ratio",
+                t.ring_row_switch_ratio,
+                self.left_ring_row_switch_ratio() * 100.0,
+            ),
+            (
+                "left_middle_row_switch_ratio",
+                t.middle_row_switch_ratio,
+                self.left_middle_row_switch_ratio() * 100.0,
+            ),
+            (
+                "left_index_row_switch_ratio",
+                t.index_row_switch_ratio,
+                self.left_index_row_switch_ratio() * 100.0,
+            ),
+            (
+                "right_pinky_row_switch_ratio",
+                t.pinky_row_switch_ratio,
+                self.right_pinky_row_switch_ratio() * 100.0,
+            ),
+            (
+                "right_ring_row_switch_ratio",
+                t.ring_row_switch_ratio,
+                self.right_ring_row_switch_ratio() * 100.0,
+            ),
+            (
+                "right_middle_row_switch_ratio",
+                t.middle_row_switch_ratio,
+                self.right_middle_row_switch_ratio() * 100.0,
+            ),
+            (
+                "right_index_row_switch_ratio",
+                t.index_row_switch_ratio,
+                self.right_index_row_switch_ratio() * 100.0,
+            ),
             ("pinky_balance", t.pinky_balance, self.pinky_balance()),
             ("ring_balance", t.ring_balance, self.ring_balance()),
             ("middle_balance", t.middle_balance, self.middle_balance()),
@@ -340,6 +380,46 @@ impl ScoreResult {
                 counts[i] as f64,
             )
         })
+    }
+
+    /// Left pinky same-finger row-switch ratio: weighted row-switch cost / pinky presses.
+    pub fn left_pinky_row_switch_ratio(&self) -> f64 {
+        self.left_finger_row_switch_ratios()[0]
+    }
+
+    /// Right pinky same-finger row-switch ratio: weighted row-switch cost / pinky presses.
+    pub fn right_pinky_row_switch_ratio(&self) -> f64 {
+        self.right_finger_row_switch_ratios()[0]
+    }
+
+    /// Left ring same-finger row-switch ratio: weighted row-switch cost / ring presses.
+    pub fn left_ring_row_switch_ratio(&self) -> f64 {
+        self.left_finger_row_switch_ratios()[1]
+    }
+
+    /// Right ring same-finger row-switch ratio: weighted row-switch cost / ring presses.
+    pub fn right_ring_row_switch_ratio(&self) -> f64 {
+        self.right_finger_row_switch_ratios()[1]
+    }
+
+    /// Left middle same-finger row-switch ratio: weighted row-switch cost / middle presses.
+    pub fn left_middle_row_switch_ratio(&self) -> f64 {
+        self.left_finger_row_switch_ratios()[2]
+    }
+
+    /// Right middle same-finger row-switch ratio: weighted row-switch cost / middle presses.
+    pub fn right_middle_row_switch_ratio(&self) -> f64 {
+        self.right_finger_row_switch_ratios()[2]
+    }
+
+    /// Left index same-finger row-switch ratio: weighted row-switch cost / merged-index presses.
+    pub fn left_index_row_switch_ratio(&self) -> f64 {
+        self.left_finger_row_switch_ratios()[3]
+    }
+
+    /// Right index same-finger row-switch ratio: weighted row-switch cost / merged-index presses.
+    pub fn right_index_row_switch_ratio(&self) -> f64 {
+        self.right_finger_row_switch_ratios()[3]
     }
 
     /// Left-hand finger press counts, pinky → index with both index columns merged.

@@ -134,7 +134,7 @@ evaluate:
 
 evaluator:
   # Fitness multiplier; higher scales scores up, lower scales down.
-  fitnessScale: 1000000000000000
+  fitnessScale: 100000000000000000
 
   # Curve steepness: term = weight · deviation ^ sharpness.
   # 1.0 = linear, higher = forgiving under the limit and brutal over it.
@@ -156,11 +156,11 @@ evaluator:
 
   # Ratio of row-switch cost to total effort. Penalizes vertical jumps within a hand.
   # type: max — lower is better.
-  # rowSwitchRatio: { type: max, value: 18, weight: 1 }
+  rowSwitchRatio: { type: max, value: 8, weight: 1 }
 
   # Ratio of hand-switch cost to total effort. Penalizes hand alternation.
   # type: max — lower is better.
-  handSwitchRatio: { type: max, value: 37, weight: 3 }
+  handSwitchRatio: { type: max, value: 38, weight: 2 }
 
   # Left/right effort asymmetry (absolute percentage-point difference).
   # type: max — lower is better.
@@ -203,7 +203,7 @@ evaluator:
   # Below the cap cost fades (deviation^sharpness); effort map decides placement, caps guard fatigue.
 
   # Pinky (column 1) effort share cap.
-  pinkyRatio: { type: max, value: 5.5, weight: 1.0 }
+  pinkyRatio: { type: max, value: 6, weight: 1.0 }
 
   # Ring (column 2) effort share cap.
   ringRatio: { type: max, value: 10, weight: 1.0 }
@@ -212,7 +212,7 @@ evaluator:
   middleRatio: { type: max, value: 13, weight: 1.0 }
 
   # Index inner (column 4) effort share cap.
-  indexInnerRatio: { type: max, value: 12.5, weight: 1.0 }
+  indexInnerRatio: { type: max, value: 12, weight: 1.0 }
 
   # Index outer (column 5) effort share cap.
   # Left hand only; right auto-mirrored.
@@ -239,18 +239,17 @@ evaluator:
 
   # Per-finger left/right same-finger row-switch balance (percent skew, signed).
   # Uses same-finger row-switch cost only; index inner+outer are merged.
-
-  # Pinky left/right row-switch balance.
   pinkyRowSwitchBalance: { type: max, value: 10, weight: 0.1 }
-
-  # Ring left/right row-switch balance.
   ringRowSwitchBalance: { type: max, value: 15, weight: 0.1 }
-
-  # Middle left/right row-switch balance.
   middleRowSwitchBalance: { type: max, value: 15, weight: 0.1 }
-
-  # Index left/right row-switch balance.
   indexRowSwitchBalance: { type: max, value: 15, weight: 0.1 }
+
+  # Per-finger same-finger row-switch ratio caps. Percent of that finger's presses that
+  # cross rows; left and right hands share the same cap for each finger.
+  pinkyRowSwitchRatio: { type: max, value: 3, weight: 0.75 }
+  ringRowSwitchRatio: { type: max, value: 3, weight: 0.75 }
+  middleRowSwitchRatio: { type: max, value: 5, weight: 0.75 }
+  indexRowSwitchRatio: { type: max, value: 5, weight: 0.75 }
 
 ga:
   # Mutation probability applied per genome element.
