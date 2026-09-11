@@ -34,12 +34,12 @@
 //!
 //! | metric               | meaning                          |
 //! |----------------------|----------------------------------|
-//! | `row_switch_ratio`   | row jumps inside a hand          |
+//! | `row_switch_ratio`   | row jumps by same finger          |
 //! | `hand_switch_ratio`  | hand alternation (replaces `mean_streak_power`) |
 //! | `efforts_imbalance`  | left/right effort asymmetry      |
 //! | `hands_imbalance`    | left/right press-count asymmetry |
 //! | `roll_imbalance`     | left/right roll asymmetry        |
-//! | `row_switch_imbalance` | left/right row-step asymmetry  |
+//! | `row_switch_imbalance` | left/right same-finger row-step asymmetry |
 //! | `streak_imbalance`   | left/right run-length asymmetry  |
 //! | `home_row_balance`   | home row left/right balance (absolute value) |
 //! | `pinky_balance`      | pinky column left/right balance (default: 3%) |

@@ -25,10 +25,11 @@ pub struct ScoreResult {
     /// Hand switches between consecutive presses.
     pub hand_switches: u64,
 
-    /// Weighted row-switch cost on the left hand: adjacent-row move = 1, jump-over-row = 2.
+    /// Weighted same-finger row-switch cost on the left hand: adjacent-row move = 1,
+    /// jump-over-row = 2. Zero if the next press uses a different finger.
     pub left_row_switch_cost: u64,
 
-    /// Weighted row-switch cost on the right hand.
+    /// Weighted same-finger row-switch cost on the right hand.
     pub right_row_switch_cost: u64,
 
     /// Effort accumulated on the left hand.
@@ -602,7 +603,7 @@ impl ScoreResult {
         crate::math::signed_imbalance_percent(self.left_count as f64, self.right_count as f64)
     }
 
-    /// Row-switch cost imbalance as a percent: how far the left/right row-switch
+    /// Same-finger row-switch cost imbalance as a percent: how far the left/right row-switch
     /// cost ratio strays from parity. Range: [0.0, ∞). 0% = balanced, asymmetric by sign.
     pub fn row_switch_imbalance(&self) -> f64 {
         crate::math::signed_imbalance_percent(
@@ -656,15 +657,15 @@ impl ScoreResult {
 
     // Aggregates: totals combining both hands.
 
-    /// Total vertical row-switch distance, both hands (adjacent row = 1, jump = 2).
+    /// Total vertical row-switch distance, both hands, same finger only (adjacent row = 1, jump = 2).
     pub fn row_switch_distance(&self) -> u64 {
         self.left_row_switch_cost + self.right_row_switch_cost
     }
 
-    /// Share of same-hand moves that cross rows, weighted by jump severity.
+    /// Share of same-finger moves that cross rows, weighted by jump severity.
     /// Average vertical distance per same-hand press. Numerator: total row-switch distance
-    /// (adjacent row = 1, jump = 2). Denominator: all same-hand presses. Range: [0.0, ∞).
-    /// 0 = every same-hand move stays in its row. Example: 8 distance / 16 presses = 0.5 avg distance per press.
+    /// (adjacent row = 1, jump = 2), zero when the finger changes. Denominator: all same-hand presses.
+    /// Range: [0.0, ∞). 0 = every same-finger move stays in its row. Example: 8 distance / 16 presses = 0.5 avg distance per press.
     pub fn row_switch_ratio(&self) -> f64 {
         crate::math::ratio(
             self.row_switch_distance() as f64,

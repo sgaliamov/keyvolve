@@ -117,8 +117,8 @@ impl LayoutEvaluator {
         let finger_row_cost = if same_finger { row_cost } else { 0 };
         score.hand_switches = hand_switches;
         // Row steps only matter same-hand; alternating hands ignore row distance.
-        score.left_row_switch_cost = if b_left { row_cost } else { 0 };
-        score.right_row_switch_cost = if !b_left { row_cost } else { 0 };
+        score.left_row_switch_cost = if b_left { finger_row_cost } else { 0 };
+        score.right_row_switch_cost = if !b_left { finger_row_cost } else { 0 };
         score.left_finger_row_switch_cost[to_finger] = if b_left { finger_row_cost } else { 0 };
         score.right_finger_row_switch_cost[to_finger] = if !b_left { finger_row_cost } else { 0 };
         // Same-hand bigram lands wholly on one hand; alternating pairs add to neither.
@@ -292,7 +292,7 @@ mod tests {
 
         let score = evaluator.score_word("af", &test_keys());
 
-        assert_eq!(score.row_switch_distance(), 1);
+        assert_eq!(score.row_switch_distance(), 0);
         assert_eq!(score.left_finger_row_switch_cost, [0, 0, 0, 0]);
     }
 
