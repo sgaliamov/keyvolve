@@ -8,13 +8,14 @@ pub fn ratio(value: f64, total: f64) -> f64 {
 }
 
 /// Directional imbalance as a percent: how far the `left/right` ratio strays
-/// from parity. `0%` when balanced or when `right == 0`. Negative = left-heavy,
-/// positive = right-heavy.
+/// from parity. `0%` when balanced. If one side is zero, the asymmetry is treated
+/// as full skew toward the non-zero side: left-only = +100%, right-only = -100%.
 pub fn signed_imbalance_percent(left: f64, right: f64) -> f64 {
-    if right == 0.0 {
-        0.0
-    } else {
-        (left / right - 1.0) * 100.0
+    match (left == 0.0, right == 0.0) {
+        (true, true) => 0.0,
+        (true, false) => -100.0,
+        (false, true) => 100.0,
+        _ => (left / right - 1.0) * 100.0,
     }
 }
 
@@ -39,8 +40,10 @@ mod tests {
     }
 
     #[test]
-    fn signed_imbalance_percent_guards_zero_right() {
-        assert_eq!(signed_imbalance_percent(4.0, 0.0), 0.0);
+    fn signed_imbalance_percent_marks_zero_side_as_full_skew() {
+        assert_eq!(signed_imbalance_percent(4.0, 0.0), 100.0);
+        assert_eq!(signed_imbalance_percent(0.0, 4.0), -100.0);
+        assert_eq!(signed_imbalance_percent(0.0, 0.0), 0.0);
     }
 
     #[test]

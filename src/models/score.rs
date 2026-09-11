@@ -1112,13 +1112,13 @@ mod tests {
         };
         assert!((skewed.roll_imbalance() - 100.0).abs() < 1e-9);
 
-        // Asymmetric guard: no right rolls → 0%.
+        // Asymmetric full skew: no right rolls → left-heavy by 100%.
         let zero_right = ScoreResult {
             left_rolls: 4,
             right_rolls: 0,
             ..Default::default()
         };
-        assert_eq!(zero_right.roll_imbalance(), 0.0);
+        assert_eq!(zero_right.roll_imbalance(), 100.0);
     }
 
     #[test]
