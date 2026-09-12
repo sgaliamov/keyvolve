@@ -69,8 +69,8 @@ optimization:
 
   # Optional: Allowed slot indices for specific characters (white-list constraints).
   # If specified, only these slots can be used; other slots are forbidden for that char.
-  # allowed:
-    #   e: [6, 7, 8]
+  allowed:
+    e: [6, 7, 8]
 
   # Optional: Character pairs that must be placed adjacent (rolls/same-hand digraphs).
   # rolls: ['er', 'th']
@@ -158,7 +158,7 @@ evaluator:
 
   # Ratio of row-switch cost to total effort. Penalizes vertical jumps within a hand.
   # type: max — lower is better.
-  rowSwitchRatio: { type: max, value: 8, weight: 1 }
+  # rowSwitchRatio: { type: max, value: 8, weight: 1 }
 
   # Ratio of hand-switch cost to total effort. Penalizes hand alternation.
   # type: max — lower is better.
@@ -170,88 +170,58 @@ evaluator:
 
   # Left/right key-press count asymmetry (absolute percentage-point difference).
   # type: max — lower is better.
-  handsImbalance: { type: max, value: 5, weight: 1 }
+  handsImbalance: { type: max, value: 5, weight: 0.5 }
 
   # Left/right roll count asymmetry (absolute percentage-point difference).
   # type: max — lower is better.
-  rollImbalance: { type: max, value: 5, weight: 1 }
+  # rollImbalance: { type: max, value: 5, weight: 1 }
 
   # Left/right row-switch cost asymmetry (absolute percentage-point difference).
   # type: max — lower is better.
-  rowSwitchImbalance: { type: max, value: 5, weight: 1 }
+  # rowSwitchImbalance: { type: max, value: 5, weight: 1 }
 
   # Left/right streak-length asymmetry (absolute percentage-point difference).
   # type: max — lower is better.
-  streakImbalance: { type: max, value: 5, weight: 0.75 }
+  streakImbalance: { type: max, value: 5, weight: 0.25 }
 
   # # Home row left/right balance (absolute value). Penalizes asymmetry in home row effort.
   # # type: max — lower is better (zero asymmetry is ideal).
   # homeRowBalance: { type: max, value: 10, weight: 0.5 }
-
-  # Top row effort share (percentage). Rewards layouts close to target.
-  # type: target — proximity to value is better; symmetric penalty around target.
   topRowRatio: { type: target, value: 24, weight: 1 }
-
-  # Home row effort share (percentage). Rewards layouts close to target.
-  # type: target — proximity to value is better; symmetric penalty around target.
   homeRowRatio: { type: target, value: 64, weight: 2 }
-
-  # Bottom row effort share (percentage). Optional; uncomment to include.
-  # type: target — proximity to value is better; symmetric penalty around target.
   bottomRowRatio: { type: target, value: 12, weight: 1 }
 
   # Left-hand column caps (pinky, ring, middle, index-inner, index-outer); right-hand mirrors left.
   # Each column's effort share cap in percentage. type: max — upper bound only, no pull-up.
   # Below the cap cost fades (deviation^sharpness); effort map decides placement, caps guard fatigue.
-
-  # Pinky (column 1) effort share cap.
   pinkyRatio: { type: max, value: 6, weight: 1.0 }
-
-  # Ring (column 2) effort share cap.
   ringRatio: { type: max, value: 10, weight: 1.0 }
-
-  # Middle (column 3) effort share cap.
   middleRatio: { type: max, value: 13, weight: 1.0 }
-
-  # Index inner (column 4) effort share cap.
   indexInnerRatio: { type: max, value: 12, weight: 1.0 }
-
-  # Index outer (column 5) effort share cap.
-  # Left hand only; right auto-mirrored.
   indexOuterRatio: { type: max, value: 9, weight: 1.0 }
 
   # Per-finger left/right effort balance (percent skew, signed). Penalizes each
   # finger's asymmetry between hands independently of the shared ratio target above.
   # type: max — lower is better (zero skew is ideal).
-
-  # Pinky left/right balance.
   pinkyBalance: { type: max, value: 10, weight: 0.25 }
-
-  # Ring left/right balance.
   ringBalance: { type: max, value: 10, weight: 0.25 }
-
-  # Middle left/right balance.
   middleBalance: { type: max, value: 10, weight: 0.25 }
-
-  # Index inner left/right balance.
   indexInnerBalance: { type: max, value: 10, weight: 0.25 }
-
-  # Index outer left/right balance.
   indexOuterBalance: { type: max, value: 10, weight: 0.25 }
 
   # Per-finger left/right same-finger row-switch balance (percent skew, signed).
   # Uses same-finger row-switch cost only; index inner+outer are merged.
-  pinkyRowSwitchBalance: { type: max, value: 10, weight: 0.1 }
-  ringRowSwitchBalance: { type: max, value: 15, weight: 0.1 }
-  middleRowSwitchBalance: { type: max, value: 15, weight: 0.1 }
-  indexRowSwitchBalance: { type: max, value: 15, weight: 0.1 }
+  pinkyRowSwitchBalance: { type: max, value: 10, weight: 0.05 }
+  ringRowSwitchBalance: { type: max, value: 10, weight: 0.05 }
+  middleRowSwitchBalance: { type: max, value: 10, weight: 0.05 }
+  indexRowSwitchBalance: { type: max, value: 10, weight: 0.05 }
 
   # Per-finger same-finger row-switch ratio caps. Percent of that finger's presses that
   # cross rows; left and right hands share the same cap for each finger.
-  pinkyRowSwitchRatio: { type: max, value: 3, weight: 0.75 }
-  ringRowSwitchRatio: { type: max, value: 3, weight: 0.75 }
-  middleRowSwitchRatio: { type: max, value: 5, weight: 0.75 }
-  indexRowSwitchRatio: { type: max, value: 5, weight: 0.75 }
+  pinkyRowSwitchRatio: { type: max, value: 3, weight: 0.1 }
+  ringRowSwitchRatio: { type: max, value: 3, weight: 0.1 }
+  middleRowSwitchRatio: { type: max, value: 5, weight: 0.1 }
+  indexRowSwitchRatio: { type: max, value: 5, weight: 0.1 }
 
 ga:
   # Mutation probability applied per genome element.

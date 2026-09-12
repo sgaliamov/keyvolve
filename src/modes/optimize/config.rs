@@ -4,75 +4,6 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use serde::Deserialize;
 use std::path::PathBuf;
 
-/// Mirror a left-hand slot (0–14) to its right-hand counterpart (15–29).
-/// Layout:  left 0–14, right 15–29, 5 cols/row, 3 rows.
-/// Formula: `(i / 5) * 5 + (4 - i % 5) + 15`
-fn mirror_slot(i: u8) -> u8 {
-    (i / 5) * 5 + (4 - i % 5) + 15
-}
-
-/// Expand a half-position set (0–14) to both hands (adds mirrored slots 15–29).
-fn expand_half(slots: &[u8]) -> FxHashSet<u8> {
-    slots
-        .iter()
-        .flat_map(|&i| {
-            if i < 15 {
-                [i, mirror_slot(i)].into_iter()
-            } else {
-                [i, i].into_iter() // already full-range; no-op dup, deduped by HashSet
-            }
-        })
-        .collect()
-}
-
-/// Deserialize a `FxHashMap<char, FxHashSet<u8>>` where each value is a list of
-/// half-positions (0–14) that are auto-mirrored to both hands.
-fn de_letter_slot_map<'de, D>(de: D) -> Result<FxHashMap<char, FxHashSet<u8>>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    let raw: FxHashMap<char, Vec<u8>> = FxHashMap::deserialize(de)?;
-    Ok(raw
-        .into_iter()
-        .map(|(ch, slots)| (ch, expand_half(&slots)))
-        .collect())
-}
-
-/// Column index within a hand (0–4).
-#[inline]
-fn slot_col(slot: u8) -> u8 {
-    slot % 5
-}
-
-/// True when two slots are on the same hand, 1–2 columns apart, and within one row of each other.
-/// Same-column (vertical) pairs are rejected — a roll needs distinct fingers.
-pub fn are_roll_neighbors(a: u8, b: u8) -> bool {
-    let a_hand = a / 15;
-    let b_hand = b / 15;
-    let col_dist = slot_col(a).abs_diff(slot_col(b));
-    a_hand == b_hand && (1..=3).contains(&col_dist) && slot_row(a).abs_diff(slot_row(b)) <= 1
-}
-
-/// Deserialize `["th", "st"]` → `[[t,h],[s,t]]`.
-fn de_rolls<'de, D>(de: D) -> Result<Vec<[char; 2]>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    let raw: Vec<String> = Vec::deserialize(de)?;
-    raw.iter()
-        .map(|s| {
-            let mut cs = s.chars();
-            let a = cs
-                .next()
-                .ok_or_else(|| serde::de::Error::custom("empty roll pair"))?;
-            let b = cs
-                .next()
-                .ok_or_else(|| serde::de::Error::custom("roll pair needs 2 chars"))?;
-            Ok([a, b])
-        })
-        .collect()
-}
-
 /// Per-key constraints for optimization.
 #[derive(Debug, Clone, Default, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -125,16 +56,12 @@ pub struct OptimizationConfig {
     pub output: Option<PathBuf>,
 }
 
-fn default_mutation_count() -> usize {
-    10
-}
-
-fn default_max_groups() -> usize {
-    10
-}
-
-fn default_items_per_group() -> usize {
-    6
+/// Pre-computed lookups derived from [`OptimizationConfig`]; build once per run via [`OptimizationConfig::cache`].
+#[derive(Debug, Clone)]
+pub struct OptimizationCache {
+    pub frozen_slots: FxHashSet<u8>,
+    pub frozen_chars: FxHashSet<char>,
+    pub roll_partner: FxHashMap<char, char>,
 }
 
 impl OptimizationConfig {
@@ -158,21 +85,6 @@ impl OptimizationConfig {
             .is_none_or(|slots| slots.contains(&slot))
     }
 
-    /// True when every placed char sits on a permitted slot (frozen chars at their
-    /// pins, constrained chars within `allowed`, nothing on blocked slots) AND every
-    /// roll pair occupies roll-neighbor slots.
-    /// Guards against genomes from external sources (seed csv, dump) and starved
-    /// fallback placements that were produced under or drifted from the constraints.
-    pub fn is_genome_valid(&self, genome: &[char]) -> bool {
-        genome.iter().enumerate().all(|(i, &ch)| {
-            let slot = i as u8;
-            // Frozen outranks blocked: a pin on a blocked slot is still valid.
-            ch == EMPTY_SLOT
-                || self.frozen.get(&ch) == Some(&slot)
-                || (!self.blocked.contains(&slot) && self.is_slot_allowed(ch, slot))
-        }) && self.rolls_satisfied(genome)
-    }
-
     /// True when every roll pair present in `genome` sits on roll-neighbor slots.
     /// Pairs with a not-yet-placed char are skipped (mid-placement tolerance).
     /// Catches split pairs that the layered placement could not seat as neighbors
@@ -189,6 +101,21 @@ impl OptimizationConfig {
         })
     }
 
+    /// True when every placed char sits on a permitted slot (frozen chars at their
+    /// pins, constrained chars within `allowed`, nothing on blocked slots) AND every
+    /// roll pair occupies roll-neighbor slots.
+    /// Guards against genomes from external sources (seed csv, dump) and starved
+    /// fallback placements that were produced under or drifted from the constraints.
+    pub fn is_genome_valid(&self, genome: &[char]) -> bool {
+        genome.iter().enumerate().all(|(i, &ch)| {
+            let slot = i as u8;
+            // Frozen outranks blocked: a pin on a blocked slot is still valid.
+            ch == EMPTY_SLOT
+                || self.frozen.get(&ch) == Some(&slot)
+                || (!self.blocked.contains(&slot) && self.is_slot_allowed(ch, slot))
+        }) && self.rolls_satisfied(genome)
+    }
+
     /// Pre-compute derived lookups that are hot in the generator loop.
     pub fn cache(&self) -> OptimizationCache {
         OptimizationCache {
@@ -203,12 +130,85 @@ impl OptimizationConfig {
     }
 }
 
-/// Pre-computed lookups derived from [`OptimizationConfig`]; build once per run via [`OptimizationConfig::cache`].
-#[derive(Debug, Clone)]
-pub struct OptimizationCache {
-    pub frozen_slots: FxHashSet<u8>,
-    pub frozen_chars: FxHashSet<char>,
-    pub roll_partner: FxHashMap<char, char>,
+fn default_mutation_count() -> usize {
+    10
+}
+
+fn default_max_groups() -> usize {
+    10
+}
+
+fn default_items_per_group() -> usize {
+    6
+}
+
+/// Mirror a left-hand slot (0–14) to its right-hand counterpart (15–29).
+/// Layout:  left 0–14, right 15–29, 5 cols/row, 3 rows.
+/// Formula: `(i / 5) * 5 + (4 - i % 5) + 15`
+fn mirror_slot(i: u8) -> u8 {
+    (i / 5) * 5 + (4 - i % 5) + 15
+}
+
+/// Expand a half-position set (0–14) to both hands (adds mirrored slots 15–29).
+fn expand_half(slots: &[u8]) -> FxHashSet<u8> {
+    slots
+        .iter()
+        .flat_map(|&i| {
+            if i < 15 {
+                vec![i, mirror_slot(i)]
+            } else {
+                vec![i]
+            }
+        })
+        .collect()
+}
+
+/// Deserialize a `FxHashMap<char, FxHashSet<u8>>` where each value is a list of
+/// half-positions (0–14) that are auto-mirrored to both hands.
+fn de_letter_slot_map<'de, D>(de: D) -> Result<FxHashMap<char, FxHashSet<u8>>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let raw: FxHashMap<char, Vec<u8>> = FxHashMap::deserialize(de)?;
+    Ok(raw
+        .into_iter()
+        .map(|(ch, slots)| (ch, expand_half(&slots)))
+        .collect())
+}
+
+/// Column index within a hand (0–4).
+#[inline]
+fn slot_col(slot: u8) -> u8 {
+    slot % 5
+}
+
+/// True when two slots are on the same hand, 1–2 columns apart, and within one row of each other.
+/// Same-column (vertical) pairs are rejected — a roll needs distinct fingers.
+pub fn are_roll_neighbors(a: u8, b: u8) -> bool {
+    let a_hand = a / 15;
+    let b_hand = b / 15;
+    let col_dist = slot_col(a).abs_diff(slot_col(b));
+    a_hand == b_hand && (1..=3).contains(&col_dist) && slot_row(a).abs_diff(slot_row(b)) <= 1
+}
+
+/// Deserialize `["th", "st"]` → `[[t,h],[s,t]]`.
+fn de_rolls<'de, D>(de: D) -> Result<Vec<[char; 2]>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let raw: Vec<String> = Vec::deserialize(de)?;
+    raw.iter()
+        .map(|s| {
+            let mut cs = s.chars();
+            let a = cs
+                .next()
+                .ok_or_else(|| serde::de::Error::custom("empty roll pair"))?;
+            let b = cs
+                .next()
+                .ok_or_else(|| serde::de::Error::custom("roll pair needs 2 chars"))?;
+            Ok([a, b])
+        })
+        .collect()
 }
 
 #[cfg(test)]
