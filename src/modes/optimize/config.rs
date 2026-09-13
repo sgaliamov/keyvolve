@@ -1,11 +1,12 @@
 use crate::evaluator::EMPTY_SLOT;
+use crate::modes::optimize::PlacementConstraints;
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::Deserialize;
 use std::path::PathBuf;
 
 /// Per-key constraints for optimization.
 #[derive(Debug, Clone, Default, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct OptimizationConfig {
     /// Characters whose physical position is locked: maps char → key index (0-29).
     #[serde(default)]
@@ -31,7 +32,7 @@ pub struct OptimizationConfig {
     #[serde(default)]
     pub right: FxHashSet<char>,
 
-    /// Char pairs that must end up on the same hand (left-left or right-right).
+    /// Each pair shares a hand; disjoint pairs choose independently, overlaps form groups.
     /// Format: `["th", "st"]`.
     #[serde(default, deserialize_with = "de_same_side_pairs")]
     pub same_side: Vec<[char; 2]>,
@@ -55,20 +56,63 @@ pub struct OptimizationConfig {
     pub output: Option<PathBuf>,
 }
 
-/// Pre-computed lookups derived from [`OptimizationConfig`]; build once per run via [`OptimizationConfig::cache`].
-#[derive(Debug, Clone)]
-pub struct OptimizationCache {
-    pub frozen_slots: FxHashSet<u8>,
-    pub frozen_chars: FxHashSet<char>,
-    pub same_side_partner: FxHashMap<char, char>,
-}
-
 impl OptimizationConfig {
+    /// Validate and compile placement constraints for optimization.
+    pub fn compile(&self) -> miette::Result<PlacementConstraints> {
+        PlacementConstraints::new(self)
+    }
+
+    /// Validate raw constraint values without rejecting overridden restrictions.
+    pub fn validate(&self) -> miette::Result<()> {
+        let mut frozen_slots = FxHashSet::default();
+        for (&ch, &slot) in &self.frozen {
+            miette::ensure!(
+                ch.is_ascii_lowercase(),
+                "frozen key {ch:?} must be a lowercase letter a-z"
+            );
+            miette::ensure!(slot < 30, "frozen slot {slot} must be in 0..29");
+            miette::ensure!(
+                frozen_slots.insert(slot),
+                "multiple frozen keys use slot {slot}"
+            );
+        }
+        for &slot in &self.blocked {
+            miette::ensure!(slot < 30, "blocked slot {slot} must be in 0..29");
+        }
+        for (&ch, slots) in &self.allowed {
+            miette::ensure!(
+                ch.is_ascii_lowercase() || normalize_allowed_key(ch) == EMPTY_SLOT,
+                "allowed key {ch:?} must be a lowercase letter a-z, '_' or EMPTY_SLOT"
+            );
+            for &slot in slots {
+                miette::ensure!(slot < 30, "allowed slot {slot} must be in 0..29");
+            }
+        }
+        for (side, letters) in [("left", &self.left), ("right", &self.right)] {
+            for &ch in letters {
+                miette::ensure!(
+                    ch.is_ascii_lowercase(),
+                    "{side} key {ch:?} must be a lowercase letter a-z"
+                );
+            }
+        }
+        for &[a, b] in &self.same_side {
+            miette::ensure!(
+                a.is_ascii_lowercase() && b.is_ascii_lowercase() && a != b,
+                "same-side pair {a:?}, {b:?} must contain two distinct lowercase letters a-z"
+            );
+        }
+        Ok(())
+    }
+
     /// Check whether placing `ch` at `slot` is permitted.
     /// Letters with no `allowed` entry are unconstrained.
     /// Frozen chars always stay at their pinned slot, ignoring `allowed`/side constraints.
     /// `left`/`right` letters are confined to that hand (slots 0–14 / 15–29).
     pub fn is_slot_allowed(&self, ch: char, slot: u8) -> bool {
+        if slot >= 30 {
+            return false;
+        }
         let ch = normalize_allowed_key(ch);
         if let Some(&frozen_slot) = self.frozen.get(&ch) {
             return slot == frozen_slot;
@@ -80,62 +124,24 @@ impl OptimizationConfig {
             return false;
         }
 
-        self.allowed
-            .get(&ch)
-            .is_none_or(|slots| slots.contains(&slot))
+        self.allowed_slots_contain(ch, slot)
     }
 
     /// Check whether `EMPTY_SLOT` is permitted at `slot`.
     /// Blocked slots are always valid empties.
     pub fn is_empty_slot_allowed(&self, slot: u8) -> bool {
-        self.blocked.contains(&slot)
-            || self
-                .allowed
-                .get(&EMPTY_SLOT)
-                .is_none_or(|slots| slots.contains(&slot))
+        slot < 30 && (self.blocked.contains(&slot) || self.allowed_slots_contain(EMPTY_SLOT, slot))
     }
 
-    /// True when every same-side pair present in `genome` sits on one hand.
-    /// Pairs with a not-yet-placed char are skipped (mid-placement tolerance).
-    /// Catches split pairs from foreign genomes injected under different constraints.
-    pub fn same_side_satisfied(&self, genome: &[char]) -> bool {
-        self.same_side.iter().all(|&[a, b]| {
-            match (
-                genome.iter().position(|&c| c == a),
-                genome.iter().position(|&c| c == b),
-            ) {
-                (Some(ia), Some(ib)) => on_same_hand(ia as u8, ib as u8),
-                _ => true,
-            }
-        })
-    }
-
-    /// True when every placed char sits on a permitted slot (frozen chars at their
-    /// pins, constrained chars within `allowed`, nothing on blocked slots) AND every
-    /// same-side pair occupies one hand.
-    /// Guards against genomes from external sources (seed csv, dump) and starved
-    /// fallback placements that were produced under or drifted from the constraints.
-    pub fn is_genome_valid(&self, genome: &[char]) -> bool {
-        genome.iter().enumerate().all(|(i, &ch)| {
-            let slot = i as u8;
-            // Frozen outranks blocked: a pin on a blocked slot is still valid.
-            (ch == EMPTY_SLOT && self.is_empty_slot_allowed(slot))
-                || self.frozen.get(&ch) == Some(&slot)
-                || (!self.blocked.contains(&slot) && self.is_slot_allowed(ch, slot))
-        }) && self.same_side_satisfied(genome)
-    }
-
-    /// Pre-compute derived lookups that are hot in the generator loop.
-    pub fn cache(&self) -> OptimizationCache {
-        OptimizationCache {
-            frozen_slots: self.frozen.values().copied().collect(),
-            frozen_chars: self.frozen.keys().copied().collect(),
-            same_side_partner: self
-                .same_side
-                .iter()
-                .flat_map(|&[a, b]| [(a, b), (b, a)])
-                .collect(),
-        }
+    /// Match allowed slots, combining both spellings of the empty-slot key.
+    fn allowed_slots_contain(&self, ch: char, slot: u8) -> bool {
+        let slots = self.allowed.get(&ch);
+        let alias = (ch == EMPTY_SLOT).then(|| self.allowed.get(&'_')).flatten();
+        (slots.is_none() && alias.is_none())
+            || slots
+                .into_iter()
+                .chain(alias)
+                .any(|slots| slots.contains(&slot))
     }
 }
 
@@ -162,13 +168,8 @@ fn mirror_slot(i: u8) -> u8 {
 fn expand_half(slots: &[u8]) -> FxHashSet<u8> {
     slots
         .iter()
-        .flat_map(|&i| {
-            if i < 15 {
-                vec![i, mirror_slot(i)]
-            } else {
-                vec![i]
-            }
-        })
+        .flat_map(|&i| [Some(i), (i < 15).then(|| mirror_slot(i))])
+        .flatten()
         .collect()
 }
 
@@ -181,6 +182,11 @@ where
     let raw: FxHashMap<char, Vec<u8>> = FxHashMap::deserialize(de)?;
     let mut out = FxHashMap::default();
     for (ch, slots) in raw {
+        if let Some(slot) = slots.iter().find(|&&slot| slot >= 30) {
+            return Err(serde::de::Error::custom(format!(
+                "allowed slot {slot} must be in 0..29"
+            )));
+        }
         out.entry(normalize_allowed_key(ch))
             .or_insert_with(FxHashSet::default)
             .extend(expand_half(&slots));
@@ -188,12 +194,7 @@ where
     Ok(out)
 }
 
-/// True when two slots are on the same hand.
-#[inline]
-fn on_same_hand(a: u8, b: u8) -> bool {
-    a / 15 == b / 15
-}
-
+/// Normalize the user-facing empty-slot alias.
 #[inline]
 fn normalize_allowed_key(ch: char) -> char {
     if ch == '_' { EMPTY_SLOT } else { ch }
@@ -214,6 +215,11 @@ where
             let b = cs
                 .next()
                 .ok_or_else(|| serde::de::Error::custom("same-side pair needs 2 chars"))?;
+            if cs.next().is_some() || !a.is_ascii_lowercase() || !b.is_ascii_lowercase() || a == b {
+                return Err(serde::de::Error::custom(
+                    "same-side pair must contain exactly two distinct lowercase letters a-z",
+                ));
+            }
             Ok([a, b])
         })
         .collect()
@@ -222,6 +228,196 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn complete_validation_rejects_missing_letters() {
+        assert!(
+            !OptimizationConfig::default()
+                .compile()
+                .unwrap()
+                .is_genome_valid(&[EMPTY_SLOT; 30])
+        );
+    }
+
+    #[test]
+    fn pair_parser_rejects_extra_characters() {
+        assert!(serde_json::from_str::<OptimizationConfig>(r#"{"sameSide":["the"]}"#).is_err());
+    }
+
+    #[test]
+    fn obsolete_rolls_setting_is_rejected() {
+        assert!(serde_json::from_str::<OptimizationConfig>(r#"{"rolls":["th"]}"#).is_err());
+    }
+
+    #[test]
+    fn unknown_optimization_setting_is_rejected() {
+        assert!(serde_json::from_str::<OptimizationConfig>(r#"{"same_side":["th"]}"#).is_err());
+    }
+
+    #[test]
+    fn validation_accepts_boundary_slots_and_empty_aliases() {
+        let cfg = OptimizationConfig {
+            frozen: [('a', 0), ('z', 29)].into_iter().collect(),
+            blocked: [0, 29].into_iter().collect(),
+            allowed: ['a', 'z', '_', EMPTY_SLOT]
+                .into_iter()
+                .map(|ch| (ch, [0, 29].into_iter().collect()))
+                .collect(),
+            left: ['a'].into_iter().collect(),
+            right: ['z'].into_iter().collect(),
+            same_side: vec![['a', 'z']],
+            ..Default::default()
+        };
+        assert!(cfg.validate().is_ok());
+    }
+
+    #[test]
+    fn validation_rejects_out_of_range_slots() {
+        for slot in [30, u8::MAX] {
+            let configs = [
+                OptimizationConfig {
+                    frozen: [('a', slot)].into_iter().collect(),
+                    ..Default::default()
+                },
+                OptimizationConfig {
+                    blocked: [slot].into_iter().collect(),
+                    ..Default::default()
+                },
+                OptimizationConfig {
+                    allowed: [('a', [slot].into_iter().collect())].into_iter().collect(),
+                    ..Default::default()
+                },
+            ];
+            for cfg in configs {
+                assert!(cfg.validate().is_err(), "{cfg:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn validation_rejects_duplicate_frozen_slots() {
+        let cfg = OptimizationConfig {
+            frozen: [('a', 0), ('b', 0)].into_iter().collect(),
+            ..Default::default()
+        };
+        assert!(cfg.validate().is_err());
+        assert!(cfg.compile().is_err());
+    }
+
+    #[test]
+    fn validation_rejects_nonletters_in_frozen_and_sides() {
+        for ch in ['A', '1', '_', EMPTY_SLOT, 'é'] {
+            let configs = [
+                OptimizationConfig {
+                    frozen: [(ch, 0)].into_iter().collect(),
+                    ..Default::default()
+                },
+                OptimizationConfig {
+                    left: [ch].into_iter().collect(),
+                    ..Default::default()
+                },
+                OptimizationConfig {
+                    right: [ch].into_iter().collect(),
+                    ..Default::default()
+                },
+            ];
+            for cfg in configs {
+                assert!(cfg.validate().is_err(), "{cfg:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn validation_rejects_invalid_allowed_keys() {
+        for ch in ['A', '1', ' ', 'é'] {
+            let cfg = OptimizationConfig {
+                allowed: [(ch, [0].into_iter().collect())].into_iter().collect(),
+                ..Default::default()
+            };
+            assert!(cfg.validate().is_err(), "{ch:?}");
+        }
+    }
+
+    #[test]
+    fn validation_accepts_overridden_and_globally_conflicting_constraints() {
+        let cfg = OptimizationConfig {
+            frozen: [('a', 29)].into_iter().collect(),
+            blocked: (0..30).collect(),
+            allowed: [('a', FxHashSet::default()), ('b', FxHashSet::default())]
+                .into_iter()
+                .collect(),
+            left: ['a', 'b'].into_iter().collect(),
+            right: ['a', 'b'].into_iter().collect(),
+            ..Default::default()
+        };
+        assert!(cfg.validate().is_ok());
+        assert!(cfg.is_slot_allowed('a', 29));
+    }
+
+    #[test]
+    fn validation_rejects_malformed_same_side_pairs() {
+        for pair in [['a', 'a'], ['A', 'b'], ['a', '_'], ['a', 'é'], ['`', 'a']] {
+            let cfg = OptimizationConfig {
+                same_side: vec![pair],
+                ..Default::default()
+            };
+            assert!(cfg.validate().is_err(), "{pair:?}");
+        }
+    }
+
+    #[test]
+    fn duplicate_and_reversed_pairs_are_valid() {
+        let cfg: OptimizationConfig =
+            serde_json::from_str(r#"{"sameSide":["th","ht","th"]}"#).unwrap();
+        assert_eq!(cfg.same_side, vec![['t', 'h'], ['h', 't'], ['t', 'h']]);
+        assert!(cfg.validate().is_ok());
+    }
+
+    #[test]
+    fn pair_parser_rejects_malformed_pairs() {
+        for pair in ["", "t", "tt", "Th", "té", "_h", "`h", "th "] {
+            let json = serde_json::json!({ "sameSide": [pair] });
+            assert!(
+                serde_json::from_value::<OptimizationConfig>(json).is_err(),
+                "{pair:?}"
+            );
+        }
+        for value in [
+            serde_json::json!(null),
+            serde_json::json!(["t", "h"]),
+            serde_json::json!(7),
+        ] {
+            let json = serde_json::json!({ "sameSide": [value] });
+            assert!(serde_json::from_value::<OptimizationConfig>(json).is_err());
+        }
+    }
+
+    #[test]
+    fn allowed_parser_rejects_out_of_range_slots_before_expansion() {
+        for slot in [30, 255] {
+            for ch in ["a", "_", "`"] {
+                let json = serde_json::json!({ "allowed": { ch: [slot] } });
+                assert!(
+                    serde_json::from_value::<OptimizationConfig>(json).is_err(),
+                    "{ch:?}: {slot}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn slot_parsers_reject_invalid_numbers() {
+        for slot in [-1, 256] {
+            let inputs = [
+                serde_json::json!({ "frozen": { "a": slot } }),
+                serde_json::json!({ "blocked": [slot] }),
+                serde_json::json!({ "allowed": { "a": [slot] } }),
+            ];
+            for json in inputs {
+                assert!(serde_json::from_value::<OptimizationConfig>(json).is_err());
+            }
+        }
+    }
 
     #[test]
     fn mirror_slot_maps_correctly() {
@@ -245,6 +441,70 @@ mod tests {
         assert!(cfg.is_slot_allowed('a', 0));
         assert!(cfg.is_slot_allowed('z', 29));
         assert!(cfg.is_empty_slot_allowed(0));
+    }
+
+    #[test]
+    fn slot_helpers_reject_out_of_bounds_even_with_overrides() {
+        for slot in [30, u8::MAX] {
+            let mut cfg = OptimizationConfig::default();
+            assert!(!cfg.is_slot_allowed('a', slot));
+            assert!(!cfg.is_empty_slot_allowed(slot));
+            cfg.frozen.insert('a', slot);
+            cfg.blocked.insert(slot);
+            cfg.allowed.insert(EMPTY_SLOT, [slot].into_iter().collect());
+            assert!(!cfg.is_slot_allowed('a', slot));
+            assert!(!cfg.is_slot_allowed('_', slot));
+            assert!(!cfg.is_empty_slot_allowed(slot));
+        }
+    }
+
+    #[test]
+    fn empty_slot_helpers_normalize_direct_aliases() {
+        for key in ['_', EMPTY_SLOT] {
+            let cfg = OptimizationConfig {
+                allowed: [(key, [29].into_iter().collect())].into_iter().collect(),
+                ..Default::default()
+            };
+            for ch in ['_', EMPTY_SLOT] {
+                assert!(cfg.is_slot_allowed(ch, 29));
+                assert!(!cfg.is_slot_allowed(ch, 0));
+            }
+            assert!(cfg.is_empty_slot_allowed(29));
+            assert!(!cfg.is_empty_slot_allowed(0));
+        }
+    }
+
+    #[test]
+    fn empty_slot_helpers_union_direct_aliases() {
+        let cfg = OptimizationConfig {
+            allowed: [
+                ('_', [0].into_iter().collect()),
+                (EMPTY_SLOT, [29].into_iter().collect()),
+            ]
+            .into_iter()
+            .collect(),
+            ..Default::default()
+        };
+        for slot in [0, 29] {
+            assert!(cfg.is_slot_allowed('_', slot));
+            assert!(cfg.is_slot_allowed(EMPTY_SLOT, slot));
+            assert!(cfg.is_empty_slot_allowed(slot));
+        }
+        assert!(!cfg.is_slot_allowed('_', 1));
+        assert!(!cfg.is_empty_slot_allowed(1));
+    }
+
+    #[test]
+    fn blocked_slots_override_empty_allowed_slots() {
+        for key in ['_', EMPTY_SLOT] {
+            let cfg = OptimizationConfig {
+                blocked: [0].into_iter().collect(),
+                allowed: [(key, FxHashSet::default())].into_iter().collect(),
+                ..Default::default()
+            };
+            assert!(cfg.is_empty_slot_allowed(0));
+            assert!(!cfg.is_empty_slot_allowed(1));
+        }
     }
 
     #[test]
@@ -308,18 +568,6 @@ mod tests {
     }
 
     #[test]
-    fn genome_validity_rejects_wrong_side() {
-        let mut cfg = OptimizationConfig::default();
-        cfg.right.insert('o');
-        let mut g = vec![EMPTY_SLOT; 30];
-        g[20] = 'o';
-        assert!(cfg.is_genome_valid(&g));
-        g[20] = EMPTY_SLOT;
-        g[5] = 'o'; // left hand → violates right pin
-        assert!(!cfg.is_genome_valid(&g));
-    }
-
-    #[test]
     fn deserialize_side_maps() {
         let json = r#"{"left": ["a","s"], "right": ["o","e"]}"#;
         let cfg: OptimizationConfig = serde_json::from_str(json).unwrap();
@@ -330,91 +578,13 @@ mod tests {
     }
 
     #[test]
-    fn genome_validity_checks_allowed_and_blocked() {
-        let mut cfg = OptimizationConfig::default();
-        cfg.allowed.insert('a', [0u8, 1].into_iter().collect());
-        cfg.blocked.insert(29);
-
-        let mut g = vec![EMPTY_SLOT; 30];
-        g[0] = 'a';
-        g[5] = 'b';
-        assert!(cfg.is_genome_valid(&g));
-
-        g[2] = 'a'; // second 'a' on disallowed slot
-        assert!(!cfg.is_genome_valid(&g));
-
-        g[2] = EMPTY_SLOT;
-        g[29] = 'b'; // blocked slot occupied
-        assert!(!cfg.is_genome_valid(&g));
-
-        g[29] = EMPTY_SLOT; // empty blocked slot is fine
-        assert!(cfg.is_genome_valid(&g));
-    }
-
-    #[test]
     fn frozen_pin_outranks_blocked() {
         let mut cfg = OptimizationConfig::default();
         cfg.frozen.insert('f', 29);
         cfg.blocked.insert(29);
 
-        let mut g = vec![EMPTY_SLOT; 30];
-        g[29] = 'f'; // pinned on blocked slot — frozen wins
-        assert!(cfg.is_genome_valid(&g));
-
-        g[29] = 'x'; // non-frozen char on blocked slot still invalid
-        assert!(!cfg.is_genome_valid(&g));
-    }
-
-    #[test]
-    fn same_side_satisfied_true_for_same_hand() {
-        let cfg = OptimizationConfig {
-            same_side: vec![['t', 'h']],
-            ..Default::default()
-        };
-        let mut g = vec![EMPTY_SLOT; 30];
-        g[3] = 't';
-        g[4] = 'h';
-        assert!(cfg.same_side_satisfied(&g));
-        assert!(cfg.is_genome_valid(&g));
-    }
-
-    #[test]
-    fn same_side_satisfied_false_for_cross_hand_pair() {
-        let cfg = OptimizationConfig {
-            same_side: vec![['t', 'h']],
-            ..Default::default()
-        };
-        let mut g = vec![EMPTY_SLOT; 30];
-        g[0] = 't';
-        g[15] = 'h';
-        assert!(!cfg.same_side_satisfied(&g));
-        assert!(!cfg.is_genome_valid(&g)); // guard rejects split pair
-    }
-
-    #[test]
-    fn same_side_satisfied_skips_absent_char() {
-        let cfg = OptimizationConfig {
-            same_side: vec![['t', 'h']],
-            ..Default::default()
-        };
-        let mut g = vec![EMPTY_SLOT; 30];
-        g[0] = 't'; // 'h' absent → nothing to violate yet
-        assert!(cfg.same_side_satisfied(&g));
-    }
-
-    #[test]
-    fn same_side_satisfied_allows_different_pairs_on_different_hands() {
-        let cfg = OptimizationConfig {
-            same_side: vec![['t', 'h'], ['r', 'e']],
-            ..Default::default()
-        };
-        let mut g = vec![EMPTY_SLOT; 30];
-        g[1] = 't';
-        g[4] = 'h'; // left hand
-        g[16] = 'r';
-        g[19] = 'e'; // right hand
-        assert!(cfg.same_side_satisfied(&g));
-        assert!(cfg.is_genome_valid(&g));
+        assert!(cfg.is_slot_allowed('f', 29));
+        assert!(!cfg.is_slot_allowed('f', 0));
     }
 
     #[test]
@@ -440,20 +610,31 @@ mod tests {
     }
 
     #[test]
-    fn genome_validity_checks_empty_allowed() {
+    fn deserialize_allowed_map_unions_empty_aliases() {
+        let cfg: OptimizationConfig =
+            serde_json::from_str(r#"{"allowed":{"_":[0],"`":[29]}}"#).unwrap();
+        assert!(!cfg.allowed.contains_key(&'_'));
+        assert_eq!(cfg.allowed[&EMPTY_SLOT], [0, 19, 29].into_iter().collect());
+    }
+
+    #[test]
+    fn deserialize_allowed_map_preserves_right_hand_boundaries() {
+        let cfg: OptimizationConfig =
+            serde_json::from_str(r#"{"allowed":{"a":[0,14,15,29]}}"#).unwrap();
+        assert_eq!(
+            cfg.allowed[&'a'],
+            [0, 14, 15, 19, 25, 29].into_iter().collect()
+        );
+        assert!(cfg.validate().is_ok());
+    }
+
+    #[test]
+    fn empty_slot_helper_checks_allowed() {
         let mut cfg = OptimizationConfig::default();
         cfg.allowed
             .insert(EMPTY_SLOT, [26u8, 27, 28, 29].into_iter().collect());
-        let mut g = vec!['x'; 30];
-        g[26] = EMPTY_SLOT;
-        g[27] = EMPTY_SLOT;
-        g[28] = EMPTY_SLOT;
-        g[29] = EMPTY_SLOT;
-        assert!(cfg.is_genome_valid(&g));
-
-        g[26] = 'x';
-        g[25] = EMPTY_SLOT; // disallowed empty
-        assert!(!cfg.is_genome_valid(&g));
+        assert!((26..30).all(|slot| cfg.is_empty_slot_allowed(slot)));
+        assert!(!cfg.is_empty_slot_allowed(25));
     }
 
     #[test]
@@ -468,5 +649,19 @@ mod tests {
         let json = r#"{"itemsPerGroup": 3}"#;
         let cfg: OptimizationConfig = serde_json::from_str(json).unwrap();
         assert_eq!(cfg.items_per_group, 3);
+    }
+
+    #[test]
+    fn numeric_defaults_are_unchanged() {
+        let defaults = OptimizationConfig::default();
+        assert_eq!(defaults.mutation_count, 0);
+        assert_eq!(defaults.max_groups, 0);
+        assert_eq!(defaults.items_per_group, 0);
+
+        let parsed: OptimizationConfig = serde_json::from_str("{}").unwrap();
+        assert_eq!(parsed.mutation_count, 10);
+        assert_eq!(parsed.max_groups, 10);
+        assert_eq!(parsed.items_per_group, 6);
+        assert!(parsed.validate().is_ok());
     }
 }

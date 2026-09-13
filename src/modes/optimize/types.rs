@@ -1,7 +1,7 @@
-use crate::modes::optimize::OptimizationCache;
-use crate::modes::optimize::OptimizationConfig;
+use crate::modes::optimize::PlacementConstraints;
 use crate::{evaluator::LayoutEvaluator, models::ScoreResult};
 use cliffa::cli::AppHandle;
+use std::sync::Arc;
 
 /// Genome: 30 chars occupying physical keyboard slots by index; `` ` `` = empty slot.
 pub type KeysGenome = Vec<char>;
@@ -14,8 +14,8 @@ pub type KeysIndividual = darwin::Individual<char, ScoreResult>;
 pub struct OptimizerState {
     pub evaluator: LayoutEvaluator,
     pub app: AppHandle,
-    pub optimization: OptimizationConfig,
-    pub cache: OptimizationCache,
+    pub constraints: Arc<PlacementConstraints>,
+    pub mutation_count: usize,
 }
 
 /// GA context for layout optimization.

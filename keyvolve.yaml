@@ -54,13 +54,13 @@ optimization:
   # Max home-row groups kept in final ranked output.
   maxGroups: 5
   # Number of layouts kept per home-row group in final ranked output.
-  itemsPerGroup: 1
+  itemsPerGroup: 3
 
-  # # Optional: Slot indices that must remain empty (blocked).
-  # blocked: [27, 28, 29]
-  # blocked: [0, 10, 19, 29]
+  # Optional: Slot indices that must remain empty (blocked), unless a letter is frozen there.
+  # blocked: [0, 28, 29]
+  blocked: [29]
 
-  # # Optional: Characters pinned to specific slot indices.
+  # Optional: Characters pinned to specific slot indices; pins override allowed/left/right/blocked.
   # frozen:
   #   z: 10
   #   x: 11
@@ -68,19 +68,23 @@ optimization:
   #   v: 13
 
   # Optional: Allowed slot indices for specific characters (white-list constraints).
-  # If specified, only these slots can be used; other slots are forbidden for that char.
+  # Slots 0-14 also add their mirrored right-hand positions; slots 15-29 are used as given.
+  # If specified, only these slots can be used, except for frozen pins.
   # Special key "_" constrains empty slots (the 4 unused positions).
+  # These positions may be empty, not must be empty; blocked slots are also eligible.
   allowed:
     e: [6, 7, 8]
-    # "_": [26, 27, 28, 29]
+    '_': [0, 1, 10, 11, 18, 19, 28, 29]
+    h: [1, 2, 3, 6, 7, 8, 9, 12, 13]
 
   # Optional: Character pairs that must stay on the same hand (left-left or right-right).
-  # sameSide: ['er', 'th']
+  # Disjoint pairs choose independently; overlapping pairs form one group. Contiguity is only preferred.
+  sameSide: ['er', 'th']
 
-  # Optional: Characters that prefer left-hand placement.
+  # Optional: Characters restricted to the left hand (unless frozen elsewhere).
   # left: [x, c, v]
 
-  # Optional: Characters that prefer right-hand placement.
+  # Optional: Characters restricted to the right hand (unless frozen elsewhere).
   # right: [a, i]
 
 rank:
@@ -132,7 +136,7 @@ evaluate:
   output: data/layouts.csv
   # output: data/layouts.known.csv
   # Number of best layouts printed to stdout.
-  print: 10
+  print: 5
   # Orientation used when saving layouts; left mirrors twin layouts.
   eSide: any
 
@@ -184,7 +188,7 @@ evaluator:
 
   # Left/right streak-length asymmetry (absolute percentage-point difference).
   # type: max — lower is better.
-  streakImbalance: { type: max, value: 5, weight: 0.25 }
+  streakImbalance: { type: max, value: 10, weight: 0.25 }
 
   # # Home row left/right balance (absolute value). Penalizes asymmetry in home row effort.
   # # type: max — lower is better (zero asymmetry is ideal).
@@ -220,10 +224,10 @@ evaluator:
 
   # Per-finger same-finger row-switch ratio caps. Percent of that finger's presses that
   # cross rows; left and right hands share the same cap for each finger.
-  pinkyRowSwitchRatio: { type: max, value: 3, weight: 0.1 }
-  ringRowSwitchRatio: { type: max, value: 3, weight: 0.1 }
-  middleRowSwitchRatio: { type: max, value: 5, weight: 0.1 }
-  indexRowSwitchRatio: { type: max, value: 5, weight: 0.1 }
+  pinkyRowSwitchRatio: { type: max, value: 10, weight: 0.01 }
+  ringRowSwitchRatio: { type: max, value: 10, weight: 0.01 }
+  middleRowSwitchRatio: { type: max, value: 10, weight: 0.01 }
+  indexRowSwitchRatio: { type: max, value: 10, weight: 0.01 }
 
 ga:
   # Mutation probability applied per genome element.

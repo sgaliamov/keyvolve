@@ -1,577 +1,453 @@
 use crate::evaluator::EMPTY_SLOT;
-use crate::models::slot_row;
-use crate::modes::optimize::{OptimizationCache, OptimizationConfig};
-use rand::seq::SliceRandom;
-use rustc_hash::FxHashSet;
+use crate::modes::optimize::{
+    ALL_LETTERS, ALL_SLOTS, LETTER_COUNT, PlacementConstraints, SLOT_COUNT, bits, letter,
+    letter_index,
+};
+use rand::{Rng, RngExt, seq::SliceRandom};
 
-/// Slots and letters removed together during mutation.
-pub struct Unplaced {
-    pub free: Vec<u8>,
-    pub letters: Vec<char>,
-}
+const UNASSIGNED: usize = usize::MAX;
+const MUTATION_ATTEMPTS: usize = 3;
 
-/// Re-place `letters` into `free` slots using the same layered flow as the generator:
-/// 2. Same-side pairs around frozen → 3. Allowed (with pair co-placement) → 4. Remaining pairs → 5. Free.
-/// Step 1 (frozen) is the caller's responsibility.
-pub fn place_letters(
-    genome: &mut [char],
-    free: &mut Vec<u8>,
-    letters: &[char],
-    opt: &OptimizationConfig,
-    cache: &OptimizationCache,
-) {
-    let unplaced: FxHashSet<char> = letters.iter().copied().collect();
-    let mut placed: FxHashSet<char> = FxHashSet::default();
-
-    // ── 2. Same-side pairs around frozen ─────────────────────────────────────
-    for &[a, b] in &opt.same_side {
-        let a_frozen = cache.frozen_chars.contains(&a);
-        let b_frozen = cache.frozen_chars.contains(&b);
-        match (a_frozen, b_frozen) {
-            (true, false) if unplaced.contains(&b) && !placed.contains(&b) => {
-                let anchor = opt.frozen[&a];
-                if let Some(j) = find_same_side_slot(genome, free, anchor / 15, b, opt, None) {
-                    genome[free[j] as usize] = b;
-                    placed.insert(b);
-                    free.swap_remove(j);
-                }
-            }
-            (false, true) if unplaced.contains(&a) && !placed.contains(&a) => {
-                let anchor = opt.frozen[&b];
-                if let Some(i) = find_same_side_slot(genome, free, anchor / 15, a, opt, None) {
-                    genome[free[i] as usize] = a;
-                    placed.insert(a);
-                    free.swap_remove(i);
-                }
-            }
-            _ => {}
-        }
+impl PlacementConstraints {
+    /// Generate a complete layout from a proven feasible hand combination.
+    pub fn generate(&self, rng: &mut impl Rng) -> [char; SLOT_COUNT] {
+        let orientation = self.orientations[rng.random_range(0..self.orientations.len())];
+        let domains = self.oriented_domains(orientation);
+        let mut order = std::array::from_fn(|i| i);
+        order.shuffle(rng);
+        let assignment = match_slots(&domains, &[0; SLOT_COUNT], &order)
+            .expect("compiled hand combination must have a complete matching");
+        to_genome(assignment)
     }
 
-    // ── 3. Allowed (most-constrained first) ──────────────────────────────────
-    // Sort by allowed-set size ascending: tight letters (e.g. a same-side pair locked
-    // to one column triplet) claim their few slots before wide letters can steal
-    // them. Without this, a wide letter grabs a tight letter's only slot → the
-    // tight letter is starved and spills onto a disallowed slot.
-    let mut constrained: Vec<char> = letters
-        .iter()
-        .copied()
-        .filter(|c| opt.allowed.contains_key(c))
-        .collect();
-    constrained.sort_by_key(|c| opt.allowed[c].len());
-
-    for ch in constrained {
-        if placed.contains(&ch) {
-            continue;
+    /// Repair a stale layout, retaining legal old positions as preferences, not pins.
+    pub fn repair(&self, genome: &[char], rng: &mut impl Rng) -> [char; SLOT_COUNT] {
+        if self.is_genome_valid(genome) {
+            return genome.try_into().expect("validated genome length");
         }
-        let partner = cache.same_side_partner.get(&ch).copied().filter(|p| {
-            unplaced.contains(p) && !placed.contains(p) && !cache.frozen_chars.contains(p)
-        });
-        if let Some(partner) = partner
-            && let Some((i, j)) = find_same_side_slots(genome, free, ch, partner, opt)
-        {
-            place_pair(genome, free, &mut placed, i, j, ch, partner);
-            continue;
-        }
-        place_constrained(genome, free, &mut placed, ch, opt, cache);
+        let preferred = position_hints(genome);
+        let orientation = self
+            .orientations
+            .iter()
+            .copied()
+            .max_by_key(|&orientation| {
+                self.oriented_domains(orientation)
+                    .iter()
+                    .zip(preferred)
+                    .filter(|(domain, old)| **domain & *old != 0)
+                    .count()
+            })
+            .expect("compiled constraints have a feasible hand combination");
+        let mut order = std::array::from_fn(|i| i);
+        order.shuffle(rng);
+        let assignment = match_slots(&self.oriented_domains(orientation), &preferred, &order)
+            .expect("preferences cannot invalidate a feasible matching");
+        to_genome(assignment)
     }
 
-    // ── 4. Remaining same-side pairs ─────────────────────────────────────────
-    for &[a, b] in &opt.same_side {
-        let a_placed = placed.contains(&a);
-        let b_placed = placed.contains(&b);
-        let a_unplaced = unplaced.contains(&a) && !cache.frozen_chars.contains(&a);
-        let b_unplaced = unplaced.contains(&b) && !cache.frozen_chars.contains(&b);
-
-        match (a_placed, b_placed) {
-            // Both free — place on one hand.
-            (false, false) if a_unplaced && b_unplaced => {
-                if let Some((i, j)) = find_same_side_slots(genome, free, a, b, opt) {
-                    place_pair(genome, free, &mut placed, i, j, a, b);
-                }
-            }
-            // `a` already placed (by step 3), `b` still free — anchor on `a`.
-            (true, false) if b_unplaced => {
-                let anchor = genome.iter().position(|&c| c == a).unwrap() as u8;
-                if let Some(j) = find_same_side_slot(genome, free, anchor / 15, b, opt, None) {
-                    genome[free[j] as usize] = b;
-                    placed.insert(b);
-                    free.swap_remove(j);
-                }
-            }
-            // `b` already placed (by step 3), `a` still free — anchor on `b`.
-            (false, true) if a_unplaced => {
-                let anchor = genome.iter().position(|&c| c == b).unwrap() as u8;
-                if let Some(i) = find_same_side_slot(genome, free, anchor / 15, a, opt, None) {
-                    genome[free[i] as usize] = a;
-                    placed.insert(a);
-                    free.swap_remove(i);
-                }
-            }
-            _ => {}
-        }
-    }
-
-    // ── 5. Free ──────────────────────────────────────────────────────────────
-    for &ch in letters {
-        if placed.contains(&ch) {
-            continue;
-        }
-        let idx = find_free_slot_by_priority(free, opt, |s| {
-            opt.is_slot_allowed(ch, s) && is_contiguous_slot(genome, s)
-        })
-        .or_else(|| find_free_slot_by_priority(free, opt, |s| opt.is_slot_allowed(ch, s)))
-        .or((!free.is_empty()).then_some(0));
-        if let Some(idx) = idx {
-            genome[free[idx] as usize] = ch;
-            free.swap_remove(idx);
-        }
-    }
-}
-
-/// Unplace `count` random movable units from `genome` back into a freed-slots vec.
-/// Same-side pairs currently on one hand are unplaced together as one unit.
-/// Letters sitting on blocked or disallowed slots (stale seed/dump genomes) are
-/// always unplaced first, so mutation self-heals constraint violations.
-pub fn unplace_units(
-    genome: &mut [char],
-    opt: &OptimizationConfig,
-    cache: &OptimizationCache,
-    count: usize,
-    rng: &mut impl rand::Rng,
-) -> Unplaced {
-    let mut freed = Vec::new();
-    let mut letters = Vec::new();
-
-    // ── Heal ── violators always unplace; blocked slots never rejoin the pool.
-    (0..genome.len()).for_each(|i| {
-        let (slot, ch) = (i as u8, genome[i]);
-        if ch != EMPTY_SLOT
-            && !cache.frozen_chars.contains(&ch)
-            && (opt.blocked.contains(&slot) || !opt.is_slot_allowed(ch, slot))
-        {
-            letters.push(ch);
-            genome[i] = EMPTY_SLOT;
-            if !opt.blocked.contains(&slot) {
-                freed.push(slot);
-            }
-        }
-    });
-    // Letters healed off blocked slots need landing room: open existing empties.
-    if freed.len() < letters.len() {
-        let healed: FxHashSet<u8> = freed.iter().copied().collect();
-        (0..genome.len()).for_each(|i| {
-            let slot = i as u8;
-            if genome[i] == EMPTY_SLOT
-                && !healed.contains(&slot)
-                && !opt.blocked.contains(&slot)
-                && !cache.frozen_slots.contains(&slot)
+    /// Mutate whole movable groups and single letters; existing empties can move too.
+    pub fn mutate(&self, genome: &[char; SLOT_COUNT], rng: &mut impl Rng) -> [char; SLOT_COUNT] {
+        assert!(
+            self.is_genome_valid(genome),
+            "mutation requires a validated parent"
+        );
+        let positions = position_hints(genome);
+        let mut units = [0; LETTER_COUNT];
+        units[..self.units.len()].copy_from_slice(&self.units);
+        for _ in 0..MUTATION_ATTEMPTS {
+            units[..self.units.len()].shuffle(rng);
+            let count = rng.random_range(2..=8).min(self.units.len());
+            let released = units[..count].iter().fold(0, |mask, unit| mask | unit);
+            let retained = ALL_LETTERS & !released;
+            if let Some(candidate) = self.place_retaining(retained, &positions, rng)
+                && candidate != *genome
             {
-                freed.push(slot);
+                return candidate;
             }
-        });
-    }
-
-    let mut used: FxHashSet<usize> = FxHashSet::default();
-    let mut units: Vec<Vec<usize>> = Vec::new();
-
-    for &[a, b] in &opt.same_side {
-        let Some(ia) = genome.iter().position(|&c| c == a) else {
-            continue;
-        };
-        let Some(ib) = genome.iter().position(|&c| c == b) else {
-            continue;
-        };
-        if !cache.frozen_chars.contains(&a)
-            && !cache.frozen_chars.contains(&b)
-            && !opt.blocked.contains(&(ia as u8))
-            && !opt.blocked.contains(&(ib as u8))
-            && !used.contains(&ia)
-            && !used.contains(&ib)
-            && on_same_hand(ia as u8, ib as u8)
-        {
-            used.insert(ia);
-            used.insert(ib);
-            units.push(vec![ia, ib]);
         }
-    }
-    for (i, &ch) in genome.iter().enumerate() {
-        if ch != EMPTY_SLOT
-            && !cache.frozen_chars.contains(&ch)
-            && !opt.blocked.contains(&(i as u8))
-            && !used.contains(&i)
-        {
-            units.push(vec![i]);
-        }
+        // Fully pinned or locally unique assignments are legal no-change mutations.
+        *genome
     }
 
-    units.shuffle(rng);
-    for unit in units.iter().take(count) {
-        for &idx in unit {
-            freed.push(idx as u8);
-            letters.push(genome[idx]);
-            genome[idx] = EMPTY_SLOT;
-        }
-    }
-    Unplaced {
-        free: freed,
-        letters,
-    }
-}
-
-/// True when placing a letter at `slot` keeps letters in its row-hand segment contiguous.
-/// Letters within the 5-slot row must form a single unbroken block; empties only at edges.
-pub fn is_contiguous_slot(genome: &[char], slot: u8) -> bool {
-    let hand = slot / 15;
-    let row = slot_row(slot);
-    let col = slot % 5;
-    let row_start = hand * 15 + row * 5;
-    let mut min_col = u8::MAX;
-    let mut max_col = 0u8;
-    let mut any = false;
-    for c in 0..5u8 {
-        let s = row_start + c;
-        if s != slot && genome[s as usize] != EMPTY_SLOT {
-            if !any || c < min_col {
-                min_col = c;
+    /// Solve a local mutation with unselected letters fixed, and all blank tokens free.
+    fn place_retaining(
+        &self,
+        retained: u32,
+        positions: &[u32; SLOT_COUNT],
+        rng: &mut impl Rng,
+    ) -> Option<[char; SLOT_COUNT]> {
+        let mut required = 0u16;
+        let mut fixed = 0u16;
+        for (i, &group) in self.groups.iter().enumerate() {
+            if let Some(token) = bits(group & retained).next() {
+                fixed |= 1 << i;
+                if positions[token].trailing_zeros() >= 15 {
+                    required |= 1 << i;
+                }
             }
-            if !any || c > max_col {
-                max_col = c;
-            }
-            any = true;
         }
-    }
-    !any || (col >= min_col.saturating_sub(1) && col <= max_col + 1)
-}
-
-/// Find two indices into `free` on the same hand that are valid for `(a, b)`.
-pub fn find_same_side_slots(
-    genome: &[char],
-    free: &[u8],
-    a: char,
-    b: char,
-    opt: &OptimizationConfig,
-) -> Option<(usize, usize)> {
-    for &contiguous_only in &[true, false] {
-        for i in 0..free.len() {
-            if !opt.is_slot_allowed(a, free[i])
-                || (contiguous_only && !is_contiguous_slot(genome, free[i]))
-            {
+        let mut order = std::array::from_fn(|i| i);
+        order.shuffle(rng);
+        let start = rng.random_range(0..self.orientations.len());
+        for offset in 0..self.orientations.len() {
+            let orientation = self.orientations[(start + offset) % self.orientations.len()];
+            if orientation & fixed != required {
                 continue;
             }
-            if let Some(j) = find_same_side_slot(genome, free, free[i] / 15, b, opt, Some(i)) {
-                return Some((i, j));
+            let mut domains = self.oriented_domains(orientation);
+            for token in bits(retained) {
+                domains[token] &= positions[token];
+            }
+            if let Some(assignment) = match_slots(&domains, &[0; SLOT_COUNT], &order) {
+                return Some(to_genome(assignment));
+            }
+        }
+        None
+    }
+}
+
+/// Match every token to one distinct legal slot; preferences never restrict domains.
+pub fn match_slots(
+    domains: &[u32; SLOT_COUNT],
+    preferred: &[u32; SLOT_COUNT],
+    order: &[usize; SLOT_COUNT],
+) -> Option<[usize; SLOT_COUNT]> {
+    let mut tokens = *order;
+    tokens.sort_by_key(|&token| domains[token].count_ones());
+    let mut matching = Matching {
+        domains,
+        preferred,
+        order,
+        owners: [UNASSIGNED; SLOT_COUNT],
+        free: ALL_SLOTS,
+        letters: 0,
+    };
+    for token in tokens {
+        if !matching.augment(token, &mut 0) {
+            return None;
+        }
+    }
+    Some(matching.owners)
+}
+
+/// Stack-only matching state; masks avoid rescanning occupied slots on relocation.
+struct Matching<'a> {
+    domains: &'a [u32; SLOT_COUNT],
+    preferred: &'a [u32; SLOT_COUNT],
+    order: &'a [usize; SLOT_COUNT],
+    owners: [usize; SLOT_COUNT],
+    free: u32,
+    letters: u32,
+}
+
+impl Matching<'_> {
+    /// Prefer free slots, then relocate a chain if direct placement is impossible.
+    fn augment(&mut self, token: usize, visited: &mut u32) -> bool {
+        let contiguous = if token < LETTER_COUNT {
+            contiguous_slots(self.letters)
+        } else {
+            0
+        };
+        for free_only in [true, false] {
+            for preference in [self.preferred[token], contiguous, ALL_SLOTS] {
+                let candidates = self.domains[token]
+                    & preference
+                    & !*visited
+                    & if free_only { self.free } else { ALL_SLOTS };
+                if candidates == 0 {
+                    continue;
+                }
+                for &slot in self.order {
+                    let bit = 1 << slot;
+                    if candidates & bit == 0 || *visited & bit != 0 {
+                        continue;
+                    }
+                    *visited |= bit;
+                    let occupant = self.owners[slot];
+                    if occupant == UNASSIGNED || self.augment(occupant, visited) {
+                        self.owners[slot] = token;
+                        self.free &= !bit;
+                        self.letters = if token < LETTER_COUNT {
+                            self.letters | bit
+                        } else {
+                            self.letters & !bit
+                        };
+                        return true;
+                    }
+                }
+            }
+        }
+        false
+    }
+}
+
+/// Prefer growing existing row clusters; gaps remain legal under hard constraints.
+fn contiguous_slots(letters: u32) -> u32 {
+    let mut mask = 0;
+    for start in (0..SLOT_COUNT).step_by(5) {
+        let row = (letters >> start) & 0b11111;
+        if row == 0 {
+            mask |= 0b11111 << start;
+        } else {
+            let first = row.trailing_zeros().saturating_sub(1);
+            let last = (32 - row.leading_zeros()).min(4);
+            mask |= ((1 << (last - first + 1)) - 1) << (start + first as usize);
+        }
+    }
+    mask
+}
+
+/// Collect only recognizable position hints, accepting underscore at input boundaries.
+fn position_hints(genome: &[char]) -> [u32; SLOT_COUNT] {
+    let mut hints = [0; SLOT_COUNT];
+    for (slot, &ch) in genome.iter().take(SLOT_COUNT).enumerate() {
+        if let Some(token) = letter_index(ch) {
+            hints[token] |= 1 << slot;
+        } else if ch == EMPTY_SLOT || ch == '_' {
+            for mask in &mut hints[LETTER_COUNT..] {
+                *mask |= 1 << slot;
             }
         }
     }
-    None
+    hints
 }
 
-/// Find index into `free` of a slot on `hand` that is valid for `ch`.
-pub fn find_same_side_slot(
-    genome: &[char],
-    free: &[u8],
-    hand: u8,
-    ch: char,
-    opt: &OptimizationConfig,
-    skip: Option<usize>,
-) -> Option<usize> {
-    find_free_slot_by_priority_with_index(free, opt, |i, s| {
-        Some(i) != skip
-            && s / 15 == hand
-            && opt.is_slot_allowed(ch, s)
-            && is_contiguous_slot(genome, s)
-    })
-    .or_else(|| {
-        find_free_slot_by_priority_with_index(free, opt, |i, s| {
-            Some(i) != skip && s / 15 == hand && opt.is_slot_allowed(ch, s)
-        })
-    })
-}
-
-fn find_free_slot_by_priority_with_index(
-    free: &[u8],
-    opt: &OptimizationConfig,
-    is_match: impl Fn(usize, u8) -> bool,
-) -> Option<usize> {
-    free.iter()
-        .enumerate()
-        .position(|(i, &s)| letter_prefers_slot(opt, s) && is_match(i, s))
-        .or_else(|| free.iter().enumerate().position(|(i, &s)| is_match(i, s)))
-}
-
-fn find_free_slot_by_priority(
-    free: &[u8],
-    opt: &OptimizationConfig,
-    is_match: impl Fn(u8) -> bool,
-) -> Option<usize> {
-    find_free_slot_by_priority_with_index(free, opt, |_, s| is_match(s))
-}
-
-fn letter_prefers_slot(opt: &OptimizationConfig, slot: u8) -> bool {
-    opt.allowed
-        .get(&EMPTY_SLOT)
-        .is_some_and(|empty_slots| !empty_slots.contains(&slot))
-}
-
-#[inline]
-fn on_same_hand(a: u8, b: u8) -> bool {
-    a / 15 == b / 15
-}
-
-/// Write `(a, b)` into `genome` at `free[i]`/`free[j]`, remove both from `free`.
-pub fn place_pair(
-    genome: &mut [char],
-    free: &mut Vec<u8>,
-    placed: &mut FxHashSet<char>,
-    i: usize,
-    j: usize,
-    a: char,
-    b: char,
-) {
-    genome[free[i] as usize] = a;
-    genome[free[j] as usize] = b;
-    placed.insert(a);
-    placed.insert(b);
-    // Remove higher index first to keep the lower index valid.
-    let (hi, lo) = if i > j { (i, j) } else { (j, i) };
-    free.swap_remove(hi);
-    free.swap_remove(lo);
-}
-
-/// Place a constrained `ch` onto one of its allowed slots, preferring a contiguous free one.
-/// If no allowed slot is free, evict a movable occupant of an allowed slot to a free slot it
-/// accepts — so `ch` never lands on a disallowed slot. Pairs with most-constrained-first
-/// ordering, which keeps the swap path effectively unreachable for sane configs.
-pub fn place_constrained(
-    genome: &mut [char],
-    free: &mut Vec<u8>,
-    placed: &mut FxHashSet<char>,
-    ch: char,
-    opt: &OptimizationConfig,
-    cache: &OptimizationCache,
-) {
-    // Direct: a free allowed slot (contiguous preferred).
-    if let Some(idx) = find_free_slot_by_priority(free, opt, |s| {
-        opt.is_slot_allowed(ch, s) && is_contiguous_slot(genome, s)
-    })
-    .or_else(|| find_free_slot_by_priority(free, opt, |s| opt.is_slot_allowed(ch, s)))
-    {
-        genome[free[idx] as usize] = ch;
-        placed.insert(ch);
-        free.swap_remove(idx);
-        return;
-    }
-
-    // Swap: relocate a movable occupant of an allowed slot to a free slot it accepts.
-    for s in 0..genome.len() as u8 {
-        let occ = genome[s as usize];
-        if occ == EMPTY_SLOT || !opt.is_slot_allowed(ch, s) || cache.frozen_chars.contains(&occ) {
-            continue;
+/// Convert internal distinct blank tokens to the shared empty character.
+fn to_genome(assignment: [usize; SLOT_COUNT]) -> [char; SLOT_COUNT] {
+    assignment.map(|token| {
+        if token < LETTER_COUNT {
+            letter(token)
+        } else {
+            EMPTY_SLOT
         }
-        if let Some(idx) = free.iter().position(|&f| opt.is_slot_allowed(occ, f)) {
-            genome[free[idx] as usize] = occ;
-            genome[s as usize] = ch;
-            placed.insert(ch);
-            free.swap_remove(idx);
-            return;
-        }
-    }
+    })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::evaluator::EMPTY_SLOT;
-    use crate::modes::optimize::config::{OptimizationCache, OptimizationConfig};
-    use rand::SeedableRng;
-    use rand::rngs::StdRng;
-    use rustc_hash::{FxHashMap, FxHashSet};
+    use crate::modes::optimize::OptimizationConfig;
+    use rand::{SeedableRng, rngs::StdRng};
+    use rustc_hash::FxHashSet;
 
-    /// Build a 30-char genome from a 30-char string; '_' → EMPTY_SLOT.
-    fn genome(s: &str) -> Vec<char> {
-        assert_eq!(s.len(), 30);
-        s.chars()
-            .map(|c| if c == '_' { EMPTY_SLOT } else { c })
-            .collect()
+    /// Compile a JSON fixture through the same normalization as user configuration.
+    fn constraints(json: &str) -> PlacementConstraints {
+        serde_json::from_str::<OptimizationConfig>(json)
+            .unwrap()
+            .compile()
+            .unwrap()
     }
 
-    fn test_opt(same_side: &[&str], blocked: &[u8]) -> OptimizationConfig {
-        OptimizationConfig {
-            frozen: FxHashMap::default(),
-            blocked: blocked.iter().copied().collect(),
-            same_side: same_side
-                .iter()
-                .map(|pair| {
-                    let mut chars = pair.chars();
-                    [chars.next().unwrap(), chars.next().unwrap()]
-                })
-                .collect(),
-            allowed: FxHashMap::default(),
-            left: FxHashSet::default(),
-            right: FxHashSet::default(),
-            mutation_count: 10,
-            max_groups: 10,
-            items_per_group: 6,
-            input: None,
-            output: None,
+    /// Return the canonical complete alphabet layout.
+    fn alphabet() -> [char; SLOT_COUNT] {
+        std::array::from_fn(|i| {
+            if i < LETTER_COUNT {
+                letter(i)
+            } else {
+                EMPTY_SLOT
+            }
+        })
+    }
+
+    /// Find a known-present letter in a validated fixture.
+    fn slot(genome: &[char], ch: char) -> usize {
+        genome.iter().position(|&c| c == ch).unwrap()
+    }
+
+    #[test]
+    fn empty_constraint_outranks_contiguity() {
+        let mut opt = OptimizationConfig::default();
+        opt.allowed
+            .insert(EMPTY_SLOT, [1, 2, 3, 29].into_iter().collect());
+        for (position, ch) in std::iter::once(0).chain(5..29).zip('a'..='y') {
+            opt.frozen.insert(ch, position);
         }
-    }
-
-    fn test_cache(frozen_chars: &[char]) -> OptimizationCache {
-        OptimizationCache {
-            frozen_slots: FxHashSet::default(),
-            frozen_chars: frozen_chars.iter().copied().collect(),
-            same_side_partner: FxHashMap::default(),
-        }
-    }
-
-    // Row 0 of left hand = slots 0..5.
-    // Placing at slot `s` in that row: genome has all others in the row at their positions.
-
-    #[test]
-    fn empty_row_allows_any_slot() {
-        let g = genome("_____xxxxxxxxxxxxxxxxxxxxxxxxx");
-        for s in 0u8..5 {
-            assert!(is_contiguous_slot(&g, s), "empty row should allow slot {s}");
-        }
-    }
-
-    #[test]
-    fn single_letter_allows_neighbors_only() {
-        // 'a' at col 2 (slot 2); slot 1 and 3 are the only valid neighbors.
-        let g = genome("__a__xxxxxxxxxxxxxxxxxxxxxxxxx");
-        assert!(!is_contiguous_slot(&g, 0), "col 0 is not adjacent to col 2");
-        assert!(is_contiguous_slot(&g, 1));
-        assert!(is_contiguous_slot(&g, 3));
-        assert!(!is_contiguous_slot(&g, 4), "col 4 is not adjacent to col 2");
-    }
-
-    #[test]
-    fn block_of_three_extends_at_edges_only() {
-        // 'a','b','c' at cols 1,2,3 (slots 1,2,3); valid new placements: col 0 or col 4.
-        let g = genome("_abc_xxxxxxxxxxxxxxxxxxxxxxxxx");
-        assert!(is_contiguous_slot(&g, 0));
-        assert!(is_contiguous_slot(&g, 4));
-    }
-
-    #[test]
-    fn full_row_no_empty_slots_trivially_true() {
-        // No free slots in the row, but is_contiguous_slot returns true regardless
-        // (the slot itself is either occupied or out of scope — caller picks free slots).
-        let g = genome("abcdexxxxxxxxxxxxxxxxxxxxxxxxx");
-        for s in 0u8..5 {
-            // col range is [0,4]; col is within [min-1, max+1] = [-1,5] → always true
-            assert!(is_contiguous_slot(&g, s));
-        }
-    }
-
-    #[test]
-    fn gap_would_be_created_is_rejected() {
-        // 'a' at col 0, 'b' at col 2; col 4 would leave gap (col 3 empty between 2 and 4).
-        let g = genome("a_b__xxxxxxxxxxxxxxxxxxxxxxxxx");
-        assert!(!is_contiguous_slot(&g, 4));
-        assert!(is_contiguous_slot(&g, 1), "filling the gap is allowed");
-        assert!(is_contiguous_slot(&g, 3), "extending right edge is allowed");
-    }
-
-    #[test]
-    fn right_hand_row_independent() {
-        // Right hand row 0 = slots 15..20. Place 'z' at slot 17 (col 2).
-        let mut g = genome("______________________________");
-        g[17] = 'z';
-        // Left hand row 0 is all empty → all left slots allowed.
-        assert!(is_contiguous_slot(&g, 0));
-        assert!(is_contiguous_slot(&g, 4));
-        // Right hand: col 1 and 3 adjacent to col 2 → allowed; col 0 and 4 → not.
-        assert!(is_contiguous_slot(&g, 16));
-        assert!(is_contiguous_slot(&g, 18));
-        assert!(!is_contiguous_slot(&g, 15));
-        assert!(!is_contiguous_slot(&g, 19));
-    }
-
-    #[test]
-    fn unplace_units_returns_letters_for_freed_slots() {
-        let mut g = genome("ab___cdefghijklmnopqrstuvwxyzz");
-        let original = g.clone();
-        let opt = test_opt(&["ab"], &[]);
-        let cache = test_cache(&[]);
-        let mut rng = StdRng::seed_from_u64(7);
-
-        let unplaced = unplace_units(&mut g, &opt, &cache, 1, &mut rng);
-
-        assert_eq!(unplaced.free.len(), unplaced.letters.len());
-        for (&slot, &ch) in unplaced.free.iter().zip(&unplaced.letters) {
-            assert_eq!(original[slot as usize], ch);
-            assert_eq!(g[slot as usize], EMPTY_SLOT);
-        }
-    }
-
-    #[test]
-    fn unplace_units_keeps_same_side_pair_together() {
-        let mut g = genome("ab___xxxxxxxxxxxxxxxxxxxxxxxxx");
-        let opt = test_opt(&["ab"], &[]);
-        let cache = test_cache(&[]);
+        let constraints = opt.compile().unwrap();
         let mut rng = StdRng::seed_from_u64(1);
-
-        let unplaced = unplace_units(&mut g, &opt, &cache, 1, &mut rng);
-
-        assert_eq!(unplaced.free.len(), 2);
-        assert_eq!(unplaced.letters.len(), 2);
-        assert!(unplaced.letters.contains(&'a'));
-        assert!(unplaced.letters.contains(&'b'));
+        let g = constraints.generate(&mut rng);
+        assert_eq!(g[4], 'z');
+        assert!(constraints.is_genome_valid(&g));
     }
 
     #[test]
-    fn unplace_units_skips_blocked_and_frozen() {
-        let mut g = genome("abcdexxxxxxxxxxxxxxxxxxxxxxxxx");
-        let opt = test_opt(&["ab"], &[2]);
-        let cache = test_cache(&['d']);
-        let mut rng = StdRng::seed_from_u64(3);
-
-        let unplaced = unplace_units(&mut g, &opt, &cache, 4, &mut rng);
-
-        // 'c' is healed off the blocked slot, but the slot itself stays withheld.
-        assert!(!unplaced.free.contains(&2));
-        assert!(unplaced.letters.contains(&'c'));
-        assert!(!unplaced.letters.contains(&'d'));
+    fn generation_and_mutation_keep_each_independent_pair_on_one_hand() {
+        let constraints = constraints(r#"{"sameSide":["th","re"]}"#);
+        let mut rng = StdRng::seed_from_u64(12);
+        let mut orientations = FxHashSet::default();
+        for _ in 0..100 {
+            let mut g = constraints.generate(&mut rng);
+            for _ in 0..20 {
+                assert!(constraints.is_genome_valid(&g));
+                orientations.insert((slot(&g, 't') / 15, slot(&g, 'r') / 15));
+                g = constraints.mutate(&g, &mut rng);
+            }
+        }
+        assert_eq!(orientations.len(), 4);
     }
 
     #[test]
-    fn unplace_units_heals_disallowed_letter() {
-        // 'a' allowed only at slot 0, but sits at slot 4 — must be unplaced even with count 0.
-        let mut g = genome("bcd_axxxxxxxxxxxxxxxxxxxxxxxxx");
-        let mut opt = test_opt(&[], &[]);
-        opt.allowed.insert('a', [0u8].into_iter().collect());
-        let cache = test_cache(&[]);
-        let mut rng = StdRng::seed_from_u64(5);
-
-        let unplaced = unplace_units(&mut g, &opt, &cache, 0, &mut rng);
-
-        assert_eq!(unplaced.letters, vec!['a']);
-        assert_eq!(unplaced.free, vec![4]);
-        assert_eq!(g[4], EMPTY_SLOT);
+    fn mutation_can_switch_independent_group_hands() {
+        let constraints = constraints(r#"{"sameSide":["ab","cd"]}"#);
+        let mut rng = StdRng::seed_from_u64(51);
+        let mut g = alphabet();
+        let mut orientations = FxHashSet::default();
+        for _ in 0..500 {
+            g = constraints.mutate(&g, &mut rng);
+            assert!(constraints.is_genome_valid(&g));
+            orientations.insert((slot(&g, 'a') / 15, slot(&g, 'c') / 15));
+        }
+        assert_eq!(orientations.len(), 4);
     }
 
     #[test]
-    fn unplace_units_heals_blocked_occupant_without_freeing_blocked_slot() {
-        // 'c' sits on blocked slot 2 — unplaced, slot 2 withheld, empties opened as landing room.
-        let mut g = genome("abcdefghijklmnopqrstuvwxyz____");
-        let opt = test_opt(&[], &[2]);
-        let cache = test_cache(&[]);
+    fn overlapping_pairs_and_frozen_anchors_survive_mutation_and_repair() {
+        let constraints = constraints(
+            r#"{"sameSide":["ab","cd","bc","ba","th"],"frozen":{"a":0,"t":19},"allowed":{"c":[1,2]}}"#,
+        );
+        let mut rng = StdRng::seed_from_u64(14);
+        let mut g = constraints.repair(&alphabet(), &mut rng);
+        for _ in 0..500 {
+            assert!(constraints.is_genome_valid(&g));
+            assert_eq!(g[0], 'a');
+            assert_eq!(g[19], 't');
+            assert!(slot(&g, 'h') >= 15);
+            for ch in ['a', 'b', 'c', 'd'] {
+                assert!(slot(&g, ch) < 15);
+            }
+            g = constraints.mutate(&g, &mut rng);
+        }
+    }
+
+    #[test]
+    fn mutation_moves_empties_without_breaking_their_allowed_domain() {
+        let constraints =
+            constraints(r#"{"allowed":{"_":[0,1,10,11,18,19,28,29]},"blocked":[29]}"#);
+        let mut rng = StdRng::seed_from_u64(42);
+        let mut g = constraints.generate(&mut rng);
+        let mut patterns = FxHashSet::default();
+        for _ in 0..200 {
+            assert!(constraints.is_genome_valid(&g));
+            assert_eq!(g[29], EMPTY_SLOT);
+            patterns.insert(g.iter().enumerate().fold(0u32, |m, (i, &ch)| {
+                m | if ch == EMPTY_SLOT { 1 << i } else { 0 }
+            }));
+            g = constraints.mutate(&g, &mut rng);
+        }
+        assert!(
+            patterns.len() > 1,
+            "mutation must explore different empty positions"
+        );
+    }
+
+    #[test]
+    fn repair_handles_split_pairs_forbidden_empties_and_malformed_genomes() {
+        let constraints =
+            constraints(r#"{"sameSide":["th","st"],"allowed":{"_":[0,10]},"frozen":{"t":5}}"#);
         let mut rng = StdRng::seed_from_u64(9);
+        for input in [
+            alphabet().to_vec(),
+            vec!['x'; 30],
+            vec!['_'; 30],
+            vec!['?'; 30],
+            vec![],
+            vec!['a'; 31],
+        ] {
+            let g = constraints.repair(&input, &mut rng);
+            assert!(constraints.is_genome_valid(&g));
+            assert_eq!(g[5], 't');
+        }
+    }
 
-        let unplaced = unplace_units(&mut g, &opt, &cache, 0, &mut rng);
+    #[test]
+    fn repair_keeps_valid_inputs_and_prefers_unaffected_positions() {
+        let constraints = constraints(r#"{"allowed":{"a":[1]}}"#);
+        let mut rng = StdRng::seed_from_u64(9);
+        let g = constraints.repair(&alphabet(), &mut rng);
+        assert_eq!(g[1], 'a');
+        assert!(constraints.is_genome_valid(&g));
+        let unchanged = g.iter().zip(alphabet()).filter(|(a, b)| **a == *b).count();
+        assert!(
+            unchanged >= 26,
+            "repair should not reshuffle unrelated keys"
+        );
+        assert_eq!(constraints.repair(&g, &mut rng), g);
+    }
 
-        assert_eq!(unplaced.letters, vec!['c']);
+    #[test]
+    fn fully_frozen_layout_has_a_legal_no_change_mutation() {
+        let opt = OptimizationConfig {
+            frozen: ('a'..='z')
+                .enumerate()
+                .map(|(i, ch)| (ch, i as u8))
+                .collect(),
+            ..Default::default()
+        };
+        let constraints = opt.compile().unwrap();
+        let mut rng = StdRng::seed_from_u64(3);
+        assert_eq!(constraints.mutate(&alphabet(), &mut rng), alphabet());
+    }
+
+    #[test]
+    fn current_configuration_survives_repeated_generation_and_mutation() {
+        let constraints = constraints(
+            r#"{"blocked":[29],"allowed":{"e":[6,7,8],"_":[0,1,10,11,18,19,28,29],"h":[1,2,3,6,7,8,9,12,13]},"sameSide":["er","th"]}"#,
+        );
+        let mut rng = StdRng::seed_from_u64(42);
+        for _ in 0..100 {
+            let mut g = constraints.generate(&mut rng);
+            for _ in 0..50 {
+                assert!(constraints.is_genome_valid(&g));
+                g = constraints.mutate(&g, &mut rng);
+            }
+        }
+    }
+
+    #[test]
+    fn soft_contiguity_prefers_neighbors_but_does_not_require_gap_free_rows() {
+        let mask = contiguous_slots(1 << 2);
+        assert_eq!(mask & 0b11111, 0b01110);
+        assert_eq!((mask >> 15) & 0b11111, 0b11111);
+        let constraints = constraints(r#"{"frozen":{"a":0,"b":4},"allowed":{"_":[1,2]}}"#);
+        let mut rng = StdRng::seed_from_u64(17);
+        let g = constraints.generate(&mut rng);
+        assert!(constraints.is_genome_valid(&g));
+        assert_eq!(g[1], EMPTY_SLOT);
         assert_eq!(g[2], EMPTY_SLOT);
-        assert!(
-            !unplaced.free.contains(&2),
-            "blocked slot must not be freed"
-        );
-        assert!(
-            unplaced.free.len() >= unplaced.letters.len(),
-            "healed letters need landing room"
-        );
+    }
+
+    #[test]
+    fn matching_finds_relocation_chains_and_matches_small_exhaustive_search() {
+        let order = std::array::from_fn(|i| i);
+        for a in 0u32..8 {
+            for b in 0u32..8 {
+                for c in 0u32..8 {
+                    let mut domains = std::array::from_fn(|i| 1 << i);
+                    domains[..3].copy_from_slice(&[a, b, c]);
+                    let brute = (0..3).any(|i| {
+                        (0..3).any(|j| {
+                            (0..3).any(|k| {
+                                i != j
+                                    && i != k
+                                    && j != k
+                                    && a & (1 << i) != 0
+                                    && b & (1 << j) != 0
+                                    && c & (1 << k) != 0
+                            })
+                        })
+                    });
+                    let found = match_slots(&domains, &[0; SLOT_COUNT], &order);
+                    assert_eq!(found.is_some(), brute, "{a:b}, {b:b}, {c:b}");
+                    if let Some(owners) = found {
+                        let mut seen = 0u32;
+                        for (slot, token) in owners.into_iter().enumerate() {
+                            assert_ne!(domains[token] & (1 << slot), 0);
+                            assert_eq!(seen & (1 << token), 0);
+                            seen |= 1 << token;
+                        }
+                        assert_eq!(seen, ALL_SLOTS);
+                    }
+                }
+            }
+        }
     }
 }

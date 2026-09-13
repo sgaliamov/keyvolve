@@ -4,15 +4,14 @@ use crate::modes::optimize::{GaContext, KeysIndividual};
 type CorpusEvalResult = (f64, Option<ScoreResult>);
 
 /// Evaluate a genome candidate against the stored corpus.
-/// Genomes violating placement constraints (stale seeds/dump, starved fallback
-/// placements) are rejected with `NEG_INFINITY` so they never breed or win.
+/// Reject incomplete or invalid external genomes before any corpus lookup.
 pub fn evaluator(ind: &KeysIndividual, ctx: &GaContext) -> CorpusEvalResult {
     let state = ctx
         .state
         .as_ref()
         .expect("GA evaluator state must be set before optimize run");
 
-    if !state.optimization.is_genome_valid(&ind.genome) {
+    if !state.constraints.is_genome_valid(&ind.genome) {
         return (f64::NEG_INFINITY, None);
     }
 

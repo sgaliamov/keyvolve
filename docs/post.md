@@ -43,7 +43,7 @@ I used [TBD]
 
 ### Configuration options
 
-
+See placement rules: [placement-rules.md](C:/Users/Admin/projects/keyvolve/docs/placement-rules.md).
 
 ## Conclusion
 

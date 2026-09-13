@@ -1,5 +1,6 @@
 mod callback;
 mod config;
+mod constraints;
 mod evaluator;
 mod generate;
 mod mutate;
@@ -17,9 +18,11 @@ use darwin::{GeneticAlgorithm, Individual, NoopCrossover};
 use itertools::Itertools;
 use miette::Result;
 use rayon::prelude::*;
+use std::sync::Arc;
 
 pub use callback::*;
 pub use config::*;
+pub use constraints::*;
 pub use generate::*;
 pub use mutate::*;
 pub use placement::*;
@@ -36,6 +39,7 @@ pub fn optimize(
     app: AppHandle,
 ) -> Result<()> {
     use tracing::info;
+    let constraints = Arc::new(opt_cfg.compile()?);
     info!("Initializing genetic algorithm");
     let mut ga = GeneticAlgorithm::new(
         ga_cfg,
@@ -55,13 +59,27 @@ pub fn optimize(
     GeneticAlgorithm::set_state(
         &mut ga,
         OptimizerState {
-            cache: opt_cfg.cache(),
             evaluator: layout_evaluator,
             app: app.clone(),
-            optimization: opt_cfg,
+            constraints: Arc::clone(&constraints),
+            mutation_count: opt_cfg.mutation_count,
         },
     );
-    ga.seed();
+    let mut repaired = 0;
+    ga.seed_with(|genome| {
+        if constraints.is_genome_valid(&genome) {
+            genome
+        } else {
+            repaired += 1;
+            constraints.repair(&genome, &mut rand::rng()).to_vec()
+        }
+    });
+    if repaired > 0 {
+        tracing::warn!(
+            repaired,
+            "Repaired imported layouts under current placement constraints"
+        );
+    }
 
     info!("Running genetic algorithm");
     let pools = ga.run();
