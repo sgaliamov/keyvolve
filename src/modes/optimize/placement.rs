@@ -1,6 +1,6 @@
 use crate::evaluator::EMPTY_SLOT;
 use crate::models::slot_row;
-use crate::modes::optimize::{OptimizationCache, OptimizationConfig, are_roll_neighbors};
+use crate::modes::optimize::{OptimizationCache, OptimizationConfig};
 use rand::seq::SliceRandom;
 use rustc_hash::FxHashSet;
 
@@ -11,7 +11,7 @@ pub struct Unplaced {
 }
 
 /// Re-place `letters` into `free` slots using the same layered flow as the generator:
-/// 2. Rolls around frozen → 3. Allowed (with roll co-placement) → 4. Remaining rolls → 5. Free.
+/// 2. Same-side pairs around frozen → 3. Allowed (with pair co-placement) → 4. Remaining pairs → 5. Free.
 /// Step 1 (frozen) is the caller's responsibility.
 pub fn place_letters(
     genome: &mut [char],
@@ -23,14 +23,14 @@ pub fn place_letters(
     let unplaced: FxHashSet<char> = letters.iter().copied().collect();
     let mut placed: FxHashSet<char> = FxHashSet::default();
 
-    // ── 2. Rolls around frozen ───────────────────────────────────────────────
-    for &[a, b] in &opt.rolls {
+    // ── 2. Same-side pairs around frozen ─────────────────────────────────────
+    for &[a, b] in &opt.same_side {
         let a_frozen = cache.frozen_chars.contains(&a);
         let b_frozen = cache.frozen_chars.contains(&b);
         match (a_frozen, b_frozen) {
             (true, false) if unplaced.contains(&b) && !placed.contains(&b) => {
                 let anchor = opt.frozen[&a];
-                if let Some(j) = find_roll_neighbor(genome, free, anchor, b, opt) {
+                if let Some(j) = find_same_side_slot(genome, free, anchor / 15, b, opt, None) {
                     genome[free[j] as usize] = b;
                     placed.insert(b);
                     free.swap_remove(j);
@@ -38,7 +38,7 @@ pub fn place_letters(
             }
             (false, true) if unplaced.contains(&a) && !placed.contains(&a) => {
                 let anchor = opt.frozen[&b];
-                if let Some(i) = find_roll_neighbor(genome, free, anchor, a, opt) {
+                if let Some(i) = find_same_side_slot(genome, free, anchor / 15, a, opt, None) {
                     genome[free[i] as usize] = a;
                     placed.insert(a);
                     free.swap_remove(i);
@@ -49,7 +49,7 @@ pub fn place_letters(
     }
 
     // ── 3. Allowed (most-constrained first) ──────────────────────────────────
-    // Sort by allowed-set size ascending: tight letters (e.g. a roll pair locked
+    // Sort by allowed-set size ascending: tight letters (e.g. a same-side pair locked
     // to one column triplet) claim their few slots before wide letters can steal
     // them. Without this, a wide letter grabs a tight letter's only slot → the
     // tight letter is starved and spills onto a disallowed slot.
@@ -64,11 +64,11 @@ pub fn place_letters(
         if placed.contains(&ch) {
             continue;
         }
-        let partner = cache.roll_partner.get(&ch).copied().filter(|p| {
+        let partner = cache.same_side_partner.get(&ch).copied().filter(|p| {
             unplaced.contains(p) && !placed.contains(p) && !cache.frozen_chars.contains(p)
         });
         if let Some(partner) = partner
-            && let Some((i, j)) = find_roll_slots(genome, free, ch, partner, opt)
+            && let Some((i, j)) = find_same_side_slots(genome, free, ch, partner, opt)
         {
             place_pair(genome, free, &mut placed, i, j, ch, partner);
             continue;
@@ -76,24 +76,24 @@ pub fn place_letters(
         place_constrained(genome, free, &mut placed, ch, opt, cache);
     }
 
-    // ── 4. Remaining rolls ───────────────────────────────────────────────────
-    for &[a, b] in &opt.rolls {
+    // ── 4. Remaining same-side pairs ─────────────────────────────────────────
+    for &[a, b] in &opt.same_side {
         let a_placed = placed.contains(&a);
         let b_placed = placed.contains(&b);
         let a_unplaced = unplaced.contains(&a) && !cache.frozen_chars.contains(&a);
         let b_unplaced = unplaced.contains(&b) && !cache.frozen_chars.contains(&b);
 
         match (a_placed, b_placed) {
-            // Both free — place as roll pair.
+            // Both free — place on one hand.
             (false, false) if a_unplaced && b_unplaced => {
-                if let Some((i, j)) = find_roll_slots(genome, free, a, b, opt) {
+                if let Some((i, j)) = find_same_side_slots(genome, free, a, b, opt) {
                     place_pair(genome, free, &mut placed, i, j, a, b);
                 }
             }
             // `a` already placed (by step 3), `b` still free — anchor on `a`.
             (true, false) if b_unplaced => {
                 let anchor = genome.iter().position(|&c| c == a).unwrap() as u8;
-                if let Some(j) = find_roll_neighbor(genome, free, anchor, b, opt) {
+                if let Some(j) = find_same_side_slot(genome, free, anchor / 15, b, opt, None) {
                     genome[free[j] as usize] = b;
                     placed.insert(b);
                     free.swap_remove(j);
@@ -102,7 +102,7 @@ pub fn place_letters(
             // `b` already placed (by step 3), `a` still free — anchor on `b`.
             (false, true) if a_unplaced => {
                 let anchor = genome.iter().position(|&c| c == b).unwrap() as u8;
-                if let Some(i) = find_roll_neighbor(genome, free, anchor, a, opt) {
+                if let Some(i) = find_same_side_slot(genome, free, anchor / 15, a, opt, None) {
                     genome[free[i] as usize] = a;
                     placed.insert(a);
                     free.swap_remove(i);
@@ -130,7 +130,7 @@ pub fn place_letters(
 }
 
 /// Unplace `count` random movable units from `genome` back into a freed-slots vec.
-/// Roll pairs currently at neighbor slots are unplaced together as one unit.
+/// Same-side pairs currently on one hand are unplaced together as one unit.
 /// Letters sitting on blocked or disallowed slots (stale seed/dump genomes) are
 /// always unplaced first, so mutation self-heals constraint violations.
 pub fn unplace_units(
@@ -175,7 +175,7 @@ pub fn unplace_units(
     let mut used: FxHashSet<usize> = FxHashSet::default();
     let mut units: Vec<Vec<usize>> = Vec::new();
 
-    for &[a, b] in &opt.rolls {
+    for &[a, b] in &opt.same_side {
         let Some(ia) = genome.iter().position(|&c| c == a) else {
             continue;
         };
@@ -188,7 +188,7 @@ pub fn unplace_units(
             && !opt.blocked.contains(&(ib as u8))
             && !used.contains(&ia)
             && !used.contains(&ib)
-            && are_roll_neighbors(ia as u8, ib as u8)
+            && on_same_hand(ia as u8, ib as u8)
         {
             used.insert(ia);
             used.insert(ib);
@@ -244,32 +244,62 @@ pub fn is_contiguous_slot(genome: &[char], slot: u8) -> bool {
     !any || (col >= min_col.saturating_sub(1) && col <= max_col + 1)
 }
 
-/// Find two indices into `free` whose slots are roll-neighbors and valid for `(anchor, other)`.
-pub fn find_roll_slots(
+/// Find two indices into `free` on the same hand that are valid for `(a, b)`.
+pub fn find_same_side_slots(
     genome: &[char],
     free: &[u8],
-    anchor: char,
-    other: char,
+    a: char,
+    b: char,
     opt: &OptimizationConfig,
 ) -> Option<(usize, usize)> {
-    (0..free.len())
-        .filter(|&i| opt.is_slot_allowed(anchor, free[i]) && is_contiguous_slot(genome, free[i]))
-        .find_map(|i| find_roll_neighbor(genome, free, free[i], other, opt).map(|j| (i, j)))
+    for &contiguous_only in &[true, false] {
+        for i in 0..free.len() {
+            if !opt.is_slot_allowed(a, free[i])
+                || (contiguous_only && !is_contiguous_slot(genome, free[i]))
+            {
+                continue;
+            }
+            if let Some(j) = find_same_side_slot(genome, free, free[i] / 15, b, opt, Some(i)) {
+                return Some((i, j));
+            }
+        }
+    }
+    None
 }
 
-/// Find index into `free` of a slot that is a roll-neighbor of `anchor` and valid for `ch`.
-pub fn find_roll_neighbor(
+/// Find index into `free` of a slot on `hand` that is valid for `ch`.
+pub fn find_same_side_slot(
     genome: &[char],
     free: &[u8],
-    anchor: u8,
-    other: char,
+    hand: u8,
+    ch: char,
     opt: &OptimizationConfig,
+    skip: Option<usize>,
 ) -> Option<usize> {
-    free.iter().position(|&s| {
-        are_roll_neighbors(anchor, s)
-            && opt.is_slot_allowed(other, s)
-            && is_contiguous_slot(genome, s)
-    })
+    free.iter()
+        .enumerate()
+        .find(|entry| {
+            let (i, s) = entry;
+            Some(*i) != skip
+                && **s / 15 == hand
+                && opt.is_slot_allowed(ch, **s)
+                && is_contiguous_slot(genome, **s)
+        })
+        .map(|(i, _)| i)
+        .or_else(|| {
+            free.iter()
+                .enumerate()
+                .find(|entry| {
+                    let (i, s) = entry;
+                    Some(*i) != skip && **s / 15 == hand && opt.is_slot_allowed(ch, **s)
+                })
+                .map(|(i, _)| i)
+        })
+}
+
+#[inline]
+fn on_same_hand(a: u8, b: u8) -> bool {
+    a / 15 == b / 15
 }
 
 /// Write `(a, b)` into `genome` at `free[i]`/`free[j]`, remove both from `free`.
@@ -349,11 +379,11 @@ mod tests {
             .collect()
     }
 
-    fn test_opt(rolls: &[&str], blocked: &[u8]) -> OptimizationConfig {
+    fn test_opt(same_side: &[&str], blocked: &[u8]) -> OptimizationConfig {
         OptimizationConfig {
             frozen: FxHashMap::default(),
             blocked: blocked.iter().copied().collect(),
-            rolls: rolls
+            same_side: same_side
                 .iter()
                 .map(|pair| {
                     let mut chars = pair.chars();
@@ -375,7 +405,7 @@ mod tests {
         OptimizationCache {
             frozen_slots: FxHashSet::default(),
             frozen_chars: frozen_chars.iter().copied().collect(),
-            roll_partner: FxHashMap::default(),
+            same_side_partner: FxHashMap::default(),
         }
     }
 
@@ -461,7 +491,7 @@ mod tests {
     }
 
     #[test]
-    fn unplace_units_keeps_roll_pair_together() {
+    fn unplace_units_keeps_same_side_pair_together() {
         let mut g = genome("ab___xxxxxxxxxxxxxxxxxxxxxxxxx");
         let opt = test_opt(&["ab"], &[]);
         let cache = test_cache(&[]);

@@ -4,7 +4,7 @@ use crate::modes::optimize::{
 };
 use rand::seq::SliceRandom;
 
-/// Generate a genome for optimization, respecting frozen/blocked/roll constraints.
+/// Generate a genome for optimization, respecting frozen/blocked/pair constraints.
 pub fn generate(ctx: &GaContext) -> KeysGenome {
     let state = ctx.state.as_ref().expect("state must be set");
     constrained_keys(&state.optimization, &state.cache)
@@ -12,9 +12,9 @@ pub fn generate(ctx: &GaContext) -> KeysGenome {
 
 /// Build a genome placing chars into slots under four layers of constraints:
 /// 1. **Frozen** — pinned chars stay at their fixed slot.
-/// 2. **Rolls around frozen** — free partner of a frozen char placed in a roll-neighbor slot.
-/// 3. **Allowed** — constrained letters placed first; if in a roll, partner co-placed as neighbor.
-/// 4. **Remaining rolls** — unconstrained pairs placed as neighbors.
+/// 2. **Same-side pairs around frozen** — free partner of a frozen char placed on the same hand.
+/// 3. **Allowed** — constrained letters placed first; if in a pair, partner co-placed on same hand.
+/// 4. **Remaining pairs** — unconstrained pairs placed on one hand.
 /// 5. **Free** — unconstrained letters fill remaining slots.
 fn constrained_keys(opt: &OptimizationConfig, cache: &OptimizationCache) -> KeysGenome {
     let mut genome = vec![EMPTY_SLOT; 30];
@@ -42,7 +42,7 @@ fn constrained_keys(opt: &OptimizationConfig, cache: &OptimizationCache) -> Keys
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::modes::optimize::{OptimizationConfig, are_roll_neighbors};
+    use crate::modes::optimize::OptimizationConfig;
     use rustc_hash::FxHashSet;
 
     fn run(opt: &OptimizationConfig) -> KeysGenome {
@@ -87,27 +87,24 @@ mod tests {
     }
 
     #[test]
-    fn roll_pair_placed_as_neighbors() {
+    fn same_side_pair_placed_on_same_hand() {
         let opt = OptimizationConfig {
-            rolls: vec![['t', 'h']],
+            same_side: vec![['t', 'h']],
             ..Default::default()
         };
         for _ in 0..20 {
             let g = run(&opt);
             let st = g.iter().position(|&c| c == 't').unwrap() as u8;
             let sh = g.iter().position(|&c| c == 'h').unwrap() as u8;
-            assert!(
-                are_roll_neighbors(st, sh),
-                "t at {st}, h at {sh} — not roll neighbors"
-            );
+            assert_eq!(st / 15, sh / 15, "t at {st}, h at {sh} — must share hand");
         }
     }
 
     #[test]
-    fn roll_pair_frozen_anchor_respected() {
-        // 't' is frozen at slot 2; 'h' must land in a roll-neighbor slot.
+    fn same_side_pair_frozen_anchor_respected() {
+        // 't' is frozen at slot 2 (left hand); 'h' must land on left hand.
         let mut opt = OptimizationConfig {
-            rolls: vec![['t', 'h']],
+            same_side: vec![['t', 'h']],
             ..Default::default()
         };
         opt.frozen.insert('t', 2);
@@ -115,18 +112,15 @@ mod tests {
             let g = run(&opt);
             assert_eq!(g[2], 't', "frozen 't' must stay at slot 2");
             let sh = g.iter().position(|&c| c == 'h').unwrap() as u8;
-            assert!(
-                are_roll_neighbors(2, sh),
-                "h at {sh} — not roll neighbor of frozen t at 2"
-            );
+            assert!(sh < 15, "h at {sh} — must share hand with frozen t at 2");
         }
     }
 
     #[test]
-    fn roll_pair_allowed_anchor_respected() {
-        // 't' allowed only at slots 0/19; 'h' unconstrained — roll must honour that.
+    fn same_side_pair_allowed_anchor_respected() {
+        // 't' allowed only at slots 0/19; 'h' unconstrained — pair must share hand.
         let mut opt = OptimizationConfig {
-            rolls: vec![['t', 'h']],
+            same_side: vec![['t', 'h']],
             ..Default::default()
         };
         opt.allowed.insert('t', [0u8, 19].into_iter().collect());
@@ -135,10 +129,7 @@ mod tests {
             let st = g.iter().position(|&c| c == 't').unwrap() as u8;
             let sh = g.iter().position(|&c| c == 'h').unwrap() as u8;
             assert!(st == 0 || st == 19, "t landed at {st}, expected 0 or 19");
-            assert!(
-                are_roll_neighbors(st, sh),
-                "t at {st}, h at {sh} — not roll neighbors"
-            );
+            assert_eq!(st / 15, sh / 15, "t at {st}, h at {sh} — must share hand");
         }
     }
 
@@ -169,7 +160,7 @@ mod tests {
                 "o":[1,2,3,6,7,8],"r":[1,2,6,7,8],
                 "s":[1,2,3,6,7,8,11,12,13]
             },
-            "rolls":["ht","er"]
+            "sameSide":["ht","er"]
         }"#;
         let opt: OptimizationConfig = serde_json::from_str(json).unwrap();
         let cache = opt.cache();

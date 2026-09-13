@@ -1,5 +1,4 @@
 use crate::evaluator::EMPTY_SLOT;
-use crate::models::slot_row;
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::Deserialize;
 use std::path::PathBuf;
@@ -31,11 +30,10 @@ pub struct OptimizationConfig {
     #[serde(default)]
     pub right: FxHashSet<char>,
 
-    /// Char pairs that should occupy roll-neighbor slots (same hand, adjacent column, ±1 row).
-    /// Defined as left-hand positions; right hand is symmetric. Both `[a,b]` and `[b,a]` checked.
+    /// Char pairs that must end up on the same hand (left-left or right-right).
     /// Format: `["th", "st"]`.
-    #[serde(default, deserialize_with = "de_rolls")]
-    pub rolls: Vec<[char; 2]>,
+    #[serde(default, deserialize_with = "de_same_side_pairs")]
+    pub same_side: Vec<[char; 2]>,
 
     /// Number of independent mutants produced per parent per generation. Default: 10.
     #[serde(default = "default_mutation_count")]
@@ -61,7 +59,7 @@ pub struct OptimizationConfig {
 pub struct OptimizationCache {
     pub frozen_slots: FxHashSet<u8>,
     pub frozen_chars: FxHashSet<char>,
-    pub roll_partner: FxHashMap<char, char>,
+    pub same_side_partner: FxHashMap<char, char>,
 }
 
 impl OptimizationConfig {
@@ -85,17 +83,16 @@ impl OptimizationConfig {
             .is_none_or(|slots| slots.contains(&slot))
     }
 
-    /// True when every roll pair present in `genome` sits on roll-neighbor slots.
+    /// True when every same-side pair present in `genome` sits on one hand.
     /// Pairs with a not-yet-placed char are skipped (mid-placement tolerance).
-    /// Catches split pairs that the layered placement could not seat as neighbors
-    /// and foreign genomes injected under different roll constraints.
-    pub fn rolls_satisfied(&self, genome: &[char]) -> bool {
-        self.rolls.iter().all(|&[a, b]| {
+    /// Catches split pairs from foreign genomes injected under different constraints.
+    pub fn same_side_satisfied(&self, genome: &[char]) -> bool {
+        self.same_side.iter().all(|&[a, b]| {
             match (
                 genome.iter().position(|&c| c == a),
                 genome.iter().position(|&c| c == b),
             ) {
-                (Some(ia), Some(ib)) => are_roll_neighbors(ia as u8, ib as u8),
+                (Some(ia), Some(ib)) => on_same_hand(ia as u8, ib as u8),
                 _ => true,
             }
         })
@@ -103,7 +100,7 @@ impl OptimizationConfig {
 
     /// True when every placed char sits on a permitted slot (frozen chars at their
     /// pins, constrained chars within `allowed`, nothing on blocked slots) AND every
-    /// roll pair occupies roll-neighbor slots.
+    /// same-side pair occupies one hand.
     /// Guards against genomes from external sources (seed csv, dump) and starved
     /// fallback placements that were produced under or drifted from the constraints.
     pub fn is_genome_valid(&self, genome: &[char]) -> bool {
@@ -113,7 +110,7 @@ impl OptimizationConfig {
             ch == EMPTY_SLOT
                 || self.frozen.get(&ch) == Some(&slot)
                 || (!self.blocked.contains(&slot) && self.is_slot_allowed(ch, slot))
-        }) && self.rolls_satisfied(genome)
+        }) && self.same_side_satisfied(genome)
     }
 
     /// Pre-compute derived lookups that are hot in the generator loop.
@@ -121,8 +118,8 @@ impl OptimizationConfig {
         OptimizationCache {
             frozen_slots: self.frozen.values().copied().collect(),
             frozen_chars: self.frozen.keys().copied().collect(),
-            roll_partner: self
-                .rolls
+            same_side_partner: self
+                .same_side
                 .iter()
                 .flat_map(|&[a, b]| [(a, b), (b, a)])
                 .collect(),
@@ -176,23 +173,14 @@ where
         .collect())
 }
 
-/// Column index within a hand (0–4).
+/// True when two slots are on the same hand.
 #[inline]
-fn slot_col(slot: u8) -> u8 {
-    slot % 5
-}
-
-/// True when two slots are on the same hand, 1–2 columns apart, and within one row of each other.
-/// Same-column (vertical) pairs are rejected — a roll needs distinct fingers.
-pub fn are_roll_neighbors(a: u8, b: u8) -> bool {
-    let a_hand = a / 15;
-    let b_hand = b / 15;
-    let col_dist = slot_col(a).abs_diff(slot_col(b));
-    a_hand == b_hand && (1..=3).contains(&col_dist) && slot_row(a).abs_diff(slot_row(b)) <= 1
+fn on_same_hand(a: u8, b: u8) -> bool {
+    a / 15 == b / 15
 }
 
 /// Deserialize `["th", "st"]` → `[[t,h],[s,t]]`.
-fn de_rolls<'de, D>(de: D) -> Result<Vec<[char; 2]>, D::Error>
+fn de_same_side_pairs<'de, D>(de: D) -> Result<Vec<[char; 2]>, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
@@ -202,10 +190,10 @@ where
             let mut cs = s.chars();
             let a = cs
                 .next()
-                .ok_or_else(|| serde::de::Error::custom("empty roll pair"))?;
+                .ok_or_else(|| serde::de::Error::custom("empty same-side pair"))?;
             let b = cs
                 .next()
-                .ok_or_else(|| serde::de::Error::custom("roll pair needs 2 chars"))?;
+                .ok_or_else(|| serde::de::Error::custom("same-side pair needs 2 chars"))?;
             Ok([a, b])
         })
         .collect()
@@ -357,40 +345,40 @@ mod tests {
     }
 
     #[test]
-    fn rolls_satisfied_true_for_neighbors() {
+    fn same_side_satisfied_true_for_same_hand() {
         let cfg = OptimizationConfig {
-            rolls: vec![['t', 'h']],
+            same_side: vec![['t', 'h']],
             ..Default::default()
         };
         let mut g = vec![EMPTY_SLOT; 30];
         g[3] = 't';
-        g[4] = 'h'; // same row, adjacent col → neighbors
-        assert!(cfg.rolls_satisfied(&g));
+        g[4] = 'h';
+        assert!(cfg.same_side_satisfied(&g));
         assert!(cfg.is_genome_valid(&g));
     }
 
     #[test]
-    fn rolls_satisfied_false_for_split_pair() {
+    fn same_side_satisfied_false_for_cross_hand_pair() {
         let cfg = OptimizationConfig {
-            rolls: vec![['t', 'h']],
+            same_side: vec![['t', 'h']],
             ..Default::default()
         };
         let mut g = vec![EMPTY_SLOT; 30];
         g[0] = 't';
-        g[4] = 'h'; // col dist 4 → not neighbors
-        assert!(!cfg.rolls_satisfied(&g));
-        assert!(!cfg.is_genome_valid(&g)); // guard rejects split roll
+        g[15] = 'h';
+        assert!(!cfg.same_side_satisfied(&g));
+        assert!(!cfg.is_genome_valid(&g)); // guard rejects split pair
     }
 
     #[test]
-    fn rolls_satisfied_skips_absent_char() {
+    fn same_side_satisfied_skips_absent_char() {
         let cfg = OptimizationConfig {
-            rolls: vec![['t', 'h']],
+            same_side: vec![['t', 'h']],
             ..Default::default()
         };
         let mut g = vec![EMPTY_SLOT; 30];
         g[0] = 't'; // 'h' absent → nothing to violate yet
-        assert!(cfg.rolls_satisfied(&g));
+        assert!(cfg.same_side_satisfied(&g));
     }
 
     #[test]
@@ -405,44 +393,10 @@ mod tests {
     }
 
     #[test]
-    fn are_roll_neighbors_adjacent_col_same_row() {
-        // slots 3 and 4: same row 0, col dist 1 → neighbors
-        assert!(are_roll_neighbors(3, 4));
-        // slots 2 and 4: same row 0, col dist 2 → neighbors
-        assert!(are_roll_neighbors(2, 4));
-        // slots 4 and 4: same slot, col dist 0 → not neighbors
-        assert!(!are_roll_neighbors(4, 4));
-        // slots 0 and 4: same row 0, col dist 4 → not neighbors
-        assert!(!are_roll_neighbors(0, 4));
-    }
-
-    #[test]
-    fn are_roll_neighbors_adjacent_col_adjacent_row() {
-        // slot 3 (row 0, col 3) and slot 9 (row 1, col 4) → neighbors
-        assert!(are_roll_neighbors(3, 9));
-        // slot 3 (row 0, col 3) and slot 10 (row 2, col 0) → not neighbors (2 rows apart)
-        assert!(!are_roll_neighbors(3, 10));
-    }
-
-    #[test]
-    fn are_roll_neighbors_cross_hand_rejected() {
-        // slot 4 (left index) and slot 15 (right index) → different hands
-        assert!(!are_roll_neighbors(4, 15));
-    }
-
-    #[test]
-    fn are_roll_neighbors_vertical_rejected() {
-        // slot 4 (row 0, col 4) and slot 9 (row 1, col 4) → same column → not a roll
-        assert!(!are_roll_neighbors(4, 9));
-        // slot 0 (row 0, col 0) and slot 5 (row 1, col 0) → same column → not a roll
-        assert!(!are_roll_neighbors(0, 5));
-    }
-
-    #[test]
-    fn deserialize_rolls() {
-        let json = r#"{"rolls": ["th", "st"]}"#;
+    fn deserialize_same_side() {
+        let json = r#"{"sameSide": ["th", "st"]}"#;
         let cfg: OptimizationConfig = serde_json::from_str(json).unwrap();
-        assert_eq!(cfg.rolls, vec![['t', 'h'], ['s', 't']]);
+        assert_eq!(cfg.same_side, vec![['t', 'h'], ['s', 't']]);
     }
 
     #[test]
