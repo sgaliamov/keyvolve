@@ -16,7 +16,8 @@
     "synthesise",
     "synthesised",
     "unplace",
-    "unplacing"
+    "unplacing",
+    "кастомная"
   ],
   "chat.tools.terminal.autoApprove": {
     ".\\scripts\\test.ps1": true,

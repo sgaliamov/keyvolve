@@ -1322,7 +1322,7 @@ mod tests {
 
         let csv = s.to_csv();
         let columns = csv.split(',').map(str::trim).collect::<Vec<_>>();
-        assert_eq!(columns[19], "←100.00% │ →050.00% │ →050.00% │ →075.00%");
+        assert_eq!(columns[19], "100.00%← │ 050.00%→ │ 050.00%→ │ 075.00%→");
     }
 
     #[test]
@@ -1390,8 +1390,8 @@ mod tests {
         let expected = ScoreResult::csv_header().split(',').count();
 
         assert_eq!(columns.len(), expected);
-        assert_eq!(columns[expected - 28], "·000.00%");
-        assert_eq!(columns[expected - 1], "→075.00%");
+        assert_eq!(columns[expected - 28], "000.00%·");
+        assert_eq!(columns[expected - 1], "075.00%→");
         assert!(ScoreResult::csv_header().contains("home_row_balance"));
         assert!(ScoreResult::csv_header().contains("left_pinky_ratio"));
         assert!(ScoreResult::csv_header().contains("pinky_row_switch_balance"));

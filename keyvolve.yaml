@@ -46,15 +46,15 @@ synthesise:
 
 optimization:
   # Seed layout CSVs to load before GA starts; null means none.
-  input: null
+  input: data/layouts.csv
   # Layout CSV written after optimization.
   output: data/layouts.csv
   # Mutants produced per parent each generation.
   mutationCount: 10
   # Max home-row groups kept in final ranked output.
-  maxGroups: 5
+  maxGroups: 3
   # Number of layouts kept per home-row group in final ranked output.
-  itemsPerGroup: 3
+  itemsPerGroup: 10
 
   # Optional: Slot indices that must remain empty (blocked), unless a letter is frozen there.
   # blocked: [0, 28, 29]
@@ -131,7 +131,7 @@ evaluate:
   # One or more layout CSVs to score.
   input:
     - data/layouts.csv
-    # - data/layouts.known.csv
+    - data/layouts.known.csv
   # Output CSV for scored layouts.
   output: data/layouts.csv
   # output: data/layouts.known.csv
@@ -198,7 +198,7 @@ evaluator:
 
   # Press metric: left/right streak-length asymmetry from left_streak/right_streak.
   # type: max — lower is better.
-  streakImbalance: { type: max, value: 10, weight: 0.25 }
+  streakImbalance: { type: max, value: 10, weight: 0.1 }
 
   # Effort metric: home row left/right balance from row_balance (home entry).
   # type: max — lower is better (zero asymmetry is ideal).
