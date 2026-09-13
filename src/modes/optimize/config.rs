@@ -382,6 +382,21 @@ mod tests {
     }
 
     #[test]
+    fn same_side_satisfied_allows_different_pairs_on_different_hands() {
+        let cfg = OptimizationConfig {
+            same_side: vec![['t', 'h'], ['r', 'e']],
+            ..Default::default()
+        };
+        let mut g = vec![EMPTY_SLOT; 30];
+        g[1] = 't';
+        g[4] = 'h'; // left hand
+        g[16] = 'r';
+        g[19] = 'e'; // right hand
+        assert!(cfg.same_side_satisfied(&g));
+        assert!(cfg.is_genome_valid(&g));
+    }
+
+    #[test]
     fn deserialize_allowed_map() {
         let json = r#"{"allowed": {"a": [0, 4]}}"#;
         let cfg: OptimizationConfig = serde_json::from_str(json).unwrap();
