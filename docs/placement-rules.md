@@ -14,7 +14,8 @@ This document describes how optimizer placement constraints are compiled and enf
 - `frozen: { char: slot }` — hard pin for a character.
 - `blocked: [slot]` — hard-empty slots.
 - `allowed: { char: [slots] }` — hard domain restriction for a character.
-  - For indices `< 15`, mirrored right-hand slots are added automatically.
+  - Accepts only indices `0..14`.
+  - Each listed index adds its mirrored right-hand slot automatically.
   - For `_`, this configures optional allowed empty positions.
 - `left: [chars]` / `right: [chars]` — hard side restriction.
 - `sameSide: ["ab", ...]` — character pairs that must be on same side.

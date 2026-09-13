@@ -68,13 +68,13 @@ optimization:
   #   v: 13
 
   # Optional: Allowed slot indices for specific characters (white-list constraints).
-  # Slots 0-14 also add their mirrored right-hand positions; slots 15-29 are used as given.
+  # Use only slots 0-14 here; each one also adds its mirrored right-hand position.
   # If specified, only these slots can be used, except for frozen pins.
   # Special key "_" constrains empty slots (the 4 unused positions).
   # These positions may be empty, not must be empty; blocked slots are also eligible.
   allowed:
     e: [6, 7, 8]
-    '_': [0, 1, 10, 11, 18, 19, 28, 29]
+    '_': [0, 1, 10, 11]
     h: [1, 2, 3, 6, 7, 8, 9, 12, 13]
 
   # Optional: Character pairs that must stay on the same hand (left-left or right-right).

@@ -17,7 +17,7 @@ pub struct OptimizationConfig {
     pub blocked: FxHashSet<u8>,
 
     /// Per-letter allowed slots (half-positions 0–14, auto-mirrored).
-    /// `{ "a": [0,1,2], "e": [3,4], "_": [26,27,28,29] }`.
+    /// `{ "a": [0,1,2], "e": [3,4], "_": [10,11,12,13] }`.
     /// `"_"` is normalized to `EMPTY_SLOT`.
     #[serde(default, deserialize_with = "de_letter_slot_map")]
     pub allowed: FxHashMap<char, FxHashSet<u8>>,
@@ -182,9 +182,9 @@ where
     let raw: FxHashMap<char, Vec<u8>> = FxHashMap::deserialize(de)?;
     let mut out = FxHashMap::default();
     for (ch, slots) in raw {
-        if let Some(slot) = slots.iter().find(|&&slot| slot >= 30) {
+        if let Some(slot) = slots.iter().find(|&&slot| slot >= 15) {
             return Err(serde::de::Error::custom(format!(
-                "allowed slot {slot} must be in 0..29"
+                "allowed slot {slot} must be in 0..14"
             )));
         }
         out.entry(normalize_allowed_key(ch))
@@ -394,7 +394,7 @@ mod tests {
 
     #[test]
     fn allowed_parser_rejects_out_of_range_slots_before_expansion() {
-        for slot in [30, 255] {
+        for slot in [15, 29, 30, 255] {
             for ch in ["a", "_", "`"] {
                 let json = serde_json::json!({ "allowed": { ch: [slot] } });
                 assert!(
@@ -612,20 +612,20 @@ mod tests {
     #[test]
     fn deserialize_allowed_map_unions_empty_aliases() {
         let cfg: OptimizationConfig =
-            serde_json::from_str(r#"{"allowed":{"_":[0],"`":[29]}}"#).unwrap();
+            serde_json::from_str(r#"{"allowed":{"_":[0],"`":[14]}}"#).unwrap();
         assert!(!cfg.allowed.contains_key(&'_'));
-        assert_eq!(cfg.allowed[&EMPTY_SLOT], [0, 19, 29].into_iter().collect());
+        assert_eq!(
+            cfg.allowed[&EMPTY_SLOT],
+            [0, 14, 19, 25].into_iter().collect()
+        );
     }
 
     #[test]
-    fn deserialize_allowed_map_preserves_right_hand_boundaries() {
-        let cfg: OptimizationConfig =
-            serde_json::from_str(r#"{"allowed":{"a":[0,14,15,29]}}"#).unwrap();
-        assert_eq!(
-            cfg.allowed[&'a'],
-            [0, 14, 15, 19, 25, 29].into_iter().collect()
-        );
-        assert!(cfg.validate().is_ok());
+    fn deserialize_allowed_map_rejects_right_hand_indices() {
+        for slot in [15, 20, 29] {
+            let json = serde_json::json!({ "allowed": { "a": [slot] } });
+            assert!(serde_json::from_value::<OptimizationConfig>(json).is_err());
+        }
     }
 
     #[test]

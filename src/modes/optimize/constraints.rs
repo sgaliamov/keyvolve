@@ -212,10 +212,10 @@ mod tests {
     fn impossible_domains_and_side_groups_fail_before_generation() {
         for json in [
             r#"{"blocked":[0,1,2,3,4]}"#,
-            r#"{"allowed":{"_":[29]}}"#,
+            r#"{"allowed":{"_":[14]}}"#,
             r#"{"frozen":{"t":0,"h":15},"sameSide":["th"]}"#,
             r#"{"left":["t"],"right":["h"],"sameSide":["th"]}"#,
-            r#"{"allowed":{"a":[15],"b":[15]}}"#,
+            r#"{"allowed":{"a":[0],"b":[0],"c":[0]}}"#,
             r#"{"left":["a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p"]}"#,
         ] {
             let opt: OptimizationConfig = serde_json::from_str(json).unwrap();
@@ -226,13 +226,13 @@ mod tests {
     #[test]
     fn pin_and_blocked_overrides_survive_compilation() {
         let opt: OptimizationConfig = serde_json::from_str(
-            r#"{"blocked":[0,1,2,3,4],"frozen":{"a":0},"right":["a"],"allowed":{"a":[15],"_":[29]}}"#
+            r#"{"blocked":[0,1,2,3,4],"frozen":{"a":0},"right":["a"],"allowed":{"a":[0],"_":[14]}}"#
         ).unwrap();
         let constraints = opt.compile().unwrap();
         assert_eq!(constraints.domains[0], 1);
         assert_eq!(
             constraints.domains[LETTER_COUNT],
-            (1 << 1) | (1 << 2) | (1 << 3) | (1 << 4) | (1 << 29)
+            (1 << 1) | (1 << 2) | (1 << 3) | (1 << 4) | (1 << 14) | (1 << 25)
         );
         let mut rng = rand::rng();
         let genome = constraints.generate(&mut rng);
