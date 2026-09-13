@@ -217,10 +217,10 @@ evaluator:
 
   # Per-finger left/right same-finger row-switch balance (percent skew, signed).
   # Uses same-finger row-switch cost only; index inner+outer are merged.
-  pinkyRowSwitchBalance: { type: max, value: 10, weight: 0.05 }
-  ringRowSwitchBalance: { type: max, value: 10, weight: 0.05 }
-  middleRowSwitchBalance: { type: max, value: 10, weight: 0.05 }
-  indexRowSwitchBalance: { type: max, value: 10, weight: 0.05 }
+  pinkyRowSwitchBalance: { type: max, value: 5, weight: 0.1 }
+  ringRowSwitchBalance: { type: max, value: 5, weight: 0.1 }
+  middleRowSwitchBalance: { type: max, value: 6, weight: 0.1 }
+  indexRowSwitchBalance: { type: max, value: 6, weight: 0.1 }
 
   # Per-finger same-finger row-switch ratio caps. Percent of that finger's presses that
   # cross rows; left and right hands share the same cap for each finger.
