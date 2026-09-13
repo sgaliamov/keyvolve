@@ -144,6 +144,24 @@ mod tests {
         }
     }
 
+    #[test]
+    fn empty_allowed_constraint_respected() {
+        let mut opt = OptimizationConfig::default();
+        opt.allowed
+            .insert(EMPTY_SLOT, [26u8, 27, 28, 29].into_iter().collect());
+        for _ in 0..20 {
+            let g = run(&opt);
+            for (slot, &ch) in g.iter().enumerate() {
+                if ch == EMPTY_SLOT {
+                    assert!(
+                        slot >= 26,
+                        "empty at slot {slot}, expected one of [26,27,28,29]"
+                    );
+                }
+            }
+        }
+    }
+
     /// Stress test against the real `keyvolve.yaml` constraints: every placed
     /// char must satisfy `is_slot_allowed` after generation AND after mutation.
     #[test]

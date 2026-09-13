@@ -69,8 +69,10 @@ optimization:
 
   # Optional: Allowed slot indices for specific characters (white-list constraints).
   # If specified, only these slots can be used; other slots are forbidden for that char.
+  # Special key "_" constrains empty slots (the 4 unused positions).
   allowed:
     e: [6, 7, 8]
+    # "_": [26, 27, 28, 29]
 
   # Optional: Character pairs that must stay on the same hand (left-left or right-right).
   # sameSide: ['er', 'th']

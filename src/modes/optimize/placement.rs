@@ -117,11 +117,11 @@ pub fn place_letters(
         if placed.contains(&ch) {
             continue;
         }
-        let idx = free
-            .iter()
-            .position(|&s| opt.is_slot_allowed(ch, s) && is_contiguous_slot(genome, s))
-            .or_else(|| free.iter().position(|&s| opt.is_slot_allowed(ch, s)))
-            .or((!free.is_empty()).then_some(0));
+        let idx = find_free_slot_by_priority(free, opt, |s| {
+            opt.is_slot_allowed(ch, s) && is_contiguous_slot(genome, s)
+        })
+        .or_else(|| find_free_slot_by_priority(free, opt, |s| opt.is_slot_allowed(ch, s)))
+        .or((!free.is_empty()).then_some(0));
         if let Some(idx) = idx {
             genome[free[idx] as usize] = ch;
             free.swap_remove(idx);
@@ -276,25 +276,42 @@ pub fn find_same_side_slot(
     opt: &OptimizationConfig,
     skip: Option<usize>,
 ) -> Option<usize> {
+    find_free_slot_by_priority_with_index(free, opt, |i, s| {
+        Some(i) != skip
+            && s / 15 == hand
+            && opt.is_slot_allowed(ch, s)
+            && is_contiguous_slot(genome, s)
+    })
+    .or_else(|| {
+        find_free_slot_by_priority_with_index(free, opt, |i, s| {
+            Some(i) != skip && s / 15 == hand && opt.is_slot_allowed(ch, s)
+        })
+    })
+}
+
+fn find_free_slot_by_priority_with_index(
+    free: &[u8],
+    opt: &OptimizationConfig,
+    is_match: impl Fn(usize, u8) -> bool,
+) -> Option<usize> {
     free.iter()
         .enumerate()
-        .find(|entry| {
-            let (i, s) = entry;
-            Some(*i) != skip
-                && **s / 15 == hand
-                && opt.is_slot_allowed(ch, **s)
-                && is_contiguous_slot(genome, **s)
-        })
-        .map(|(i, _)| i)
-        .or_else(|| {
-            free.iter()
-                .enumerate()
-                .find(|entry| {
-                    let (i, s) = entry;
-                    Some(*i) != skip && **s / 15 == hand && opt.is_slot_allowed(ch, **s)
-                })
-                .map(|(i, _)| i)
-        })
+        .position(|(i, &s)| letter_prefers_slot(opt, s) && is_match(i, s))
+        .or_else(|| free.iter().enumerate().position(|(i, &s)| is_match(i, s)))
+}
+
+fn find_free_slot_by_priority(
+    free: &[u8],
+    opt: &OptimizationConfig,
+    is_match: impl Fn(u8) -> bool,
+) -> Option<usize> {
+    find_free_slot_by_priority_with_index(free, opt, |_, s| is_match(s))
+}
+
+fn letter_prefers_slot(opt: &OptimizationConfig, slot: u8) -> bool {
+    opt.allowed
+        .get(&EMPTY_SLOT)
+        .is_some_and(|empty_slots| !empty_slots.contains(&slot))
 }
 
 #[inline]
@@ -335,10 +352,10 @@ pub fn place_constrained(
     cache: &OptimizationCache,
 ) {
     // Direct: a free allowed slot (contiguous preferred).
-    if let Some(idx) = free
-        .iter()
-        .position(|&s| opt.is_slot_allowed(ch, s) && is_contiguous_slot(genome, s))
-        .or_else(|| free.iter().position(|&s| opt.is_slot_allowed(ch, s)))
+    if let Some(idx) = find_free_slot_by_priority(free, opt, |s| {
+        opt.is_slot_allowed(ch, s) && is_contiguous_slot(genome, s)
+    })
+    .or_else(|| find_free_slot_by_priority(free, opt, |s| opt.is_slot_allowed(ch, s)))
     {
         genome[free[idx] as usize] = ch;
         placed.insert(ch);

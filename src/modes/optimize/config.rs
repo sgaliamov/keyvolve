@@ -16,7 +16,8 @@ pub struct OptimizationConfig {
     pub blocked: FxHashSet<u8>,
 
     /// Per-letter allowed slots (half-positions 0–14, auto-mirrored).
-    /// `{ "a": [0,1,2], "e": [3,4] }` — letters not listed are unconstrained.
+    /// `{ "a": [0,1,2], "e": [3,4], "_": [26,27,28,29] }`.
+    /// `"_"` is normalized to `EMPTY_SLOT`.
     #[serde(default, deserialize_with = "de_letter_slot_map")]
     pub allowed: FxHashMap<char, FxHashSet<u8>>,
 
@@ -68,6 +69,7 @@ impl OptimizationConfig {
     /// Frozen chars always stay at their pinned slot, ignoring `allowed`/side constraints.
     /// `left`/`right` letters are confined to that hand (slots 0–14 / 15–29).
     pub fn is_slot_allowed(&self, ch: char, slot: u8) -> bool {
+        let ch = normalize_allowed_key(ch);
         if let Some(&frozen_slot) = self.frozen.get(&ch) {
             return slot == frozen_slot;
         }
@@ -81,6 +83,16 @@ impl OptimizationConfig {
         self.allowed
             .get(&ch)
             .is_none_or(|slots| slots.contains(&slot))
+    }
+
+    /// Check whether `EMPTY_SLOT` is permitted at `slot`.
+    /// Blocked slots are always valid empties.
+    pub fn is_empty_slot_allowed(&self, slot: u8) -> bool {
+        self.blocked.contains(&slot)
+            || self
+                .allowed
+                .get(&EMPTY_SLOT)
+                .is_none_or(|slots| slots.contains(&slot))
     }
 
     /// True when every same-side pair present in `genome` sits on one hand.
@@ -107,7 +119,7 @@ impl OptimizationConfig {
         genome.iter().enumerate().all(|(i, &ch)| {
             let slot = i as u8;
             // Frozen outranks blocked: a pin on a blocked slot is still valid.
-            ch == EMPTY_SLOT
+            (ch == EMPTY_SLOT && self.is_empty_slot_allowed(slot))
                 || self.frozen.get(&ch) == Some(&slot)
                 || (!self.blocked.contains(&slot) && self.is_slot_allowed(ch, slot))
         }) && self.same_side_satisfied(genome)
@@ -167,16 +179,24 @@ where
     D: serde::Deserializer<'de>,
 {
     let raw: FxHashMap<char, Vec<u8>> = FxHashMap::deserialize(de)?;
-    Ok(raw
-        .into_iter()
-        .map(|(ch, slots)| (ch, expand_half(&slots)))
-        .collect())
+    let mut out = FxHashMap::default();
+    for (ch, slots) in raw {
+        out.entry(normalize_allowed_key(ch))
+            .or_insert_with(FxHashSet::default)
+            .extend(expand_half(&slots));
+    }
+    Ok(out)
 }
 
 /// True when two slots are on the same hand.
 #[inline]
 fn on_same_hand(a: u8, b: u8) -> bool {
     a / 15 == b / 15
+}
+
+#[inline]
+fn normalize_allowed_key(ch: char) -> char {
+    if ch == '_' { EMPTY_SLOT } else { ch }
 }
 
 /// Deserialize `["th", "st"]` → `[[t,h],[s,t]]`.
@@ -224,6 +244,7 @@ mod tests {
         let cfg = OptimizationConfig::default();
         assert!(cfg.is_slot_allowed('a', 0));
         assert!(cfg.is_slot_allowed('z', 29));
+        assert!(cfg.is_empty_slot_allowed(0));
     }
 
     #[test]
@@ -405,6 +426,34 @@ mod tests {
         assert!(a_slots.contains(&19)); // mirror of 0
         assert!(a_slots.contains(&4));
         assert!(a_slots.contains(&15)); // mirror of 4
+    }
+
+    #[test]
+    fn deserialize_allowed_map_normalizes_underscore_to_empty_slot() {
+        let json = r#"{"allowed": {"_": [0, 4]}}"#;
+        let cfg: OptimizationConfig = serde_json::from_str(json).unwrap();
+        let empty_slots = &cfg.allowed[&EMPTY_SLOT];
+        assert!(empty_slots.contains(&0));
+        assert!(empty_slots.contains(&19)); // mirror of 0
+        assert!(empty_slots.contains(&4));
+        assert!(empty_slots.contains(&15)); // mirror of 4
+    }
+
+    #[test]
+    fn genome_validity_checks_empty_allowed() {
+        let mut cfg = OptimizationConfig::default();
+        cfg.allowed
+            .insert(EMPTY_SLOT, [26u8, 27, 28, 29].into_iter().collect());
+        let mut g = vec!['x'; 30];
+        g[26] = EMPTY_SLOT;
+        g[27] = EMPTY_SLOT;
+        g[28] = EMPTY_SLOT;
+        g[29] = EMPTY_SLOT;
+        assert!(cfg.is_genome_valid(&g));
+
+        g[26] = 'x';
+        g[25] = EMPTY_SLOT; // disallowed empty
+        assert!(!cfg.is_genome_valid(&g));
     }
 
     #[test]
