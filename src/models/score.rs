@@ -791,7 +791,7 @@ impl ScoreResult {
         } else {
             "·"
         };
-        format!("{}{:06.2}%", symbol, value.abs())
+        format!("{:06.2}%{symbol}", value.abs())
     }
 
     /// Format an array of imbalances as a ` │ ` separated string with directional symbols.
@@ -890,13 +890,42 @@ impl ScoreResult {
             self.right_row_switch_cost.to_string(),
             self.left_rolls.to_string(),
             self.right_rolls.to_string(),
+            // Explicit per-metric columns appended for downstream CSV tooling.
+            Self::format_imbalance(self.home_row_balance()),
+            format!("{:.2}%", self.left_pinky_ratio() * 100.0),
+            format!("{:.2}%", self.left_ring_ratio() * 100.0),
+            format!("{:.2}%", self.left_middle_ratio() * 100.0),
+            format!("{:.2}%", self.left_index_inner_ratio() * 100.0),
+            format!("{:.2}%", self.left_index_outer_ratio() * 100.0),
+            format!("{:.2}%", self.right_pinky_ratio() * 100.0),
+            format!("{:.2}%", self.right_ring_ratio() * 100.0),
+            format!("{:.2}%", self.right_middle_ratio() * 100.0),
+            format!("{:.2}%", self.right_index_inner_ratio() * 100.0),
+            format!("{:.2}%", self.right_index_outer_ratio() * 100.0),
+            format!("{:.2}%", self.left_pinky_row_switch_ratio() * 100.0),
+            format!("{:.2}%", self.left_ring_row_switch_ratio() * 100.0),
+            format!("{:.2}%", self.left_middle_row_switch_ratio() * 100.0),
+            format!("{:.2}%", self.left_index_row_switch_ratio() * 100.0),
+            format!("{:.2}%", self.right_pinky_row_switch_ratio() * 100.0),
+            format!("{:.2}%", self.right_ring_row_switch_ratio() * 100.0),
+            format!("{:.2}%", self.right_middle_row_switch_ratio() * 100.0),
+            format!("{:.2}%", self.right_index_row_switch_ratio() * 100.0),
+            Self::format_imbalance(self.pinky_balance()),
+            Self::format_imbalance(self.ring_balance()),
+            Self::format_imbalance(self.middle_balance()),
+            Self::format_imbalance(self.index_inner_balance()),
+            Self::format_imbalance(self.index_outer_balance()),
+            Self::format_imbalance(self.pinky_row_switch_balance()),
+            Self::format_imbalance(self.ring_row_switch_balance()),
+            Self::format_imbalance(self.middle_row_switch_balance()),
+            Self::format_imbalance(self.index_row_switch_balance()),
         ]
         .join(",")
     }
 
     /// CSV header matching [`to_csv`] column order.
     pub fn csv_header() -> &'static str {
-        "fitness,row_switch_ratio,row_switch_imbalance,hand_switch_ratio,hands_imbalance,effort,efforts_imbalance,roll_imbalance,mean_streak,streak_imbalance,left_streak,right_streak,left_column_effort_ratio,right_column_effort_ratio,left_column_press_ratio,right_column_press_ratio,column_balance,left_finger_row_switch_ratio,right_finger_row_switch_ratio,finger_row_switch_balance,top_row_effort_ratio,home_row_effort_ratio,bottom_row_effort_ratio,row_balance,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,left_effort,right_effort,left_count,right_count,hand_switches,left_row_switch_cost,right_row_switch_cost,left_rolls,right_rolls"
+        "fitness,row_switch_ratio,row_switch_imbalance,hand_switch_ratio,hands_imbalance,effort,efforts_imbalance,roll_imbalance,mean_streak,streak_imbalance,left_streak,right_streak,left_column_effort_ratio,right_column_effort_ratio,left_column_press_ratio,right_column_press_ratio,column_balance,left_finger_row_switch_ratio,right_finger_row_switch_ratio,finger_row_switch_balance,top_row_effort_ratio,home_row_effort_ratio,bottom_row_effort_ratio,row_balance,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,left_effort,right_effort,left_count,right_count,hand_switches,left_row_switch_cost,right_row_switch_cost,left_rolls,right_rolls,home_row_balance,left_pinky_ratio,left_ring_ratio,left_middle_ratio,left_index_inner_ratio,left_index_outer_ratio,right_pinky_ratio,right_ring_ratio,right_middle_ratio,right_index_inner_ratio,right_index_outer_ratio,left_pinky_row_switch_ratio,left_ring_row_switch_ratio,left_middle_row_switch_ratio,left_index_row_switch_ratio,right_pinky_row_switch_ratio,right_ring_row_switch_ratio,right_middle_row_switch_ratio,right_index_row_switch_ratio,pinky_balance,ring_balance,middle_balance,index_inner_balance,index_outer_balance,pinky_row_switch_balance,ring_row_switch_balance,middle_row_switch_balance,index_row_switch_balance"
     }
 
     /// Parse the raw (non-derived) fields from a persisted CSV row, skipping the
@@ -1346,5 +1375,25 @@ mod tests {
         assert_eq!(parsed.effort, s.effort);
         assert_eq!(parsed.left_count, s.left_count);
         assert_eq!(parsed.right_count, s.right_count);
+    }
+
+    #[test]
+    fn csv_appends_explicit_metric_columns_at_the_end() {
+        let s = ScoreResult {
+            left_finger_row_switch_cost: [0, 0, 0, 2],
+            right_finger_row_switch_cost: [0, 0, 0, 8],
+            ..Default::default()
+        };
+
+        let csv = s.to_csv();
+        let columns = csv.split(',').map(str::trim).collect::<Vec<_>>();
+        let expected = ScoreResult::csv_header().split(',').count();
+
+        assert_eq!(columns.len(), expected);
+        assert_eq!(columns[expected - 28], "·000.00%");
+        assert_eq!(columns[expected - 1], "→075.00%");
+        assert!(ScoreResult::csv_header().contains("home_row_balance"));
+        assert!(ScoreResult::csv_header().contains("left_pinky_ratio"));
+        assert!(ScoreResult::csv_header().contains("pinky_row_switch_balance"));
     }
 }
