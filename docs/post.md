@@ -78,14 +78,6 @@ _xqyj	vdfw_
 Так как будет использована custom клавиатура, я не учитываю расположение знаков препинания. Их расположение сильно зависит от конкретной клавиатуры.
 Да и на обычной кверти имеет смысл поменять местами П и ;.
 
-
-### Methodology
-
-Why bigrams.
-
-Why lower hand switch.
-
-
 ### Modes
 
 First you need to get statistics about english letter frequency and bigram frequency.

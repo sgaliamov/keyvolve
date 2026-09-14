@@ -75,7 +75,7 @@ optimization:
   allowed:
     e: [6, 7, 8]
     '_': [0, 1, 10, 11]
-    h: [1, 2, 3, 6, 7, 8, 9, 12, 13]
+    h: [1, 2, 3, 6, 7, 8, 9, 13]
 
   # Optional: Character pairs that must stay on the same hand (left-left or right-right).
   # Disjoint pairs choose independently; overlapping pairs form one group. Contiguity is only preferred.
@@ -131,7 +131,7 @@ evaluate:
   # One or more layout CSVs to score.
   input:
     - data/layouts.csv
-    - data/layouts.known.csv
+    # - data/layouts.known.csv
   # Output CSV for scored layouts.
   output: data/layouts.csv
   # output: data/layouts.known.csv
