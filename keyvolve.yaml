@@ -52,9 +52,9 @@ optimization:
   # Mutants produced per parent each generation.
   mutationCount: 10
   # Max home-row groups kept in final ranked output.
-  maxGroups: 3
+  maxGroups: 1
   # Number of layouts kept per home-row group in final ranked output.
-  itemsPerGroup: 10
+  itemsPerGroup: 1
 
   # Optional: Slot indices that must remain empty (blocked), unless a letter is frozen there.
   # blocked: [0, 28, 29]
@@ -82,7 +82,7 @@ optimization:
   # sameSide: ['er', 'th']
 
   # Optional: Characters restricted to the left hand (unless frozen elsewhere).
-  # left: [x, c, v]
+  left: [x, c, v, z, s, a]
 
   # Optional: Characters restricted to the right hand (unless frozen elsewhere).
   # right: [a, i]
