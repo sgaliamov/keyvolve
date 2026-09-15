@@ -46,7 +46,7 @@ synthesise:
 
 optimization:
   # Seed layout CSVs to load before GA starts; null means none.
-  input: data/layouts.csv
+  # input: data/layouts.csv
   # Layout CSV written after optimization.
   output: data/layouts.csv
   # Mutants produced per parent each generation.
@@ -82,7 +82,7 @@ optimization:
   # sameSide: ['er', 'th']
 
   # Optional: Characters restricted to the left hand (unless frozen elsewhere).
-  left: [x, c, v, z, s, a]
+  # left: [x, c, v, z, s, a]
 
   # Optional: Characters restricted to the right hand (unless frozen elsewhere).
   # right: [a, i]
@@ -190,7 +190,7 @@ evaluator:
 
   # Press metric: left/right roll count asymmetry from left_rolls/right_rolls.
   # type: max — lower is better.
-  # rollImbalance: { type: max, value: 5, weight: 1 }
+  rollImbalance: { type: max, value: 5, weight: 1 }
 
   # Press metric: left/right row-switch cost asymmetry from left_row_switch_cost/right_row_switch_cost.
   # type: max — lower is better.
