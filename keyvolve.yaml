@@ -85,7 +85,7 @@ optimization:
 
   # Optional: Character pairs that must stay on the same hand (left-left or right-right).
   # Disjoint pairs choose independently; overlapping pairs form one group. Contiguity is only preferred.
-  sameSide: ['er', 'th']
+  # sameSide: ['er', 'th']
 
   # Optional: Characters restricted to the left hand (unless frozen elsewhere).
   # left: [x, c, v, z, s, a]
@@ -155,92 +155,59 @@ evaluator:
   sharpness: 4
 
   # Desired metric goals, in the percent units the CSV prints.
-  # `max` rewards lower values; `target` rewards proximity to `value`.
   # Form: { type: max|target, value: <number>, weight: <number>, tolerance: <number> }
-  #
-  # tolerance (target type only, default 5): accepted miss in percentage points.
-  # Cost = weight exactly `tolerance` points from `value`; inside ~free, outside walls
-  # up with sharpness. Tighten to pin a metric, loosen to let effort win.
-  # Example: { type: target, value: 10, tolerance: 2 }  # 4pp miss already costs 16x weight
-  #
-  # Tuning: read the "penalty breakdown" table logged for the best layout.
-  # Effort metrics use effort shares/skews.
-  # Press metrics use press counts, switches, and run lengths.
-  # CSV fields used below:
-  # - left/right effort/count/switch fields: left_effort, right_effort, left_count, right_count,
-  #   hand_switches, left_row_switch_cost, right_row_switch_cost, left_rolls, right_rolls
-  # - grouped effort fields: left_column_effort_ratio, right_column_effort_ratio,
-  #   top_row_effort_ratio, home_row_effort_ratio, bottom_row_effort_ratio, row_balance
-  # - grouped press fields: left_column_press_ratio, right_column_press_ratio, column_balance,
-  #   left_finger_row_switch_ratio, right_finger_row_switch_ratio, finger_row_switch_balance
-  # `share` says who pays now; `pressure` says who wins the next percentage point.
-  # A metric stuck off goal with tiny pressure needs more weight or tighter tolerance;
-  # two off-goal metrics with similar pressures are a physical conflict — relax one.
+  # Full formulas, defaults, and tuning guide: docs/penalty.md
 
-  # Effort metric: left/right effort asymmetry from CSV fields left_effort/right_effort.
-  # type: max — lower is better.
+  # Left/right effort asymmetry.
   effortsImbalance: { type: max, value: 5, weight: 0.75 }
 
-  # Press metric: left/right same-hand bigram count asymmetry from left_count/right_count.
-  # type: max — lower is better.
+  # Left/right same-hand bigram count asymmetry.
   handsImbalance: { type: max, value: 5, weight: 0.5 }
 
-  # Press metric: row-switch cost / same-hand bigram count from left_row_switch_cost/right_row_switch_cost
-  # and left_count/right_count.
-  # type: max — lower is better.
+  # Row-switch cost / same-hand bigram count.
   # rowSwitchRatio: { type: max, value: 8, weight: 1 }
 
-  # Press metric: hand-switches / same-hand bigram count from hand_switches and left_count/right_count.
-  # type: max — lower is better.
+  # Hand-switches / same-hand bigram count.
   handSwitchRatio: { type: max, value: 38, weight: 2 }
 
-  # Press metric: left/right roll count asymmetry from left_rolls/right_rolls.
-  # type: max — lower is better.
+  # Left/right roll count asymmetry.
   rollImbalance: { type: max, value: 5, weight: 1 }
 
-  # Press metric: left/right row-switch cost asymmetry from left_row_switch_cost/right_row_switch_cost.
-  # type: max — lower is better.
+  # Left/right row-switch cost asymmetry.
   rowSwitchImbalance: { type: max, value: 10, weight: 0.01 }
 
-  # Press metric: left/right streak-length asymmetry from left_streak/right_streak.
-  # type: max — lower is better.
+  # Left/right streak-length asymmetry.
   streakImbalance: { type: max, value: 10, weight: 0.1 }
 
-  # Effort metric: home row left/right balance from row_balance (home entry).
-  # type: max — lower is better (zero asymmetry is ideal).
+  # Home row left/right effort balance.
   homeRowBalance: { type: max, value: 10, weight: 0.01 }
 
-  # Effort metric: top/home/bottom effort share targets from top_row_effort_ratio,
-  # home_row_effort_ratio, bottom_row_effort_ratio.
+  # Top/home/bottom row effort share targets.
   topRowRatio: { type: target, value: 24, weight: 1 }
   homeRowRatio: { type: target, value: 64, weight: 2 }
   bottomRowRatio: { type: target, value: 12, weight: 1 }
 
-  # Effort metric: column caps from left/right_column_effort_ratio.
-  # Each column's effort share cap in percentage. type: max — upper bound only, no pull-up.
-  # Below the cap cost fades (deviation^sharpness); effort map decides placement, caps guard fatigue.
+  # Per-column effort share caps.
   pinkyRatio: { type: max, value: 6, weight: 1.0 }
   ringRatio: { type: max, value: 10, weight: 1.0 }
   middleRatio: { type: max, value: 13, weight: 1.0 }
   indexInnerRatio: { type: max, value: 12, weight: 1.0 }
   indexOuterRatio: { type: max, value: 9, weight: 1.0 }
 
-  # Effort metric: per-finger left/right effort balance from column_balance.
-  # type: max — lower is better (zero skew is ideal).
+  # Per-finger left/right effort balance.
   pinkyBalance: { type: max, value: 10, weight: 0.25 }
   ringBalance: { type: max, value: 10, weight: 0.25 }
   middleBalance: { type: max, value: 10, weight: 0.25 }
   indexInnerBalance: { type: max, value: 10, weight: 0.25 }
   indexOuterBalance: { type: max, value: 10, weight: 0.25 }
 
-  # Press metric: same-finger row-switch ratio caps from left/right_finger_row_switch_ratio.
-  # Numerator = same-finger row-switch cost; denominator = that finger's presses.
+  # Per-finger same-finger row-switch ratio caps.
   pinkyRowSwitchRatio: { type: max, value: 3, weight: 0.5 }
   ringRowSwitchRatio: { type: max, value: 5, weight: 0.5 }
   middleRowSwitchRatio: { type: max, value: 8, weight: 0.5 }
   indexRowSwitchRatio: { type: max, value: 8, weight: 0.5 }
 
-  # Press metric: same-finger row-switch left/right balance from finger_row_switch_balance.
+  # Per-finger same-finger row-switch left/right balance.
   pinkyRowSwitchBalance: { type: max, value: 5, weight: 0.1 }
   ringRowSwitchBalance: { type: max, value: 5, weight: 0.1 }
   middleRowSwitchBalance: { type: max, value: 5, weight: 0.1 }

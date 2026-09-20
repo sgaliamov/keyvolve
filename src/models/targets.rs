@@ -42,44 +42,44 @@ pub struct Targets {
     #[serde(default = "default_bottom_row_ratio")]
     pub bottom_row_ratio: Option<Target>,
 
-    /// Target for left pinky effort share. Default: 7%.
+    /// Target for left pinky effort share. Default: 10%.
     #[serde(default = "default_pinky_ratio")]
     pub pinky_ratio: Option<Target>,
 
-    /// Target for left ring effort share. Default: 11.5%.
+    /// Target for left ring effort share. Default: 10%.
     #[serde(default = "default_ring_ratio")]
     pub ring_ratio: Option<Target>,
 
-    /// Target for left middle effort share. Default: 13%.
+    /// Target for left middle effort share. Default: 10%.
     #[serde(default = "default_middle_ratio")]
     pub middle_ratio: Option<Target>,
 
-    /// Target for left index (inner) effort share. Default: 10.5%.
+    /// Target for left index (inner) effort share. Default: 10%.
     #[serde(default = "default_index_inner_ratio")]
     pub index_inner_ratio: Option<Target>,
 
-    /// Target for left index (outer) effort share. Default: 8%.
+    /// Target for left index (outer) effort share. Default: 10%.
     /// Right-hand column targets are computed/mirrored from left-hand values.
     #[serde(default = "default_index_outer_ratio")]
     pub index_outer_ratio: Option<Target>,
 
-    /// Limit for `pinky_balance`: pinky column left/right effort asymmetry. Default: 3%.
+    /// Limit for `pinky_balance`: pinky column left/right effort asymmetry. Default: 15%, weight 0.5.
     #[serde(default = "default_column_balance")]
     pub pinky_balance: Option<Target>,
 
-    /// Limit for `ring_balance`: ring column left/right effort asymmetry. Default: 3%.
+    /// Limit for `ring_balance`: ring column left/right effort asymmetry. Default: 15%, weight 0.5.
     #[serde(default = "default_column_balance")]
     pub ring_balance: Option<Target>,
 
-    /// Limit for `middle_balance`: middle column left/right effort asymmetry. Default: 3%.
+    /// Limit for `middle_balance`: middle column left/right effort asymmetry. Default: 15%, weight 0.5.
     #[serde(default = "default_column_balance")]
     pub middle_balance: Option<Target>,
 
-    /// Limit for `index_inner_balance`: index-inner column left/right effort asymmetry. Default: 3%.
+    /// Limit for `index_inner_balance`: index-inner column left/right effort asymmetry. Default: 15%, weight 0.5.
     #[serde(default = "default_column_balance")]
     pub index_inner_balance: Option<Target>,
 
-    /// Limit for `index_outer_balance`: index-outer column left/right effort asymmetry. Default: 3%.
+    /// Limit for `index_outer_balance`: index-outer column left/right effort asymmetry. Default: 15%, weight 0.5.
     #[serde(default = "default_column_balance")]
     pub index_outer_balance: Option<Target>,
 

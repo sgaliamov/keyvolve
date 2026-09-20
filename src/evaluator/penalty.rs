@@ -42,11 +42,11 @@
 //! | `row_switch_imbalance` | left/right same-finger row-step asymmetry |
 //! | `streak_imbalance`   | left/right run-length asymmetry  |
 //! | `home_row_balance`   | home row left/right balance (absolute value) |
-//! | `pinky_balance`      | pinky column left/right balance (default: 3%) |
-//! | `ring_balance`       | ring column left/right balance (default: 3%) |
-//! | `middle_balance`     | middle column left/right balance (default: 3%) |
-//! | `index_inner_balance`| index-inner column left/right balance (default: 3%) |
-//! | `index_outer_balance`| index-outer column left/right balance (default: 3%) |
+//! | `pinky_balance`      | pinky column left/right balance (default: 15%, weight 0.5) |
+//! | `ring_balance`       | ring column left/right balance (default: 15%, weight 0.5) |
+//! | `middle_balance`     | middle column left/right balance (default: 15%, weight 0.5) |
+//! | `index_inner_balance`| index-inner column left/right balance (default: 15%, weight 0.5) |
+//! | `index_outer_balance`| index-outer column left/right balance (default: 15%, weight 0.5) |
 //! | `left_pinky_row_switch_ratio` | pinky same-finger row-switch ratio cap on left hand |
 //! | `right_pinky_row_switch_ratio` | pinky same-finger row-switch ratio cap on right hand |
 //! | `left_ring_row_switch_ratio` | ring same-finger row-switch ratio cap on left hand |
@@ -62,11 +62,11 @@
 //! | `top_row_ratio`      | top row effort share target (default: 25%) |
 //! | `home_row_ratio`     | home row effort share target (default: 60%) |
 //! | `bottom_row_ratio`   | bottom row effort share target (default: 15%) |
-//! | `left_pinky_ratio`       | left pinky effort share target (default: 7%) |
-//! | `left_ring_ratio`        | left ring effort share target (default: 11.5%) |
-//! | `left_middle_ratio`      | left middle effort share target (default: 13%) |
-//! | `left_index_inner_ratio` | left index (inner) effort share target (default: 10.5%) |
-//! | `left_index_outer_ratio` | left index (outer) effort share target (default: 8%) |
+//! | `left_pinky_ratio`       | left pinky effort share target (default: 10%) |
+//! | `left_ring_ratio`        | left ring effort share target (default: 10%) |
+//! | `left_middle_ratio`      | left middle effort share target (default: 10%) |
+//! | `left_index_inner_ratio` | left index (inner) effort share target (default: 10%) |
+//! | `left_index_outer_ratio` | left index (outer) effort share target (default: 10%) |
 //! | `right_pinky_ratio`      | right pinky effort share (same per-finger target) |
 //! | `right_ring_ratio`       | right ring effort share (same per-finger target) |
 //! | `right_middle_ratio`     | right middle effort share (same per-finger target) |
