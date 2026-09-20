@@ -73,13 +73,19 @@ optimization:
   # Special key "_" constrains empty slots (the 4 unused positions).
   # These positions may be empty, not must be empty; blocked slots are also eligible.
   allowed:
-    e: [6, 7, 8]
+    # e: [6, 7, 8]
+    # t: [6, 7, 8]
+    # a: [6, 7, 8]
     '_': [0, 1, 10, 11]
-    h: [1, 2, 3, 6, 7, 8, 9, 13]
+    # h: [1, 2, 3, 6, 7, 8, 9, 13]
+    j: [4, 14]
+    z: [4, 14]
+    q: [4, 14]
+    x: [4, 14]
 
   # Optional: Character pairs that must stay on the same hand (left-left or right-right).
   # Disjoint pairs choose independently; overlapping pairs form one group. Contiguity is only preferred.
-  # sameSide: ['er', 'th']
+  sameSide: ['er', 'th']
 
   # Optional: Characters restricted to the left hand (unless frozen elsewhere).
   # left: [x, c, v, z, s, a]
@@ -194,7 +200,7 @@ evaluator:
 
   # Press metric: left/right row-switch cost asymmetry from left_row_switch_cost/right_row_switch_cost.
   # type: max — lower is better.
-  # rowSwitchImbalance: { type: max, value: 5, weight: 1 }
+  rowSwitchImbalance: { type: max, value: 10, weight: 0.01 }
 
   # Press metric: left/right streak-length asymmetry from left_streak/right_streak.
   # type: max — lower is better.
@@ -202,7 +208,8 @@ evaluator:
 
   # Effort metric: home row left/right balance from row_balance (home entry).
   # type: max — lower is better (zero asymmetry is ideal).
-  # homeRowBalance: { type: max, value: 10, weight: 0.5 }
+  homeRowBalance: { type: max, value: 10, weight: 0.01 }
+
   # Effort metric: top/home/bottom effort share targets from top_row_effort_ratio,
   # home_row_effort_ratio, bottom_row_effort_ratio.
   topRowRatio: { type: target, value: 24, weight: 1 }
