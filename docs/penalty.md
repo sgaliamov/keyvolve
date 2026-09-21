@@ -1,9 +1,9 @@
 # Penalty model — configurable scoring knobs
 
-This document lists every metric the `evaluator:` config section can constrain, the exact
+This document lists every metric the `evaluator` config section can constrain, the exact
 formula behind it, its default (if any), and how changing `value`/`weight`/`tolerance` moves
-the optimizer's behavior. For the short in-file reminder see the `evaluator:` section of
-[keyvolve.yaml](/c:/Users/Admin/projects/keyvolve/keyvolve.yaml); this document is the full reference.
+the optimizer's behavior. For the short in-file reminder see the `evaluator` section of
+[keyvolve.yaml](../keyvolve.yaml); this document is the full reference.
 
 ## Fitness and penalty
 
