@@ -1,9 +1,13 @@
 # Penalty model — configurable scoring knobs
 
-This document lists every metric the `evaluator` config section can constrain, the exact
-formula behind it, its default (if any), and how changing `value`/`weight`/`tolerance` moves
-the optimizer's behavior. For the short in-file reminder see the `evaluator` section of
-[keyvolve.yaml](../keyvolve.yaml); this document is the full reference.
+The optimizer doesn't just minimize raw typing effort — it also cares about balance between
+hands, how often fingers jump rows, how much load lands on the pinky, and a dozen other
+ergonomic concerns. Each of those concerns is a metric you can cap or target in the
+`evaluator` config section, and this document is the reference for all of them: the formula
+behind each one, its default, and what happens when you turn its dials.
+
+[keyvolve.yaml](../keyvolve.yaml) carries a short one-line reminder per metric; come here for
+the full formula and the reasoning behind the defaults.
 
 ## Fitness and penalty
 
