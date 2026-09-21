@@ -73,19 +73,26 @@ optimization:
   # Special key "_" constrains empty slots (the 4 unused positions).
   # These positions may be empty, not must be empty; blocked slots are also eligible.
   allowed:
-    # e: [6, 7, 8]
-    # t: [6, 7, 8]
-    # a: [6, 7, 8]
     '_': [0, 1, 10, 11]
-    # h: [1, 2, 3, 6, 7, 8, 9, 13]
-    j: [4, 14]
-    z: [4, 14]
-    q: [4, 14]
-    x: [4, 14]
+    e: [6, 7, 8]
+    t: [6, 7, 8]
+    i: [1, 2, 3, 6, 7, 8]
+    a: [6, 7, 8]
+    o: [1, 2, 3, 6, 7, 8]
+    n: [1, 2, 3, 6, 7, 8, 13]
+    r: [1, 2, 3, 6, 7, 8, 13]
+    s: [1, 2, 3, 6, 7, 8, 13]
+    h: [1, 2, 3, 6, 7, 8, 13]
+
+    b: [2, 11, 12, 13]
+    # j: [4, 14]
+    # z: [4, 14]
+    # q: [4, 14]
+    # x: [4, 14]
 
   # Optional: Character pairs that must stay on the same hand (left-left or right-right).
   # Disjoint pairs choose independently; overlapping pairs form one group. Contiguity is only preferred.
-  # sameSide: ['er', 'th']
+  sameSide: ['th', 'er']
 
   # Optional: Characters restricted to the left hand (unless frozen elsewhere).
   # left: [x, c, v, z, s, a]
@@ -152,7 +159,7 @@ evaluator:
 
   # Curve steepness: term = weight · deviation ^ sharpness.
   # 1.0 = linear, higher = forgiving under the limit and brutal over it.
-  sharpness: 4
+  sharpness: 2
 
   # Desired metric goals, in the percent units the CSV prints.
   # Form: { type: max|target, value: <number>, weight: <number>, tolerance: <number> }
@@ -168,7 +175,7 @@ evaluator:
   # rowSwitchRatio: { type: max, value: 8, weight: 1 }
 
   # Hand-switches / same-hand bigram count.
-  handSwitchRatio: { type: max, value: 38, weight: 2 }
+  handSwitchRatio: { type: max, value: 35, weight: 2 }
 
   # Left/right roll count asymmetry.
   rollImbalance: { type: max, value: 5, weight: 1 }
