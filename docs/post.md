@@ -59,6 +59,8 @@ I will write it as a guide. How to start from scratch and design your own keyboa
 - [On the One Hand or on the Other: Trade-Off in Timing Precision in Bimanual Musical Scale Playing](https://pmc.ncbi.nlm.nih.gov/articles/PMC6737297)
 - [Speed invariance of independent control of finger movements in pianists](https://pmc.ncbi.nlm.nih.gov/articles/PMC3545004)
 
+(TODO: SFS/redirects — как работает ranking (pairwise, Bradley-Terry), почему SFS через него не откалибровать и как эмулируется через `sfsRatio`, почему redirects отдельно делать не нужно (уже в парах). Детали: [trigram-metrics.md](/c:/Users/Admin/projects/keyvolve/docs/trigram-metrics.md).)
+
 Мы конечно же не пианисты, но мы также нажимаем на клавиши.
 Согласитесь же что очень удобно что на кверти Е и Р оказались рядом.
 
@@ -84,6 +86,9 @@ _xqyj	vdfw_
 
 
 Где-то нужен раздел о заданных ограничениях для конкретных клавиш - куда ставим пустые слоты и разрешенные позиции для каждой клавиши. Обосновывается статистикой использования и эстетическими соображениями.
+
+Сказать что было опробованно несоклько версий, но каждый раз что-то не нравилось.
+В частности то, что находилось на 5 колонке. Часто используемые кнопки там оказывались неудобными (Б, Х)
 
 ### Modes
 
