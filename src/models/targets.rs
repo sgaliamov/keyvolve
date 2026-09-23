@@ -11,6 +11,9 @@ pub struct Targets {
     /// Limit for `hand_switch_ratio`: hand alternation. Replaces `mean_streak_power`.
     pub hand_switch_ratio: Option<Target>,
 
+    /// Limit for `sfs_ratio`: same-finger skipgram share. Default: none until measured.
+    pub sfs_ratio: Option<Target>,
+
     /// Limit for `efforts_imbalance`: left/right effort asymmetry.
     pub efforts_imbalance: Option<Target>,
 
@@ -214,7 +217,8 @@ mod tests {
                 "pinkyRowSwitchRatio": {"type": "max", "value": 10, "weight": 0.25},
                 "ringRowSwitchRatio": {"type": "max", "value": 11, "weight": 0.3},
                 "middleRowSwitchBalance": {"type": "max", "value": 12, "weight": 0.4},
-                "indexRowSwitchBalance": {"type": "max", "value": 13, "weight": 0.5}
+                "indexRowSwitchBalance": {"type": "max", "value": 13, "weight": 0.5},
+                "sfsRatio": {"type": "max", "value": 4, "weight": 0.1}
             }"#,
         )
         .unwrap();

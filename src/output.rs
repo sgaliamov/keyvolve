@@ -222,6 +222,7 @@ mod tests {
             right_column_count: [30, 42, 52, 63, 13],
             left_finger_row_switch_cost: [8, 7, 6, 9],
             right_finger_row_switch_cost: [4, 5, 6, 15],
+            sfs_count: 0,
         };
 
         let csv_line = format!("_mub_,lreop,wfydx,_htc_,kinas,qgvzj,, {}", score.to_csv());

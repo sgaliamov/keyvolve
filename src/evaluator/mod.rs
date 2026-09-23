@@ -127,6 +127,19 @@ impl LayoutEvaluator {
         score
     }
 
+    /// Geometric same-finger skipgram penalty. True when key 3 reuses the same finger
+    /// as key 1 while key 2 is not on that same finger; unlike the pair table, this is
+    /// a structural indicator over three consecutive presses rather than a calibrated pair.
+    fn score_sfs(&self, a: char, b: char, c: char, keys: &Keys) -> ScoreResult {
+        let ka = slot(keys, a);
+        let kb = slot(keys, b);
+        let kc = slot(keys, c);
+        ScoreResult {
+            sfs_count: is_sfs(ka, kb, kc) as u64,
+            ..Default::default()
+        }
+    }
+
     /// Score the corpus: raw effort scaled by uniform multiplicative penalty factors.
     pub fn score_corpus(&self, keys: &Keys) -> ScoreResult {
         let seeds = self
@@ -141,8 +154,15 @@ impl LayoutEvaluator {
             .iter()
             .map(|(&(a, b), &n)| self.score_bigram(a, b, keys) * n);
 
+        let sfs = self
+            .counts
+            .trigrams
+            .iter()
+            .map(|(&(a, b, c), &n)| self.score_sfs(a, b, c, keys) * n);
+
         let mut result = seeds
             .chain(bigrams)
+            .chain(sfs)
             .fold(ScoreResult::default(), |acc, x| acc + x);
 
         let penalty = penalty(&self.config, &result);
@@ -177,6 +197,16 @@ fn logical_finger(slot: u8) -> usize {
         4 - (slot % 5) as usize
     };
     column.min(3)
+}
+
+#[inline]
+fn same_finger(a: u8, b: u8) -> bool {
+    (a < 15) == (b < 15) && logical_finger(a) == logical_finger(b)
+}
+
+#[inline]
+fn is_sfs(a: u8, b: u8, c: u8) -> bool {
+    same_finger(a, c) && !same_finger(a, b)
 }
 
 #[cfg(test)]
@@ -294,6 +324,24 @@ mod tests {
 
         assert_eq!(score.row_switch_distance(), 0);
         assert_eq!(score.left_finger_row_switch_cost, [0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn is_sfs_matches_same_finger_skipgram_geometry() {
+        assert!(is_sfs(0, 15, 5));
+        assert!(is_sfs(0, 7, 0));
+        assert!(!is_sfs(0, 5, 10));
+        assert!(!is_sfs(0, 1, 2));
+        assert!(!is_sfs(0, 1, 1));
+    }
+
+    #[test]
+    fn score_corpus_counts_same_finger_skipgrams() {
+        let evaluator = LayoutEvaluator::new(&test_keyboard(), vec!["aba".to_string()], test_config());
+        let score = evaluator.score_corpus(&Keys::from_iter([('a', 0), ('b', 1)]));
+
+        assert_eq!(score.sfs_count, 1);
+        assert_close(score.sfs_ratio(), 1.0 / 3.0);
     }
 
     #[test]

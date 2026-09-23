@@ -612,6 +612,7 @@ mod tests {
             targets: Targets {
                 row_switch_ratio: limit(20.0),
                 hand_switch_ratio: limit(35.0),
+                sfs_ratio: limit(4.0),
                 efforts_imbalance: limit(1.0),
                 hands_imbalance: limit(1.0),
                 roll_imbalance: limit(1.0),
