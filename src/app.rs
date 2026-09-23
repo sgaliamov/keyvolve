@@ -1,5 +1,6 @@
 use crate::modes::{
-    evaluate, frequencies, merge, optimize, rank, synthesise, synthesise::read_stats_cache,
+    evaluate, frequencies, merge, optimize, rank, stats, synthesise,
+    synthesise::read_stats_cache,
 };
 use crate::{
     Config, Mode,
@@ -19,6 +20,9 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
     match cfg.mode {
         Mode::Merge => {
             merge::merge(cfg.merge, app)?;
+        }
+        Mode::Stats => {
+            stats::stats(cfg.stats_mode)?;
         }
         Mode::Synthesise => {
             synthesise::synthesise(cfg.synthesise)?;
@@ -76,7 +80,7 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
                     ga.seed = seed;
                     optimize::optimize(evaluator, ga, opt, app)?;
                 }
-                Mode::Synthesise | Mode::Merge | Mode::Frequencies | Mode::Rank => unreachable!(),
+                Mode::Synthesise | Mode::Merge | Mode::Frequencies | Mode::Rank | Mode::Stats => unreachable!(),
             }
         }
     }

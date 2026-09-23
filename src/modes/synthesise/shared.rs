@@ -14,12 +14,6 @@ pub struct CachedSourceStats {
     pub word_count: usize,
 }
 
-/// Path for cached source stats: `{stats_dir}/{source.stem}.source-stats.json`.
-pub fn stats_cache_path(source: &Path, stats_dir: &Path) -> PathBuf {
-    let stem = source.file_stem().unwrap_or_default().to_string_lossy();
-    stats_dir.join(format!("{stem}.source-stats.json"))
-}
-
 /// Load cached source stats.
 pub fn read_stats_cache(path: &Path) -> Result<CachedSourceStats> {
     let text = fs::read_to_string(path)

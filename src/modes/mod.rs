@@ -3,6 +3,7 @@ pub mod frequencies;
 pub mod merge;
 pub mod optimize;
 pub mod rank;
+pub mod stats;
 pub mod synthesise;
 use crate::{
     evaluator::{LayoutEvaluator, penalty::table},

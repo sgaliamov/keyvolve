@@ -11,9 +11,6 @@ pub struct SynthesiseConfig {
     /// output corpus path
     pub output: Option<PathBuf>,
 
-    /// stats directory; defaults to `output/../stats`
-    pub stats: Option<PathBuf>,
-
     /// minimum accepted relative frequency (pairs below this are dropped)
     #[serde(default = "default_min_freq")]
     pub min_frequency: f64,
@@ -41,17 +38,6 @@ pub(super) fn default_target() -> usize {
 
 pub(super) fn default_min_freq() -> f64 {
     0.0001
-}
-
-impl SynthesiseConfig {
-    /// Resolved stats directory: explicit `stats` field, or `output/../stats`.
-    pub fn stats_dir(&self) -> Option<std::path::PathBuf> {
-        if let Some(s) = &self.stats {
-            return Some(s.clone());
-        }
-        let out = self.output.as_deref()?;
-        Some(out.parent()?.parent()?.join("stats"))
-    }
 }
 
 impl Default for SampleSynthesiseConfig {

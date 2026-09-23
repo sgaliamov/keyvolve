@@ -4,6 +4,7 @@ use crate::modes::frequencies::FrequenciesConfig;
 use crate::modes::merge::MergeConfig;
 use crate::modes::optimize::OptimizationConfig;
 use crate::modes::rank::RankConfig;
+use crate::modes::stats::StatsConfig;
 use crate::modes::synthesise::SynthesiseConfig;
 use serde::Deserialize;
 
@@ -16,9 +17,13 @@ pub struct Config {
     /// darwin config for the genetic algorithm
     pub ga: darwin::Config<char>,
 
-    /// mode of operation: optimize, evaluate, or synthesise
+    /// mode of operation: optimize, evaluate, synthesise, stats, etc.
     #[serde(default)]
     pub mode: Mode,
+
+    /// settings for `Mode::Stats`
+    #[serde(default)]
+    pub stats_mode: StatsConfig,
 
     /// settings for `Mode::Synthesise`
     #[serde(default)]
@@ -62,7 +67,10 @@ pub enum Mode {
     #[default]
     Evaluate,
 
-    /// Build a digraph frequency CSV and synthesise a compact fake-word corpus.
+    /// Build cached corpus stats from a raw text corpus.
+    Stats,
+
+    /// Build a compact fake-word corpus from the source text and frequency stats.
     Synthesise,
 
     /// Merge all `.txt` files in a folder into one cleaned file.
