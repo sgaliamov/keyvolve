@@ -1,9 +1,9 @@
 pub mod config;
 
-pub use config::*;
 use crate::modes::synthesise::{
     CachedSourceStats, CorpusStatsCounter, filter_stats_bigrams, write_stats_cache,
 };
+pub use config::*;
 use miette::{Context, IntoDiagnostic, Result};
 use std::{
     fs,

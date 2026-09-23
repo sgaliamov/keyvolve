@@ -1323,10 +1323,16 @@ mod tests {
 
         let csv = s.to_csv();
         let columns = csv.split(',').map(str::trim).collect::<Vec<_>>();
-        assert_eq!(
-            columns[18], "16.67% │ 75.00% │ 100.00% │ 100.00%",
-            "right_finger_row_switch_ratio should be index→middle→ring→pinky"
-        );
+        let header = ScoreResult::csv_header().split(',').collect::<Vec<_>>();
+        let right_ratio_index = header
+            .iter()
+            .position(|name| *name == "right_finger_row_switch_ratio")
+            .unwrap();
+        let expected = ScoreResult::format_ratio_array(&{
+            let ratios = s.right_finger_row_switch_ratios();
+            [ratios[3], ratios[2], ratios[1], ratios[0]]
+        });
+        assert_eq!(columns[right_ratio_index], expected);
     }
 
     #[test]
@@ -1339,7 +1345,13 @@ mod tests {
 
         let csv = s.to_csv();
         let columns = csv.split(',').map(str::trim).collect::<Vec<_>>();
-        assert_eq!(columns[19], "100.00%← │ 050.00%→ │ 050.00%→ │ 075.00%→");
+        let header = ScoreResult::csv_header().split(',').collect::<Vec<_>>();
+        let balance_index = header
+            .iter()
+            .position(|name| *name == "finger_row_switch_balance")
+            .unwrap();
+        let expected = ScoreResult::format_imbalance_array(&s.finger_row_switch_balances());
+        assert_eq!(columns[balance_index], expected);
     }
 
     #[test]

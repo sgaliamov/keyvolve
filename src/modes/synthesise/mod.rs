@@ -7,8 +7,7 @@ pub use counter::CorpusStatsCounter;
 use miette::{Context, IntoDiagnostic, Result};
 use rand::{RngExt, SeedableRng, rngs::StdRng};
 pub use shared::{
-    CachedSourceStats, filter_stats_bigrams, read_stats_cache, score_with_filter,
-    write_stats_cache,
+    CachedSourceStats, filter_stats_bigrams, read_stats_cache, score_with_filter, write_stats_cache,
 };
 use shared::{report_path, write_corpus, write_report};
 use std::{

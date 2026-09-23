@@ -80,8 +80,9 @@ impl OptimizationConfig {
             miette::ensure!(slot < 30, "blocked slot {slot} must be in 0..29");
         }
         for (&ch, slots) in &self.allowed {
+            let key = normalize_allowed_key(ch);
             miette::ensure!(
-                ch.is_ascii_lowercase() || normalize_allowed_key(ch) == EMPTY_SLOT,
+                key.is_ascii_lowercase() || key == EMPTY_SLOT,
                 "allowed key {ch:?} must be a lowercase letter a-z, '_' or EMPTY_SLOT"
             );
             for &slot in slots {
@@ -174,7 +175,8 @@ fn expand_half(slots: &[u8]) -> FxHashSet<u8> {
 }
 
 /// Deserialize a `FxHashMap<char, FxHashSet<u8>>` where each value is a list of
-/// half-positions (0–14) that are auto-mirrored to both hands.
+/// half-positions (0–14) that are auto-mirrored to both hands. Empty slots also
+/// accept full physical coordinates; values outside 0..29 are rejected.
 fn de_letter_slot_map<'de, D>(de: D) -> Result<FxHashMap<char, FxHashSet<u8>>, D::Error>
 where
     D: serde::Deserializer<'de>,
@@ -182,12 +184,20 @@ where
     let raw: FxHashMap<char, Vec<u8>> = FxHashMap::deserialize(de)?;
     let mut out = FxHashMap::default();
     for (ch, slots) in raw {
-        if let Some(slot) = slots.iter().find(|&&slot| slot >= 15) {
+        let key = normalize_allowed_key(ch);
+        if let Some(slot) = slots.iter().find(|&&slot| slot >= 30) {
             return Err(serde::de::Error::custom(format!(
-                "allowed slot {slot} must be in 0..14"
+                "allowed slot {slot} must be in 0..29"
             )));
         }
-        out.entry(normalize_allowed_key(ch))
+        if key != EMPTY_SLOT
+            && let Some(slot) = slots.iter().find(|&&slot| slot >= 15)
+        {
+            return Err(serde::de::Error::custom(format!(
+                "allowed slot {slot} must be in 0..14 for letter keys"
+            )));
+        }
+        out.entry(key)
             .or_insert_with(FxHashSet::default)
             .extend(expand_half(&slots));
     }
@@ -259,10 +269,14 @@ mod tests {
         let cfg = OptimizationConfig {
             frozen: [('a', 0), ('z', 29)].into_iter().collect(),
             blocked: [0, 29].into_iter().collect(),
-            allowed: ['a', 'z', '_', EMPTY_SLOT]
-                .into_iter()
-                .map(|ch| (ch, [0, 29].into_iter().collect()))
-                .collect(),
+            allowed: [
+                ('a', [0, 14].into_iter().collect()),
+                ('z', [0, 14].into_iter().collect()),
+                ('_', [0, 29].into_iter().collect()),
+                (EMPTY_SLOT, [0, 29].into_iter().collect()),
+            ]
+            .into_iter()
+            .collect(),
             left: ['a'].into_iter().collect(),
             right: ['z'].into_iter().collect(),
             same_side: vec![['a', 'z']],
@@ -394,7 +408,7 @@ mod tests {
 
     #[test]
     fn allowed_parser_rejects_out_of_range_slots_before_expansion() {
-        for slot in [15, 29, 30, 255] {
+        for slot in [30, 255] {
             for ch in ["a", "_", "`"] {
                 let json = serde_json::json!({ "allowed": { ch: [slot] } });
                 assert!(
@@ -402,6 +416,18 @@ mod tests {
                     "{ch:?}: {slot}"
                 );
             }
+        }
+        for slot in [15, 29] {
+            let json = serde_json::json!({ "allowed": { "a": [slot] } });
+            assert!(
+                serde_json::from_value::<OptimizationConfig>(json).is_err(),
+                "a: {slot}"
+            );
+            let empty_json = serde_json::json!({ "allowed": { "_": [slot] } });
+            assert!(
+                serde_json::from_value::<OptimizationConfig>(empty_json).is_ok(),
+                "_: {slot}"
+            );
         }
     }
 
@@ -604,19 +630,24 @@ mod tests {
         let cfg: OptimizationConfig = serde_json::from_str(json).unwrap();
         let empty_slots = &cfg.allowed[&EMPTY_SLOT];
         assert!(empty_slots.contains(&0));
-        assert!(empty_slots.contains(&19)); // mirror of 0
+        assert!(empty_slots.contains(&19));
         assert!(empty_slots.contains(&4));
-        assert!(empty_slots.contains(&15)); // mirror of 4
+        assert!(empty_slots.contains(&15));
+        assert!(!empty_slots.contains(&14));
+        assert_eq!(
+            cfg.allowed[&EMPTY_SLOT],
+            [0, 19, 4, 15].into_iter().collect()
+        );
     }
 
     #[test]
     fn deserialize_allowed_map_unions_empty_aliases() {
         let cfg: OptimizationConfig =
-            serde_json::from_str(r#"{"allowed":{"_":[0],"`":[14]}}"#).unwrap();
+            serde_json::from_str(r#"{"allowed":{"_": [0], "`": [14]}}"#).unwrap();
         assert!(!cfg.allowed.contains_key(&'_'));
         assert_eq!(
             cfg.allowed[&EMPTY_SLOT],
-            [0, 14, 19, 25].into_iter().collect()
+            [0, 19, 14, 25].into_iter().collect()
         );
     }
 

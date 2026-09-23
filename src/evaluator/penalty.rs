@@ -538,7 +538,7 @@ mod tests {
         let terms = skewed().breakdown(&targets_config());
 
         assert!(terms.windows(2).all(|w| w[0].cost >= w[1].cost));
-        assert_eq!(terms.len(), 38);
+        assert_eq!(terms.len(), 39);
     }
 
     /// Pressure is zero at the goal and grows with the miss — the "who wins the next

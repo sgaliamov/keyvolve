@@ -337,7 +337,8 @@ mod tests {
 
     #[test]
     fn score_corpus_counts_same_finger_skipgrams() {
-        let evaluator = LayoutEvaluator::new(&test_keyboard(), vec!["aba".to_string()], test_config());
+        let evaluator =
+            LayoutEvaluator::new(&test_keyboard(), vec!["aba".to_string()], test_config());
         let score = evaluator.score_corpus(&Keys::from_iter([('a', 0), ('b', 1)]));
 
         assert_eq!(score.sfs_count, 1);
