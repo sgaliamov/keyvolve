@@ -348,6 +348,7 @@ mod tests {
 
         assert_eq!(rebuilt.first_chars, direct.first_chars);
         assert_eq!(rebuilt.bigrams, direct.bigrams);
+        assert_eq!(rebuilt.trigrams, direct.trigrams);
     }
 
     /// Build minimal keyboard for evaluator tests using production JSON parsing.

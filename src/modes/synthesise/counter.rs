@@ -40,6 +40,43 @@ mod bigram_map_serde {
     }
 }
 
+/// Serde helper: serialize `FxHashMap<[char; 3], f64>` as `{"abc": 0.5, ...}`.
+mod trigram_map_serde {
+    use super::*;
+
+    pub fn serialize<S: Serializer>(
+        map: &FxHashMap<[char; 3], f64>,
+        s: S,
+    ) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeMap;
+        let mut entries: Vec<_> = map.iter().collect();
+        entries.sort_by(|a, b| b.1.total_cmp(a.1));
+        let mut m = s.serialize_map(Some(map.len()))?;
+        for (k, v) in entries {
+            let key: String = k.iter().collect();
+            m.serialize_entry(&key, v)?;
+        }
+        m.end()
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(
+        d: D,
+    ) -> Result<FxHashMap<[char; 3], f64>, D::Error> {
+        let raw: FxHashMap<String, f64> = FxHashMap::deserialize(d)?;
+        raw.into_iter()
+            .map(|(k, v)| {
+                let chars: Vec<_> = k.chars().collect();
+                if chars.len() != 3 {
+                    return Err(serde::de::Error::custom(format!(
+                        "trigram key must be exactly 3 chars, got `{k}`"
+                    )));
+                }
+                Ok(([chars[0], chars[1], chars[2]], v))
+            })
+            .collect()
+    }
+}
+
 /// Serde helper: serialize `FxHashMap<char, f64>` sorted by value descending.
 mod char_map_serde {
     use super::*;
@@ -69,6 +106,9 @@ pub struct CorpusStats {
     /// normalized bigram frequencies
     #[serde(with = "bigram_map_serde")]
     pub bigrams: FxHashMap<[char; 2], f64>,
+    /// normalized trigram frequencies
+    #[serde(with = "trigram_map_serde", default)]
+    pub trigrams: FxHashMap<[char; 3], f64>,
     /// normalized first-letter frequencies
     #[serde(with = "char_map_serde")]
     pub first_letters: FxHashMap<char, f64>,
@@ -81,9 +121,11 @@ pub struct CorpusStats {
 pub struct CorpusStatsCounter {
     letter_counts: FxHashMap<char, u64>,
     bigram_counts: FxHashMap<[char; 2], u64>,
+    trigram_counts: FxHashMap<[char; 3], u64>,
     first_letter_counts: FxHashMap<char, u64>,
     total_letters: u64,
     total_bigrams: u64,
+    total_trigrams: u64,
     total_words: u64,
     total_word_len: u64,
 }
@@ -159,6 +201,20 @@ fn normalize_bigram_counts(
         .collect()
 }
 
+fn normalize_trigram_counts(
+    counts: &FxHashMap<[char; 3], u64>,
+    total: u64,
+) -> FxHashMap<[char; 3], f64> {
+    if total == 0 {
+        return FxHashMap::default();
+    }
+
+    counts
+        .iter()
+        .map(|(&key, &count)| (key, count as f64 / total as f64))
+        .collect()
+}
+
 impl CorpusStatsCounter {
     /// Add one word to the running corpus stats.
     pub fn add_word(&mut self, word: &str) {
@@ -175,12 +231,20 @@ impl CorpusStatsCounter {
             *self.letter_counts.entry(first).or_insert(0) += 1;
             self.total_letters += 1;
 
+            let mut prev2 = None;
             let mut prev = first;
             for ch in chars {
                 *self.letter_counts.entry(ch).or_insert(0) += 1;
                 *self.bigram_counts.entry([prev, ch]).or_insert(0) += 1;
                 self.total_letters += 1;
                 self.total_bigrams += 1;
+
+                if let Some(a) = prev2 {
+                    *self.trigram_counts.entry([a, prev, ch]).or_insert(0) += 1;
+                    self.total_trigrams += 1;
+                }
+
+                prev2 = Some(prev);
                 prev = ch;
             }
         }
@@ -191,6 +255,7 @@ impl CorpusStatsCounter {
         CorpusStats {
             letters: normalize_char_counts(&self.letter_counts, self.total_letters),
             bigrams: normalize_bigram_counts(&self.bigram_counts, self.total_bigrams),
+            trigrams: normalize_trigram_counts(&self.trigram_counts, self.total_trigrams),
             first_letters: normalize_char_counts(&self.first_letter_counts, self.total_words),
             average_word_length: if self.total_words > 0 {
                 self.total_word_len as f64 / self.total_words as f64
@@ -251,6 +316,38 @@ mod tests {
         assert_eq!(stats.bigrams[&['a', 'c']], 0.5);
         assert_eq!(stats.first_letters[&'a'], 1.0);
         assert_eq!(stats.average_word_length, 2.0);
+    }
+
+    #[test]
+    fn calculate_stats_counts_trigrams() {
+        let words = vec!["abc".to_owned(), "abd".to_owned(), "bc".to_owned()];
+        let stats = calculate_stats(&words);
+
+        assert_eq!(stats.trigrams[&['a', 'b', 'c']], 0.5);
+        assert_eq!(stats.trigrams[&['a', 'b', 'd']], 0.5);
+        assert!(stats.trigrams.is_empty() == false);
+    }
+
+    #[test]
+    fn legacy_stats_without_trigrams_deserializes_as_empty() {
+        let json = r#"{
+            "letters": {"a": 0.5, "b": 0.25, "c": 0.25},
+            "bigrams": {"ab": 0.5, "ac": 0.5},
+            "first_letters": {"a": 1.0},
+            "average_word_length": 2.0
+        }"#;
+
+        let stats: CorpusStats = serde_json::from_str(json).unwrap();
+
+        assert!(stats.trigrams.is_empty());
+    }
+
+    #[test]
+    fn short_words_produce_no_trigrams() {
+        let words = vec!["ab".to_owned(), "cd".to_owned()];
+        let stats = calculate_stats(&words);
+
+        assert!(stats.trigrams.is_empty());
     }
 
     #[test]

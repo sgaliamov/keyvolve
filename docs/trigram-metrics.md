@@ -132,6 +132,8 @@ pairs is the right call — no new metric, no new corpus data, nothing to build.
 
 ## Data plan: trigram frequency stats
 
+Note for the future: the synthetic-corpus mode remains optional and is kept as a convenience for exploratory work. The primary path for real scoring remains the cached corpus statistics built by the build-stats pipeline, because the evaluator and optimizer are designed to consume normalized corpus frequencies rather than ad hoc generated text.
+
 Character alphabet is 26 letters, so the full trigram space is `26³ = 17,576` entries — trivial
 to store and count, no risk of reintroducing the "must scan raw text at scoring time" cost the
 project already avoided for bigrams.

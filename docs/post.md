@@ -133,4 +133,5 @@ list used websites and resources here.
 
 ## TODO
 
-clean not used modes
+- The synthetic corpus mode is optional and kept only for future experiments; the primary optimization path is driven by cached corpus statistics rather than by generated text.
+- clean not used modes
