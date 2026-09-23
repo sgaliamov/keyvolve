@@ -1,10 +1,10 @@
 use serde::Deserialize;
 use std::path::PathBuf;
 
-/// Settings for the corpus stats mode.
+/// Settings for the build-stats mode.
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct StatsConfig {
+pub struct BuildStatsConfig {
     /// source text file to scan
     pub input: Option<PathBuf>,
 
@@ -16,7 +16,7 @@ pub struct StatsConfig {
     pub min_frequency: f64,
 }
 
-impl Default for StatsConfig {
+impl Default for BuildStatsConfig {
     fn default() -> Self {
         Self {
             input: None,

@@ -21,8 +21,8 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
         Mode::Merge => {
             merge::merge(cfg.merge, app)?;
         }
-        Mode::Stats => {
-            stats::stats(cfg.stats_mode)?;
+        Mode::BuildStats => {
+            stats::stats(cfg.build_stats)?;
         }
         Mode::Synthesise => {
             synthesise::synthesise(cfg.synthesise)?;
@@ -36,7 +36,7 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
         mode => {
             let keyboard = Keyboard::load(cfg.keyboard)?;
             let evaluator_cfg = cfg.evaluator;
-            let stats = cfg.stats;
+            let stats = cfg.corpus_stats;
             let opt = cfg.optimization;
 
             match mode {
@@ -80,7 +80,7 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
                     ga.seed = seed;
                     optimize::optimize(evaluator, ga, opt, app)?;
                 }
-                Mode::Synthesise | Mode::Merge | Mode::Frequencies | Mode::Rank | Mode::Stats => unreachable!(),
+                Mode::Synthesise | Mode::Merge | Mode::Frequencies | Mode::Rank | Mode::BuildStats => unreachable!(),
             }
         }
     }

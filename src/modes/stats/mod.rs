@@ -11,7 +11,7 @@ use std::{
 };
 
 /// Build cached corpus stats from a source text file and write them to JSON.
-pub fn stats(cfg: StatsConfig) -> Result<()> {
+pub fn stats(cfg: BuildStatsConfig) -> Result<()> {
     let input = cfg
         .input
         .wrap_err("Stats mode requires `stats.input` path")?;

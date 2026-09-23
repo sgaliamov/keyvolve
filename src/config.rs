@@ -4,7 +4,7 @@ use crate::modes::frequencies::FrequenciesConfig;
 use crate::modes::merge::MergeConfig;
 use crate::modes::optimize::OptimizationConfig;
 use crate::modes::rank::RankConfig;
-use crate::modes::stats::StatsConfig;
+use crate::modes::stats::BuildStatsConfig;
 use crate::modes::synthesise::SynthesiseConfig;
 use serde::Deserialize;
 
@@ -21,9 +21,9 @@ pub struct Config {
     #[serde(default)]
     pub mode: Mode,
 
-    /// settings for `Mode::Stats`
+    /// settings for `Mode::BuildStats`
     #[serde(default)]
-    pub stats_mode: StatsConfig,
+    pub build_stats: BuildStatsConfig,
 
     /// settings for `Mode::Synthesise`
     #[serde(default)]
@@ -38,7 +38,7 @@ pub struct Config {
     pub evaluator: LayoutEvaluatorConfig,
 
     /// Cached corpus stats JSON used by evaluation and optimization.
-    pub stats: std::path::PathBuf,
+    pub corpus_stats: std::path::PathBuf,
 
     /// settings for `Mode::Merge`
     #[serde(default)]
@@ -68,7 +68,7 @@ pub enum Mode {
     Evaluate,
 
     /// Build cached corpus stats from a raw text corpus.
-    Stats,
+    BuildStats,
 
     /// Build a compact fake-word corpus from the source text and frequency stats.
     Synthesise,

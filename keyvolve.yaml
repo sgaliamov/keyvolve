@@ -1,9 +1,9 @@
 # Keyboard effort table + pair costs used by scoring and layout fitness.
 keyboard: data/keyboard.json
 # Cached corpus stats JSON; required for evaluate/optimize.
-stats: data/stats/merged.source-stats.json
+corpusStats: data/stats/merged.source-stats.json
 
-statsMode:
+buildStats:
   # Source text file used to build the cached corpus stats.
   input: data/samples/merged.txt
   # Output JSON cache used by evaluate/optimize.
