@@ -1,13 +1,13 @@
 # Keyboard effort table + pair costs used by scoring and layout fitness.
 keyboard: data/keyboard.json
 # Cached corpus stats JSON; required for evaluate/optimize.
-corpusStats: data/stats/merged.source-stats.json
+corpusStats: data/stats/stats.json
 
 stats:
   # Source text file used to build the cached corpus stats.
   input: data/samples/merged.txt
   # Output JSON cache used by evaluate/optimize.
-  output: data/stats/merged.source-stats.json
+  output: data/stats/stats.json
 
 merge:
   # Folder of raw .txt files to clean and merge into one corpus.
@@ -19,7 +19,7 @@ merge:
   # Optional: Random seed for reproducible shuffling.
   # seed: 12345
   # Number of merged lines printed as preview.
-  print: 50
+  print: 10
 
 frequencies:
   # Root folder to scan for matching files.
@@ -141,11 +141,11 @@ rank:
 evaluate:
   # One or more layout CSVs to score.
   input:
-    - data/layouts.csv
-    # - data/layouts.known.csv
+    # - data/layouts.csv
+    - data/layouts.known.csv
   # Output CSV for scored layouts.
-  output: data/layouts.csv
-  # output: data/layouts.known.csv
+  # output: data/layouts.csv
+  output: data/layouts.known.csv
   # Number of best layouts printed to stdout.
   print: 5
   # Orientation used when saving layouts; left mirrors twin layouts.
