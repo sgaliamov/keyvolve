@@ -79,11 +79,9 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
                     ga.seed = seed;
                     optimize::optimize(evaluator, ga, opt, app)?;
                 }
-                Mode::Synthesise
-                | Mode::Merge
-                | Mode::Frequencies
-                | Mode::Rank
-                | Mode::Stats => unreachable!(),
+                Mode::Synthesise | Mode::Merge | Mode::Frequencies | Mode::Rank | Mode::Stats => {
+                    unreachable!()
+                }
             }
         }
     }

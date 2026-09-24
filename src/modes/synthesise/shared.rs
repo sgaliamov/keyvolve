@@ -1,4 +1,4 @@
-use crate::modes::synthesise::counter::{CorpusScore, CorpusStats, score_stats};
+use crate::modes::synthesise::counter::{CorpusScore, CorpusStats};
 use miette::{Context, IntoDiagnostic, Result};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -37,32 +37,6 @@ pub fn write_stats_cache(path: &Path, data: &CachedSourceStats) -> Result<()> {
     fs::write(path, json)
         .into_diagnostic()
         .wrap_err("Failed to write source stats cache")
-}
-
-/// Remove bigrams below `min_frequency` and re-normalize the remainder.
-pub fn filter_stats_bigrams(stats: &mut CorpusStats, min_frequency: f64) {
-    if min_frequency <= 0.0 {
-        return;
-    }
-    stats.bigrams.retain(|_, f| *f >= min_frequency);
-    let total: f64 = stats.bigrams.values().sum();
-    if total > 0.0 {
-        for v in stats.bigrams.values_mut() {
-            *v /= total;
-        }
-    }
-}
-
-/// Score `candidate` against `source`, filtering source bigrams below `min_frequency` first.
-/// Use this everywhere instead of calling `score_stats` directly.
-pub fn score_with_filter(
-    source: &CorpusStats,
-    candidate: &CorpusStats,
-    min_frequency: f64,
-) -> CorpusScore {
-    let mut filtered = source.clone();
-    filter_stats_bigrams(&mut filtered, min_frequency);
-    score_stats(&filtered, candidate)
 }
 
 /// Write space-separated words to a text file, creating parent directories as needed.

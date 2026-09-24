@@ -2,13 +2,12 @@ pub mod config;
 mod counter;
 mod shared;
 
+use crate::modes::synthesise::counter::score_stats;
 pub use config::*;
 pub use counter::CorpusStatsCounter;
 use miette::{Context, IntoDiagnostic, Result};
 use rand::{RngExt, SeedableRng, rngs::StdRng};
-pub use shared::{
-    CachedSourceStats, filter_stats_bigrams, read_stats_cache, score_with_filter, write_stats_cache,
-};
+pub use shared::{CachedSourceStats, read_stats_cache, write_stats_cache};
 use shared::{report_path, write_corpus, write_report};
 use std::{
     fs,
@@ -75,7 +74,7 @@ pub fn synthesise(cfg: SynthesiseConfig) -> Result<()> {
     }
     let sample_stats = sample_counter.finish();
 
-    let score = score_with_filter(&source_stats, &sample_stats, cfg.min_frequency);
+    let score = score_stats(&source_stats, &sample_stats);
 
     write_corpus(&reservoir, output)?;
     let report = report_path(output);
