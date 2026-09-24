@@ -325,7 +325,7 @@ mod tests {
 
         assert_eq!(stats.trigrams[&['a', 'b', 'c']], 0.5);
         assert_eq!(stats.trigrams[&['a', 'b', 'd']], 0.5);
-        assert!(stats.trigrams.is_empty() == false);
+        assert!(!stats.trigrams.is_empty());
     }
 
     #[test]

@@ -11,6 +11,10 @@ pub struct SynthesiseConfig {
     /// output corpus path
     pub output: Option<PathBuf>,
 
+    /// minimum accepted relative frequency (entries below this are dropped)
+    #[serde(default = "default_min_freq")]
+    pub min_frequency: f64,
+
     /// optional RNG seed for reproducible sampling
     pub seed: Option<u64>,
 
@@ -30,6 +34,10 @@ pub struct SampleSynthesiseConfig {
 
 pub(super) fn default_target() -> usize {
     100_000
+}
+
+pub(super) fn default_min_freq() -> f64 {
+    0.000_001
 }
 
 impl Default for SampleSynthesiseConfig {

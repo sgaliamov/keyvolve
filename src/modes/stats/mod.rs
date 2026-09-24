@@ -1,6 +1,8 @@
 pub mod config;
 
-use crate::modes::synthesise::{CachedSourceStats, CorpusStatsCounter, write_stats_cache};
+use crate::modes::synthesise::{
+    CachedSourceStats, CorpusStatsCounter, filter_stats_frequencies, write_stats_cache,
+};
 pub use config::*;
 use miette::{Context, IntoDiagnostic, Result};
 use std::{
@@ -35,7 +37,8 @@ pub fn stats(cfg: BuildStatsConfig) -> Result<()> {
         }
     }
 
-    let stats = counter.finish();
+    let mut stats = counter.finish();
+    filter_stats_frequencies(&mut stats, cfg.min_frequency);
     let cached = CachedSourceStats { stats, word_count };
     write_stats_cache(&output, &cached)?;
 
