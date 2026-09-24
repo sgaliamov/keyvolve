@@ -54,16 +54,21 @@ fn filter_frequency_map<K>(map: &mut FxHashMap<K, f64>, min_frequency: f64) {
     }
 }
 
-/// Drop entries below `min_frequency` from all normalized frequency maps and re-normalize.
-pub fn filter_stats_frequencies(stats: &mut CorpusStats, min_frequency: f64) {
-    if min_frequency <= 0.0 {
-        return;
+/// Drop entries below the configured thresholds from the normalized maps and re-normalize.
+pub fn filter_stats_frequencies(
+    stats: &mut CorpusStats,
+    min_frequency: f64,
+    min_trigram_frequency: f64,
+) {
+    if min_frequency > 0.0 {
+        filter_frequency_map(&mut stats.letters, min_frequency);
+        filter_frequency_map(&mut stats.bigrams, min_frequency);
+        filter_frequency_map(&mut stats.first_letters, min_frequency);
     }
 
-    filter_frequency_map(&mut stats.letters, min_frequency);
-    filter_frequency_map(&mut stats.bigrams, min_frequency);
-    filter_frequency_map(&mut stats.trigrams, min_frequency);
-    filter_frequency_map(&mut stats.first_letters, min_frequency);
+    if min_trigram_frequency > 0.0 {
+        filter_frequency_map(&mut stats.trigrams, min_trigram_frequency);
+    }
 }
 
 /// Backward-compatible helper for bigram-only filtering.
@@ -77,11 +82,16 @@ pub fn score_with_filter(
     source: &CorpusStats,
     candidate: &CorpusStats,
     min_frequency: f64,
+    min_trigram_frequency: f64,
 ) -> CorpusScore {
     let mut filtered_source = source.clone();
     let mut filtered_candidate = candidate.clone();
-    filter_stats_frequencies(&mut filtered_source, min_frequency);
-    filter_stats_frequencies(&mut filtered_candidate, min_frequency);
+    filter_stats_frequencies(&mut filtered_source, min_frequency, min_trigram_frequency);
+    filter_stats_frequencies(
+        &mut filtered_candidate,
+        min_frequency,
+        min_trigram_frequency,
+    );
     score_stats(&filtered_source, &filtered_candidate)
 }
 
@@ -169,7 +179,7 @@ mod tests {
             average_word_length: 3.0,
         };
 
-        filter_stats_frequencies(&mut stats, 0.1);
+        filter_stats_frequencies(&mut stats, 0.1, 0.1);
 
         assert_eq!(stats.letters.len(), 1);
         assert!(stats.letters.contains_key(&'a'));
@@ -206,7 +216,7 @@ mod tests {
             average_word_length: 2.0,
         };
 
-        let score = score_with_filter(&source, &candidate, 0.2);
+        let score = score_with_filter(&source, &candidate, 0.2, 0.2);
 
         assert_eq!(score.first_letters, 0.0);
         assert!((score.letters - 0.0).abs() < 1e-9);

@@ -9,6 +9,8 @@ stats:
   # Output JSON cache used by evaluate/optimize.
   output: data/stats/stats.json
 
+  minTrigramFrequency: 0.00001
+
 merge:
   # Folder of raw .txt files to clean and merge into one corpus.
   input: data/samples

@@ -11,9 +11,13 @@ pub struct SynthesiseConfig {
     /// output corpus path
     pub output: Option<PathBuf>,
 
-    /// minimum accepted relative frequency (entries below this are dropped)
+    /// minimum accepted relative frequency for letters and bigrams
     #[serde(default = "default_min_freq")]
     pub min_frequency: f64,
+
+    /// minimum accepted relative frequency for trigrams
+    #[serde(default = "default_min_trigram_freq")]
+    pub min_trigram_frequency: f64,
 
     /// optional RNG seed for reproducible sampling
     pub seed: Option<u64>,
@@ -37,6 +41,10 @@ pub(super) fn default_target() -> usize {
 }
 
 pub(super) fn default_min_freq() -> f64 {
+    0.000_001
+}
+
+pub(super) fn default_min_trigram_freq() -> f64 {
     0.000_001
 }
 

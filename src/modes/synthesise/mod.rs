@@ -76,7 +76,12 @@ pub fn synthesise(cfg: SynthesiseConfig) -> Result<()> {
     }
     let sample_stats = sample_counter.finish();
 
-    let score = score_with_filter(&source_stats, &sample_stats, cfg.min_frequency);
+    let score = score_with_filter(
+        &source_stats,
+        &sample_stats,
+        cfg.min_frequency,
+        cfg.min_trigram_frequency,
+    );
 
     write_corpus(&reservoir, output)?;
     let report = report_path(output);

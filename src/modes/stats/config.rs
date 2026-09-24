@@ -11,9 +11,13 @@ pub struct BuildStatsConfig {
     /// cached corpus stats JSON output path
     pub output: Option<PathBuf>,
 
-    /// minimum accepted relative frequency for saved frequency maps
+    /// minimum accepted relative frequency for letters and bigrams
     #[serde(default = "default_min_frequency")]
     pub min_frequency: f64,
+
+    /// minimum accepted relative frequency for trigrams
+    #[serde(default = "default_min_trigram_frequency")]
+    pub min_trigram_frequency: f64,
 }
 
 impl Default for BuildStatsConfig {
@@ -22,10 +26,15 @@ impl Default for BuildStatsConfig {
             input: None,
             output: None,
             min_frequency: default_min_frequency(),
+            min_trigram_frequency: default_min_trigram_frequency(),
         }
     }
 }
 
 fn default_min_frequency() -> f64 {
     0.000_001
+}
+
+fn default_min_trigram_frequency() -> f64 {
+    0.0001
 }

@@ -38,7 +38,7 @@ pub fn stats(cfg: BuildStatsConfig) -> Result<()> {
     }
 
     let mut stats = counter.finish();
-    filter_stats_frequencies(&mut stats, cfg.min_frequency);
+    filter_stats_frequencies(&mut stats, cfg.min_frequency, cfg.min_trigram_frequency);
     let cached = CachedSourceStats { stats, word_count };
     write_stats_cache(&output, &cached)?;
 
