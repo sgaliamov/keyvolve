@@ -1,4 +1,4 @@
-# Trigram effects — problem and implementation plan
+# Same-finger skipgrams (SFS) — the trigram penalty
 
 Bigram effort (the `keyboard.json` pairs table, calibrated by rank mode) prices any two-key
 transition in isolation. It cannot see effects that only exist across **three** consecutive
@@ -130,174 +130,23 @@ more easily than SFS could (same rank-mode limitation above). Absent a specific,
 reason to believe such an interaction effect exists and matters, decomposing into already-priced
 pairs is the right call — no new metric, no new corpus data, nothing to build.
 
-## Data plan: trigram frequency stats
+## Implementation
 
-Note for the future: the synthetic-corpus mode remains optional and is kept as a convenience for exploratory work. The primary path for real scoring remains the cached corpus statistics built by the build-stats pipeline, because the evaluator and optimizer are designed to consume normalized corpus frequencies rather than ad hoc generated text.
+Trigram frequency is integrated into corpus statistics. Character alphabet is 26 letters, so
+the full trigram space is `26³ = 17,576` entries — trivial to store and count.
 
-Character alphabet is 26 letters, so the full trigram space is `26³ = 17,576` entries — trivial
-to store and count, no risk of reintroducing the "must scan raw text at scoring time" cost the
-project already avoided for bigrams.
-
-### `CorpusStatsCounter` / `CorpusStats` ([counter.rs](/c:/Users/Admin/projects/keyvolve/src/modes/synthesise/counter.rs))
-
-Add, mirroring the existing bigram fields exactly:
-
-```rust
-// CorpusStatsCounter
-trigram_counts: FxHashMap<[char; 3], u64>,
-total_trigrams: u64,
-
-// CorpusStats
-#[serde(with = "trigram_map_serde", default)]
-pub trigrams: FxHashMap<[char; 3], f64>,
-```
-
-`add_word` needs a 3-wide sliding window instead of the current 2-wide (`prev`) — track
-`prev2, prev1` and emit `[prev2, prev1, ch]` once the window fills. Words shorter than 3
-letters contribute zero trigrams (same convention as short words contributing zero bigrams).
-Trigrams never cross word boundaries — window resets per word, exactly like bigrams do today.
-
-`finish()` normalizes the same way `normalize_bigram_counts` does today (count / total).
-
-Needs a `trigram_map_serde` module, same shape as the existing `bigram_map_serde` in
-[counter.rs](/c:/Users/Admin/projects/keyvolve/src/modes/synthesise/counter.rs), just a 3-char
-key instead of 2.
-
-**Backward compatibility:** add `#[serde(default)]` on the new `trigrams` field. Existing
-cached `data/stats/*.json` files (missing the field) deserialize with an empty trigram map —
-`sfsRatio` reads as `0` until `merge`/`synthesise` is re-run to regenerate the cache. No hard
-break, just a silent zero until refreshed.
-
-### `CorpusCounts` ([evaluator/corpus.rs](/c:/Users/Admin/projects/keyvolve/src/evaluator/corpus.rs))
-
-Add `trigrams: FxHashMap<(char, char, char), u64>`, reconstructed from cached stats the same
-way `bigrams` already is:
+The SFS detection is a pure geometric check: for trigram `(a, b, c)` with layout slots
+`ka = slot(a), kb = slot(b), kc = slot(c)`:
 
 ```text
-trigram_total = words * (average_word_length - 2.0).max(0.0)
+is_sfs = same_finger(ka, kc) && !same_finger(ka, kb)
 ```
 
-(mirrors the existing `bigram_total = words * (average_word_length - 1.0).max(0.0)`, one fewer
-because a trigram needs 2 more letters after the first, not 1).
+SFS scoring adds a small penalty (default weight `0.1`) to the corpus effort fold, same pattern
+as other low-confidence structural metrics (`rowSwitchImbalance`, `streakImbalance`).
 
-### `LayoutEvaluator::score_corpus` ([evaluator/mod.rs](/c:/Users/Admin/projects/keyvolve/src/evaluator/mod.rs))
-
-New pass alongside the existing `first_chars`/`bigrams` folds:
-
-```rust
-let sfs = self.counts.trigrams.iter()
-    .map(|(&(a, b, c), &n)| self.score_sfs(a, b, c, keys) * n);
-```
-
-`score_sfs` does **not** touch the pairs table at all — it's a pure geometric check on
-`keys` (the candidate layout), independent of `keyboard.json`. Returns an incremental
-`ScoreResult`-shaped value with just a count bumped when `is_sfs` holds.
-
-### `ScoreResult` ([models/score.rs](/c:/Users/Admin/projects/keyvolve/src/models/score.rs))
-
-New field: `sfs_count: u64` (aggregate — no left/right split needed for v1; SFS by definition
-always resolves to one specific hand, so a balance metric doesn't obviously apply the way it
-does for effort/rolls. Revisit if it turns out to matter).
-
-New metric:
-
-```text
-sfs_ratio = sfs_count / (left_count + right_count)
-```
-
-Same denominator convention as `hand_switch_ratio` and `row_switch_ratio` — total presses,
-not "eligible trigrams." Simpler, and keeps the number comparable to the other ratio metrics
-already in the breakdown table.
-
-### `Targets` / `penalty.rs`
-
-New field `sfs_ratio: Option<Target>`, default `None` (opt-in, same as most non-hand-level
-metrics) — no built-in default `value` until it's been observed on a real corpus first. Add
-one breakdown row in `terms()`, same shape as every other `Target`-driven metric.
-
-Config usage once implemented:
-
-```yaml
-evaluator:
-  sfsRatio: { type: max, value: <observe first>, weight: 0.1 }  # start small, tune from breakdown share/pressure
-```
-
-### CSV
-
-Add `sfs_ratio` column, same position/format convention as the other ratio columns.
-
-## Impact on rank mode
-
-None. No new questions, no new calibration data. SFS is purely geometric (slot positions +
-corpus trigram frequency), computed at scoring time from data already available once the
-corpus stats extension above lands.
-
-## Implementation steps
-
-Ordered so each step is independently testable before moving to the next.
-
-1. **`CorpusStatsCounter`/`CorpusStats`** ([counter.rs](/c:/Users/Admin/projects/keyvolve/src/modes/synthesise/counter.rs))
-   - Add `trigram_counts`/`total_trigrams` to the counter; extend `add_word`'s sliding window
-     to 3 chars (`prev2, prev1, ch`), reset per word.
-   - Add `trigrams: FxHashMap<[char; 3], f64>` to `CorpusStats` with `#[serde(default)]` and a
-     new `trigram_map_serde` module (copy `bigram_map_serde`, 3-char key).
-   - Update `finish()` to normalize trigram counts the same way bigrams are normalized.
-   - Test: extend `counter_matches_slice_calculation` and `calculate_stats_counts_requested_metrics`
-     with trigram assertions; add a short-word case (len < 3 → zero trigrams) and a
-     word-boundary case (no trigram spans two words).
-
-2. **Backward compatibility check**
-   - Deserialize an existing `data/stats/*.json` file (or a fixture missing the `trigrams`
-     key) and confirm it loads with an empty trigram map instead of failing.
-   - Test: a fixture-based deserialize test asserting `trigrams.is_empty()` on old-shape JSON.
-
-3. **`CorpusCounts`** ([evaluator/corpus.rs](/c:/Users/Admin/projects/keyvolve/src/evaluator/corpus.rs))
-   - Add `trigrams: FxHashMap<(char, char, char), u64>` and reconstruct it in
-     `From<&CachedSourceStats>` using `trigram_total = words * (average_word_length - 2.0).max(0.0)`.
-   - Test: mirror `counts_from_cached_stats_match_direct_counts`, extended to trigrams.
-
-4. **SFS geometry check** ([evaluator/mod.rs](/c:/Users/Admin/projects/keyvolve/src/evaluator/mod.rs))
-   - Implement `is_sfs`/`score_sfs` per the match condition above. Keep it a pure function of
-     `keys` — no dependency on `keyboard.json`.
-   - Test: unit tests directly on `is_sfs`/`score_sfs` covering: same-finger skip (true), all
-     three same finger (false — already an SFB, must not double-count), different fingers
-     throughout (false), key-2 on the opposite hand (still true), literal repeat `ka == kc`
-     (true).
-
-5. **Wire into `score_corpus`**
-   - Add the trigram fold alongside the existing `first_chars`/`bigrams` folds; accumulate into
-     a new `sfs_count` field on `ScoreResult`.
-   - Add `sfs_ratio()` (`sfs_count / (left_count + right_count)`).
-   - Test: an end-to-end `score_corpus` test with a small hand-built layout + trigram corpus
-     where the expected SFS count is known by hand.
-
-6. **`Targets`/`penalty.rs`**
-   - Add `sfs_ratio: Option<Target>` (default `None`), one breakdown row in `terms()`.
-   - Test: mirror the existing `Targets`/`penalty` serde and breakdown tests (unknown-field
-     rejection, breakdown row appears only when configured).
-
-7. **CSV**
-   - Add `sfs_ratio` column to `csv_header()`/`to_csv()`.
-   - Test: extend the existing CSV round-trip/header test.
-
-8. **Baseline measurement (before picking a default `value`)**
-   - Run `evaluate` on qwerty and the current best layout with `sfsRatio` exposed but
-     unweighted (or `weight: 0`), read the raw percentage from the breakdown/CSV.
-   - Pick an initial `value`/`weight` from that spread, not a guess — then tune from the
-     breakdown table's `share`/`pressure` as usual.
-
-9. **Full regression pass**
-   - `./scripts/lint.ps1` and `./scripts/test.ps1` — confirm no existing bigram/CSV/config
-     tests broke, since steps 1–3 touch shared serialization code paths.
-
-## Open questions (resolve during implementation, not before)
-
-- **Tail filtering:** bigrams get `min_frequency` pruning (`filter_stats_bigrams`) before
-  scoring. Trigrams may want the same treatment (17,576-entry space is small, but real text
-  produces a long tail of near-zero entries) — likely a straightforward extension of the
-  existing filter, not a blocker for a first working version.
-- **Default `value` for the `max` target:** unknown until measured. First step after landing
-  the raw `sfs_ratio` computation: run `evaluate` on a few known layouts (qwerty, current best)
-  and read the raw percentage before picking a cap.
-- **Left/right split:** skipped for v1 per above; add only if the breakdown table shows a real
-  need for it (e.g. one hand's SFS rate systematically dominates).
+The metric appears in:
+- **Breakdown table:** `sfsRatio = sfs_count / total_presses`
+- **CSV export:** `sfs_ratio` column
+- **Tuning:** config key `sfsRatio` with `type: max`, `weight: 0.1` (start small, tune from
+  breakdown pressure)
