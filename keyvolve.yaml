@@ -3,7 +3,7 @@ keyboard: data/keyboard.json
 # Cached corpus stats JSON; required for evaluate/optimize.
 corpusStats: data/stats/merged.source-stats.json
 
-buildStats:
+stats:
   # Source text file used to build the cached corpus stats.
   input: data/samples/merged.txt
   # Output JSON cache used by evaluate/optimize.
@@ -177,7 +177,7 @@ evaluator:
   # rowSwitchRatio: { type: max, value: 8, weight: 1 }
 
   # Hand-switches / same-hand bigram count.
-  handSwitchRatio: { type: max, value: 35, weight: 2 }
+  handSwitchRatio: { type: max, value: 40, weight: 1 }
 
   # Left/right roll count asymmetry.
   rollImbalance: { type: max, value: 5, weight: 1 }
@@ -246,9 +246,10 @@ ga:
 # MODE: Operation mode for this run
 # ============================================================================
 # Uncomment one of the following to set the active mode; default is Evaluate.
-# mode: Optimize    # Run the genetic algorithm to optimize the keyboard layout
 # mode: Evaluate    # Evaluate the score of specific layouts (default)
-# mode: Synthesise  # Build digraph frequency CSV and synthesise a fake-word corpus
-# mode: Merge       # Merge all .txt files in a folder into one cleaned file
 # mode: Frequencies # Count per-key char frequencies across files in a folder
+# mode: Merge       # Merge all .txt files in a folder into one cleaned file
+# mode: Optimize    # Run the genetic algorithm to optimize the keyboard layout
 # mode: Rank        # Interactively rank bigram pairs to calibrate keyboard efforts
+# mode: Stats       # Build cached corpus stats from a raw text corpus
+# mode: Synthesise  # Build digraph frequency CSV and synthesise a fake-word corpus

@@ -23,7 +23,7 @@ pub struct Config {
 
     /// settings for `Mode::BuildStats`
     #[serde(default)]
-    pub build_stats: BuildStatsConfig,
+    pub stats: BuildStatsConfig,
 
     /// settings for `Mode::Synthesise`
     #[serde(default)]
@@ -68,7 +68,7 @@ pub enum Mode {
     Evaluate,
 
     /// Build cached corpus stats from a raw text corpus.
-    BuildStats,
+    Stats,
 
     /// Build a compact fake-word corpus from the source text and frequency stats.
     Synthesise,

@@ -20,8 +20,8 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
         Mode::Merge => {
             merge::merge(cfg.merge, app)?;
         }
-        Mode::BuildStats => {
-            stats::stats(cfg.build_stats)?;
+        Mode::Stats => {
+            stats::stats(cfg.stats)?;
         }
         Mode::Synthesise => {
             synthesise::synthesise(cfg.synthesise)?;
@@ -83,7 +83,7 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
                 | Mode::Merge
                 | Mode::Frequencies
                 | Mode::Rank
-                | Mode::BuildStats => unreachable!(),
+                | Mode::Stats => unreachable!(),
             }
         }
     }
