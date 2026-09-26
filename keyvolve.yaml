@@ -77,18 +77,17 @@ optimization:
     e: [6, 7, 8]
     t: [6, 7, 8]
     i: [1, 2, 3, 6, 7, 8]
-    a: [6, 7, 8]
+    a: [1, 2, 3, 6, 7, 8]
     o: [1, 2, 3, 6, 7, 8]
-    n: [1, 2, 3, 6, 7, 8, 13]
-    r: [1, 2, 3, 6, 7, 8, 13]
-    s: [1, 2, 3, 6, 7, 8, 13]
-    h: [1, 2, 3, 6, 7, 8, 13]
-
-    b: [2, 11, 12, 13]
-    # j: [4, 14]
-    # z: [4, 14]
-    # q: [4, 14]
-    # x: [4, 14]
+    n: [1, 2, 3, 6, 7, 8, 9, 13]
+    r: [1, 2, 3, 6, 7, 8, 9, 13]
+    s: [1, 2, 3, 6, 7, 8, 9, 13]
+    h: [1, 2, 3, 6, 7, 8, 9, 13]
+    b: [1, 2, 3, 5, 9, 11, 12, 13]
+    j: [4, 14]
+    q: [4, 14]
+    x: [4, 10, 11, 14]
+    z: [4, 10, 11, 14]
 
   # Optional: Character pairs that must stay on the same hand (left-left or right-right).
   # Disjoint pairs choose independently; overlapping pairs form one group. Contiguity is only preferred.
@@ -178,7 +177,7 @@ evaluator:
   handSwitchRatio: { type: max, value: 40, weight: 1 }
 
   # Same-finger skipgram share: same finger reactivated after one intervening key.
-  sfsRatio: { type: max, value: 5, weight: 0.1 }
+  sfsRatio: { type: max, value: 5, weight: 1 }
 
   # Left/right roll count asymmetry.
   rollImbalance: { type: max, value: 5, weight: 1 }
@@ -231,7 +230,7 @@ ga:
   # Generations without improvement before stopping.
   stagnationCount: 128
   # Number of island pools evolved in parallel.
-  pools: 128
+  pools: 512
   # Randomly generated individuals ratio per generation.
   randomRatio: 0.25
   # Mutation steps applied to seeded layouts.
