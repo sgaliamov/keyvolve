@@ -22,6 +22,12 @@ pub struct ScoreResult {
     /// Same-hand bigrams fully on the right (both keys right).
     pub right_rolls: u64,
 
+    /// Same-hand, different-finger bigrams moving toward hand center.
+    pub inward_count: u64,
+
+    /// Same-hand, different-finger bigrams moving away from hand center.
+    pub outward_count: u64,
+
     /// Same-finger skipgrams: key 1 and key 3 share a finger with one intervening key.
     pub sfs_count: u64,
 
@@ -678,6 +684,22 @@ impl ScoreResult {
         )
     }
 
+    /// Share of same-hand directional moves toward hand center among all presses.
+    pub fn inward_ratio(&self) -> f64 {
+        crate::math::ratio(
+            self.inward_count as f64,
+            (self.left_count + self.right_count) as f64,
+        )
+    }
+
+    /// Share of same-hand directional moves away from hand center among all presses.
+    pub fn outward_ratio(&self) -> f64 {
+        crate::math::ratio(
+            self.outward_count as f64,
+            (self.left_count + self.right_count) as f64,
+        )
+    }
+
     /// Share of same-finger skipgrams among all presses. Range: [0.0, 1.0].
     pub fn sfs_ratio(&self) -> f64 {
         crate::math::ratio(
@@ -835,6 +857,8 @@ impl ScoreResult {
             format!("{:.2}%", self.hand_switch_ratio() * 100.0),
             Self::format_imbalance(self.hands_imbalance()),
             format!("{:.2}%", self.sfs_ratio() * 100.0),
+            format!("{:.2}%", self.inward_ratio() * 100.0),
+            format!("{:.2}%", self.outward_ratio() * 100.0),
             format!("{:.2}", self.effort),
             Self::format_imbalance(self.efforts_imbalance()),
             Self::format_imbalance(self.roll_imbalance()),
@@ -903,6 +927,8 @@ impl ScoreResult {
             self.right_row_switch_cost.to_string(),
             self.left_rolls.to_string(),
             self.right_rolls.to_string(),
+            self.inward_count.to_string(),
+            self.outward_count.to_string(),
             self.sfs_count.to_string(),
             // Explicit per-metric columns appended for downstream CSV tooling.
             Self::format_imbalance(self.home_row_balance()),
@@ -939,7 +965,7 @@ impl ScoreResult {
 
     /// CSV header matching [`to_csv`] column order.
     pub fn csv_header() -> &'static str {
-        "fitness,row_switch_ratio,row_switch_imbalance,hand_switch_ratio,hands_imbalance,sfs_ratio,effort,efforts_imbalance,roll_imbalance,mean_streak,streak_imbalance,left_streak,right_streak,left_column_effort_ratio,right_column_effort_ratio,left_column_press_ratio,right_column_press_ratio,column_balance,left_finger_row_switch_ratio,right_finger_row_switch_ratio,finger_row_switch_balance,top_row_effort_ratio,home_row_effort_ratio,bottom_row_effort_ratio,row_balance,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,left_effort,right_effort,left_count,right_count,hand_switches,left_row_switch_cost,right_row_switch_cost,left_rolls,right_rolls,sfs_count,home_row_balance,left_pinky_ratio,left_ring_ratio,left_middle_ratio,left_index_inner_ratio,left_index_outer_ratio,right_pinky_ratio,right_ring_ratio,right_middle_ratio,right_index_inner_ratio,right_index_outer_ratio,left_pinky_row_switch_ratio,left_ring_row_switch_ratio,left_middle_row_switch_ratio,left_index_row_switch_ratio,right_pinky_row_switch_ratio,right_ring_row_switch_ratio,right_middle_row_switch_ratio,right_index_row_switch_ratio,pinky_balance,ring_balance,middle_balance,index_inner_balance,index_outer_balance,pinky_row_switch_balance,ring_row_switch_balance,middle_row_switch_balance,index_row_switch_balance"
+        "fitness,row_switch_ratio,row_switch_imbalance,hand_switch_ratio,hands_imbalance,sfs_ratio,inward_ratio,outward_ratio,effort,efforts_imbalance,roll_imbalance,mean_streak,streak_imbalance,left_streak,right_streak,left_column_effort_ratio,right_column_effort_ratio,left_column_press_ratio,right_column_press_ratio,column_balance,left_finger_row_switch_ratio,right_finger_row_switch_ratio,finger_row_switch_balance,top_row_effort_ratio,home_row_effort_ratio,bottom_row_effort_ratio,row_balance,left_effort_ratio,right_effort_ratio,left_count_ratio,right_count_ratio,left_effort,right_effort,left_count,right_count,hand_switches,left_row_switch_cost,right_row_switch_cost,left_rolls,right_rolls,inward_count,outward_count,sfs_count,home_row_balance,left_pinky_ratio,left_ring_ratio,left_middle_ratio,left_index_inner_ratio,left_index_outer_ratio,right_pinky_ratio,right_ring_ratio,right_middle_ratio,right_index_inner_ratio,right_index_outer_ratio,left_pinky_row_switch_ratio,left_ring_row_switch_ratio,left_middle_row_switch_ratio,left_index_row_switch_ratio,right_pinky_row_switch_ratio,right_ring_row_switch_ratio,right_middle_row_switch_ratio,right_index_row_switch_ratio,pinky_balance,ring_balance,middle_balance,index_inner_balance,index_outer_balance,pinky_row_switch_balance,ring_row_switch_balance,middle_row_switch_balance,index_row_switch_balance"
     }
 
     /// Parse the raw (non-derived) fields from a persisted CSV row, skipping the
@@ -955,20 +981,22 @@ impl ScoreResult {
             6
         };
         let c: Vec<&str> = line.split(',').skip(skip).map(str::trim).collect();
-        let effort = c.get(6)?.parse::<f64>().ok()?;
+        let effort = c.get(8)?.parse::<f64>().ok()?;
         Some(ScoreResult {
             fitness: c.first()?.parse().ok()?,
             effort,
-            left_effort: c.get(29)?.parse().ok()?,
-            right_effort: c.get(30)?.parse().ok()?,
-            left_count: c.get(31)?.parse().ok()?,
-            right_count: c.get(32)?.parse().ok()?,
-            hand_switches: c.get(33)?.parse().ok()?,
-            left_row_switch_cost: c.get(34)?.parse().ok()?,
-            right_row_switch_cost: c.get(35)?.parse().ok()?,
-            left_rolls: c.get(36)?.parse().ok()?,
-            right_rolls: c.get(37)?.parse().ok()?,
-            sfs_count: c.get(38)?.parse().ok()?,
+            left_effort: c.get(31)?.parse().ok()?,
+            right_effort: c.get(32)?.parse().ok()?,
+            left_count: c.get(33)?.parse().ok()?,
+            right_count: c.get(34)?.parse().ok()?,
+            hand_switches: c.get(35)?.parse().ok()?,
+            left_row_switch_cost: c.get(36)?.parse().ok()?,
+            right_row_switch_cost: c.get(37)?.parse().ok()?,
+            left_rolls: c.get(38)?.parse().ok()?,
+            right_rolls: c.get(39)?.parse().ok()?,
+            inward_count: c.get(40)?.parse().ok()?,
+            outward_count: c.get(41)?.parse().ok()?,
+            sfs_count: c.get(42)?.parse().ok()?,
             // Column/row efforts are per-corpus (recomputed during scoring).
             // Initialize to zero; they'll be regenerated if needed.
             left_column_effort: [0.0; 5],
@@ -1039,6 +1067,8 @@ impl std::ops::Add for ScoreResult {
             right_count: self.right_count + other.right_count,
             left_rolls: self.left_rolls + other.left_rolls,
             right_rolls: self.right_rolls + other.right_rolls,
+            inward_count: self.inward_count + other.inward_count,
+            outward_count: self.outward_count + other.outward_count,
             sfs_count: self.sfs_count + other.sfs_count,
             hand_switches: self.hand_switches + other.hand_switches,
             left_row_switch_cost: self.left_row_switch_cost + other.left_row_switch_cost,
@@ -1086,6 +1116,8 @@ impl std::ops::Mul<u64> for ScoreResult {
             right_count: self.right_count * n,
             left_rolls: self.left_rolls * n,
             right_rolls: self.right_rolls * n,
+            inward_count: self.inward_count * n,
+            outward_count: self.outward_count * n,
             sfs_count: self.sfs_count * n,
             hand_switches: self.hand_switches * n,
             left_row_switch_cost: self.left_row_switch_cost * n,
@@ -1300,6 +1332,20 @@ mod tests {
     }
 
     #[test]
+    fn directional_ratios_use_total_presses() {
+        let s = ScoreResult {
+            left_count: 8,
+            right_count: 4,
+            inward_count: 3,
+            outward_count: 2,
+            ..Default::default()
+        };
+
+        assert_eq!(s.inward_ratio(), 0.25);
+        assert_eq!(s.outward_ratio(), 1.0 / 6.0);
+    }
+
+    #[test]
     fn finger_row_switch_ratio_is_weighted_cost_per_finger_press() {
         let s = ScoreResult {
             left_column_count: [4, 2, 0, 3, 1],
@@ -1363,6 +1409,9 @@ mod tests {
             right_count: 5,
             left_rolls: 7,
             right_rolls: 9,
+            inward_count: 11,
+            outward_count: 13,
+            sfs_count: 17,
             hand_switches: 2,
             left_row_switch_cost: 1,
             right_row_switch_cost: 3,
@@ -1378,6 +1427,9 @@ mod tests {
             assert_eq!(parsed.right_count, 5);
             assert_eq!(parsed.left_rolls, 7);
             assert_eq!(parsed.right_rolls, 9);
+            assert_eq!(parsed.inward_count, 11);
+            assert_eq!(parsed.outward_count, 13);
+            assert_eq!(parsed.sfs_count, 17);
             assert_eq!(parsed.left_effort, 4.0);
             assert_eq!(parsed.right_effort, 6.0);
             assert_eq!(parsed.hand_switches, 2);
@@ -1401,6 +1453,8 @@ mod tests {
         assert!(ScoreResult::csv_header().contains("column_balance"));
         assert!(ScoreResult::csv_header().contains("left_finger_row_switch_ratio"));
         assert!(ScoreResult::csv_header().contains("finger_row_switch_balance"));
+        assert!(ScoreResult::csv_header().contains("inward_ratio"));
+        assert!(ScoreResult::csv_header().contains("outward_ratio"));
         assert_eq!(parsed.effort, s.effort);
         assert_eq!(parsed.left_count, s.left_count);
         assert_eq!(parsed.right_count, s.right_count);

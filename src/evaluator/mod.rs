@@ -124,6 +124,8 @@ impl LayoutEvaluator {
         // Same-hand bigram lands wholly on one hand; alternating pairs add to neither.
         score.left_rolls = (same_hand && a_left) as u64;
         score.right_rolls = (same_hand && !a_left) as u64;
+        score.inward_count = is_inward(ka, kb) as u64;
+        score.outward_count = is_outward(ka, kb) as u64;
         score
     }
 
@@ -202,6 +204,21 @@ fn logical_finger(slot: u8) -> usize {
 #[inline]
 fn same_finger(a: u8, b: u8) -> bool {
     (a < 15) == (b < 15) && logical_finger(a) == logical_finger(b)
+}
+
+#[inline]
+fn column_index(slot: u8) -> u8 {
+    if slot < 15 { slot % 5 } else { 4 - (slot % 5) }
+}
+
+#[inline]
+fn is_inward(a: u8, b: u8) -> bool {
+    (a < 15) == (b < 15) && !same_finger(a, b) && column_index(a) < column_index(b)
+}
+
+#[inline]
+fn is_outward(a: u8, b: u8) -> bool {
+    (a < 15) == (b < 15) && !same_finger(a, b) && column_index(a) > column_index(b)
 }
 
 #[inline]
@@ -353,6 +370,27 @@ mod tests {
 
         assert_eq!(score.row_switch_distance(), 1);
         assert_eq!(score.left_finger_row_switch_cost, [0, 0, 0, 1]);
+    }
+
+    #[test]
+    fn directional_bigram_metrics_count_inward_and_outward_presses() {
+        let evaluator = LayoutEvaluator::new(&test_keyboard(), vec![], test_config());
+
+        let inward = evaluator.score_word("ab", &test_keys());
+        let outward = evaluator.score_word("ba", &test_keys());
+
+        assert_eq!(inward.inward_count, 1);
+        assert_eq!(inward.outward_count, 0);
+        assert_eq!(outward.inward_count, 0);
+        assert_eq!(outward.outward_count, 1);
+    }
+
+    #[test]
+    fn directional_bigram_metrics_normalize_right_hand_direction() {
+        assert!(is_inward(19, 18));
+        assert!(is_outward(18, 19));
+        assert!(!is_inward(3, 4));
+        assert!(!is_outward(3, 4));
     }
 
     /// A run ends only at a hand switch or a word boundary, so `runs = switches + words`

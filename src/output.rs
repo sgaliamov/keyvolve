@@ -209,6 +209,8 @@ mod tests {
             right_count: 200,
             left_rolls: 30,
             right_rolls: 40,
+            inward_count: 12,
+            outward_count: 9,
             hand_switches: 5,
             left_row_switch_cost: 30,
             right_row_switch_cost: 40,
