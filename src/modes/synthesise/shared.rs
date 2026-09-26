@@ -140,17 +140,17 @@ pub(super) fn write_report(
         .wrap_err("Failed to create synth report")?;
     writeln!(out, "source_words={source_words}").into_diagnostic()?;
     writeln!(out, "generated_words={generated_words}").into_diagnostic()?;
-    writeln!(out, "letters_error={:.2}%", score.letters * 100.0).into_diagnostic()?;
-    writeln!(out, "bigrams_error={:.2}%", score.bigrams * 100.0).into_diagnostic()?;
+    writeln!(out, "letters_error={:05.2}%", score.letters * 100.0).into_diagnostic()?;
+    writeln!(out, "bigrams_error={:05.2}%", score.bigrams * 100.0).into_diagnostic()?;
     writeln!(
         out,
-        "first_letters_error={:.2}%",
+        "first_letters_error={:05.2}%",
         score.first_letters * 100.0
     )
     .into_diagnostic()?;
     writeln!(
         out,
-        "average_word_length_error={:.2}%",
+        "average_word_length_error={:05.2}%",
         score.average_word_length * 100.0
     )
     .into_diagnostic()?;

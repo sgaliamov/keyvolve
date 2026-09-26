@@ -134,7 +134,7 @@ pub fn write_report_csv(path: &Path, state: &RankState, tiers: &Tiers) -> Result
         for row in 0..3u8 {
             let mut blocks = vec![
                 (0..5u8)
-                    .map(|col| format!("{:.2}", effort_of(row * 5 + col)))
+                    .map(|col| format!("{:05.2}", effort_of(row * 5 + col)))
                     .collect::<Vec<_>>()
                     .join(","),
             ];
@@ -180,14 +180,14 @@ pub fn write_report_csv(path: &Path, state: &RankState, tiers: &Tiers) -> Result
             (0..5u8)
                 .map(|col| {
                     format!(
-                        "{:.2}",
+                        "{:05.2}",
                         tiers.efforts[grid[(row * 5 + col) as usize][(row * 5 + col) as usize]]
                     )
                 })
                 .collect::<Vec<_>>()
                 .join(","),
             (0..5u8)
-                .map(|col| format!("{:.2}", merged_efforts[(row * 5 + col) as usize]))
+                .map(|col| format!("{:05.2}", merged_efforts[(row * 5 + col) as usize]))
                 .collect::<Vec<_>>()
                 .join(",")
         );
