@@ -36,6 +36,7 @@
 //! |----------------------|----------------------------------|
 //! | `row_switch_ratio`   | row jumps by same finger          |
 //! | `hand_switch_ratio`  | hand alternation (replaces `mean_streak_power`) |
+//! | `sfs_ratio`          | same-finger skipgram share       |
 //! | `efforts_imbalance`  | left/right effort asymmetry      |
 //! | `hands_imbalance`    | left/right press-count asymmetry |
 //! | `roll_imbalance`     | left/right roll asymmetry        |
@@ -155,6 +156,7 @@ fn terms<'a>(
             t.hand_switch_ratio,
             r.hand_switch_ratio() * 100.0,
         ),
+        ("sfs_ratio", t.sfs_ratio, r.sfs_ratio() * 100.0),
         (
             "efforts_imbalance",
             t.efforts_imbalance,
@@ -600,6 +602,28 @@ mod tests {
 
         assert!((score.pinky_row_switch_balance() - 10.0).abs() < 1e-9);
         assert!((penalty(&config, &score) - 1.25).abs() < 1e-9);
+    }
+
+    /// SFS target contributes to penalty, not only breakdown/CSV output.
+    #[test]
+    fn sfs_ratio_changes_penalty_when_configured() {
+        let config = LayoutEvaluatorConfig {
+            sharpness: 2.0,
+            targets: Targets {
+                sfs_ratio: Some(Target::max(5.0, 2.0)),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let score = ScoreResult {
+            left_count: 60,
+            right_count: 40,
+            sfs_count: 10,
+            ..Default::default()
+        };
+
+        assert!((score.sfs_ratio() * 100.0 - 10.0).abs() < 1e-9);
+        assert!((penalty(&config, &score) - 9.0).abs() < 1e-9);
     }
 
     /// Every metric configured, all weights at 1 — the recommended starting point.
