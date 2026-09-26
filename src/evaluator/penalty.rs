@@ -30,13 +30,15 @@
 //! pressure than its opponents — raise its weight or tighten its tolerance. Two off-goal
 //! metrics with matching pressures signal a physical conflict no weight can fix.
 //!
-//! # Seventeen caps + eight distribution targets
+//! # Eighteen caps + nine distribution targets
 //!
 //! | metric               | meaning                          |
 //! |----------------------|----------------------------------|
 //! | `row_switch_ratio`   | row jumps by same finger          |
 //! | `hand_switch_ratio`  | hand alternation (replaces `mean_streak_power`) |
 //! | `sfs_ratio`          | same-finger skipgram share       |
+//! | `inward_ratio`       | same-hand moves toward center    |
+//! | `outward_ratio`      | same-hand moves away from center |
 //! | `efforts_imbalance`  | left/right effort asymmetry      |
 //! | `hands_imbalance`    | left/right press-count asymmetry |
 //! | `roll_imbalance`     | left/right roll asymmetry        |
@@ -157,6 +159,8 @@ fn terms<'a>(
             r.hand_switch_ratio() * 100.0,
         ),
         ("sfs_ratio", t.sfs_ratio, r.sfs_ratio() * 100.0),
+        ("inward_ratio", t.inward_ratio, r.inward_ratio() * 100.0),
+        ("outward_ratio", t.outward_ratio, r.outward_ratio() * 100.0),
         (
             "efforts_imbalance",
             t.efforts_imbalance,
@@ -354,6 +358,8 @@ mod tests {
             right_count: 10,
             left_rolls: 5,
             right_rolls: 5,
+            inward_count: 4,
+            outward_count: 0,
             effort: 100.0,
             left_effort: 50.0,
             right_effort: 50.0,
@@ -540,7 +546,7 @@ mod tests {
         let terms = skewed().breakdown(&targets_config());
 
         assert!(terms.windows(2).all(|w| w[0].cost >= w[1].cost));
-        assert_eq!(terms.len(), 39);
+        assert_eq!(terms.len(), 41);
     }
 
     /// Pressure is zero at the goal and grows with the miss — the "who wins the next
@@ -626,6 +632,31 @@ mod tests {
         assert!((penalty(&config, &score) - 9.0).abs() < 1e-9);
     }
 
+    /// Inward/outward directional ratios contribute with their own target styles.
+    #[test]
+    fn directional_ratios_change_penalty_when_configured() {
+        let config = LayoutEvaluatorConfig {
+            sharpness: 2.0,
+            targets: Targets {
+                inward_ratio: Some(Target::target(20.0, 1.5)),
+                outward_ratio: Some(Target::max(5.0, 2.0)),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let score = ScoreResult {
+            left_count: 60,
+            right_count: 40,
+            inward_count: 30,
+            outward_count: 10,
+            ..Default::default()
+        };
+
+        assert!((score.inward_ratio() * 100.0 - 30.0).abs() < 1e-9);
+        assert!((score.outward_ratio() * 100.0 - 10.0).abs() < 1e-9);
+        assert!((penalty(&config, &score) - 15.0).abs() < 1e-9);
+    }
+
     /// Every metric configured, all weights at 1 — the recommended starting point.
     fn targets_config() -> LayoutEvaluatorConfig {
         let limit = |value| Some(Target::max(value, 1.0));
@@ -637,6 +668,8 @@ mod tests {
                 row_switch_ratio: limit(20.0),
                 hand_switch_ratio: limit(35.0),
                 sfs_ratio: limit(4.0),
+                inward_ratio: target(20.0),
+                outward_ratio: limit(5.0),
                 efforts_imbalance: limit(1.0),
                 hands_imbalance: limit(1.0),
                 roll_imbalance: limit(1.0),

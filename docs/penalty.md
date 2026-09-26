@@ -115,9 +115,11 @@ knobs — enable only if the breakdown table shows one of them dominating `share
 | -------------------- | -------------------------------------------------------------------------- | -------------- |
 | `rowSwitchRatio`     | `100 × (left_row_switch_cost + right_row_switch_cost) / (left_count + right_count)` | How often, on average, a same-finger press needs a vertical row move (adjacent row = 1, skip-row = 2). |
 | `handSwitchRatio`    | `100 × hand_switches / (left_count + right_count)`                          | Hand-alternation frequency. Replaces the old `meanStreakPower` — see derivation in [penalty.rs](/c:/Users/Admin/projects/keyvolve/src/evaluator/penalty.rs) module docs: `mean_streak = presses / (switches + words)`, so both are monotone in the same variable. |
+| `inwardRatio`        | `100 × inward_count / (left_count + right_count)`                           | Same-hand, different-finger moves directed toward the hand center. Best used as a `target`, not a cap. |
+| `outwardRatio`       | `100 × outward_count / (left_count + right_count)`                          | Same-hand, different-finger moves directed away from the hand center. Usually a `max` metric. |
 
-**Recommended:** project config only sets `handSwitchRatio: { value: 38, weight: 2 }`
-(`rowSwitchRatio` left unset — the per-finger row-switch caps below cover it more precisely).
+**Recommended:** `inwardRatio` works naturally as `target: 20`, while `outwardRatio` works as a
+plain cap. Project config uses `outwardRatio: { type: max, value: 5, weight: 1 }`.
 
 ### Row-distribution targets (effort share by row)
 

@@ -179,8 +179,14 @@ evaluator:
   # Same-finger skipgram share: same finger reactivated after one intervening key.
   sfsRatio: { type: max, value: 5, weight: 1 }
 
+  # Same-hand moves toward hand center. Closer to this target is better.
+  inwardRatio: { type: target, value: 20, weight: 1 }
+
+  # Same-hand moves away from hand center. Lower is better.
+  outwardRatio: { type: max, value: 5, weight: 1 }
+
   # Left/right roll count asymmetry.
-  rollImbalance: { type: max, value: 5, weight: 1 }
+  rollImbalance: { type: max, value: 5, weight: 0.1 }
 
   # Left/right row-switch cost asymmetry.
   rowSwitchImbalance: { type: max, value: 10, weight: 0.01 }

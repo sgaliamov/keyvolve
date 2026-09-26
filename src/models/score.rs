@@ -148,6 +148,12 @@ impl ScoreResult {
                 self.hand_switch_ratio() * 100.0,
             ),
             ("sfs_ratio", t.sfs_ratio, self.sfs_ratio() * 100.0),
+            ("inward_ratio", t.inward_ratio, self.inward_ratio() * 100.0),
+            (
+                "outward_ratio",
+                t.outward_ratio,
+                self.outward_ratio() * 100.0,
+            ),
             (
                 "efforts_imbalance",
                 t.efforts_imbalance,

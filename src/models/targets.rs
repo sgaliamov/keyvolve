@@ -14,6 +14,12 @@ pub struct Targets {
     /// Limit for `sfs_ratio`: same-finger skipgram share. Default: none until measured.
     pub sfs_ratio: Option<Target>,
 
+    /// Target for `inward_ratio`: same-hand moves toward hand center.
+    pub inward_ratio: Option<Target>,
+
+    /// Limit for `outward_ratio`: same-hand moves away from hand center.
+    pub outward_ratio: Option<Target>,
+
     /// Limit for `efforts_imbalance`: left/right effort asymmetry.
     pub efforts_imbalance: Option<Target>,
 
@@ -218,7 +224,9 @@ mod tests {
                 "ringRowSwitchRatio": {"type": "max", "value": 11, "weight": 0.3},
                 "middleRowSwitchBalance": {"type": "max", "value": 12, "weight": 0.4},
                 "indexRowSwitchBalance": {"type": "max", "value": 13, "weight": 0.5},
-                "sfsRatio": {"type": "max", "value": 4, "weight": 0.1}
+                "sfsRatio": {"type": "max", "value": 4, "weight": 0.1},
+                "inwardRatio": {"type": "target", "value": 20, "weight": 0.5},
+                "outwardRatio": {"type": "max", "value": 5, "weight": 0.75}
             }"#,
         )
         .unwrap();
@@ -236,5 +244,7 @@ mod tests {
             targets.index_row_switch_balance,
             Some(Target::max(13.0, 0.5))
         );
+        assert_eq!(targets.inward_ratio, Some(Target::target(20.0, 0.5)));
+        assert_eq!(targets.outward_ratio, Some(Target::max(5.0, 0.75)));
     }
 }
