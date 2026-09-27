@@ -19,7 +19,9 @@
     "synthesised",
     "unplace",
     "unplacing",
-    "кастомная"
+    "кастомная",
+    "кверти",
+    "мейнстримную"
   ],
   "chat.tools.terminal.autoApprove": {
     ".\\scripts\\test.ps1": true,
