@@ -28,7 +28,7 @@ One of the fastest typists use qwerty after all.
 
 I will write it as a guide. How to start from scratch and design your own keyboard layout.
 
-## Метрики
+## Метрики (часть режима поиска раскладки)
 
 Что определяет хорошую раскладку клавиатуры?
 
