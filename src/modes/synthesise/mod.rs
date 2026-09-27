@@ -16,6 +16,8 @@ use std::{
     io::{BufRead, BufReader},
 };
 
+const DEFAULT_SEED: u64 = 0xcafe_babe_dead_beef;
+
 /// Run the sample-word synthesise pipeline.
 ///
 /// Streams the source file in one pass: accumulates full-corpus stats and
@@ -31,51 +33,11 @@ pub fn synthesise(cfg: SynthesiseConfig) -> Result<()> {
         .as_deref()
         .wrap_err("Synthesise mode requires `synthesise.output` path")?;
 
-    let n = cfg.sample.target;
-    let mut rng = StdRng::seed_from_u64(cfg.seed.unwrap_or(0xcafe_babe_dead_beef));
-
-    let mut reservoir: Vec<String> = Vec::new();
-    let mut total_words: usize = 0;
-    let mut source_counter = CorpusStatsCounter::default();
-
-    {
-        let file = fs::File::open(input)
-            .into_diagnostic()
-            .wrap_err("Failed to open synth source text")?;
-        let reader = BufReader::new(file);
-
-        for line in reader.lines() {
-            let line = line
-                .into_diagnostic()
-                .wrap_err("Failed to read synth source text")?;
-            for word in line.split_ascii_whitespace() {
-                if word.is_empty() {
-                    continue;
-                }
-                source_counter.add_word(word);
-                total_words += 1;
-
-                if reservoir.len() < n {
-                    reservoir.push(word.to_owned());
-                } else {
-                    let j = rng.random_range(0..total_words);
-                    if j < n {
-                        reservoir[j] = word.to_owned();
-                    }
-                }
-            }
-        }
-    }
-
+    let sample_target = cfg.sample.target;
+    let (reservoir, total_words, source_stats) = sample_source_words(input, sample_target, cfg.seed)?;
     let sampled_n = reservoir.len();
-    let source_stats = source_counter.finish();
 
-    let mut sample_counter = CorpusStatsCounter::default();
-    for word in &reservoir {
-        sample_counter.add_word(word);
-    }
-    let sample_stats = sample_counter.finish();
-
+    let sample_stats = build_sample_stats(&reservoir);
     let score = score_with_filter(
         &source_stats,
         &sample_stats,
@@ -97,6 +59,70 @@ pub fn synthesise(cfg: SynthesiseConfig) -> Result<()> {
         "Synthesise complete"
     );
     Ok(())
+}
+
+fn sample_source_words(
+    input: &std::path::Path,
+    sample_target: usize,
+    seed: Option<u64>,
+) -> Result<(Vec<String>, usize, crate::modes::synthesise::counter::CorpusStats)> {
+    let mut rng = make_rng(seed);
+    let mut reservoir = Vec::new();
+    let mut total_words = 0usize;
+    let mut source_counter = CorpusStatsCounter::default();
+
+    let file = fs::File::open(input)
+        .into_diagnostic()
+        .wrap_err("Failed to open synth source text")?;
+    let reader = BufReader::new(file);
+
+    for line in reader.lines() {
+        let line = line
+            .into_diagnostic()
+            .wrap_err("Failed to read synth source text")?;
+
+        for word in line.split_ascii_whitespace() {
+            if word.is_empty() {
+                continue;
+            }
+
+            source_counter.add_word(word);
+            total_words += 1;
+            push_or_replace_reservoir_word(&mut reservoir, word, sample_target, &mut rng, total_words);
+        }
+    }
+
+    Ok((reservoir, total_words, source_counter.finish()))
+}
+
+fn make_rng(seed: Option<u64>) -> StdRng {
+    StdRng::seed_from_u64(seed.unwrap_or(DEFAULT_SEED))
+}
+
+fn push_or_replace_reservoir_word(
+    reservoir: &mut Vec<String>,
+    word: &str,
+    target: usize,
+    rng: &mut StdRng,
+    total_words: usize,
+) {
+    if reservoir.len() < target {
+        reservoir.push(word.to_owned());
+        return;
+    }
+
+    let sample_index = rng.random_range(0..total_words);
+    if sample_index < target {
+        reservoir[sample_index] = word.to_owned();
+    }
+}
+
+fn build_sample_stats(reservoir: &[String]) -> crate::modes::synthesise::counter::CorpusStats {
+    let mut sample_counter = CorpusStatsCounter::default();
+    for word in reservoir {
+        sample_counter.add_word(word);
+    }
+    sample_counter.finish()
 }
 
 #[cfg(test)]
