@@ -76,15 +76,15 @@ optimization:
     '_': [0, 1, 10, 11]
     e: [6, 7, 8]
     t: [6, 7, 8]
-    i: [1, 2, 3, 6, 7, 8]
-    a: [1, 2, 3, 6, 7, 8]
-    o: [1, 2, 3, 6, 7, 8]
-    n: [1, 2, 3, 6, 7, 8]
+    i: [6, 7, 8]
+    a: [6, 7, 8]
+    o: [6, 7, 8]
+    n: [6, 7, 8]
     r: [1, 2, 3, 6, 7, 8]
     s: [1, 2, 3, 6, 7, 8]
     h: [1, 2, 3, 6, 7, 8, 9, 13]
     # b: [1, 2, 3, 5, 9, 11, 12, 13]
-    # j: [4, 14, 11, 14]
+    j: [4, 14, 11, 14]
     x: [4, 10, 11, 14]
     z: [4, 10, 11, 14]
     q: [4, 14, 11, 14]
@@ -174,13 +174,13 @@ evaluator:
   # rowSwitchRatio: { type: max, value: 8, weight: 1 }
 
   # Hand-switches / same-hand bigram count.
-  handSwitchRatio: { type: max, value: 38, weight: 2 }
+  handSwitchRatio: { type: max, value: 37, weight: 3 }
 
   # Same-finger skipgram share: same finger reactivated after one intervening key.
   sfsRatio: { type: max, value: 6, weight: 1 }
 
   # Same-hand moves toward hand center. Closer to this target is better.
-  inwardRatio: { type: target, value: 19, weight: 1 }
+  inwardRatio: { type: target, value: 19, weight: 2 }
 
   # Same-hand moves away from hand center. Lower is better.
   outwardRatio: { type: max, value: 12, weight: 1 }
