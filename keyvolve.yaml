@@ -1,23 +1,17 @@
-stats:
-  # Source text file used to build the cached corpus stats.
-  input: data/samples/merged.txt
-  # Output JSON cache used by evaluate/optimize.
-  output: data/stats/stats.json
-
-  minTrigramFrequency: 0.00001
-
+# Mode to merge raw text files into a single corpus.
+# It removes all unnecessary symbols, lower cases all text, and optionally shuffles the words to remove any knowledge and ordering from the source files.
 merge:
   # Folder of raw .txt files to clean and merge into one corpus.
   input: data/samples
   # Output merged corpus file; overwritten if it exists.
   output: data/samples/merged.txt
   # Shuffle merged words before writing. false keeps source order.
-  shuffle: false
+  shuffle: true
   # Optional: Random seed for reproducible shuffling.
   # seed: 12345
-  # Number of merged lines printed as preview.
-  print: 10
 
+# Collects statistics on character frequencies from source files.
+# Can be used to have make informed decisions about what characters to place on blank keys.
 frequencies:
   # Root folder to scan for matching files.
   input: 'C:/Users/Admin/'
@@ -28,6 +22,9 @@ frequencies:
   # Number of rows printed to stdout.
   print: 10
 
+# Optional mode to synthesise fake-word corpus from the merged text.
+# If you need a corpus for own experiments or testing purposes.
+# Randomizes the words in the synthesised corpus for added variability.
 synthesise:
   # Source text file used to build the fake-word corpus.
   text: data/samples/merged.txt
@@ -39,6 +36,58 @@ synthesise:
     # Total words to sample from the source corpus.
     target: 10000000
 
+# Collects corpus statistics from the source text.
+# This statistics is used by the evaluate and optimize modes to assess layout quality.
+stats:
+  # Source text file used to build the cached corpus stats.
+  input: data/samples/merged.txt
+  # Output JSON cache used by evaluate/optimize.
+  output: data/stats/stats.json
+
+  minTrigramFrequency: 0.00001
+
+# Builds knowledge about a keyboard ergonomics based on user preferences.
+rank:
+  # Ranked keyboard JSON output from the calibration session.
+  output: data/keyboard.json
+  # Persisted session state for resuming the ranking run.
+  session: data/rank-session.json
+  # Optional: CSV visual report path; defaults to output with .csv extension.
+  # report: data/rank-report.csv
+  # Probability of an audit question (consistency re-check of settled pairs). Default: 0.0.
+  auditRate: 0.15
+  # Minimum comparisons needed before stopping. Default: 10.
+  minMatches: 10
+  # Hard cap on comparisons per item. Default: 30.
+  maxMatches: 30
+  # Max allowed deviation before confidence is considered weak. Default: 170.0.
+  maxDeviation: 98.5
+  # Optional: Lower bound for fixed-tier efforts. Default: 1.0.
+  # effortMin: 1.0
+  # Optional: Upper bound for fixed-tier efforts. Default: 10.0.
+  # effortMax: 10.0
+  # Margin before the ranking path goes uphill. Default: 100.0.
+  uphillGap: 50
+  # Thin tail margin used when collapsing adjacent tiers. Default: 1.0.
+  thinMargin: 1.0
+  # Weight given to forced answers. Default: 3.
+  forcedAnswerWeight: 2
+  # Optional: Ask this exact comparison first once (format: AB-CD). Default: none.
+  # forceCheckPair: AF-VE
+  # Fixed effort tier count; boundaries minimize within-tier rating variance. Default: 10.
+  tierCount: 30
+  # Shaping exponent for tier effort spacing (rating-anchored curve). Default: 1.0.
+  #   1.0 = linear: effort gaps mirror rating gaps exactly.
+  #   > 1 = easy tiers cluster near effortMin, hard tiers spread out
+  #         (small penalty differences among good bigrams, harsh tail).
+  #   < 1 = easy tiers spread out, hard tiers compress near effortMax
+  #         (strong differentiation among good bigrams, flat tail).
+  # Endpoints always pinned: best tier = effortMin, worst = effortMax.
+  effortGamma: 0.8
+  # Optional: Random seed for reproducible question order.
+  # seed: 42
+
+# Parameters and restrictions for the optimization process.
 optimization:
   # Keyboard effort table + pair costs used by scoring and layout fitness.
   keyboard: data/keyboard.json
@@ -99,64 +148,7 @@ optimization:
   # Optional: Characters restricted to the right hand (unless frozen elsewhere).
   # right: [a, i]
 
-rank:
-  # Ranked keyboard JSON output from the calibration session.
-  output: data/keyboard.json
-  # Persisted session state for resuming the ranking run.
-  session: data/rank-session.json
-  # Optional: CSV visual report path; defaults to output with .csv extension.
-  # report: data/rank-report.csv
-  # Probability of an audit question (consistency re-check of settled pairs). Default: 0.0.
-  auditRate: 0.15
-  # Minimum comparisons needed before stopping. Default: 10.
-  minMatches: 10
-  # Hard cap on comparisons per item. Default: 30.
-  maxMatches: 30
-  # Max allowed deviation before confidence is considered weak. Default: 170.0.
-  maxDeviation: 98.5
-  # Optional: Lower bound for fixed-tier efforts. Default: 1.0.
-  # effortMin: 1.0
-  # Optional: Upper bound for fixed-tier efforts. Default: 10.0.
-  # effortMax: 10.0
-  # Margin before the ranking path goes uphill. Default: 100.0.
-  uphillGap: 50
-  # Thin tail margin used when collapsing adjacent tiers. Default: 1.0.
-  thinMargin: 1.0
-  # Weight given to forced answers. Default: 3.
-  forcedAnswerWeight: 2
-  # Optional: Ask this exact comparison first once (format: AB-CD). Default: none.
-  # forceCheckPair: AF-VE
-  # Fixed effort tier count; boundaries minimize within-tier rating variance. Default: 10.
-  tierCount: 30
-  # Shaping exponent for tier effort spacing (rating-anchored curve). Default: 1.0.
-  #   1.0 = linear: effort gaps mirror rating gaps exactly.
-  #   > 1 = easy tiers cluster near effortMin, hard tiers spread out
-  #         (small penalty differences among good bigrams, harsh tail).
-  #   < 1 = easy tiers spread out, hard tiers compress near effortMax
-  #         (strong differentiation among good bigrams, flat tail).
-  # Endpoints always pinned: best tier = effortMin, worst = effortMax.
-  effortGamma: 0.8
-  # Optional: Random seed for reproducible question order.
-  # seed: 42
-
-evaluate:
-  # Keyboard effort table + pair costs used by scoring and layout fitness.
-  keyboard: data/keyboard.json
-  # Cached corpus stats JSON; required for evaluate/optimize.
-  corpusStats: data/stats/stats.json
-
-  # One or more layout CSVs to score.
-  input:
-    - data/layouts.csv
-    # - data/layouts.known.csv
-  # Output CSV for scored layouts.
-  output: data/layouts.csv
-  # output: data/layouts.known.csv
-  # Number of best layouts printed to stdout.
-  print: 5
-  # Orientation used when saving layouts; left mirrors twin layouts.
-  eSide: any
-
+# Targets for the optimization and evaluation processes.
 evaluator:
   # Fitness multiplier; higher scales scores up, lower scales down.
   fitnessScale: 100000000000000000
@@ -233,6 +225,7 @@ evaluator:
   middleRowSwitchBalance: { type: max, value: 5, weight: 0.1 }
   indexRowSwitchBalance: { type: max, value: 5, weight: 0.1 }
 
+# Genetic Algorithm parameters.
 ga:
   # Mutation probability applied per genome element.
   mutationRatio: 0.6
@@ -252,6 +245,25 @@ ga:
   dumpRatio: 0.8
   # Keep or delete dump files after runs.
   keepDump: false
+
+# Evaluation mode parameters.
+evaluate:
+  # Keyboard effort table + pair costs used by scoring and layout fitness.
+  keyboard: data/keyboard.json
+  # Cached corpus stats JSON; required for evaluate/optimize.
+  corpusStats: data/stats/stats.json
+
+  # One or more layout CSVs to score.
+  input:
+    - data/layouts.csv
+    # - data/layouts.known.csv
+  # Output CSV for scored layouts.
+  output: data/layouts.csv
+  # output: data/layouts.known.csv
+  # Number of best layouts printed to stdout.
+  print: 5
+  # Orientation used when saving layouts; left mirrors twin layouts.
+  eSide: any
 
 # ============================================================================
 # MODE: Operation mode for this run
