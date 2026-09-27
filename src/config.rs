@@ -8,28 +8,26 @@ use crate::modes::stats::BuildStatsConfig;
 use crate::modes::synthesise::SynthesiseConfig;
 use serde::Deserialize;
 
+/// Root config.
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
-    /// keyboard json settings
-    pub keyboard: std::path::PathBuf,
-
-    /// darwin config for the genetic algorithm
+    /// Darwin config for the genetic algorithm.
     pub ga: darwin::Config<char>,
 
-    /// mode of operation: optimize, evaluate, synthesise, stats, etc.
+    /// Mode of operation: optimize, evaluate, synthesise, stats, etc.
     #[serde(default)]
     pub mode: Mode,
 
-    /// settings for `Mode::BuildStats`
+    /// Settings for `Mode::BuildStats`.
     #[serde(default)]
     pub stats: BuildStatsConfig,
 
-    /// settings for `Mode::Synthesise`
+    /// Settings for `Mode::Synthesise`.
     #[serde(default)]
     pub synthesise: SynthesiseConfig,
 
-    /// settings for `Mode::Evaluate`
+    /// Settings for `Mode::Evaluate`.
     #[serde(default)]
     pub evaluate: EvaluateConfig,
 
@@ -37,14 +35,11 @@ pub struct Config {
     #[serde(default)]
     pub evaluator: LayoutEvaluatorConfig,
 
-    /// Cached corpus stats JSON used by evaluation and optimization.
-    pub corpus_stats: std::path::PathBuf,
-
-    /// settings for `Mode::Merge`
+    /// Settings for `Mode::Merge`.
     #[serde(default)]
     pub merge: MergeConfig,
 
-    /// settings for `Mode::Frequencies`
+    /// Settings for `Mode::Frequencies`.
     #[serde(default)]
     pub frequencies: FrequenciesConfig,
 
@@ -52,7 +47,7 @@ pub struct Config {
     #[serde(default)]
     pub optimization: OptimizationConfig,
 
-    /// settings for `Mode::Rank`
+    /// Settings for `Mode::Rank`.
     #[serde(default)]
     pub rank: RankConfig,
 }

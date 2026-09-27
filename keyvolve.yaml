@@ -1,8 +1,3 @@
-# Keyboard effort table + pair costs used by scoring and layout fitness.
-keyboard: data/keyboard.json
-# Cached corpus stats JSON; required for evaluate/optimize.
-corpusStats: data/stats/stats.json
-
 stats:
   # Source text file used to build the cached corpus stats.
   input: data/samples/merged.txt
@@ -45,6 +40,11 @@ synthesise:
     target: 10000000
 
 optimization:
+  # Keyboard effort table + pair costs used by scoring and layout fitness.
+  keyboard: data/keyboard.json
+  # Cached corpus stats JSON; required for evaluate/optimize.
+  corpusStats: data/stats/stats.json
+
   # Seed layout CSVs to load before GA starts; null means none.
   # input: data/layouts.csv
   # Layout CSV written after optimization.
@@ -140,6 +140,11 @@ rank:
   # seed: 42
 
 evaluate:
+  # Keyboard effort table + pair costs used by scoring and layout fitness.
+  keyboard: data/keyboard.json
+  # Cached corpus stats JSON; required for evaluate/optimize.
+  corpusStats: data/stats/stats.json
+
   # One or more layout CSVs to score.
   input:
     - data/layouts.csv

@@ -6,6 +6,12 @@ use std::path::PathBuf;
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct EvaluateConfig {
+    /// Keyboard JSON used for layout scoring.
+    pub keyboard: PathBuf,
+
+    /// Cached corpus stats JSON used for scoring.
+    pub corpus_stats: PathBuf,
+
     /// input layouts csv files
     pub input: Vec<PathBuf>,
 
@@ -30,6 +36,8 @@ fn default_print() -> usize {
 impl Default for EvaluateConfig {
     fn default() -> Self {
         Self {
+            keyboard: PathBuf::default(),
+            corpus_stats: PathBuf::default(),
             input: Vec::new(),
             output: None,
             print: default_print(),

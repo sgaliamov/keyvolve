@@ -8,6 +8,12 @@ use std::path::PathBuf;
 #[derive(Debug, Clone, Default, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct OptimizationConfig {
+    /// Keyboard JSON used for layout scoring.
+    pub keyboard: PathBuf,
+
+    /// Cached corpus stats JSON used for optimization scoring.
+    pub corpus_stats: PathBuf,
+
     /// Characters whose physical position is locked: maps char → key index (0-29).
     #[serde(default)]
     pub frozen: FxHashMap<char, u8>,

@@ -79,7 +79,7 @@ cargo test -q scan_live_session_for_cycles -- --ignored --nocapture
 - `data/keyboard.json` — effort groups, bigram pair costs, penalty coefficients.
 - `data/layouts.csv` — semicolon-layout + fitness; header on first line.
 - `data/synthesised` — fake-word corpus used during optimization.
-- `keyvolve.yaml` — top-level config (mode, GA params, constraints, paths).
+- `keyvolve.yaml` — top-level config (mode, GA params, constraints; mode configs own their paths).
 
 ## Crates
 - **`darwin/`** — generic GA engine, no domain knowledge.

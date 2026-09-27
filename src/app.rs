@@ -33,15 +33,12 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
             rank::rank(cfg.rank, app)?;
         }
         mode => {
-            let keyboard = Keyboard::load(cfg.keyboard)?;
             let evaluator_cfg = cfg.evaluator;
-            let stats = cfg.corpus_stats;
-            let opt = cfg.optimization;
-
             match mode {
                 Mode::Evaluate => {
                     let eval = cfg.evaluate;
-                    let evaluator = build_evaluator(&keyboard, &stats, evaluator_cfg)?;
+                    let keyboard = Keyboard::load(&eval.keyboard)?;
+                    let evaluator = build_evaluator(&keyboard, &eval.corpus_stats, evaluator_cfg)?;
                     let mut eval = eval;
                     if eval.input.is_empty() {
                         return Err(miette::miette!("evaluate.input requires at least one CSV"));
@@ -67,7 +64,9 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
                     evaluate::evaluate(evaluator, layouts, &eval, app)?
                 }
                 Mode::Optimize => {
-                    let evaluator = build_evaluator(&keyboard, &stats, evaluator_cfg)?;
+                    let opt = cfg.optimization;
+                    let keyboard = Keyboard::load(&opt.keyboard)?;
+                    let evaluator = build_evaluator(&keyboard, &opt.corpus_stats, evaluator_cfg)?;
                     let mut ga = cfg.ga;
                     ga.ranges = vec![vec![(EMPTY_SLOT, 'z'); 30]];
                     let mut seed: Vec<_> = vec![];
