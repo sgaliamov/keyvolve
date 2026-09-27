@@ -52,9 +52,9 @@ optimization:
   # Mutants produced per parent each generation.
   mutationCount: 10
   # Max home-row groups kept in final ranked output.
-  maxGroups: 1
+  maxGroups: 3
   # Number of layouts kept per home-row group in final ranked output.
-  itemsPerGroup: 1
+  itemsPerGroup: 2
 
   # Optional: Slot indices that must remain empty (blocked), unless a letter is frozen there.
   # blocked: [0, 28, 29]
@@ -79,15 +79,15 @@ optimization:
     i: [1, 2, 3, 6, 7, 8]
     a: [1, 2, 3, 6, 7, 8]
     o: [1, 2, 3, 6, 7, 8]
-    n: [1, 2, 3, 6, 7, 8, 9, 13]
-    r: [1, 2, 3, 6, 7, 8, 9, 13]
-    s: [1, 2, 3, 6, 7, 8, 9, 13]
+    n: [1, 2, 3, 6, 7, 8]
+    r: [1, 2, 3, 6, 7, 8]
+    s: [1, 2, 3, 6, 7, 8]
     h: [1, 2, 3, 6, 7, 8, 9, 13]
-    b: [1, 2, 3, 5, 9, 11, 12, 13]
-    j: [4, 14]
-    q: [4, 14]
+    # b: [1, 2, 3, 5, 9, 11, 12, 13]
+    # j: [4, 14, 11, 14]
     x: [4, 10, 11, 14]
     z: [4, 10, 11, 14]
+    q: [4, 14, 11, 14]
 
   # Optional: Character pairs that must stay on the same hand (left-left or right-right).
   # Disjoint pairs choose independently; overlapping pairs form one group. Contiguity is only preferred.
@@ -174,16 +174,16 @@ evaluator:
   # rowSwitchRatio: { type: max, value: 8, weight: 1 }
 
   # Hand-switches / same-hand bigram count.
-  handSwitchRatio: { type: max, value: 40, weight: 1 }
+  handSwitchRatio: { type: max, value: 38, weight: 2 }
 
   # Same-finger skipgram share: same finger reactivated after one intervening key.
   sfsRatio: { type: max, value: 6, weight: 1 }
 
   # Same-hand moves toward hand center. Closer to this target is better.
-  inwardRatio: { type: target, value: 20, weight: 1 }
+  inwardRatio: { type: target, value: 19, weight: 1 }
 
   # Same-hand moves away from hand center. Lower is better.
-  outwardRatio: { type: max, value: 5, weight: 1 }
+  outwardRatio: { type: max, value: 12, weight: 1 }
 
   # Left/right roll count asymmetry.
   rollImbalance: { type: max, value: 5, weight: 0.1 }
@@ -236,7 +236,7 @@ ga:
   # Generations without improvement before stopping.
   stagnationCount: 128
   # Number of island pools evolved in parallel.
-  pools: 512
+  pools: 256
   # Randomly generated individuals ratio per generation.
   randomRatio: 0.25
   # Mutation steps applied to seeded layouts.
