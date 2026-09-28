@@ -34,7 +34,8 @@ pub fn synthesise(cfg: SynthesiseConfig) -> Result<()> {
         .wrap_err("Synthesise mode requires `synthesise.output` path")?;
 
     let sample_target = cfg.sample.target;
-    let (reservoir, total_words, source_stats) = sample_source_words(input, sample_target, cfg.seed)?;
+    let (reservoir, total_words, source_stats) =
+        sample_source_words(input, sample_target, cfg.seed)?;
     let sampled_n = reservoir.len();
 
     let sample_stats = build_sample_stats(&reservoir);
@@ -65,7 +66,11 @@ fn sample_source_words(
     input: &std::path::Path,
     sample_target: usize,
     seed: Option<u64>,
-) -> Result<(Vec<String>, usize, crate::modes::synthesise::counter::CorpusStats)> {
+) -> Result<(
+    Vec<String>,
+    usize,
+    crate::modes::synthesise::counter::CorpusStats,
+)> {
     let mut rng = make_rng(seed);
     let mut reservoir = Vec::new();
     let mut total_words = 0usize;
@@ -88,7 +93,13 @@ fn sample_source_words(
 
             source_counter.add_word(word);
             total_words += 1;
-            push_or_replace_reservoir_word(&mut reservoir, word, sample_target, &mut rng, total_words);
+            push_or_replace_reservoir_word(
+                &mut reservoir,
+                word,
+                sample_target,
+                &mut rng,
+                total_words,
+            );
         }
     }
 
