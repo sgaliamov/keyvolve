@@ -20,6 +20,9 @@ pub struct Targets {
     /// Limit for `outward_ratio`: same-hand moves away from hand center.
     pub outward_ratio: Option<Target>,
 
+    /// Limit for `directional_outward_ratio`: outward share among directional same-hand moves.
+    pub directional_outward_ratio: Option<Target>,
+
     /// Limit for `efforts_imbalance`: left/right effort asymmetry.
     pub efforts_imbalance: Option<Target>,
 
@@ -226,7 +229,8 @@ mod tests {
                 "indexRowSwitchBalance": {"type": "max", "value": 13, "weight": 0.5},
                 "sfsRatio": {"type": "max", "value": 4, "weight": 0.1},
                 "inwardRatio": {"type": "target", "value": 20, "weight": 0.5},
-                "outwardRatio": {"type": "max", "value": 5, "weight": 0.75}
+                "outwardRatio": {"type": "max", "value": 5, "weight": 0.75},
+                "directionalOutwardRatio": {"type": "max", "value": 40, "weight": 1.25}
             }"#,
         )
         .unwrap();
@@ -246,5 +250,9 @@ mod tests {
         );
         assert_eq!(targets.inward_ratio, Some(Target::target(20.0, 0.5)));
         assert_eq!(targets.outward_ratio, Some(Target::max(5.0, 0.75)));
+        assert_eq!(
+            targets.directional_outward_ratio,
+            Some(Target::max(40.0, 1.25))
+        );
     }
 }

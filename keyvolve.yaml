@@ -175,11 +175,14 @@ evaluator:
   # Same-finger skipgram share: same finger reactivated after one intervening key.
   sfsRatio: { type: max, value: 6, weight: 1 }
 
-  # Same-hand moves toward hand center. Closer to this target is better.
-  inwardRatio: { type: target, value: 19, weight: 2 }
+  # # Same-hand moves toward hand center. Closer to this target is better.
+  # inwardRatio: { type: target, value: 19, weight: 2 }
 
-  # Same-hand moves away from hand center. Lower is better.
-  outwardRatio: { type: max, value: 12, weight: 1 }
+  # # Same-hand moves away from hand center. Lower is better.
+  # outwardRatio: { type: max, value: 12, weight: 1 }
+
+  # Outward share among directional rolls. 50% = tie, 0% = all inward.
+  directionalOutwardRatio: { type: max, value: 25, weight: 1 }
 
   # Left/right roll count asymmetry.
   rollImbalance: { type: max, value: 5, weight: 0.1 }
