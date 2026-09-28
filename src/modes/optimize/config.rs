@@ -9,9 +9,11 @@ use std::path::PathBuf;
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct OptimizationConfig {
     /// Keyboard JSON used for layout scoring.
+    #[serde(default)]
     pub keyboard: PathBuf,
 
     /// Cached corpus stats JSON used for optimization scoring.
+    #[serde(default)]
     pub corpus_stats: PathBuf,
 
     /// Characters whose physical position is locked: maps char → key index (0-29).

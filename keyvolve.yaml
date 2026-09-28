@@ -106,7 +106,6 @@ optimization:
   itemsPerGroup: 2
 
   # Optional: Slot indices that must remain empty (blocked), unless a letter is frozen there.
-  # blocked: [0, 28, 29]
   blocked: [29]
 
   # Optional: Characters pinned to specific slot indices; pins override allowed/left/right/blocked.
@@ -124,14 +123,14 @@ optimization:
   allowed:
     '_': [0, 1, 10, 11]
     e: [6, 7, 8]
-    t: [6, 7, 8]
+    t: [6, 7, 8, 6, 7, 8]
     i: [1, 2, 3, 6, 7, 8]
     a: [1, 2, 3, 6, 7, 8]
     o: [1, 2, 3, 6, 7, 8]
     n: [1, 2, 3, 6, 7, 8]
-    r: [1, 2, 3, 6, 7, 8]
-    s: [1, 2, 3, 6, 7, 8]
-    h: [1, 2, 3, 6, 7, 8, 9, 13]
+    r: [1, 2, 3, 6, 7, 8, 5, 9]
+    s: [1, 2, 3, 6, 7, 8, 5, 9]
+    h: [1, 2, 3, 6, 7, 8, 5, 9]
     # b: [1, 2, 3, 5, 9, 11, 12, 13]
     j: [4, 14, 11, 14]
     x: [4, 10, 11, 14]
