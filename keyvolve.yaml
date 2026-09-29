@@ -106,7 +106,7 @@ optimization:
   itemsPerGroup: 2
 
   # Optional: Slot indices that must remain empty (blocked), unless a letter is frozen there.
-  blocked: [0, 19, 29]
+  blocked: [0, 10, 19, 29]
 
   # Optional: Characters pinned to specific slot indices; pins override allowed/left/right/blocked.
   # frozen:
@@ -121,7 +121,7 @@ optimization:
   # Special key "_" constrains empty slots (the 4 unused positions).
   # These positions may be empty, not must be empty; blocked slots are also eligible.
   allowed:
-    '_': [0, 1, 10, 11]
+    # '_': [0, 1, 10, 11]
     # e: [6, 7, 8]
     # t: [6, 7, 8, 6, 7, 8]
     # i: [1, 2, 3, 6, 7, 8]
@@ -132,10 +132,10 @@ optimization:
     # s: [1, 2, 3, 6, 7, 8, 5, 9]
     # h: [1, 2, 3, 6, 7, 8, 5, 9]
     # b: [1, 2, 3, 5, 9, 11, 12, 13]
-    # j: [4, 14, 11, 14]
-    # x: [4, 10, 11, 14]
-    # z: [4, 10, 11, 14]
-    # q: [4, 14, 11, 14]
+    j: [4, 14, 11, 14]
+    x: [4, 10, 11, 14]
+    z: [4, 10, 11, 14]
+    q: [4, 14, 11, 14]
 
   # Optional: Character pairs that must stay on the same hand (left-left or right-right).
   # Disjoint pairs choose independently; overlapping pairs form one group. Contiguity is only preferred.
@@ -252,7 +252,12 @@ evaluate:
   # One or more layout CSVs to score.
   input:
     - data/layouts.csv
-    # - data/layouts.known.csv
+    # - data/layouts.1.csv
+    # - data/layouts.2.csv
+    # - data/layouts.3.csv
+    # - data/layouts.4.csv
+    # - data/layouts.5.csv
+    # - data/layouts.known.
   # Output CSV for scored layouts.
   output: data/layouts.csv
   # output: data/layouts.known.csv
