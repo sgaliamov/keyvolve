@@ -118,11 +118,9 @@ Recommended defaults to enable early: `effortsImbalance` and `handsImbalance` at
 | `rowSwitchRatio` | `100 × (left_row_switch_cost + right_row_switch_cost) / (left_count + right_count)` | same-finger vertical row moves |
 | `handSwitchRatio` | `100 × hand_switches / (left_count + right_count)` | hand alternation frequency |
 | `sfsRatio` | `100 × sfs_count / (left_count + right_count)` | same-finger skipgram share |
-| `inwardRatio` | `100 × inward_count / (left_count + right_count)` | same-hand moves toward center |
-| `outwardRatio` | `100 × outward_count / (left_count + right_count)` | same-hand moves away from center |
 | `directionalOutwardRatio` | `100 × outward_count / (inward_count + outward_count)` | outward share among directional rolls (`0%` = all inward, `50%` = tie) |
 
-`inwardRatio` is usually a `target`; `outwardRatio` and `directionalOutwardRatio` are usually `max` caps.
+`directionalOutwardRatio` is usually a `max` cap.
 
 ### Row-distribution targets
 
@@ -216,8 +214,6 @@ evaluator:
   handsImbalance: { type: max, value: 5, weight: 0.5 }
   handSwitchRatio: { type: max, value: 37, weight: 3 }
   sfsRatio: { type: max, value: 6, weight: 1 }
-  inwardRatio: { type: target, value: 19, weight: 2 }
-  outwardRatio: { type: max, value: 12, weight: 1 }
   directionalOutwardRatio: { type: max, value: 40, weight: 1 }
 
   rollImbalance: { type: max, value: 5, weight: 0.1 }

@@ -37,8 +37,6 @@
 //! | `row_switch_ratio`   | row jumps by same finger          |
 //! | `hand_switch_ratio`  | hand alternation (replaces `mean_streak_power`) |
 //! | `sfs_ratio`          | same-finger skipgram share       |
-//! | `inward_ratio`       | same-hand moves toward center    |
-//! | `outward_ratio`      | same-hand moves away from center |
 //! | `directional_outward_ratio` | outward share among directional rolls |
 //! | `efforts_imbalance`  | left/right effort asymmetry      |
 //! | `hands_imbalance`    | left/right press-count asymmetry |
@@ -160,8 +158,6 @@ fn terms<'a>(
             r.hand_switch_ratio() * 100.0,
         ),
         ("sfs_ratio", t.sfs_ratio, r.sfs_ratio() * 100.0),
-        ("inward_ratio", t.inward_ratio, r.inward_ratio() * 100.0),
-        ("outward_ratio", t.outward_ratio, r.outward_ratio() * 100.0),
         (
             "directional_outward_ratio",
             t.directional_outward_ratio,
@@ -552,7 +548,7 @@ mod tests {
         let terms = skewed().breakdown(&targets_config());
 
         assert!(terms.windows(2).all(|w| w[0].cost >= w[1].cost));
-        assert_eq!(terms.len(), 42);
+        assert_eq!(terms.len(), 40);
     }
 
     /// Pressure is zero at the goal and grows with the miss — the "who wins the next
@@ -644,8 +640,6 @@ mod tests {
         let config = LayoutEvaluatorConfig {
             sharpness: 2.0,
             targets: Targets {
-                inward_ratio: Some(Target::target(20.0, 1.5)),
-                outward_ratio: Some(Target::max(5.0, 2.0)),
                 directional_outward_ratio: Some(Target::max(25.0, 3.0)),
                 ..Default::default()
             },
@@ -659,10 +653,8 @@ mod tests {
             ..Default::default()
         };
 
-        assert!((score.inward_ratio() * 100.0 - 30.0).abs() < 1e-9);
-        assert!((score.outward_ratio() * 100.0 - 10.0).abs() < 1e-9);
         assert!((score.directional_outward_ratio() * 100.0 - 25.0).abs() < 1e-9);
-        assert!((penalty(&config, &score) - 18.0).abs() < 1e-9);
+        assert!((penalty(&config, &score) - 4.0).abs() < 1e-9);
     }
 
     /// Every metric configured, all weights at 1 — the recommended starting point.
@@ -676,8 +668,6 @@ mod tests {
                 row_switch_ratio: limit(20.0),
                 hand_switch_ratio: limit(35.0),
                 sfs_ratio: limit(4.0),
-                inward_ratio: target(20.0),
-                outward_ratio: limit(5.0),
                 directional_outward_ratio: limit(40.0),
                 efforts_imbalance: limit(1.0),
                 hands_imbalance: limit(1.0),

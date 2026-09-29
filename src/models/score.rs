@@ -148,12 +148,6 @@ impl ScoreResult {
                 self.hand_switch_ratio() * 100.0,
             ),
             ("sfs_ratio", t.sfs_ratio, self.sfs_ratio() * 100.0),
-            ("inward_ratio", t.inward_ratio, self.inward_ratio() * 100.0),
-            (
-                "outward_ratio",
-                t.outward_ratio,
-                self.outward_ratio() * 100.0,
-            ),
             (
                 "directional_outward_ratio",
                 t.directional_outward_ratio,
@@ -695,7 +689,8 @@ impl ScoreResult {
         )
     }
 
-    /// Share of same-hand directional moves toward hand center among all presses.
+    /// Share of inward directional moves among all same-hand presses.
+    /// Range: [0.0, 1.0]. 0 = no inward rolls, 1 = all rolls are inward.
     pub fn inward_ratio(&self) -> f64 {
         crate::math::ratio(
             self.inward_count as f64,
@@ -703,7 +698,8 @@ impl ScoreResult {
         )
     }
 
-    /// Share of same-hand directional moves away from hand center among all presses.
+    /// Share of outward directional moves among all same-hand presses.
+    /// Range: [0.0, 1.0]. 0 = no outward rolls, 1 = all rolls are outward.
     pub fn outward_ratio(&self) -> f64 {
         crate::math::ratio(
             self.outward_count as f64,
@@ -1002,23 +998,30 @@ impl ScoreResult {
             6
         };
         let c: Vec<&str> = line.split(',').skip(skip).map(str::trim).collect();
-        let directional_offset = c.get(8).is_some_and(|value| value.ends_with('%')) as usize;
-        let effort = c.get(8 + directional_offset)?.parse::<f64>().ok()?;
+        // Detect format by checking if column 7 is a ratio (ends with %) or effort (no %):
+        // Legacy format (before inward/outward columns): column 7 is effort (no %)
+        // New format (with inward/outward columns): column 7 is outward_ratio (ends with %)
+        let offset = if c.get(7).map(|v| v.ends_with('%')).unwrap_or(false) {
+            2 // New format: inward_ratio, outward_ratio, directional_outward_ratio before effort
+        } else {
+            0 // Legacy format: directional_outward_ratio before effort
+        };
+        let effort = c.get(7 + offset)?.parse::<f64>().ok()?;
         Some(ScoreResult {
             fitness: c.first()?.parse().ok()?,
             effort,
-            left_effort: c.get(31 + directional_offset)?.parse().ok()?,
-            right_effort: c.get(32 + directional_offset)?.parse().ok()?,
-            left_count: c.get(33 + directional_offset)?.parse().ok()?,
-            right_count: c.get(34 + directional_offset)?.parse().ok()?,
-            hand_switches: c.get(35 + directional_offset)?.parse().ok()?,
-            left_row_switch_cost: c.get(36 + directional_offset)?.parse().ok()?,
-            right_row_switch_cost: c.get(37 + directional_offset)?.parse().ok()?,
-            left_rolls: c.get(38 + directional_offset)?.parse().ok()?,
-            right_rolls: c.get(39 + directional_offset)?.parse().ok()?,
-            inward_count: c.get(40 + directional_offset)?.parse().ok()?,
-            outward_count: c.get(41 + directional_offset)?.parse().ok()?,
-            sfs_count: c.get(42 + directional_offset)?.parse().ok()?,
+            left_effort: c.get(30 + offset)?.parse().ok()?,
+            right_effort: c.get(31 + offset)?.parse().ok()?,
+            left_count: c.get(32 + offset)?.parse().ok()?,
+            right_count: c.get(33 + offset)?.parse().ok()?,
+            hand_switches: c.get(34 + offset)?.parse().ok()?,
+            left_row_switch_cost: c.get(35 + offset)?.parse().ok()?,
+            right_row_switch_cost: c.get(36 + offset)?.parse().ok()?,
+            left_rolls: c.get(37 + offset)?.parse().ok()?,
+            right_rolls: c.get(38 + offset)?.parse().ok()?,
+            inward_count: c.get(39 + offset)?.parse().ok()?,
+            outward_count: c.get(40 + offset)?.parse().ok()?,
+            sfs_count: c.get(41 + offset)?.parse().ok()?,
             // Column/row efforts are per-corpus (recomputed during scoring).
             // Initialize to zero; they'll be regenerated if needed.
             left_column_effort: [0.0; 5],
@@ -1351,21 +1354,6 @@ mod tests {
         assert_eq!(sample(3, 3, 6, 6).row_switch_ratio(), 0.75);
         // Fully alternating layout has no same-hand moves to charge — 0.0, not NaN.
         assert_eq!(sample(0, 0, 0, 0).row_switch_ratio(), 0.0);
-    }
-
-    #[test]
-    fn directional_ratios_use_total_presses() {
-        let s = ScoreResult {
-            left_count: 8,
-            right_count: 4,
-            inward_count: 3,
-            outward_count: 2,
-            ..Default::default()
-        };
-
-        assert_eq!(s.inward_ratio(), 0.25);
-        assert_eq!(s.outward_ratio(), 1.0 / 6.0);
-        assert_eq!(s.directional_outward_ratio(), 0.4);
     }
 
     #[test]
