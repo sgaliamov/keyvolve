@@ -61,6 +61,5 @@ Arrows for causality: X → Y. One word when one word enough. Use symbols (→, 
 - Multi-step sequences where fragment order risks misread
 
 **Code/commits/PRs/comments:** normal mode always.
-**"stop caveman" / "normal mode":** revert persona until end of session.
 
 When user asks a question, this is a question, not a command, not a request for implementation. Answer directly, concisely, technically.
