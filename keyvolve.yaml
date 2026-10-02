@@ -103,7 +103,7 @@ optimization:
   # Max home-row groups kept in final ranked output.
   maxGroups: 3
   # Number of layouts kept per home-row group in final ranked output.
-  itemsPerGroup: 2
+  itemsPerGroup: 1
 
   # Optional: Slot indices that must remain empty (blocked), unless a letter is frozen there.
   # blocked: [0, 10, 19, 29]
@@ -130,7 +130,7 @@ optimization:
     n: [2, 6, 7, 8]
     r: [1, 2, 3, 5, 6, 7, 8, 9]
     s: [1, 2, 3, 5, 6, 7, 8, 9]
-    j: [4, 14]
+    j: [4, 10, 11, 14]
     x: [4, 14]
     z: [4, 14]
     q: [4, 14]
@@ -174,7 +174,7 @@ evaluator:
   sfsRatio: { type: max, value: 6, weight: 1 }
 
   # Outward share among directional rolls. 50% = tie, 0% = all inward.
-  directionalOutwardRatio: { type: max, value: 10, weight: 1 }
+  directionalOutwardRatio: { type: max, value: 10, weight: 2 }
 
   # Left/right roll count asymmetry.
   rollImbalance: { type: max, value: 5, weight: 0.75 }
@@ -190,7 +190,7 @@ evaluator:
 
   # Top/home/bottom row effort share targets.
   topRowRatio: { type: target, value: 24, weight: 1 }
-  homeRowRatio: { type: target, value: 64, weight: 2 }
+  homeRowRatio: { type: target, value: 64, weight: 3 }
   bottomRowRatio: { type: target, value: 12, weight: 1 }
 
   # Per-column effort share caps.
