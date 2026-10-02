@@ -106,7 +106,7 @@ optimization:
   itemsPerGroup: 2
 
   # Optional: Slot indices that must remain empty (blocked), unless a letter is frozen there.
-  blocked: [0, 10, 19, 29]
+  # blocked: [0, 10, 19, 29]
 
   # Optional: Characters pinned to specific slot indices; pins override allowed/left/right/blocked.
   # frozen:
@@ -121,21 +121,19 @@ optimization:
   # Special key "_" constrains empty slots (the 4 unused positions).
   # These positions may be empty, not must be empty; blocked slots are also eligible.
   allowed:
-    # '_': [0, 1, 10, 11]
-    # e: [6, 7, 8]
-    # t: [6, 7, 8, 6, 7, 8]
-    # i: [1, 2, 3, 6, 7, 8]
-    # a: [1, 2, 3, 6, 7, 8]
-    # o: [1, 2, 3, 6, 7, 8]
-    # n: [1, 2, 3, 6, 7, 8]
-    # r: [1, 2, 3, 6, 7, 8, 5, 9]
-    # s: [1, 2, 3, 6, 7, 8, 5, 9]
-    # h: [1, 2, 3, 6, 7, 8, 5, 9]
-    # b: [1, 2, 3, 5, 9, 11, 12, 13]
-    j: [4, 14, 11, 14]
-    x: [4, 10, 11, 14]
-    z: [4, 10, 11, 14]
-    q: [4, 14, 11, 14]
+    '_': [0, 1, 10, 11]
+    e: [6, 7, 8]
+    t: [2, 6, 7, 8]
+    i: [2, 6, 7, 8]
+    a: [2, 6, 7, 8]
+    o: [2, 6, 7, 8]
+    n: [2, 6, 7, 8]
+    r: [1, 2, 3, 5, 6, 7, 8, 9]
+    s: [1, 2, 3, 5, 6, 7, 8, 9]
+    j: [4, 14]
+    x: [4, 14]
+    z: [4, 14]
+    q: [4, 14]
 
   # Optional: Character pairs that must stay on the same hand (left-left or right-right).
   # Disjoint pairs choose independently; overlapping pairs form one group. Contiguity is only preferred.
@@ -179,7 +177,7 @@ evaluator:
   directionalOutwardRatio: { type: max, value: 10, weight: 1 }
 
   # Left/right roll count asymmetry.
-  rollImbalance: { type: max, value: 5, weight: 0.1 }
+  rollImbalance: { type: max, value: 5, weight: 0.75 }
 
   # Left/right row-switch cost asymmetry.
   rowSwitchImbalance: { type: max, value: 10, weight: 0.01 }
@@ -270,10 +268,10 @@ evaluate:
 # MODE: Operation mode for this run
 # ============================================================================
 # Uncomment one of the following to set the active mode; default is Evaluate.
-# mode: Evaluate    # Evaluate the score of specific layouts (default)
-# mode: Frequencies # Count per-key char frequencies across files in a folder
-# mode: Merge       # Merge all .txt files in a folder into one cleaned file
-# mode: Optimize    # Run the genetic algorithm to optimize the keyboard layout
 # mode: Rank        # Interactively rank bigram pairs to calibrate keyboard efforts
-# mode: Stats       # Build cached corpus stats from a raw text corpus
+# mode: Merge       # Merge all .txt files in a folder into one cleaned file
 # mode: Synthesise  # Build digraph frequency CSV and synthesise a fake-word corpus
+# mode: Stats       # Build cached corpus stats from a raw text corpus
+# mode: Frequencies # Count per-key char frequencies across files in a folder
+# mode: Optimize    # Run the genetic algorithm to optimize the keyboard layout
+# mode: Evaluate    # Evaluate the score of specific layouts (default)

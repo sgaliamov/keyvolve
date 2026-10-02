@@ -21,7 +21,8 @@
     "unplacing",
     "кастомная",
     "кверти",
-    "мейнстримную"
+    "мейнстримную",
+    "нейро"
   ],
   "chat.tools.terminal.autoApprove": {
     ".\\scripts\\test.ps1": true,
