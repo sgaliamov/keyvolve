@@ -257,7 +257,8 @@ evaluate:
     - data/layouts.5.csv
     - data/layouts.6.csv
     - data/layouts.7.csv
-    # - data/layouts.known.
+    - data/layouts.8.csv
+    # - data/layouts.known.csv
   # Output CSV for scored layouts.
   output: data/layouts.all.csv
   # output: data/layouts.csv
