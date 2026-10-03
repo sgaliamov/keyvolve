@@ -107,7 +107,6 @@ impl Targets {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;

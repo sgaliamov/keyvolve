@@ -249,19 +249,19 @@ evaluate:
 
   # One or more layout CSVs to score.
   input:
-    # - data/layouts.csv
-    - data/layouts.1.csv
-    - data/layouts.2.csv
-    - data/layouts.3.csv
-    - data/layouts.4.csv
-    - data/layouts.5.csv
-    - data/layouts.6.csv
-    - data/layouts.7.csv
-    - data/layouts.8.csv
+    - data/layouts.csv
+    # - data/layouts.1.csv
+    # - data/layouts.2.csv
+    # - data/layouts.3.csv
+    # - data/layouts.4.csv
+    # - data/layouts.5.csv
+    # - data/layouts.6.csv
+    # - data/layouts.7.csv
+    # - data/layouts.8.csv
     # - data/layouts.known.csv
   # Output CSV for scored layouts.
-  output: data/layouts.all.csv
-  # output: data/layouts.csv
+  # output: data/layouts.all.csv
+  output: data/layouts.csv
   # output: data/layouts.known.csv
   # Number of best layouts printed to stdout.
   print: 5

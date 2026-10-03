@@ -567,79 +567,115 @@ impl ScoreResult {
         crate::math::ratio(self.right_column_effort[4], self.effort)
     }
 
-    // Column balances: left/right effort skew per finger (0% = balanced).
+    // Column balances: left/right effort delta per finger as signed percent.
 
-    /// Pinky left/right balance as signed percent: asymmetry in pinky column effort
-    /// between hands. Range: (-∞, ∞). 0% = balanced, positive = left-lean.
+    /// Pinky left/right balance as signed percent of total effort.
+    /// Range: -100 (all right) to +100 (all left). 0 = balanced.
     pub fn pinky_balance(&self) -> f64 {
-        crate::math::signed_imbalance_percent(
-            self.left_column_effort[0],
-            self.right_column_effort[0],
-        )
+        let left = self.left_column_effort[0];
+        let right = self.right_column_effort[0];
+        let total = left + right;
+        if total == 0.0 {
+            0.0
+        } else {
+            (left - right) / total * 100.0
+        }
     }
 
-    /// Ring left/right balance as signed percent.
+    /// Ring left/right balance as signed percent of total effort.
     pub fn ring_balance(&self) -> f64 {
-        crate::math::signed_imbalance_percent(
-            self.left_column_effort[1],
-            self.right_column_effort[1],
-        )
+        let left = self.left_column_effort[1];
+        let right = self.right_column_effort[1];
+        let total = left + right;
+        if total == 0.0 {
+            0.0
+        } else {
+            (left - right) / total * 100.0
+        }
     }
 
-    /// Middle left/right balance as signed percent.
+    /// Middle left/right balance as signed percent of total effort.
     pub fn middle_balance(&self) -> f64 {
-        crate::math::signed_imbalance_percent(
-            self.left_column_effort[2],
-            self.right_column_effort[2],
-        )
+        let left = self.left_column_effort[2];
+        let right = self.right_column_effort[2];
+        let total = left + right;
+        if total == 0.0 {
+            0.0
+        } else {
+            (left - right) / total * 100.0
+        }
     }
 
-    /// Index (inner) left/right balance as signed percent.
+    /// Index (inner) left/right balance as signed percent of total effort.
     pub fn index_inner_balance(&self) -> f64 {
-        crate::math::signed_imbalance_percent(
-            self.left_column_effort[3],
-            self.right_column_effort[3],
-        )
+        let left = self.left_column_effort[3];
+        let right = self.right_column_effort[3];
+        let total = left + right;
+        if total == 0.0 {
+            0.0
+        } else {
+            (left - right) / total * 100.0
+        }
     }
 
-    /// Index (outer) left/right balance as signed percent.
+    /// Index (outer) left/right balance as signed percent of total effort.
     pub fn index_outer_balance(&self) -> f64 {
-        crate::math::signed_imbalance_percent(
-            self.left_column_effort[4],
-            self.right_column_effort[4],
-        )
+        let left = self.left_column_effort[4];
+        let right = self.right_column_effort[4];
+        let total = left + right;
+        if total == 0.0 {
+            0.0
+        } else {
+            (left - right) / total * 100.0
+        }
     }
 
-    /// Pinky same-finger row-switch left/right balance as signed percent.
+    /// Pinky same-finger row-switch left/right balance as signed percent of total cost.
     pub fn pinky_row_switch_balance(&self) -> f64 {
-        crate::math::signed_imbalance_percent(
-            self.left_finger_row_switch_cost[0] as f64,
-            self.right_finger_row_switch_cost[0] as f64,
-        )
+        let left = self.left_finger_row_switch_cost[0] as f64;
+        let right = self.right_finger_row_switch_cost[0] as f64;
+        let total = left + right;
+        if total == 0.0 {
+            0.0
+        } else {
+            (left - right) / total * 100.0
+        }
     }
 
-    /// Ring same-finger row-switch left/right balance as signed percent.
+    /// Ring same-finger row-switch left/right balance as signed percent of total cost.
     pub fn ring_row_switch_balance(&self) -> f64 {
-        crate::math::signed_imbalance_percent(
-            self.left_finger_row_switch_cost[1] as f64,
-            self.right_finger_row_switch_cost[1] as f64,
-        )
+        let left = self.left_finger_row_switch_cost[1] as f64;
+        let right = self.right_finger_row_switch_cost[1] as f64;
+        let total = left + right;
+        if total == 0.0 {
+            0.0
+        } else {
+            (left - right) / total * 100.0
+        }
     }
 
-    /// Middle same-finger row-switch left/right balance as signed percent.
+    /// Middle same-finger row-switch left/right balance as signed percent of total cost.
     pub fn middle_row_switch_balance(&self) -> f64 {
-        crate::math::signed_imbalance_percent(
-            self.left_finger_row_switch_cost[2] as f64,
-            self.right_finger_row_switch_cost[2] as f64,
-        )
+        let left = self.left_finger_row_switch_cost[2] as f64;
+        let right = self.right_finger_row_switch_cost[2] as f64;
+        let total = left + right;
+        if total == 0.0 {
+            0.0
+        } else {
+            (left - right) / total * 100.0
+        }
     }
 
-    /// Merged-index same-finger row-switch left/right balance as signed percent.
+    /// Merged-index same-finger row-switch left/right balance as signed percent of total cost.
     pub fn index_row_switch_balance(&self) -> f64 {
-        crate::math::signed_imbalance_percent(
-            self.left_finger_row_switch_cost[3] as f64,
-            self.right_finger_row_switch_cost[3] as f64,
-        )
+        let left = self.left_finger_row_switch_cost[3] as f64;
+        let right = self.right_finger_row_switch_cost[3] as f64;
+        let total = left + right;
+        if total == 0.0 {
+            0.0
+        } else {
+            (left - right) / total * 100.0
+        }
     }
 
     /// Same-finger row-switch balances in pinky → index order.
@@ -650,6 +686,20 @@ impl ScoreResult {
             self.middle_row_switch_balance(),
             self.index_row_switch_balance(),
         ]
+    }
+
+    /// Difference between mirrored left/right column effort ratios, in percentage points.
+    fn mirrored_column_balance_deltas(&self) -> [f64; 5] {
+        let left = self.left_column_effort_ratios();
+        let right = self.right_column_effort_ratios();
+        core::array::from_fn(|i| (left[i] - right[i]) * 100.0)
+    }
+
+    /// Difference between mirrored left/right finger row-switch ratios, in percentage points.
+    fn mirrored_finger_row_switch_balance_deltas(&self) -> [f64; 4] {
+        let left = self.left_finger_row_switch_ratios();
+        let right = self.right_finger_row_switch_ratios();
+        core::array::from_fn(|i| (left[i] - right[i]) * 100.0)
     }
 
     /// Format a 5-column ratio list for display.
@@ -832,7 +882,7 @@ impl ScoreResult {
 
     // CSV serialization: (de)serialize rows.
 
-    /// Format signed imbalance with directional symbol: negative = left (←), positive = right (→).
+    /// Format signed delta with directional symbol: negative = right (→), positive = left (←).
     fn format_imbalance(value: f64) -> String {
         let symbol = if value < 0.0 {
             "→"
@@ -904,22 +954,16 @@ impl ScoreResult {
                 let r = self.right_column_press_ratios();
                 [r[4], r[3], r[2], r[1], r[0]]
             }),
-            // Column balances (grouped, ` │ ` separated)
-            Self::format_imbalance_array(&[
-                self.pinky_balance(),
-                self.ring_balance(),
-                self.middle_balance(),
-                self.index_inner_balance(),
-                self.index_outer_balance(),
-            ]),
+            // Column balances shown as left/right ratio deltas in the same grouped order.
+            Self::format_imbalance_array(&self.mirrored_column_balance_deltas()),
             // Finger row-switch ratios (grouped by hand, right reversed for physical display).
             Self::format_ratio_array(&self.left_finger_row_switch_ratios()),
             Self::format_ratio_array(&{
                 let r = self.right_finger_row_switch_ratios();
                 [r[3], r[2], r[1], r[0]]
             }),
-            // Finger row-switch balances (grouped, ` │ ` separated)
-            Self::format_imbalance_array(&self.finger_row_switch_balances()),
+            // Finger row-switch balances shown as mirrored left/right ratio deltas.
+            Self::format_imbalance_array(&self.mirrored_finger_row_switch_balance_deltas()),
             // Row effort ratios (separate columns)
             format!("{:05.2}%", self.row_effort_ratios()[0].2 * 100.0),
             format!("{:05.2}%", self.row_effort_ratios()[1].2 * 100.0),
@@ -1242,13 +1286,13 @@ mod tests {
         assert_eq!(balanced.index_inner_balance(), 0.0);
         assert_eq!(balanced.index_outer_balance(), 0.0);
 
-        // Left pinky column carries double the right pinky's effort: +100% skew.
+        // Left pinky at 6.0, right at 3.0: delta (6-3)/(6+3)*100 = 33.33%
         let skewed = ScoreResult {
             left_column_effort: [6.0, 0.0, 0.0, 0.0, 0.0],
             right_column_effort: [3.0, 0.0, 0.0, 0.0, 0.0],
             ..Default::default()
         };
-        assert!((skewed.pinky_balance() - 100.0).abs() < 1e-9);
+        assert!((skewed.pinky_balance() - 33.33333333).abs() < 1e-6);
     }
 
     #[test]
@@ -1263,18 +1307,25 @@ mod tests {
         assert_eq!(balanced.middle_row_switch_balance(), 0.0);
         assert_eq!(balanced.index_row_switch_balance(), 0.0);
 
+        // Test row-switch balance percentages (left - right) / (left + right) * 100.
         let skewed = ScoreResult {
             left_finger_row_switch_cost: [6, 4, 3, 2],
             right_finger_row_switch_cost: [3, 8, 6, 8],
             ..Default::default()
         };
-        assert!((skewed.pinky_row_switch_balance() - 100.0).abs() < 1e-9);
-        assert!((skewed.ring_row_switch_balance() - (-50.0)).abs() < 1e-9);
-        assert!((skewed.middle_row_switch_balance() - (-50.0)).abs() < 1e-9);
-        assert!((skewed.index_row_switch_balance() - (-75.0)).abs() < 1e-9);
-        assert_eq!(
-            skewed.finger_row_switch_balances(),
-            [100.0, -50.0, -50.0, -75.0]
+        // pinky: (6-3)/(6+3)*100 = 33.33%
+        assert!((skewed.pinky_row_switch_balance() - 33.33333333).abs() < 1e-6);
+        // ring: (4-8)/(4+8)*100 = -33.33%
+        assert!((skewed.ring_row_switch_balance() - (-33.33333333)).abs() < 1e-6);
+        // middle: (3-6)/(3+6)*100 = -33.33%
+        assert!((skewed.middle_row_switch_balance() - (-33.33333333)).abs() < 1e-6);
+        // index: (2-8)/(2+8)*100 = -60.0%
+        assert!((skewed.index_row_switch_balance() - (-60.0)).abs() < 1e-6);
+        assert!(
+            (skewed.finger_row_switch_balances()[0] - 33.33333333).abs() < 1e-6
+                && (skewed.finger_row_switch_balances()[1] - (-33.33333333)).abs() < 1e-6
+                && (skewed.finger_row_switch_balances()[2] - (-33.33333333)).abs() < 1e-6
+                && (skewed.finger_row_switch_balances()[3] - (-60.0)).abs() < 1e-6
         );
     }
 
@@ -1411,6 +1462,8 @@ mod tests {
         let s = ScoreResult {
             left_finger_row_switch_cost: [6, 4, 3, 2],
             right_finger_row_switch_cost: [3, 8, 6, 8],
+            left_column_count: [12, 8, 6, 5, 5],
+            right_column_count: [10, 8, 6, 5, 5],
             ..Default::default()
         };
 
@@ -1421,8 +1474,56 @@ mod tests {
             .iter()
             .position(|name| *name == "finger_row_switch_balance")
             .unwrap();
-        let expected = ScoreResult::format_imbalance_array(&s.finger_row_switch_balances());
+        let expected =
+            ScoreResult::format_imbalance_array(&s.mirrored_finger_row_switch_balance_deltas());
         assert_eq!(columns[balance_index], expected);
+    }
+
+    #[test]
+    fn csv_finger_row_switch_balance_matches_mirrored_ratio_difference() {
+        let s = ScoreResult {
+            left_column_count: [12, 8, 6, 5, 5],
+            right_column_count: [10, 8, 6, 5, 5],
+            left_finger_row_switch_cost: [3, 2, 3, 8],
+            right_finger_row_switch_cost: [1, 4, 3, 2],
+            ..Default::default()
+        };
+
+        let csv = s.to_csv();
+        let columns = csv.split(',').map(str::trim).collect::<Vec<_>>();
+        let header = ScoreResult::csv_header().split(',').collect::<Vec<_>>();
+        let balance_index = header
+            .iter()
+            .position(|name| *name == "finger_row_switch_balance")
+            .unwrap();
+
+        assert_eq!(
+            columns[balance_index],
+            "015.00%← │ 025.00%→ │ 000.00%· │ 060.00%←"
+        );
+    }
+
+    #[test]
+    fn csv_column_balance_matches_mirrored_ratio_difference() {
+        let s = ScoreResult {
+            effort: 100.0,
+            left_column_effort: [4.0, 10.0, 15.0, 20.0, 30.0],
+            right_column_effort: [9.0, 18.0, 12.0, 8.0, 6.0],
+            ..Default::default()
+        };
+
+        let csv = s.to_csv();
+        let columns = csv.split(',').map(str::trim).collect::<Vec<_>>();
+        let header = ScoreResult::csv_header().split(',').collect::<Vec<_>>();
+        let balance_index = header
+            .iter()
+            .position(|name| *name == "column_balance")
+            .unwrap();
+
+        assert_eq!(
+            columns[balance_index],
+            "005.00%→ │ 008.00%→ │ 003.00%← │ 012.00%← │ 024.00%←"
+        );
     }
 
     #[test]
@@ -1496,11 +1597,11 @@ mod tests {
 
         let csv = s.to_csv();
         let columns = csv.split(',').map(str::trim).collect::<Vec<_>>();
-        let expected = ScoreResult::csv_header().split(',').count();
+        let header = ScoreResult::csv_header().split(',').count();
 
-        assert_eq!(columns.len(), expected);
-        assert_eq!(columns[expected - 28], "000.00%·");
-        assert_eq!(columns[expected - 1], "075.00%→");
+        assert_eq!(columns.len(), header);
+        assert_eq!(columns[header - 28], "000.00%·");
+        assert_eq!(columns[header - 1], "060.00%→");
         assert!(ScoreResult::csv_header().contains("home_row_balance"));
         assert!(ScoreResult::csv_header().contains("left_pinky_ratio"));
         assert!(ScoreResult::csv_header().contains("pinky_row_switch_balance"));

@@ -604,7 +604,7 @@ mod tests {
         };
         let score = ScoreResult {
             left_finger_row_switch_cost: [11, 0, 0, 0],
-            right_finger_row_switch_cost: [10, 0, 0, 0],
+            right_finger_row_switch_cost: [9, 0, 0, 0],
             ..Default::default()
         };
 
