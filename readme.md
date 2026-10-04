@@ -58,6 +58,10 @@ dimensionless multiplier built from corpus metrics — see below.
 ### `merge`
 - `merge.input` — folder containing `.txt` files.
 - `merge.output` — merged cleaned corpus file.
+- `merge.shuffle` — randomize word order. Default: `false`.
+- `merge.seed` — optional reproducible shuffle seed.
+
+Details: [docs/modes/merge.md](docs/modes/merge.md).
 
 ### `rank`
 - `rank.session` — resumable answer history. Saved atomically after each answer.

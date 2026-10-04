@@ -42,13 +42,13 @@ yourself unless explicitly asked — that's a separate, later pass.
 4. **Metrics, as they come up while configuring** — each metric introduced at the point the
    walkthrough needs it, with the *reasoning* for why it exists (imbalance alone wasn't
    enough → added row-switch → aggregate hid a hot pinky → added per-finger caps). Exact
-   formulas/defaults: link [penalty.md](/c:/Users/Admin/projects/keyvolve/docs/penalty.md),
+   formulas/defaults: link [penalty.md](penalty.md),
    don't restate them.
 5. **Placement constraints** — which keys get pinned/blocked/restricted and why (usage
    stats + aesthetics), as part of configuring `keyvolve.yaml`. Full rule semantics: link
-   [placement-rules.md](/c:/Users/Admin/projects/keyvolve/docs/placement-rules.md).
+   [placement-rules.md](placement-rules.md).
 6. **Running the optimizer and reading results** — evaluate/optimize walkthrough. Mode
-   table and CLI flow: link [readme.md](/c:/Users/Admin/projects/keyvolve/readme.md).
+   table and CLI flow: link [readme.md](../readme.md).
 7. **QMK tricks** — not covered by any doc in this repo (outside the tool). Write directly,
    nothing to link.
 8. **Conclusion** — "one true layout is the wrong goal," bias disclosure, invite the reader
@@ -59,10 +59,11 @@ yourself unless explicitly asked — that's a separate, later pass.
 
 | Doc | Covers |
 | --- | --- |
-| [readme.md](/c:/Users/Admin/projects/keyvolve/readme.md) | Modes, fitness formula, CLI |
-| [penalty.md](/c:/Users/Admin/projects/keyvolve/docs/penalty.md) | Every scoring metric: formula, default, tuning |
-| [placement-rules.md](/c:/Users/Admin/projects/keyvolve/docs/placement-rules.md) | `frozen`/`blocked`/`allowed`/`sameSide` semantics |
-| [rank-mode.md](/c:/Users/Admin/projects/keyvolve/docs/rank-mode.md) | Bradley–Terry calibration internals |
+| [readme.md](../readme.md) | Modes, fitness formula, CLI |
+| [penalty.md](penalty.md) | Every scoring metric: formula, default, tuning |
+| [placement-rules.md](placement-rules.md) | `frozen`/`blocked`/`allowed`/`sameSide` semantics |
+| [rank-mode.md](rank-mode.md) | Bradley–Terry calibration internals |
+| [merge.md](modes/merge.md) | Corpus cleaning rules, shuffle, temp files, failure modes |
 
 ## Known open gaps in the current draft
 
@@ -72,6 +73,8 @@ yourself unless explicitly asked — that's a separate, later pass.
 
 ## Rules
 
+- Reference [CLI documentation](../cliffa/README.md) for generic configuration overrides
+  and precedence; do not repeat CLI framework instructions in feature docs.
 - Discuss before editing `docs/post.md`. No unapproved rewrites.
 - Prefer extending/filling the existing draft over rewriting sections — preserve the
   author's own phrasing and rough edges; polish only what's asked.

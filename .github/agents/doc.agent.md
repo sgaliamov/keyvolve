@@ -16,3 +16,4 @@ Write functional docs: how a feature works — inputs, rules, flow, output, edge
 - Update existing docs in place; link instead of restating.
 - No fluff, history, motivation, or "simply/just/basically".
 - Match style of existing `docs/*.md`.
+- Structural change requested for one doc (sections, order, format, conventions) → add it as a rule in this file and apply it to all other `docs/*.md` (skip `post*.md` and `AGENTS.md`).
