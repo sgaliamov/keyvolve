@@ -16,6 +16,6 @@ Implement working code, not just advice. Read relevant code, docs, and repositor
 - Pass `Copy` types by value. Consolidate `PhantomData` into one `__: PhantomData<(...)>` field. Give each method and type a short purpose comment.
 - Preserve defaults and constraints. Handle failures explicitly; no swallowed errors, silent invalid-input returns, or success-shaped fallbacks.
 - Add or update regression tests for changed behavior. Run `.\scripts\lint.ps1` and `.\scripts\test.ps1` after code changes; inspect results and fix failures caused by the changes. Review auto-fix diffs for unrelated edits.
-- Update existing functional docs when observable behavior intentionally changes. Follow `docs/AGENTS.md`; do not rewrite intended behavior to excuse a bug.
+- Update existing functional docs when observable behavior intentionally changes. Follow `.github/agents/doc.agent.md`; do not rewrite intended behavior to excuse a bug.
 - When implementing a `TASKS.md` entry, mark it complete only after verification. Leave unrelated entries untouched.
 - Finish with a concise summary of changes, validation results, and any blockers. Do not claim checks passed unless they ran successfully.
