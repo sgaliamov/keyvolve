@@ -1,10 +1,12 @@
 use crate::modes::{
-    evaluate, frequencies, merge, optimize, rank, stats, synthesise, synthesise::read_stats_cache,
+    evaluate, frequencies, log_breakdown, merge, optimize, rank, stats, synthesise,
+    synthesise::read_stats_cache,
 };
 use crate::{
     Config, Mode,
     evaluator::{CorpusCounts, EMPTY_SLOT, LayoutEvaluator, LayoutEvaluatorConfig},
     models::{Keyboard, Layout},
+    output::write_layouts,
 };
 use cliffa::cli::AppHandle;
 use miette::{Context, Result};
@@ -39,29 +41,57 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
                     let eval = cfg.evaluate;
                     let keyboard = Keyboard::load(&eval.keyboard)?;
                     let evaluator = build_evaluator(&keyboard, &eval.corpus_stats, evaluator_cfg)?;
-                    let mut eval = eval;
                     if eval.input.is_empty() {
                         return Err(miette::miette!("evaluate.input requires at least one CSV"));
                     }
-                    if eval.output.is_none() {
-                        if eval.input.len() == 1 {
-                            eval.output = Some(eval.input[0].clone());
-                        } else {
-                            return Err(miette::miette!(
-                                "evaluate.output is required when evaluate.input has multiple CSVs"
-                            ));
-                        }
-                    }
-                    let layouts = eval
+                    let batches = eval
                         .input
                         .iter()
-                        .map(Layout::load)
-                        .collect::<Result<Vec<_>>>()?
-                        .into_iter()
-                        .flatten()
-                        .collect::<Vec<_>>();
-                    info!("Loaded {} layouts", layouts.len());
-                    evaluate::evaluate(evaluator, layouts, &eval, app)?
+                        .map(|path| Ok((path.clone(), Layout::load(path)?)))
+                        .collect::<Result<Vec<_>>>()?;
+                    let total = batches
+                        .iter()
+                        .map(|(_, layouts)| layouts.len())
+                        .sum::<usize>();
+                    info!("Loaded {} layouts", total);
+
+                    if eval.output.is_some() {
+                        let layouts = batches
+                            .into_iter()
+                            .flat_map(|(_, layouts)| layouts)
+                            .collect::<Vec<_>>();
+                        evaluate::evaluate(evaluator, layouts, &eval, app)?
+                    } else {
+                        let mut all_scored = Vec::with_capacity(total);
+                        let mut per_file = Vec::new();
+                        let mut interrupted = false;
+                        for (path, layouts) in batches {
+                            let expected = layouts.len();
+                            let scored = evaluate::score_layouts(&evaluator, layouts, app.clone());
+                            if app.should_finish() && scored.len() != expected {
+                                interrupted = true;
+                                break;
+                            }
+                            all_scored.extend(scored.iter().cloned());
+                            per_file.push((path, scored));
+                        }
+                        if interrupted {
+                            info!(
+                                "Evaluation interrupted before all files were scored; skipped rewriting input files"
+                            );
+                            return Ok(());
+                        }
+                        evaluate::sort_scored(&mut all_scored);
+
+                        if let Some((layout, score, _)) = all_scored.first() {
+                            log_breakdown(&evaluator, layout, score);
+                        }
+                        write_layouts(&all_scored, eval.print, None, true, eval.e_side)?;
+
+                        for (path, scored) in per_file {
+                            write_layouts(&scored, 0, Some(path.as_path()), true, eval.e_side)?;
+                        }
+                    }
                 }
                 Mode::Optimize => {
                     let opt = cfg.optimization;
