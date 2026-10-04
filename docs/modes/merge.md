@@ -42,19 +42,22 @@ merge:
 
 1. `A`–`Z` are lowercased; `a`–`z` are kept.
 2. Everything else separates words, including digits, punctuation and accented letters.
-3. Words of one letter are dropped — including `a` and `i`: they contain no within-word
-   bigrams or trigrams to score. This also excludes them from letter and first-letter stats.
+3. Keep single-letter words, including `a` and `i`: they contribute to letter and
+   first-letter stats, even though they contain no within-word bigrams or trigrams.
 4. Each remaining word is written on its own line. Original line and sentence
    boundaries are lost.
 
 | Source | Output words |
 | --- | --- |
 | `Hello, World!` | `hello`, `world` |
-| `Don't` | `don` (`t` dropped) |
-| `e-mail` | `mail` (`e` dropped) |
+| `Don't` | `don`, `t` |
+| `e-mail` | `e`, `mail` |
 | `42abc` | `abc` |
 | `café` | `caf` |
 | `naïve` | `na`, `ve` |
+
+Known bug: merge currently drops single-letter words, undercounting letter and first-letter
+stats. Tracked in [TASKS.md](../../TASKS.md#bugs).
 
 Accented letters split words into fragments, which then enter letter/bigram/trigram stats
 as fake words. Use ASCII-only text, or transliterate it before merging.
