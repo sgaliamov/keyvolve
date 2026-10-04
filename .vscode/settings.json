@@ -24,6 +24,8 @@
     "мейнстримную",
     "нейро"
   ],
+  "chat.useAgentsMdFile": true,
+  "chat.useNestedAgentsMdFiles": true,
   "chat.tools.terminal.autoApprove": {
     ".\\scripts\\test.ps1": true,
     ".\\scripts\\lint.ps1": true
