@@ -31,12 +31,15 @@ merge:
 
 ## Input selection
 
-- Only direct children of `input`. Subfolders are not scanned.
-- Extension must be exactly `txt`, case-sensitive: `.TXT`, `.text`, `.md` are skipped.
+- Scan `input` and all its subfolders for matching files.
+- Extension must be `txt` case-insensitively: `.TXT`, `.text`, `.md` are skipped.
 - `output` is skipped if it lies inside `input`, so re-running does not merge the previous
   result into itself.
 - Files must be UTF-8; other encodings cause the run to fail. Convert them before merging.
 - No matching files → an empty output file, replacing any previous output.
+
+Known bug: merge currently scans only direct children of `input`, skipping files in
+subfolders. Tracked in [TASKS.md](../../TASKS.md#bugs).
 
 ## Cleaning rules
 
