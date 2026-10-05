@@ -56,21 +56,21 @@ rank:
   # report: data/rank-report.csv
   # Probability of an audit question (consistency re-check of settled pairs). Default: 0.0.
   auditRate: 0.15
-  # Minimum comparisons needed before stopping. Default: 10.
+  # Matches a bigram needs before it can settle. Default: 10.
   minMatches: 10
-  # Hard cap on comparisons per item. Default: 30.
+  # Matches after which a bigram settles regardless of deviation. Default: 30.
   maxMatches: 30
-  # Max allowed deviation before confidence is considered weak. Default: 170.0.
+  # Deviation at or below which a bigram settles after minMatches. Default: 170.0.
   maxDeviation: 98.5
   # Optional: Lower bound for fixed-tier efforts. Default: 1.0.
   # effortMin: 1.0
   # Optional: Upper bound for fixed-tier efforts. Default: 10.0.
   # effortMax: 10.0
-  # Margin before the ranking path goes uphill. Default: 100.0.
+  # Minimum rating gap against direct answers for an uphill re-check. Default: 100.0.
   uphillGap: 50
-  # Thin tail margin used when collapsing adjacent tiers. Default: 1.0.
+  # Maximum head-to-head margin for an uphill re-check. Default: 1.0.
   thinMargin: 1.0
-  # Weight given to forced answers. Default: 3.
+  # Answers recorded by one `!` answer. Default: 3.
   forcedAnswerWeight: 2
   # Optional: Ask this exact comparison first once (format: AB-CD). Default: none.
   # forceCheckPair: AF-VE
@@ -101,7 +101,7 @@ optimization:
   # Mutants produced per parent each generation.
   mutationCount: 10
   # Max home-row groups kept in final ranked output.
-  maxGroups: 3
+  maxGroups: 5
   # Number of layouts kept per home-row group in final ranked output.
   itemsPerGroup: 1
 
@@ -121,16 +121,16 @@ optimization:
   # Special key "_" constrains empty slots (the 4 unused positions).
   # These positions may be empty, not must be empty; blocked slots are also eligible.
   allowed:
-    '_': [0, 1, 10, 11]
+    # '_': [0, 1, 10, 11]
     e: [6, 7, 8]
     t: [2, 6, 7, 8]
-    i: [2, 6, 7, 8]
     a: [2, 6, 7, 8]
-    o: [2, 6, 7, 8]
-    n: [2, 6, 7, 8]
+    i: [1, 2, 6, 7, 8]
+    o: [1, 2, 6, 7, 8]
+    n: [1, 2, 6, 7, 8]
     r: [1, 2, 3, 5, 6, 7, 8, 9]
     s: [1, 2, 3, 5, 6, 7, 8, 9]
-    j: [4, 14]
+    # j: [4, 14]
     x: [4, 14]
     z: [4, 14]
     q: [4, 14]

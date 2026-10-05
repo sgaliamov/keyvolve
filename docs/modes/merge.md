@@ -35,7 +35,6 @@ merge:
 - Extension must be `txt` case-insensitively: `.TXT`, `.text`, `.md` are skipped.
 - `output` is skipped if it lies inside `input`, so re-running does not merge the previous
   result into itself.
-- Files must be UTF-8; other encodings cause the run to fail. Convert them before merging.
 - No matching files → an empty output file, replacing any previous output.
 
 Known bug: merge currently scans only direct children of `input`, skipping files in
@@ -103,4 +102,5 @@ Stopping the run (Ctrl+C) is handled per phase:
 ## Next steps
 
 Point `stats.input` (and optionally `synthesise.text`) at `merge.output`, then run
-`keyvolve -m stats`. See [readme.md](../../readme.md) for the mode list.
+`keyvolve -m stats` ([stats.md](stats.md)). See [readme.md](../../readme.md) for the mode
+list.

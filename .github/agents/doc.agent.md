@@ -12,6 +12,7 @@ Write functional docs: how a feature works — inputs, rules, flow, output, edge
 - Reader: user configuring/running the tool. Skip Rust/GA internals unless they change observable behavior.
 - Start with one sentence on what the feature does. Then only what helps use or predict it.
 - Exact: real config keys, units, defaults, precedence, failure modes.
+- Skip minor details that don't affect typical use, e.g. file encoding requirements.
 - Tables for fields/catalogs, numbered steps for processes, short paragraphs.
 - Mermaid diagram only when it beats text. Small, one idea.
 - Update existing docs in place; link instead of restating.

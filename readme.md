@@ -45,6 +45,7 @@ dimensionless multiplier built from corpus metrics — see below.
 | `evaluate`    | Score one layout, print full breakdown             |
 | `synthesise`  | Build digraph CSV + fake-word corpus from raw text |
 | `merge`       | Merge/clean `.txt` files into one corpus           |
+| `stats`       | Build corpus stats JSON used by evaluate/optimize  |
 | `frequencies` | Count per-character frequencies across text files  |
 | `rank`        | Interactively calibrate ordered-pair effort groups |
 
@@ -62,6 +63,13 @@ dimensionless multiplier built from corpus metrics — see below.
 - `merge.seed` — optional reproducible shuffle seed.
 
 Details: [docs/modes/merge.md](docs/modes/merge.md).
+
+### `stats`
+- `stats.input` — corpus text file, usually `merge.output`.
+- `stats.output` — stats JSON; set `evaluate.corpusStats` / `optimization.corpusStats` to it.
+- `stats.minFrequency` / `stats.minTrigramFrequency` — drop rarer letters/bigrams/first letters and trigrams. Defaults: `0.000001` / `0.0001`.
+
+Details: [docs/modes/stats.md](docs/modes/stats.md).
 
 ### `rank`
 - `rank.session` — resumable answer history. Saved atomically after each answer.
