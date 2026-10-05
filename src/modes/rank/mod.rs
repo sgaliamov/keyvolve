@@ -455,7 +455,7 @@ fn print_stats(state: &RankState, cfg: &RankConfig) {
 }
 
 /// Global fit quality: how well current ratings explain the recorded answers.
-/// See docs/rank-mode.md "Reading the fit quality line" for interpretation.
+/// See docs/modes/rank.md "Stats screen" for interpretation.
 fn print_fit_quality(state: &RankState, cfg: &RankConfig) {
     if state.history.is_empty() {
         return;

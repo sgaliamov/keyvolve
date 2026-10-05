@@ -72,6 +72,8 @@ Details: [docs/modes/merge.md](docs/modes/merge.md).
 - `rank.forcedAnswerWeight` — confirmations recorded by one `!` answer; saves re-answering the same pair.
 - `rank.seed` — optional reproducible question-order seed.
 
+Details: [docs/modes/rank.md](docs/modes/rank.md).
+
 Diagnostic tests (`#[ignore]`, read-only over the live `data/rank-session.json`):
 
 ```sh

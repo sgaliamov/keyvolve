@@ -21,6 +21,6 @@ References:
 - `readme.md`: modes, fitness, CLI flow.
 - `docs/penalty.md`: scoring metrics and tuning.
 - `docs/placement-rules.md`: placement constraints.
-- `docs/rank-mode.md`: effort calibration.
+- `docs/modes/rank.md`: effort calibration.
 - `docs/modes/merge.md`: corpus cleaning and merge behavior.
 - `cliffa/README.md`: generic configuration overrides and precedence.

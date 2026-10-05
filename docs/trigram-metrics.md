@@ -31,7 +31,7 @@ redirects don't need a separate penalty" below.
 
 ## How rank mode works
 
-Full mechanics: [rank-mode.md](/c:/Users/Admin/projects/keyvolve/docs/rank-mode.md). The
+Full mechanics: [modes/rank.md](modes/rank.md). The
 short version, relevant to why it can't stretch to trigrams: rank mode repeatedly asks a human
 to type option 1 (e.g. `TE`), type option 2 (e.g. `TD`), and pick the easier one. Answers feed
 a Bradley–Terry fit — the same rating model used for chess/game ladders — producing one skill
