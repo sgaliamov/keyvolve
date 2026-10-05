@@ -42,18 +42,18 @@ Question kinds: [Choosing the next question](#choosing-the-next-question). Outpu
 Each prompt shows two bigrams with their right-hand mirrors, e.g. `1: TE[YI]   2: TD[YK]`.
 Type each one on a QWERTY keyboard and pick the easier one.
 
-| Input | Effect |
-| --- | --- |
-| Ending letter, `1`, `2` | Pick the winner. `TE` vs `TD` → `e` or `d`. |
-| Starting letter | Pick the winner when both options end with the same key (`WD` vs `RD` → `w` or `r`). The prompt says when this applies. |
-| `=` | Tie. |
-| `!` suffix (`e!`, `1!`, `=!`) | Record the answer `forcedAnswerWeight` times. |
-| `N` | Skip without recording. |
-| `U` | Undo the last answer and ask it again. |
-| `S` | Print stats and write all outputs. |
-| `C` | Clear the screen. |
-| `Q` | Quit, print stats, write all outputs. |
-| `?` | Show the controls. |
+| Input                         | Effect                                                                                                                  |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Ending letter, `1`, `2`       | Pick the winner. `TE` vs `TD` → `e` or `d`.                                                                             |
+| Starting letter               | Pick the winner when both options end with the same key (`WD` vs `RD` → `w` or `r`). The prompt says when this applies. |
+| `=`                           | Tie.                                                                                                                    |
+| `!` suffix (`e!`, `1!`, `=!`) | Record the answer `forcedAnswerWeight` times.                                                                           |
+| `N`                           | Skip without recording.                                                                                                 |
+| `U`                           | Undo the last answer and ask it again.                                                                                  |
+| `S`                           | Print stats and write all outputs.                                                                                      |
+| `C`                           | Clear the screen.                                                                                                       |
+| `Q`                           | Quit, print stats, write all outputs.                                                                                   |
+| `?`                           | Show the controls.                                                                                                      |
 
 Commands are uppercase so they never clash with answer letters. Only the last typed
 character counts; other input is ignored and the question is asked again.
@@ -147,13 +147,13 @@ fit: log-loss 0.412, agreement 87%, spread/dev 14.2, tiers 9
 tiers: R² 0.980 (rating variation preserved)
 ```
 
-| Value | Meaning |
-| --- | --- |
-| `log-loss` | Average surprise of the fit at your answers. `0.693` = coin flip; `0.3`-`0.5` = consistent session; rising over time = answers increasingly contradict the ratings. |
-| `agreement` | Share of non-tie answers won by the higher-rated bigram. `>85%` = clean; near `60%` = noisy, ratings get compressed and settling slows. |
-| `spread/dev` | Rating range divided by mean deviation. `>10` = well resolved; `<5` = many bigrams indistinguishable. |
-| `tiers` | `tierCount`. |
-| `R²` | Share of rating variation kept by the tiers. Raise `tierCount` to keep more. |
+| Value        | Meaning                                                                                                                                                             |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `log-loss`   | Average surprise of the fit at your answers. `0.693` = coin flip; `0.3`-`0.5` = consistent session; rising over time = answers increasingly contradict the ratings. |
+| `agreement`  | Share of non-tie answers won by the higher-rated bigram. `>85%` = clean; near `60%` = noisy, ratings get compressed and settling slows.                             |
+| `spread/dev` | Rating range divided by mean deviation. `>10` = well resolved; `<5` = many bigrams indistinguishable.                                                               |
+| `tiers`      | `tierCount`.                                                                                                                                                        |
+| `R²`         | Share of rating variation kept by the tiers. Raise `tierCount` to keep more.                                                                                        |
 
 Wide rating spread is the goal. Bunched ratings with low deviations mean contradictory
 answers.
@@ -165,23 +165,23 @@ The stats also print the Spearman correlation between rating and key distance (s
 
 `S` and quit write three files:
 
-| File | Content |
-| --- | --- |
-| `output` | Keyboard JSON: `efforts` (one per tier, best first) and `pairs` (left-hand from-slot → to-slot → tier index). |
-| `report` | Block CSV: one 3×5 grid per starting key with efforts, ratings, deviations and match counts. |
-| `<report stem>.bigrams.<ext>` | Flat CSV, one row per bigram, sorted by rating. |
+| File                          | Content                                                                                                       |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `output`                      | Keyboard JSON: `efforts` (one per tier, best first) and `pairs` (left-hand from-slot → to-slot → tier index). |
+| `report`                      | Block CSV: one 3×5 grid per starting key with efforts, ratings, deviations and match counts.                  |
+| `bigrams.<ext>`               | Flat CSV in the `report` folder, with the `report` extension. One row per bigram, sorted by rating.           |
 
 Flat CSV columns:
 
-| Column | Meaning |
-| --- | --- |
-| `rating_rank` | Position in rating order (1-210). |
-| `bigram`, `mirror` | Left-hand label and right-hand mirror. |
-| `tier` | Tier, e.g. `5/12`. Its `effort` goes to the keyboard JSON. |
-| `majority_rank` | Position in a flattened majority order, for inspection only. Cycle detection uses the raw edges. |
-| `rating`, `deviation`, `effort`, `matches` | Fit details. |
-| `distance` | Distance between the two keys in key widths on a staggered keyboard (rows shifted 0 / 0.25 / 0.75). |
-| `majority_score`, `majority_wins`, `majority_losses`, `majority_ties`, `majority_unseen` | Direct-answer breakdown. |
+| Column                                                                                   | Meaning                                                                                             |
+| ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `rating_rank`                                                                            | Position in rating order (1-210).                                                                   |
+| `bigram`, `mirror`                                                                       | Left-hand label and right-hand mirror.                                                              |
+| `tier`                                                                                   | Tier, e.g. `5/12`. Its `effort` goes to the keyboard JSON.                                          |
+| `majority_rank`                                                                          | Position in a flattened majority order, for inspection only. Cycle detection uses the raw edges.    |
+| `rating`, `deviation`, `effort`, `matches`                                               | Fit details.                                                                                        |
+| `distance`                                                                               | Distance between the two keys in key widths on a staggered keyboard (rows shifted 0 / 0.25 / 0.75). |
+| `majority_score`, `majority_wins`, `majority_losses`, `majority_ties`, `majority_unseen` | Direct-answer breakdown.                                                                            |
 
 Rating order and majority order can differ: ratings are inferred from all answers, the
 majority order only from direct ones.
@@ -193,7 +193,8 @@ Two summary rows end the file:
 - `tier_r2` - same as `R²` on the stats screen.
 
 The session file keeps the raw answer history, so later runs can re-verify or re-tier it
-under different settings.
+under different settings. It is also kept in the repo as a frozen log of all answers in case
+ranking logic changes and the session needs to be rebuilt from the original evidence.
 
 ## Configuration
 
@@ -206,24 +207,24 @@ rank:
   tierCount: 30
 ```
 
-| Key | Default | Meaning |
-| --- | --- | --- |
-| `output` | `data/keyboard.json` | Ranked keyboard JSON. |
-| `report` | `output` with `.csv` | Block CSV report. Also names the flat CSV. |
-| `session` | `data/rank-session.json` | Answer history for resume. |
-| `auditRate` | `0` | Probability (0-1) of an audit question before verification mode. |
-| `minMatches` | `10` | Matches a bigram needs before it can settle. Must be > 0. |
-| `maxMatches` | `30` | Matches after which a bigram settles regardless of deviation. Must be ≥ `minMatches`. |
-| `maxDeviation` | `170` | Deviation at or below which a bigram settles after `minMatches`. Lower → more questions. |
-| `uphillGap` | `100` | Minimum rating gap for an uphill pair. Higher → fewer uphill questions. |
-| `thinMargin` | `1.0` | Maximum head-to-head margin (wins minus half the answers) for an uphill pair. Lower → fewer uphill questions. |
-| `forcedAnswerWeight` | `3` | Answers recorded by one `!` answer. Must be > 0. |
-| `forceCheckPair` | unset | First question of every run, as `XX-YY` left-hand labels, e.g. `AF-VE`. |
-| `tierCount` | `10` | Number of effort tiers, 1-210. |
-| `effortMin` | `1.0` | Effort of the best tier. Must be < `effortMax`. |
-| `effortMax` | `10.0` | Effort of the worst tier. |
-| `effortGamma` | `1.0` | `1` = efforts mirror rating gaps; `> 1` bunches easy tiers near `effortMin` with a harsh tail; `< 1` spreads easy tiers with a flat tail. Must be > 0. |
-| `seed` | random | Seed for a reproducible question order. |
+| Key                  | Default                  | Meaning                                                                                                                                                |
+| -------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `output`             | `data/keyboard.json`     | Ranked keyboard JSON.                                                                                                                                  |
+| `report`             | `output` with `.csv`     | Block CSV report. Its folder and extension also place the flat CSV.                                                                                    |
+| `session`            | `data/rank-session.json` | Answer history for resume.                                                                                                                             |
+| `auditRate`          | `0`                      | Probability (0-1) of an audit question before verification mode.                                                                                       |
+| `minMatches`         | `10`                     | Matches a bigram needs before it can settle. Must be > 0.                                                                                              |
+| `maxMatches`         | `30`                     | Matches after which a bigram settles regardless of deviation. Must be ≥ `minMatches`.                                                                  |
+| `maxDeviation`       | `170`                    | Deviation at or below which a bigram settles after `minMatches`. Lower → more questions.                                                               |
+| `uphillGap`          | `100`                    | Minimum rating gap for an uphill pair. Higher → fewer uphill questions.                                                                                |
+| `thinMargin`         | `1.0`                    | Maximum head-to-head margin (wins minus half the answers) for an uphill pair. Lower → fewer uphill questions.                                          |
+| `forcedAnswerWeight` | `3`                      | Answers recorded by one `!` answer. Must be > 0.                                                                                                       |
+| `forceCheckPair`     | unset                    | First question of every run, as `XX-YY` left-hand labels, e.g. `AF-VE`.                                                                                |
+| `tierCount`          | `10`                     | Number of effort tiers, 1-210.                                                                                                                         |
+| `effortMin`          | `1.0`                    | Effort of the best tier. Must be < `effortMax`.                                                                                                        |
+| `effortMax`          | `10.0`                   | Effort of the worst tier.                                                                                                                              |
+| `effortGamma`        | `1.0`                    | `1` = efforts mirror rating gaps; `> 1` bunches easy tiers near `effortMin` with a harsh tail; `< 1` spreads easy tiers with a flat tail. Must be > 0. |
+| `seed`               | random                   | Seed for a reproducible question order.                                                                                                                |
 
 Invalid values stop the run with an error naming the key.
 

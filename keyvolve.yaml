@@ -53,7 +53,7 @@ rank:
   # Persisted session state for resuming the ranking run.
   session: data/rank-session.json
   # Optional: CSV visual report path; defaults to output with .csv extension.
-  # report: data/rank-report.csv
+  report: data/keyboard.csv
   # Probability of an audit question (consistency re-check of settled pairs). Default: 0.0.
   auditRate: 0.15
   # Matches a bigram needs before it can settle. Default: 10.

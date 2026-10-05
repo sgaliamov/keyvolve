@@ -3,6 +3,7 @@
 ## Tasks
 
 - [ ] Do not allow `g_jv_`.
+- [ ] Rank flat CSV: drop the report stem from the name; write `bigrams.<ext>` in the `report` folder instead of `<report stem>.bigrams.<ext>` - [doc](docs/modes/rank.md#output).
 
 ## Bugs
 

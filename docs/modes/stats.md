@@ -21,12 +21,12 @@ stats:
   minTrigramFrequency: 0.00001
 ```
 
-| Key | Default | Meaning |
-| --- | --- | --- |
-| `input` | - (required) | Corpus text file, usually [`merge.output`](merge.md). |
-| `output` | - (required) | Stats JSON. Overwritten if it exists; missing parent folders are created. |
-| `minFrequency` | `0.000001` | Drop letters, bigrams and first letters rarer than this share. `0` keeps all. |
-| `minTrigramFrequency` | `0.0001` | Drop trigrams rarer than this share. `0` keeps all. |
+| Key                   | Default      | Meaning                                                                       |
+| --------------------- | ------------ | ----------------------------------------------------------------------------- |
+| `input`               | - (required) | Corpus text file, usually [`merge.output`](merge.md).                         |
+| `output`              | - (required) | Stats JSON. Overwritten if it exists; missing parent folders are created.     |
+| `minFrequency`        | `0.000001`   | Drop letters, bigrams and first letters rarer than this share. `0` keeps all. |
+| `minTrigramFrequency` | `0.0001`     | Drop trigrams rarer than this share. `0` keeps all.                           |
 
 Missing `input` or `output` → run fails with an error naming the key.
 
@@ -47,27 +47,27 @@ Missing `input` or `output` → run fails with an error naming the key.
 Counting happens inside each word only. Pairs and triples across word boundaries are never
 counted, so word order does not matter.
 
-| Metric | Counted per word | Share of |
-| --- | --- | --- |
-| `letters` | every character | all characters |
-| `bigrams` | every adjacent pair (`the` → `th`, `he`) | all bigrams |
-| `trigrams` | every adjacent triple (`then` → `the`, `hen`) | all trigrams |
-| `first_letters` | first character | all words |
-| `average_word_length` | length in characters | mean over all words |
+| Metric                | Counted per word                              | Share of            |
+| --------------------- | --------------------------------------------- | ------------------- |
+| `letters`             | every character                               | all characters      |
+| `bigrams`             | every adjacent pair (`the` → `th`, `he`)      | all bigrams         |
+| `trigrams`            | every adjacent triple (`then` → `the`, `hen`) | all trigrams        |
+| `first_letters`       | first character                               | all words           |
+| `average_word_length` | length in characters                          | mean over all words |
 
 Single-letter words add to `letters`, `first_letters` and `average_word_length` only;
 two-letter words add no trigrams.
 
 Example input `the tea a`:
 
-| Metric | Result |
-| --- | --- |
-| `letters` | `t` 2/7, `e` 2/7, `a` 2/7, `h` 1/7 |
-| `bigrams` | `th`, `he`, `te`, `ea` 1/4 each |
-| `trigrams` | `the`, `tea` 1/2 each |
-| `first_letters` | `t` 2/3, `a` 1/3 |
-| `average_word_length` | 7/3 ≈ 2.33 |
-| `word_count` | 3 |
+| Metric                | Result                             |
+| --------------------- | ---------------------------------- |
+| `letters`             | `t` 2/7, `e` 2/7, `a` 2/7, `h` 1/7 |
+| `bigrams`             | `th`, `he`, `te`, `ea` 1/4 each    |
+| `trigrams`            | `the`, `tea` 1/2 each              |
+| `first_letters`       | `t` 2/3, `a` 1/3                   |
+| `average_word_length` | 7/3 ≈ 2.33                         |
+| `word_count`          | 3                                  |
 
 Known bug: `average_word_length` currently counts UTF-8 bytes, not characters, so it is
 inflated when words contain non-ASCII characters. ASCII input (merge output) is unaffected.
@@ -105,13 +105,13 @@ Pretty-printed JSON. Each map is sorted by share, most frequent first.
 }
 ```
 
-| Field | Used by `evaluate` / `optimize` |
-| --- | --- |
-| `letters` | No. Informational only. |
-| `bigrams` | Yes, scaled to counts by `word_count × (average_word_length - 1)`. |
-| `trigrams` | Yes, scaled to counts by `word_count × (average_word_length - 2)`. |
-| `first_letters` | Yes, scaled to counts by `word_count`. |
-| `average_word_length`, `word_count` | Yes, for the scaling above. |
+| Field                               | Used by `evaluate` / `optimize`                                    |
+| ----------------------------------- | ------------------------------------------------------------------ |
+| `letters`                           | No. Informational only.                                            |
+| `bigrams`                           | Yes, scaled to counts by `word_count × (average_word_length - 1)`. |
+| `trigrams`                          | Yes, scaled to counts by `word_count × (average_word_length - 2)`. |
+| `first_letters`                     | Yes, scaled to counts by `word_count`.                             |
+| `average_word_length`, `word_count` | Yes, for the scaling above.                                        |
 
 Point `evaluate.corpusStats` and `optimization.corpusStats` at `output`. A missing file
 stops those modes with `Missing corpus stats file: <path>`.
