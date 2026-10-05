@@ -141,5 +141,5 @@ Known bug: stats mode currently ignores Ctrl+C and runs to completion. Tracked i
 ## Next steps
 
 Set `corpusStats` in `evaluate` and `optimization` to `stats.output`, then run
-`keyvolve -m evaluate` or `keyvolve -m optimize`. See [readme.md](../../readme.md) for the
-mode list.
+`keyvolve -m evaluate` ([evaluate.md](../evaluation/evaluate.md)) or `keyvolve -m optimize`.
+See [readme.md](../../readme.md) for the mode list.

@@ -42,7 +42,7 @@ dimensionless multiplier built from corpus metrics — see below.
 | Mode          | Description                                        |
 | ------------- | -------------------------------------------------- |
 | `optimize`    | Run GA, append results to `layouts.csv`            |
-| `evaluate`    | Score one layout, print full breakdown             |
+| `evaluate`    | Score layout CSVs, print best + penalty breakdown  |
 | `synthesise`  | Build digraph CSV + fake-word corpus from raw text |
 | `merge`       | Merge/clean `.txt` files into one corpus           |
 | `stats`       | Build corpus stats JSON used by evaluate/optimize  |
@@ -53,8 +53,12 @@ dimensionless multiplier built from corpus metrics — see below.
 
 ### `evaluate`
 - `evaluate.input` — array of layouts CSVs to score.
-- `evaluate.output` — destination CSV for scored layouts. Omitted → overwrite the single input file; required for multi-file input.
+- `evaluate.output` — combined scored CSV. Omitted → each input file rewritten in place.
 - `evaluate.print` — number of best layouts printed to stdout. Default: `10`.
+- `evaluate.eSide` — hand `e` is mirrored to on save: `left` (default), `right`, `any`.
+
+Details: [docs/evaluation/evaluate.md](docs/evaluation/evaluate.md). Scoring:
+[docs/evaluation/scoring.md](docs/evaluation/scoring.md), [docs/evaluation/penalty.md](docs/evaluation/penalty.md).
 
 ### `merge`
 - `merge.input` — folder containing `.txt` files.

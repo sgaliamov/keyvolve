@@ -157,7 +157,7 @@ evaluator:
 
   # Desired metric goals, in the percent units the CSV prints.
   # Form: { type: max|target, value: <number>, weight: <number>, tolerance: <number> }
-  # Full formulas, defaults, and tuning guide: docs/penalty.md
+  # Full formulas and tuning guide: docs/evaluation/penalty.md
 
   # Left/right effort asymmetry.
   effortsImbalance: { type: max, value: 5, weight: 0.75 }

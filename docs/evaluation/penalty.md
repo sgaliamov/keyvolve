@@ -1,19 +1,15 @@
-# Penalty model
+# Penalty - how it works
 
-Scoring knobs in the `evaluator` section of [keyvolve.yaml](../keyvolve.yaml). Code:
-[target.rs](../src/models/target.rs), [targets.rs](../src/models/targets.rs),
-[penalty.rs](../src/evaluator/penalty.rs), [score.rs](../src/models/score.rs).
-
-## Fitness
+The penalty multiplies raw effort by how far a layout misses the metric targets set in the
+`evaluator` section of [keyvolve.yaml](../../keyvolve.yaml). Shared by `evaluate` and
+`optimize`; fitness and effort: [scoring.md](scoring.md#fitness).
 
 ```text
-fitness = fitness_scale / (effort × penalty)
 penalty = 1 + Σ weight · deviation^sharpness
 ```
 
-- `effort` — raw bigram cost from the keyboard pairs table. Targets don't touch it.
-- `penalty` — multiplier `>= 1.0`. All metrics on goal → `1.0` → effort-only fitness.
-- `fitnessScale` — display magnitude only; doesn't reorder layouts.
+Multiplier `>= 1.0`. All metrics on goal → `1.0` → effort-only fitness. Targets don't change
+effort.
 
 ## Targets
 
@@ -42,7 +38,7 @@ Only the explicit form is accepted; legacy `{max: 20, weight: 1}` fails to parse
 
 ## Sharpness
 
-Config-wide exponent. Default `4.0` ([config.rs](../src/evaluator/config.rs)).
+Config-wide exponent `evaluator.sharpness`. Default `4`.
 
 | deviation | cost (weight 1, sharpness 4) |
 | --------- | ---------------------------- |
@@ -55,7 +51,8 @@ Higher → forgiving under the edge, brutal over it. `1.0` → linear.
 
 ## Breakdown table and tuning
 
-`evaluate` and `optimize` print one row per configured metric for the best layout:
+`evaluate` and `optimize` log one row per configured metric for the best layout, highest
+`cost` first. No targets set → no table.
 
 ```text
 metric                    value     goal     dev        cost   share    pressure
@@ -63,30 +60,36 @@ row_switch_ratio           6.20     8.00    0.78      0.3702   12.1%      0.7802
 hand_switch_ratio         41.30    38.00    1.09      1.4116   46.2%      0.5343
 ```
 
-- `share` — term's percent of total penalty.
-- `pressure` — marginal cost per percentage point: `weight · sharpness · deviation^(sharpness-1) / norm`.
+- `share` - term's percent of total penalty.
+- `pressure` - marginal cost per percentage point: `weight · sharpness · deviation^(sharpness-1) / norm`.
 
 Tuning loop:
 
-1. Sort by `share` → where the penalty goes now.
+1. Top rows (highest `share`) → where the penalty goes now.
 2. High `share` + low `pressure` → GA not pushing it. Raise `weight` or tighten `value`/`tolerance`.
 3. Two off-goal metrics with similar `pressure` → physical conflict. Weights won't fix it; relax one.
 4. Re-run.
 
 ## Metric catalog
 
-`P = left_count + right_count` (all presses). `ratio(a, b) = a / b`, `0` if `b = 0`.
+`P` = all presses, `effort` = total effort ([scoring.md](scoring.md#presses-and-effort)).
+`ratio(a, b) = a / b`, `0` if `b = 0`. Counters: [scoring.md](scoring.md#counters).
 
-Two imbalance forms:
+Two imbalance forms. Positive = left heavier. Swapping hands flips the sign only, so a layout
+and its mirror cost the same.
 
 ```text
-signed_imbalance_percent(L, R) = (L / R − 1) · 100     L = R = 0 → 0; L = 0 → −100; R = 0 → +100
-balance(L, R)                  = (L − R) / (L + R) · 100   L + R = 0 → 0; range [−100, 100]
+signed_imbalance_percent(L, R) = ±(max(L, R) / min(L, R) − 1) · 100   + if L > R, − if R > L
+                                 L = R = 0 → 0; one side 0 → ±100
+balance(L, R)                  = (L − R) / (L + R) · 100             L + R = 0 → 0; range [−100, 100]
 ```
 
-`signed_imbalance_percent` is asymmetric: `L = 2R` → `+100`, `R = 2L` → `−50`. Since `max`
-uses `|value|`, left-heavy skew costs more than equal right-heavy skew. Its `R = 0 → +100`
-case is a guardrail, not the limit (true limit is `+∞`).
+`signed_imbalance_percent`: `L = 2R` → `+100`, `R = 2L` → `−100`. The one-side-zero case is a
+guardrail for broken layouts, not the limit (true limit is `±∞`).
+
+Known bug: `signed_imbalance_percent` is currently `(L / R − 1) · 100`, so `R = 2L` gives
+`−50`: left-heavy skew costs more than equal right-heavy skew, and mirror twins score
+differently. Tracked in [TASKS.md](../../TASKS.md#bugs).
 
 ### Hand imbalances
 
@@ -106,8 +109,8 @@ case is a guardrail, not the limit (true limit is `+∞`).
 | ------------ | ------- |
 | `rowSwitchRatio` | `100 × (left_row_switch_cost + right_row_switch_cost) / P` |
 | `handSwitchRatio` | `100 × hand_switches / P` |
-| `sfsRatio` | `100 × sfs_count / P` — see [trigram-metrics.md](trigram-metrics.md) |
-| `directionalOutwardRatio` | `100 × outward_count / (inward_count + outward_count)` — `0%` all inward, `50%` tie |
+| `sfsRatio` | `100 × sfs_count / P` - see [trigram-metrics.md](trigram-metrics.md) |
+| `directionalOutwardRatio` | `100 × outward_count / (inward_count + outward_count)` - `0%` all inward, `50%` tie |
 
 ### Rows
 
@@ -138,7 +141,8 @@ rows). Denominator is total effort of both hands.
 
 ### Same-finger row switches
 
-Index inner + outer merged into one `index` finger. Per-hand ratios, one shared target.
+Index inner + outer merged into one `index` finger ([fingers](scoring.md#fingers)). Per-hand
+ratios, one shared target.
 
 | Config field | Formula (per hand) |
 | ------------ | ------------------ |
