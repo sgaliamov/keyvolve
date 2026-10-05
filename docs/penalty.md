@@ -1,247 +1,156 @@
-# Penalty model — configurable scoring knobs
+# Penalty model
 
-This is the live reference for the score penalty used by the evaluator: it matches the
-`Target` API in [../src/models/target.rs](../src/models/target.rs), the default target set in
-[../src/models/targets.rs](../src/models/targets.rs), and the metric breakdown in
-[../src/models/score.rs](../src/models/score.rs).
+Scoring knobs in the `evaluator` section of [keyvolve.yaml](../keyvolve.yaml). Code:
+[target.rs](../src/models/target.rs), [targets.rs](../src/models/targets.rs),
+[penalty.rs](../src/evaluator/penalty.rs), [score.rs](../src/models/score.rs).
 
-The optimizer does not just minimize raw typing effort. It also penalizes left/right imbalance,
-row jumps, pinky overload, same-finger repeats, and a dozen other ergonomic signals. Each of
-those signals is a metric you can cap or target in the `evaluator` section of
-[keyvolve.yaml](../keyvolve.yaml).
-
-## Fitness and penalty
+## Fitness
 
 ```text
 fitness = fitness_scale / (effort × penalty)
 penalty = 1 + Σ weight · deviation^sharpness
 ```
 
-- `effort` — raw bigram cost from the keyboard effort table. It is layout-shape only; targets do
-  not change it.
-- `penalty` — dimensionless multiplier, always `>= 1.0`. If every metric is on target, `penalty = 1.0`
-  and fitness falls back to the effort-only ideal.
-- The leading `1` is the neutral element of a multiplier, not a fixed cost. It also keeps the
-  divide safe: a penalty near zero would send fitness toward infinity and drown out effort.
-- `fitnessScale` only changes display magnitude. It does not reorder layouts.
+- `effort` — raw bigram cost from the keyboard pairs table. Targets don't touch it.
+- `penalty` — multiplier `>= 1.0`. All metrics on goal → `1.0` → effort-only fitness.
+- `fitnessScale` — display magnitude only; doesn't reorder layouts.
 
-## Target types
+## Targets
 
-Every metric is a `Target`:
+Every metric is opt-in. No metric has a built-in default; unset → no penalty term.
 
 ```yaml
 metricName: { type: max|target, value: <number>, weight: <number>, tolerance: <number> }
 ```
 
-- `type` — `max` means lower is better; `value` is the accepted ceiling. `target` means closer is
-  better; `value` is the desired point.
-- `value` — the ceiling (`max`) or desired point (`target`), in the percent units the CSV prints.
-- `weight` — priority against other metrics. Default: `1`.
-- `tolerance` — only for `target`; accepted miss in percentage points before cost ramps up. Default:
-  `5`. Ignored by `max`.
-
-Deviation is normalized so `0.0` is ideal and `1.0` is the accepted edge:
+| Field | Meaning |
+| ----- | ------- |
+| `type` | `max`: lower is better, `value` = ceiling. `target`: closer is better, `value` = goal point. |
+| `value` | Ceiling or goal, in the percent units the CSV prints. |
+| `weight` | Priority. Default `1`. |
+| `tolerance` | `target` only: accepted miss in percentage points. Default `5`. |
 
 ```text
-max:    deviation = |value| / target.value
-target: deviation = |value - target.value| / tolerance
+max:    deviation = |value| / target.value        norm = target.value
+target: deviation = |value - target.value| / tolerance   norm = tolerance
 ```
 
-`norm` is `target.value` for `max` and `tolerance` for `target`.
+Deviation `1.0` = accepted edge → costs exactly `weight`. So `value`/`tolerance` normalize,
+`weight` prioritizes.
 
-A metric resting exactly at its edge costs exactly its own `weight`. That makes `value` and
-`tolerance` normalizers and `weight` the priority knob.
+Only the explicit form is accepted; legacy `{max: 20, weight: 1}` fails to parse.
 
 ## Sharpness
 
-```text
-cost = weight · deviation^sharpness
-```
+Config-wide exponent. Default `4.0` ([config.rs](../src/evaluator/config.rs)).
 
-`sharpness` is config-wide; the default is `4.0` in [../src/evaluator/config.rs](../src/evaluator/config.rs).
+| deviation | cost (weight 1, sharpness 4) |
+| --------- | ---------------------------- |
+| 0.5 | 0.0625 |
+| 1.0 | 1.0 |
+| 1.5 | 5.06 |
+| 2.0 | 16.0 |
 
-| deviation | cost (weight = 1, sharpness = 4) | meaning |
-| --------- | --------------------------------- | ------- |
-| 0.5       | 0.0625                             | half the limit — nearly free |
-| 1.0       | 1.0                                 | exactly at the limit — full weight |
-| 1.5       | 5.06                                | 50% over — ~5× weight |
-| 2.0       | 16.0                                | double the limit — 16× weight |
+Higher → forgiving under the edge, brutal over it. `1.0` → linear.
 
-- Higher `sharpness` → forgiving under the limit, brutal over it.
-- `sharpness = 1.0` → linear.
-- Lower `sharpness` → softer wall and smoother trade-offs.
+## Breakdown table and tuning
 
-## Reading the breakdown table
-
-`evaluate` and `optimize` emit one row per configured metric for the best layout.
+`evaluate` and `optimize` print one row per configured metric for the best layout:
 
 ```text
 metric                    value     goal     dev        cost   share    pressure
 row_switch_ratio           6.20     8.00    0.78      0.3702   12.1%      0.7802
 hand_switch_ratio         41.30    38.00    1.09      1.4116   46.2%      0.5343
-...
 ```
 
-- `share` — this term's percent of total penalty right now.
-- `pressure` — marginal cost per percentage point of further movement:
-  `weight · sharpness · deviation^(sharpness-1) / norm`.
-- Low `pressure` + high `share` means the GA is not pushing that metric hard enough. Raise `weight`
-  or tighten `value`/`tolerance`.
-- Two off-goal metrics with similar pressure are a real physical conflict. Weight changes will not
-  resolve it; relax one side instead.
+- `share` — term's percent of total penalty.
+- `pressure` — marginal cost per percentage point: `weight · sharpness · deviation^(sharpness-1) / norm`.
+
+Tuning loop:
+
+1. Sort by `share` → where the penalty goes now.
+2. High `share` + low `pressure` → GA not pushing it. Raise `weight` or tighten `value`/`tolerance`.
+3. Two off-goal metrics with similar `pressure` → physical conflict. Weights won't fix it; relax one.
+4. Re-run.
 
 ## Metric catalog
 
-All formulas use `ScoreResult` fields from one scored corpus pass. `ratio(a, b) = a / b` (or `0` if
-`b = 0`). `signed_imbalance_percent(L, R) = (L / R - 1) * 100`, with `L = R = 0 → 0` and one side
-zero clamping to `±100` as a guardrail.
+`P = left_count + right_count` (all presses). `ratio(a, b) = a / b`, `0` if `b = 0`.
 
-### Hand-level imbalances (opt-in)
+Two imbalance forms:
 
-| Config field | Formula | What it caps |
-| ------------ | ------- | ------------ |
-| `effortsImbalance` | `signed_imbalance_percent(left_effort, right_effort)` | total effort skew between hands |
-| `handsImbalance` | `signed_imbalance_percent(left_count, right_count)` | raw press-count skew |
-| `rollImbalance` | `signed_imbalance_percent(left_rolls, right_rolls)` | same-hand roll count skew |
-| `rowSwitchImbalance` | `signed_imbalance_percent(left_row_switch_cost, right_row_switch_cost)` | same-finger row-jump cost skew |
-| `streakImbalance` | `signed_imbalance_percent(left_streak, right_streak)` | streak-length skew |
+```text
+signed_imbalance_percent(L, R) = (L / R − 1) · 100     L = R = 0 → 0; L = 0 → −100; R = 0 → +100
+balance(L, R)                  = (L − R) / (L + R) · 100   L + R = 0 → 0; range [−100, 100]
+```
 
-`streak(count, rolls) = count / (count - rolls)` when `count > rolls`, else `0`.
+`signed_imbalance_percent` is asymmetric: `L = 2R` → `+100`, `R = 2L` → `−50`. Since `max`
+uses `|value|`, left-heavy skew costs more than equal right-heavy skew. Its `R = 0 → +100`
+case is a guardrail, not the limit (true limit is `+∞`).
 
-Recommended defaults to enable early: `effortsImbalance` and `handsImbalance` at `value: 5`, `weight:
-0.75` and `0.5`.
-
-### Aggregate press-pattern metrics
-
-| Config field | Formula | What it caps |
-| ------------ | ------- | ------------ |
-| `rowSwitchRatio` | `100 × (left_row_switch_cost + right_row_switch_cost) / (left_count + right_count)` | same-finger vertical row moves |
-| `handSwitchRatio` | `100 × hand_switches / (left_count + right_count)` | hand alternation frequency |
-| `sfsRatio` | `100 × sfs_count / (left_count + right_count)` | same-finger skipgram share |
-| `directionalOutwardRatio` | `100 × outward_count / (inward_count + outward_count)` | outward share among directional rolls (`0%` = all inward, `50%` = tie) |
-
-`directionalOutwardRatio` is usually a `max` cap.
-
-### Row-distribution targets
-
-| Config field | Formula | Default |
-| ------------ | ------- | ------- |
-| `topRowRatio` | `100 × (left_row_effort[top] + right_row_effort[top]) / effort` | `target: 25, weight 1, tolerance 5` |
-| `homeRowRatio` | `100 × (left_row_effort[home] + right_row_effort[home]) / effort` | `target: 60, weight 1, tolerance 5` |
-| `bottomRowRatio` | `100 × (left_row_effort[bottom] + right_row_effort[bottom]) / effort` | `target: 15, weight 1, tolerance 5` |
-| `homeRowBalance` | `signed_imbalance_percent(left_row_effort[home], right_row_effort[home])` | `max: 15, weight 1` |
-
-The three ratio defaults sum to `100%` (`25 + 60 + 15`), so they are a real target distribution.
-Tightening `homeRowRatio.tolerance` is the strongest lever for “keep typing on the home row.”
-
-### Column distribution and left/right balance
-
-Each column metric applies the same `Target` to both hands independently. In `Targets` the
-field names are `pinkyRatio`, `ringRatio`, `middleRatio`, `indexInnerRatio`, and
-`indexOuterRatio`; the code emits both `left_*` and `right_*` breakdown rows using the same target.
-
-| Config field | Formula (per hand) | Default |
-| ------------ | ------------------ | ------- |
-| `pinkyRatio` | `100 × left/right_column_effort[pinky] / effort` | `target: 10, weight 1` |
-| `ringRatio` | `100 × left/right_column_effort[ring] / effort` | `target: 10, weight 1` |
-| `middleRatio` | `100 × left/right_column_effort[middle] / effort` | `target: 10, weight 1` |
-| `indexInnerRatio` | `100 × left/right_column_effort[index-inner] / effort` | `target: 10, weight 1` |
-| `indexOuterRatio` | `100 × left/right_column_effort[index-outer] / effort` | `target: 10, weight 1` |
-
-Balance metrics are signed imbalances per finger:
+### Hand imbalances
 
 | Config field | Formula |
 | ------------ | ------- |
-| `pinkyBalance` | `signed_imbalance_percent(left_column_effort[pinky], right_column_effort[pinky])` |
-| `ringBalance` | `signed_imbalance_percent(left_column_effort[ring], right_column_effort[ring])` |
-| `middleBalance` | `signed_imbalance_percent(left_column_effort[middle], right_column_effort[middle])` |
-| `indexInnerBalance` | `signed_imbalance_percent(left_column_effort[index-inner], right_column_effort[index-inner])` |
-| `indexOuterBalance` | `signed_imbalance_percent(left_column_effort[index-outer], right_column_effort[index-outer])` |
+| `effortsImbalance` | `signed_imbalance_percent(left_effort, right_effort)` |
+| `handsImbalance` | `signed_imbalance_percent(left_count, right_count)` |
+| `rollImbalance` | `signed_imbalance_percent(left_rolls, right_rolls)` |
+| `rowSwitchImbalance` | `signed_imbalance_percent(left_row_switch_cost, right_row_switch_cost)` |
+| `streakImbalance` | `signed_imbalance_percent(left_streak, right_streak)` |
 
-### Same-finger row-switch metrics
+`streak(count, rolls) = count / (count − rolls)`, `0` if `count <= rolls`.
 
-Each per-finger row-switch metric is computed as weighted row-switch cost divided by that finger's
-press count. The code merges index inner + outer into a single `index` bucket.
+### Press patterns
 
 | Config field | Formula |
 | ------------ | ------- |
-| `pinkyRowSwitchRatio` | `100 × left/right_finger_row_switch_cost[pinky] / left/right_finger_press_count[pinky]` |
+| `rowSwitchRatio` | `100 × (left_row_switch_cost + right_row_switch_cost) / P` |
+| `handSwitchRatio` | `100 × hand_switches / P` |
+| `sfsRatio` | `100 × sfs_count / P` — see [trigram-metrics.md](trigram-metrics.md) |
+| `directionalOutwardRatio` | `100 × outward_count / (inward_count + outward_count)` — `0%` all inward, `50%` tie |
+
+### Rows
+
+| Config field | Formula |
+| ------------ | ------- |
+| `topRowRatio` | `100 × (left_row_effort[top] + right_row_effort[top]) / effort` |
+| `homeRowRatio` | `100 × (left_row_effort[home] + right_row_effort[home]) / effort` |
+| `bottomRowRatio` | `100 × (left_row_effort[bottom] + right_row_effort[bottom]) / effort` |
+| `homeRowBalance` | `signed_imbalance_percent(left_row_effort[home], right_row_effort[home])` |
+
+Row ratios sum to `100%`; use `type: target` with goals that also sum to `100`.
+
+### Columns
+
+One target per finger, applied to each hand separately (breakdown shows `left_*` and `right_*`
+rows). Denominator is total effort of both hands.
+
+| Config field | Formula (per hand) |
+| ------------ | ------------------ |
+| `pinkyRatio` | `100 × column_effort[pinky] / effort` |
+| `ringRatio` | `100 × column_effort[ring] / effort` |
+| `middleRatio` | `100 × column_effort[middle] / effort` |
+| `indexInnerRatio` | `100 × column_effort[index-inner] / effort` |
+| `indexOuterRatio` | `100 × column_effort[index-outer] / effort` |
+
+`pinkyBalance`, `ringBalance`, `middleBalance`, `indexInnerBalance`, `indexOuterBalance` =
+`balance(left_column_effort[f], right_column_effort[f])`.
+
+### Same-finger row switches
+
+Index inner + outer merged into one `index` finger. Per-hand ratios, one shared target.
+
+| Config field | Formula (per hand) |
+| ------------ | ------------------ |
+| `pinkyRowSwitchRatio` | `100 × finger_row_switch_cost[pinky] / finger_press_count[pinky]` |
 | `ringRowSwitchRatio` | same, ring |
 | `middleRowSwitchRatio` | same, middle |
-| `indexRowSwitchRatio` | same, merged index |
+| `indexRowSwitchRatio` | same, index |
 
-Balance variants are the same signed imbalance on left-vs-right row-switch cost for each finger:
-
-| Config field | Formula |
-| ------------ | ------- |
-| `pinkyRowSwitchBalance` | `signed_imbalance_percent(left_finger_row_switch_cost[pinky], right_finger_row_switch_cost[pinky])` |
-| `ringRowSwitchBalance` | same, ring |
-| `middleRowSwitchBalance` | same, middle |
-| `indexRowSwitchBalance` | same, merged index |
+`pinkyRowSwitchBalance`, `ringRowSwitchBalance`, `middleRowSwitchBalance`,
+`indexRowSwitchBalance` = `balance(left_finger_row_switch_cost[f], right_finger_row_switch_cost[f])`.
 
 ## Corpus invariance
 
-Every factor is a per-press ratio. Doubling the corpus size leaves the penalty effectively unchanged,
-so fitness stays comparable across corpus sizes and reruns. Average word length changes the baseline
-slightly, but the metric itself is still well-defined per corpus.
-
-## Signed-imbalance edge case
-
-`signed_imbalance_percent` is generally unbounded above, but it is clamped at exactly `±100%` when
-one side is fully idle instead of diverging to infinity. In practice, values near this clamp only
-appear in badly broken constraints, such as one hand having no letters at all.
-
-## Tuning workflow
-
-1. Run `evaluate` or `optimize`, then read the champion layout's breakdown table.
-2. Sort by `share`; that is where the fitness spend is happening right now.
-3. Check `pressure` for the metrics already near their goal. Low pressure + high share means the GA
-   is not pushing that metric hard enough.
-4. Two off-goal metrics with similar pressure are a real physical conflict. Relax one side instead of
-   fighting both.
-5. Re-run and repeat.
-
-## Live config example
-
-This is the current project config used in [../keyvolve.yaml](../keyvolve.yaml):
-
-```yaml
-evaluator:
-  fitnessScale: 100000000000000000
-  sharpness: 2
-
-  effortsImbalance: { type: max, value: 5, weight: 0.75 }
-  handsImbalance: { type: max, value: 5, weight: 0.5 }
-  handSwitchRatio: { type: max, value: 37, weight: 3 }
-  sfsRatio: { type: max, value: 6, weight: 1 }
-  directionalOutwardRatio: { type: max, value: 40, weight: 1 }
-
-  rollImbalance: { type: max, value: 5, weight: 0.1 }
-  rowSwitchImbalance: { type: max, value: 10, weight: 0.01 }
-  streakImbalance: { type: max, value: 10, weight: 0.1 }
-  homeRowBalance: { type: max, value: 10, weight: 0.01 }
-
-  topRowRatio: { type: target, value: 24, weight: 1 }
-  homeRowRatio: { type: target, value: 64, weight: 2 }
-  bottomRowRatio: { type: target, value: 12, weight: 1 }
-
-  pinkyRatio: { type: max, value: 5, weight: 1.0 }
-  ringRatio: { type: max, value: 10, weight: 1.0 }
-  middleRatio: { type: max, value: 15, weight: 1.0 }
-  indexInnerRatio: { type: max, value: 12, weight: 1.0 }
-  indexOuterRatio: { type: max, value: 8, weight: 1.0 }
-
-  pinkyBalance: { type: max, value: 10, weight: 0.25 }
-  ringBalance: { type: max, value: 10, weight: 0.25 }
-  middleBalance: { type: max, value: 10, weight: 0.25 }
-  indexInnerBalance: { type: max, value: 10, weight: 0.25 }
-  indexOuterBalance: { type: max, value: 10, weight: 0.25 }
-
-  pinkyRowSwitchRatio: { type: max, value: 3, weight: 0.5 }
-  ringRowSwitchRatio: { type: max, value: 5, weight: 0.5 }
-  middleRowSwitchRatio: { type: max, value: 8, weight: 0.5 }
-  indexRowSwitchRatio: { type: max, value: 8, weight: 0.5 }
-```
-
-The code intentionally rejects legacy forms such as `{"max": 20, "weight": 1}`; the only valid
-shape is the explicit `{"type": "max", "value": 20, "weight": 1}` form.
+Every term is a per-press ratio → corpus size doesn't change the penalty. Average word length
+shifts the baseline slightly across different corpora.
