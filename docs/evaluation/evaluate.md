@@ -212,5 +212,5 @@ partially scored layouts. Tracked in [TASKS.md](../../TASKS.md#bugs).
 
 ## Next steps
 
-Feed good layouts to `optimize` as seeds (`optimization.input`), or tune `evaluator` targets
+Feed good layouts to [optimize](../modes/optimize.md) as seeds (`optimization.input`), or tune `evaluator` targets
 with the breakdown table and re-run. See [readme.md](../../readme.md) for the mode list.

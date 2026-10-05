@@ -51,6 +51,13 @@ dimensionless multiplier built from corpus metrics — see below.
 
 ## Mode-specific config
 
+### `optimize`
+- `optimization.input` / `optimization.output` — seed layouts CSV / final layouts CSV.
+- `optimization.frozen`, `blocked`, `allowed`, `sameSide`, `left`, `right` — placement constraints.
+
+Details: [docs/modes/optimize.md](docs/modes/optimize.md). Placement:
+[docs/placement-rules.md](docs/placement-rules.md).
+
 ### `evaluate`
 - `evaluate.input` — array of layouts CSVs to score.
 - `evaluate.output` — combined scored CSV. Omitted → each input file rewritten in place.
