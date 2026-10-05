@@ -162,7 +162,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn filter_stats_frequencies_keeps_only_entries_above_minimum() {
+    fn filter_stats_frequencies_keeps_all_letter_and_bigram_entries() {
         let mut stats = CorpusStats {
             letters: FxHashMap::from_iter([('a', 0.9), ('b', 0.09), ('c', 0.01)]),
             bigrams: FxHashMap::from_iter([
@@ -179,44 +179,48 @@ mod tests {
             average_word_length: 3.0,
         };
 
-        filter_stats_frequencies(&mut stats, 0.1, 0.1);
+        filter_stats_frequencies(&mut stats, 0.0, 0.15);
 
-        assert_eq!(stats.letters.len(), 1);
+        assert_eq!(stats.letters.len(), 3);
         assert!(stats.letters.contains_key(&'a'));
-        assert!(!stats.letters.contains_key(&'b'));
-        assert!((stats.letters.values().sum::<f64>() - 1.0).abs() < 1e-9);
+        assert!(stats.letters.contains_key(&'b'));
+        assert!(stats.letters.contains_key(&'c'));
 
-        assert_eq!(stats.bigrams.len(), 2);
+        assert_eq!(stats.bigrams.len(), 3);
         assert!(stats.bigrams.contains_key(&['a', 'a']));
         assert!(stats.bigrams.contains_key(&['a', 'b']));
-        assert!(!stats.bigrams.contains_key(&['b', 'c']));
-        assert!((stats.bigrams.values().sum::<f64>() - 1.0).abs() < 1e-9);
+        assert!(stats.bigrams.contains_key(&['b', 'c']));
 
-        assert_eq!(stats.first_letters.len(), 2);
+        assert_eq!(stats.first_letters.len(), 3);
         assert!(stats.first_letters.contains_key(&'a'));
         assert!(stats.first_letters.contains_key(&'b'));
-        assert!(!stats.first_letters.contains_key(&'c'));
-        assert!((stats.first_letters.values().sum::<f64>() - 1.0).abs() < 1e-9);
+        assert!(stats.first_letters.contains_key(&'c'));
+
+        assert_eq!(stats.trigrams.len(), 2);
+        assert!(stats.trigrams.contains_key(&['a', 'a', 'a']));
+        assert!(stats.trigrams.contains_key(&['a', 'a', 'b']));
+        assert!(!stats.trigrams.contains_key(&['a', 'b', 'c']));
+        assert!((stats.trigrams.values().sum::<f64>() - 1.0).abs() < 1e-9);
     }
 
     #[test]
-    fn score_with_filter_filters_both_distributions() {
+    fn score_with_filter_keeps_letter_and_bigram_distributions() {
         let source = CorpusStats {
             letters: FxHashMap::from_iter([('a', 0.8), ('b', 0.2)]),
             bigrams: FxHashMap::from_iter([(['a', 'a'], 0.8), (['a', 'b'], 0.2)]),
-            trigrams: FxHashMap::default(),
+            trigrams: FxHashMap::from_iter([(['a', 'a', 'a'], 1.0)]),
             first_letters: FxHashMap::from_iter([('a', 1.0)]),
             average_word_length: 2.0,
         };
         let candidate = CorpusStats {
             letters: FxHashMap::from_iter([('a', 0.8), ('b', 0.2)]),
             bigrams: FxHashMap::from_iter([(['a', 'a'], 0.8), (['a', 'b'], 0.2)]),
-            trigrams: FxHashMap::default(),
+            trigrams: FxHashMap::from_iter([(['a', 'a', 'a'], 1.0)]),
             first_letters: FxHashMap::from_iter([('a', 1.0)]),
             average_word_length: 2.0,
         };
 
-        let score = score_with_filter(&source, &candidate, 0.2, 0.2);
+        let score = score_with_filter(&source, &candidate, 0.0, 0.2);
 
         assert_eq!(score.first_letters, 0.0);
         assert!((score.letters - 0.0).abs() < 1e-9);

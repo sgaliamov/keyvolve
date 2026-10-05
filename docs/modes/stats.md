@@ -21,12 +21,11 @@ stats:
   minTrigramFrequency: 0.00001
 ```
 
-| Key                   | Default      | Meaning                                                                       |
-| --------------------- | ------------ | ----------------------------------------------------------------------------- |
-| `input`               | - (required) | Corpus text file, usually [`merge.output`](merge.md).                         |
-| `output`              | - (required) | Stats JSON. Overwritten if it exists; missing parent folders are created.     |
-| `minFrequency`        | `0.000001`   | Drop letters, bigrams and first letters rarer than this share. `0` keeps all. |
-| `minTrigramFrequency` | `0.0001`     | Drop trigrams rarer than this share. `0` keeps all.                           |
+| Key                   | Default      | Meaning                                                                   |
+| --------------------- | ------------ | ------------------------------------------------------------------------- |
+| `input`               | - (required) | Corpus text file, usually [`merge.output`](merge.md).                     |
+| `output`              | - (required) | Stats JSON. Overwritten if it exists; missing parent folders are created. |
+| `minTrigramFrequency` | `0.0001`     | Drop trigrams rarer than this share. `0` keeps all.                       |
 
 Missing `input` or `output` → run fails with an error naming the key.
 
@@ -88,16 +87,15 @@ Tracked in [TASKS.md](../../TASKS.md#bugs).
 
 After counting:
 
-1. Entries in `letters`, `bigrams` and `first_letters` below `minFrequency` are dropped.
-   Each map is checked separately.
+1. `letters`, `bigrams` and `first_letters` are left untouched; all entries are counted.
 2. Entries in `trigrams` below `minTrigramFrequency` are dropped.
 3. Each filtered map is rescaled so its remaining shares sum to `1`.
 
 `word_count` and `average_word_length` are never filtered.
 
-Dropped bigrams and trigrams do not exist for scoring: layouts get no effort or penalty for
-them. Raise the thresholds to ignore typos and noise; lower them to keep rare sequences.
-A threshold `≤ 0` disables filtering for its maps.
+Dropped trigrams do not exist for scoring: layouts get no effort or penalty for them.
+Lower the threshold to keep rare sequences; raise it to ignore noise.
+A threshold `≤ 0` disables trigram filtering.
 
 ## Output
 
