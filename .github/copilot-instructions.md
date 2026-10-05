@@ -10,21 +10,23 @@ Keyboard layout optimizer. Uses `darwin` (island-model GA, local crate) to evolv
 ## Key types
 - `KeysGenome = Vec<char>` — 30 slots; index = physical key position; `` ` `` = `EMPTY_SLOT`.
 - `Keys = FxHashMap<char, u8>` — char → slot index.
-- `Layout` — wraps `Keys`; `Display` → `"abcde;fghij;..."` (semicolon-separated groups of 5, left 0–14, right 15–29).
+- `Layout` — wraps `Keys`; `Display` → `"abcde,fghij,..."` (comma-separated groups of 5, left 0–14, right 15–29; right groups physical left-to-right, index-outer → pinky).
 - `Keyboard` — loaded from JSON; `efforts: Vec<f64>`, `pairs: FxHashMap<u8, FxHashMap<u8, usize>>` (left-hand only; right inferred by symmetry), plus penalty params.
 - `ScoreResult` — per-layout score: effort, left/right split, switches, fitness.
 - `LayoutEvaluator` — precomputes bigram effort table from `Keyboard`; `score_corpus(&keys)` → `ScoreResult`.
 
 ## GA wiring (optimization)
-- `generate` / `mutate` / `NoopCrossover` / `corpus_evaluator` / `callback` injected into `GeneticAlgorithm`.
-- `OptimizerState` holds `LayoutEvaluator`, `AppHandle`, `OptimizationConfig`, `OptimizationCache`.
-- `OptimizationConfig` — `frozen: HashMap<char, u8>`, `blocked: HashSet<u8>`, `rolls: Vec<String>`, `allowed: HashMap<char, Vec<u8>>`.
-- Generator enforces: frozen pins → roll neighbors → allowed slots → remaining rolls → free fill.
-- Fitness = `score.fitness` (lower = better; penalizes effort + hand imbalance + switch rate).
+- `generate` / `mutate` / `NoopCrossover` / `evaluator` / `callback` injected into `GeneticAlgorithm`.
+- `OptimizerState` holds `LayoutEvaluator`, `AppHandle`, `Arc<PlacementConstraints>`, `mutation_count`.
+- `OptimizationConfig` — `frozen: FxHashMap<char, u8>`, `blocked: FxHashSet<u8>`, `allowed: FxHashMap<char, FxHashSet<u8>>` (input 0–14, auto-mirrored; `_` = empties), `left`/`right: FxHashSet<char>`, `same_side: Vec<[char; 2]>` (`sameSide`). `rolls` removed; unknown keys rejected.
+- `OptimizationConfig::compile()` → `PlacementConstraints`: per-token slot bitmask domains, merged `sameSide` groups, feasible hand orientations. Fails fast on contradictions.
+- One matching solver for `generate`, `mutate`, `repair`. Seeds (dump/input) repaired before GA; invalid genomes get `-inf` fitness.
+- Spec: `docs/placement-rules.md`.
+- Fitness = `fitness_scale / (effort × penalty)` (higher = better; penalty from `evaluator` targets, see `docs/penalty.md`).
 
 ## Data
 - `keyboard.json` — effort groups + bigram pair costs + penalty coefficients.
-- `layouts.csv` — semicolon-layout + fitness columns; header on first line.
+- `layouts.csv` — `keys_1`..`keys_6` (groups of 5, `_` = empty), `name`, `fitness`, metric columns; header on first line.
 - `data/synthesised` — fake-word corpus used during optimization.
 - Config entry point: `keyvolve.yaml` → deserialized into `Config`.
 

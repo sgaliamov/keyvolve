@@ -120,6 +120,7 @@ optimization:
   # If specified, only these slots can be used, except for frozen pins.
   # Special key "_" constrains empty slots (the 4 unused positions).
   # These positions may be empty, not must be empty; blocked slots are also eligible.
+  # Empties never sit between two letters of the same 5-key row. Full rules: docs/placement-rules.md
   allowed:
     # '_': [0, 1, 10, 11]
     e: [6, 7, 8]
@@ -136,7 +137,7 @@ optimization:
     q: [4, 14]
 
   # Optional: Character pairs that must stay on the same hand (left-left or right-right).
-  # Disjoint pairs choose independently; overlapping pairs form one group. Contiguity is only preferred.
+  # Disjoint pairs choose independently; overlapping pairs form one group.
   sameSide: ['th', 'er']
 
   # Optional: Characters restricted to the left hand (unless frozen elsewhere).

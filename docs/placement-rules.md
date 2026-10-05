@@ -1,98 +1,128 @@
-# Placement rules — current behavior
+# Placement rules - how they work
 
-This document describes how optimizer placement constraints are compiled and enforced.
+Placement rules restrict where `optimize` may put each letter and the 4 empty slots. Every
+layout the optimizer generates, mutates, scores or saves obeys them. `evaluate` ignores them.
 
-## Model
+## Slot map
 
-- Layout size: 30 slots.
-- Symbols: 26 lowercase letters (`a..z`) + 4 empty slots.
-- Internal empty marker: `` ` `` (`EMPTY_SLOT`).
-- Config can use `_` to configure empty-slot allowed domains.
+30 slots: 26 letters `a`-`z` + 4 empties. Left hand `0`-`14`, right hand `15`-`29`, physical
+left-to-right:
 
-## Constraint inputs
+| Row    | Left             | Right            |
+| ------ | ---------------- | ---------------- |
+| top    | `0 1 2 3 4`      | `15 16 17 18 19` |
+| home   | `5 6 7 8 9`      | `20 21 22 23 24` |
+| bottom | `10 11 12 13 14` | `25 26 27 28 29` |
 
-- `frozen: { char: slot }` — hard pin for a character.
-- `blocked: [slot]` — hard-empty slots.
-- `allowed: { char: [slots] }` — hard domain restriction for a character.
-  - Accepts only indices `0..14`.
-  - Each listed index adds its mirrored right-hand slot automatically.
-  - For `_`, this configures optional allowed empty positions.
-- `left: [chars]` / `right: [chars]` — hard side restriction.
-- `sameSide: ["ab", ...]` — character pairs that must be on same side.
-  - Pairs are independent (one pair may land left, another right).
-  - Overlaps are transitive components (`th` + `st` => `t,h,s` together).
+Mirror = same finger on the other hand: `0`↔`19`, `4`↔`15`, `7`↔`22`. Formula for a left slot
+`i`: `(i / 5) * 5 + (4 - i % 5) + 15`.
 
-## Precedence and hard rules
+A row segment is one row of one hand: 5 slots, e.g. `0`-`4` or `25`-`29`.
 
-1. `frozen` wins for pinned keys.
-2. Frozen positions are exclusive for pinned keys.
-3. Effective blocked positions are forced empty unless that slot is frozen.
-4. Non-frozen letters must satisfy domain and side constraints.
-5. Same-side components must be placed entirely on one hand.
+## Configuration
 
-Notes:
+```yaml
+optimization:
+  blocked: [0, 10, 19, 29]
+  frozen:
+    z: 10
+  allowed:
+    '_': [0, 1, 10, 11]
+    e: [6, 7, 8]
+    x: [4, 14]
+  sameSide: ['th', 'er']
+  left: [s]
+  right: [o]
+```
 
-- `allowed["_"]` is permissive, not exact-fill: listed slots may be empty, not must.
-- Effective blocked slots may stay empty even if not listed in `allowed["_"]`.
-- Soft preferences (like contiguity) never override hard constraints.
+| Key        | Default | Meaning                                                                                                                       |
+| ---------- | ------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `frozen`   | none    | `{ letter: slot }`, slot `0`-`29`. Letter always sits at that slot.                                                           |
+| `blocked`  | none    | Slots `0`-`29` that letters may not use. They stay empty unless a letter is frozen there.                                     |
+| `allowed`  | none    | `{ key: [slots] }`, slots `0`-`14`. Each slot also allows its mirror. Key `_` (or `` ` ``) sets where empties may go.         |
+| `left`     | none    | Letters restricted to slots `0`-`14`. Not mirrored.                                                                           |
+| `right`    | none    | Letters restricted to slots `15`-`29`. Not mirrored.                                                                          |
+| `sameSide` | none    | Two-letter strings. Both letters of each pair sit on one hand.                                                                |
 
-## Compilation
+Without an `allowed` entry, a letter or empty may go anywhere the other rules permit.
 
-Before GA starts, constraints are compiled into:
+## Rules
 
-- per-token slot domains (bitmasks),
-- same-side connected components,
-- feasible component-hand orientation combinations.
+1. `frozen` letters sit at their slot. `allowed`, `left`, `right` and `blocked` do not apply
+   to them. No other letter or empty may use a frozen slot.
+2. Unfrozen letters avoid `blocked` slots and stay inside their `allowed` slots and
+   `left`/`right` hand.
+3. With `allowed._` set, empties go only to `allowed._` or `blocked` slots. `allowed._`
+   permits, it does not force: a listed slot may hold a letter.
+4. `sameSide`: each pair picks a hand independently. Pairs sharing a letter merge into one
+   group (`th` + `st` → `t`, `h`, `s` on one hand). A frozen letter fixes the hand of its
+   group.
+5. No gaps in the middle of a row segment. Empties may only sit at the ends of a segment,
+   never between two letters (see [Row gaps](#row-gaps)).
 
-Compilation fails fast on contradictions (example: impossible domains, conflicting frozen same-side group).
+A letter listed in both `left` and `right` has no legal slot unless frozen.
 
-## Placement solver
+## Row gaps
 
-One augmenting-path matching engine is used for all placement operations:
+Within each row segment, letters must be contiguous. An empty slot with letters on both
+sides of it in the same segment is a gap.
 
-- generation,
-- local mutation,
-- stale/invalid seed repair.
+| Segment | Valid |
+| ------- | ----- |
+| `gjv__` | ✓     |
+| `__gjv` | ✓     |
+| `_gjv_` | ✓     |
+| `g_jv_` | ✗     |
+| `gj_v_` | ✗     |
 
-The solver matches all 30 tokens to slots under compiled domains.
-If no full assignment exists, operation fails (or config is rejected at compile time).
+The rule applies to all empties, including `blocked` slots. Rules that make a gap
+unavoidable stop the run at startup (e.g. `blocked: [1, 3, 11, 13]`).
 
-## Generation
+Not implemented yet: the optimizer currently allows gaps and only prefers keeping letters
+together. Tracked in [TASKS.md](../TASKS.md#tasks).
 
-1. Pick a feasible orientation combination for same-side components.
-2. Build domains for all letters and 4 empty tokens.
-3. Solve full assignment with matching.
+## Startup checks
 
-Result is always a complete valid 30-slot genome.
+Rules are checked before the GA starts. The run stops with an error when:
 
-## Mutation
+| Problem                                                          | Error                                                           |
+| ---------------------------------------------------------------- | --------------------------------------------------------------- |
+| Unknown key under `optimization` (e.g. old `rolls`)              | unknown field                                                   |
+| Slot outside `0`-`29` in `frozen` or `blocked`                   | `... slot N must be in 0..29`                                   |
+| Slot outside `0`-`14` in `allowed` (any key, `_` included)       | `allowed slot N must be in 0..14`                               |
+| Two frozen letters on one slot                                   | `multiple frozen keys use slot N`                               |
+| Key other than `a`-`z` in `frozen`, `left`, `right`, or other than `a`-`z`/`_` in `allowed` | `... must be a lowercase letter a-z ...` |
+| `sameSide` entry not exactly two distinct letters `a`-`z`        | `same-side pair must contain exactly two distinct ...`          |
+| A letter or empty has no legal slot                              | `optimization leaves no legal slots for 'x'`                    |
+| Rules allow no complete layout (e.g. too many letters per hand)  | `optimization constraints have no complete layout: ...`         |
 
-1. If parent is invalid, repair first.
-2. Select mutable units (same-side component units + single letters), respecting frozen keys.
-3. Release selected units; keep other placements fixed.
-4. Re-run matching for released units with all empty tokens available.
-5. Try bounded attempts to produce a changed valid candidate.
+Exactly 4 slots end up empty, so:
 
-Mutation never returns invalid genome.
-No-change mutation is allowed when no alternative valid placement is found.
+- At most 4 `blocked` slots may be unfrozen.
+- With `allowed._` set, `allowed._` + `blocked` minus frozen slots must give at least 4
+  slots.
 
-## Seed/dump repair
+Known bug: `allowed._` currently accepts slots `15`-`29` (used as-is, not mirrored).
+Tracked in [TASKS.md](../TASKS.md#bugs).
 
-Imported/resumed layouts are repaired through the same solver:
+## Generation and mutation
 
-- keep recognizable existing placements when possible,
-- reconstruct missing/duplicate/malformed symbols,
-- return full valid genome shape before GA usage.
+- New layouts are random, always complete and valid.
+- A mutant moves several letters at once. `sameSide` groups move as a whole and may switch
+  hands. Empties move too. Frozen letters never move.
+- A mutant may equal its parent when no other valid placement exists, e.g. when all letters
+  are frozen.
 
-Valid input stays unchanged.
+## Seed repair
 
-## Final validation before scoring
+Layouts loaded from `ga.dump` or `optimization.input` are checked against the current rules.
 
-Layouts are strictly validated before fitness scoring:
+- Valid layouts are used unchanged.
+- Invalid ones (rules changed, wrong length, missing, duplicate or unknown symbols) are
+  repaired: letters keep their old slot where legal, the rest are re-placed. `sameSide`
+  groups take the hands that keep most letters in place.
+- Repairs log `Repaired imported layouts under current placement constraints` with the count.
 
-- length = 30,
-- each letter appears exactly once,
-- exactly 4 empties,
-- every placed symbol satisfies compiled domains and same-side constraints.
+## Scoring and output
 
-Invalid layouts are rejected.
+Layouts that break any rule are not scored and never written to `optimization.output`.
