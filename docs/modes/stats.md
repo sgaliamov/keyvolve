@@ -58,6 +58,17 @@ counted, so word order does not matter.
 Single-letter words add to `letters`, `first_letters` and `average_word_length` only;
 two-letter words add no trigrams.
 
+`average_word_length` exists because the cache stores normalized frequencies, but the
+optimizer needs approximate raw counts when it rebuilds a corpus model from the JSON. The
+code converts the cache back to counts using the mean word length:
+
+- `word_count × average_word_length` ≈ total characters
+- `word_count × (average_word_length - 1)` ≈ total bigrams
+- `word_count × (average_word_length - 2)` ≈ total trigrams
+
+Without it, the evaluator could not turn probabilities back into counts for the layout
+score.
+
 Example input `the tea a`:
 
 | Metric                | Result                             |

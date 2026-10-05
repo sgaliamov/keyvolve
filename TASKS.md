@@ -4,6 +4,8 @@
 
 - [ ] Do not allow `g_jv_`.
 - [ ] Rank flat CSV: drop the report stem from the name; write `bigrams.<ext>` in the `report` folder instead of `<report stem>.bigrams.<ext>` - [doc](docs/modes/rank.md#output).
+- [ ] Stats mode should write separate CSV reports for first-letter and aggregated bigram distributions so people can inspect them without JSON - [doc](docs/modes/stats.md#output).
+- [ ] Remove `stats.minFrequency`; all bigrams and first letters must be counted, without threshold filtering - [doc](docs/modes/stats.md#configuration).
 
 ## Bugs
 
