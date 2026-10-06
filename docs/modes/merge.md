@@ -58,9 +58,6 @@ subfolders. Tracked in [TASKS.md](../../TASKS.md#bugs).
 | `café` | `caf` |
 | `naïve` | `na`, `ve` |
 
-Known bug: merge currently drops single-letter words, undercounting letter and first-letter
-stats. Tracked in [TASKS.md](../../TASKS.md#bugs).
-
 Accented letters split words into fragments, which then enter letter/bigram/trigram stats
 as fake words. Use ASCII-only text, or transliterate it before merging.
 

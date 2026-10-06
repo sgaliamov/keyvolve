@@ -6,7 +6,7 @@ merge:
   # Output merged corpus file; overwritten if it exists.
   output: data/samples/merged.txt
   # Shuffle merged words before writing. false keeps source order.
-  shuffle: true
+  shuffle: false
   # Optional: Random seed for reproducible shuffling.
   # seed: 12345
 

@@ -224,10 +224,6 @@ fn process_file(
         let raw = line.into_diagnostic()?;
         let cleaned = clean_line(&raw);
         for word in cleaned.split_whitespace() {
-            if word.len() <= 1 {
-                continue;
-            }
-
             on_word(word)?;
         }
     }
@@ -319,4 +315,36 @@ fn clean_line(line: &str) -> String {
     }
 
     cleaned
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn clean_line_keeps_single_letter_words() {
+        assert_eq!(clean_line("Don't"), "don t");
+        assert_eq!(clean_line("A! i?"), "a i");
+    }
+
+    #[test]
+    fn process_file_keeps_single_letter_words() {
+        let dir = std::env::temp_dir().join("keyvolve-merge-test");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("sample.txt");
+        fs::write(&path, "Hello, World! Don't; a i.\n").unwrap();
+
+        let app = cliffa::cli::AppHandle::new();
+        let mut words = Vec::new();
+        process_file(&path, &app, |word| {
+            words.push(word.to_owned());
+            Ok(())
+        })
+        .unwrap();
+
+        assert_eq!(words, vec!["hello", "world", "don", "t", "a", "i"]);
+
+        let _ = fs::remove_dir_all(&dir);
+    }
 }
