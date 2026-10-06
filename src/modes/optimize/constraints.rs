@@ -1,5 +1,5 @@
 use crate::evaluator::EMPTY_SLOT;
-use crate::modes::optimize::{OptimizationConfig, match_slots};
+use crate::modes::optimize::{OptimizationConfig, match_slots_gap_free};
 use miette::{Result, miette};
 
 /// Physical slots, alphabet size, and masks used by the assignment engine.
@@ -112,6 +112,16 @@ impl PlacementConstraints {
                 .groups
                 .iter()
                 .all(|&group| group & left == 0 || group & left == group)
+            && genome
+                .chunks_exact(5)
+                .all(|segment| {
+                    let positions: Vec<_> = segment
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(idx, &ch)| (ch != EMPTY_SLOT).then_some(idx))
+                        .collect();
+                    positions.windows(2).all(|pair| pair[1] == pair[0] + 1)
+                })
     }
 
     /// Restrict each connected group's letter domains to its selected hand.
@@ -129,7 +139,7 @@ impl PlacementConstraints {
     /// Enumerate only hand combinations that admit a complete slot matching.
     fn collect_orientations(&mut self, index: usize, orientation: u16, domains: [u32; SLOT_COUNT]) {
         let order = std::array::from_fn(|i| i);
-        if match_slots(&domains, &[0; SLOT_COUNT], &order).is_none() {
+        if match_slots_gap_free(&domains, &[0; SLOT_COUNT], &order).is_none() {
             return;
         }
         let Some(&group) = self.groups.get(index) else {
@@ -203,9 +213,17 @@ mod tests {
             invalid[0] = ch;
             assert!(!constraints.is_genome_valid(&invalid));
         }
-        let mut long = valid;
+        let mut long = valid.clone();
         long.push(EMPTY_SLOT);
         assert!(!constraints.is_genome_valid(&long));
+
+        let mut gap = valid.clone();
+        gap[0] = 'g';
+        gap[1] = EMPTY_SLOT;
+        gap[2] = 'j';
+        gap[3] = 'v';
+        gap[4] = EMPTY_SLOT;
+        assert!(!constraints.is_genome_valid(&gap));
     }
 
     #[test]

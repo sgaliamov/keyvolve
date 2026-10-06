@@ -15,7 +15,7 @@ impl PlacementConstraints {
         let domains = self.oriented_domains(orientation);
         let mut order = std::array::from_fn(|i| i);
         order.shuffle(rng);
-        let assignment = match_slots(&domains, &[0; SLOT_COUNT], &order)
+        let assignment = match_slots_gap_free(&domains, &[0; SLOT_COUNT], &order)
             .expect("compiled hand combination must have a complete matching");
         to_genome(assignment)
     }
@@ -40,7 +40,7 @@ impl PlacementConstraints {
             .expect("compiled constraints have a feasible hand combination");
         let mut order = std::array::from_fn(|i| i);
         order.shuffle(rng);
-        let assignment = match_slots(&self.oriented_domains(orientation), &preferred, &order)
+        let assignment = match_slots_gap_free(&self.oriented_domains(orientation), &preferred, &order)
             .expect("preferences cannot invalidate a feasible matching");
         to_genome(assignment)
     }
@@ -98,7 +98,7 @@ impl PlacementConstraints {
             for token in bits(retained) {
                 domains[token] &= positions[token];
             }
-            if let Some(assignment) = match_slots(&domains, &[0; SLOT_COUNT], &order) {
+            if let Some(assignment) = match_slots_gap_free(&domains, &[0; SLOT_COUNT], &order) {
                 return Some(to_genome(assignment));
             }
         }
@@ -128,6 +128,30 @@ pub fn match_slots(
         }
     }
     Some(matching.owners)
+}
+
+/// Like `match_slots`, but reject any assignment that leaves a row segment with a
+/// letter gap in the middle. A valid layout may still require a different token order.
+pub fn match_slots_gap_free(
+    domains: &[u32; SLOT_COUNT],
+    preferred: &[u32; SLOT_COUNT],
+    order: &[usize; SLOT_COUNT],
+) -> Option<[usize; SLOT_COUNT]> {
+    for reverse in [false, true] {
+        let mut order = *order;
+        if reverse {
+            order.reverse();
+        }
+        for _ in 0..SLOT_COUNT {
+            if let Some(found) = match_slots(domains, preferred, &order) {
+                if has_no_row_gaps(found) {
+                    return Some(found);
+                }
+            }
+            order.rotate_left(1);
+        }
+    }
+    None
 }
 
 /// Stack-only matching state; masks avoid rescanning occupied slots on relocation.
@@ -181,7 +205,7 @@ impl Matching<'_> {
     }
 }
 
-/// Prefer growing existing row clusters; gaps remain legal under hard constraints.
+/// Prefer growing existing row clusters without permitting gaps in a final layout.
 fn contiguous_slots(letters: u32) -> u32 {
     let mut mask = 0;
     for start in (0..SLOT_COUNT).step_by(5) {
@@ -195,6 +219,35 @@ fn contiguous_slots(letters: u32) -> u32 {
         }
     }
     mask
+}
+
+/// True when all row segments hold a single contiguous letter block, with empties only at
+/// segment ends. This matches the optimizer's placement spec and rejects `g_jv_` style gaps.
+fn has_no_row_gaps(assignment: [usize; SLOT_COUNT]) -> bool {
+    for segment in 0..6 {
+        let start = (segment % 3) * 5 + (segment / 3) * 15;
+        let mut positions = Vec::new();
+        for slot in start..(start + 5) {
+            if assignment[slot] < LETTER_COUNT {
+                positions.push(slot - start);
+            }
+        }
+        if positions.len() > 1 {
+            let first = positions[0];
+            let last = *positions.last().unwrap();
+            for window in positions.windows(2) {
+                let a = window[0];
+                let b = window[1];
+                if b != a + 1 {
+                    return false;
+                }
+            }
+            if last - first + 1 != positions.len() {
+                return false;
+            }
+        }
+    }
+    true
 }
 
 /// Collect only recognizable position hints, accepting underscore at input boundaries.
@@ -255,18 +308,12 @@ mod tests {
     }
 
     #[test]
-    fn empty_constraint_outranks_contiguity() {
+    fn unavoidable_row_gap_rejected_at_startup() {
         let mut opt = OptimizationConfig::default();
-        opt.allowed
-            .insert(EMPTY_SLOT, [1, 2, 3, 29].into_iter().collect());
-        for (position, ch) in std::iter::once(0).chain(5..29).zip('a'..='y') {
-            opt.frozen.insert(ch, position);
-        }
-        let constraints = opt.compile().unwrap();
-        let mut rng = StdRng::seed_from_u64(1);
-        let g = constraints.generate(&mut rng);
-        assert_eq!(g[4], 'z');
-        assert!(constraints.is_genome_valid(&g));
+        opt.frozen.insert('a', 0);
+        opt.frozen.insert('b', 4);
+        opt.allowed.insert(EMPTY_SLOT, [1, 2, 3].into_iter().collect());
+        assert!(opt.compile().is_err());
     }
 
     #[test]
@@ -403,16 +450,16 @@ mod tests {
     }
 
     #[test]
-    fn soft_contiguity_prefers_neighbors_but_does_not_require_gap_free_rows() {
+    fn contiguous_slots_still_prefers_neighbors_in_gap_free_rows() {
         let mask = contiguous_slots(1 << 2);
         assert_eq!(mask & 0b11111, 0b01110);
         assert_eq!((mask >> 15) & 0b11111, 0b11111);
-        let constraints = constraints(r#"{"frozen":{"a":0,"b":4},"allowed":{"_":[1,2]}}"#);
+        let constraints = constraints(r#"{"frozen":{"a":0,"b":1},"allowed":{"_":[3,4]}}"#);
         let mut rng = StdRng::seed_from_u64(17);
         let g = constraints.generate(&mut rng);
         assert!(constraints.is_genome_valid(&g));
-        assert_eq!(g[1], EMPTY_SLOT);
-        assert_eq!(g[2], EMPTY_SLOT);
+        assert_eq!(g[0], 'a');
+        assert_eq!(g[1], 'b');
     }
 
     #[test]
