@@ -74,7 +74,7 @@ impl PlacementConstraints {
         if constraints.orientations.is_empty() {
             return Err(miette!(
                 "optimization constraints have no complete layout: check frozen pins, blocked/allowed slots, \
-                 hand restrictions and sameSide groups; all 26 letters and four empties need distinct slots"
+                 hand restrictions, sameSide groups and vertical pairs; all 26 letters and four empties need distinct slots"
             ));
         }
         Ok(constraints)
@@ -303,6 +303,18 @@ mod tests {
         genome.swap(3, 8);
         genome.swap(8, 13);
         assert!(!constraints.is_genome_valid(&genome));
+    }
+
+    #[test]
+    fn same_side_and_vertical_constraints_still_generate_valid_layouts() {
+        let opt: OptimizationConfig = serde_json::from_str(
+            r#"{"sameSide":["th","er"],"vertical":["nd","be","th","er","he","is","ng"]}"#,
+        )
+        .unwrap();
+        let constraints = opt.compile().unwrap();
+        let mut rng = rand::rng();
+        let genome = constraints.generate(&mut rng);
+        assert!(constraints.is_genome_valid(&genome));
     }
 
     #[test]

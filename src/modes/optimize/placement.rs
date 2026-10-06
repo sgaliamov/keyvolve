@@ -14,9 +14,15 @@ impl PlacementConstraints {
         let orientation = self.orientations[rng.random_range(0..self.orientations.len())];
         let domains = self.oriented_domains(orientation);
         let mut order = std::array::from_fn(|i| i);
-        order.shuffle(rng);
+        for _ in 0..8 {
+            order.shuffle(rng);
+            if let Some(assignment) = match_slots_gap_free(&domains, &[0; SLOT_COUNT], &order, &self.vertical) {
+                return to_genome(assignment);
+            }
+        }
+        let order = std::array::from_fn(|i| i);
         let assignment = match_slots_gap_free(&domains, &[0; SLOT_COUNT], &order, &self.vertical)
-            .expect("compiled hand combination must have a complete matching");
+            .expect("selected hand combination must admit a complete matching");
         to_genome(assignment)
     }
 
@@ -39,7 +45,12 @@ impl PlacementConstraints {
             })
             .expect("compiled constraints have a feasible hand combination");
         let mut order = std::array::from_fn(|i| i);
-        order.shuffle(rng);
+        for _ in 0..8 {
+            order.shuffle(rng);
+            if let Some(assignment) = match_slots_gap_free(&self.oriented_domains(orientation), &preferred, &order, &self.vertical) {
+                return to_genome(assignment);
+            }
+        }
         let assignment = match_slots_gap_free(&self.oriented_domains(orientation), &preferred, &order, &self.vertical)
             .expect("preferences cannot invalidate a feasible matching");
         to_genome(assignment)
@@ -87,7 +98,6 @@ impl PlacementConstraints {
             }
         }
         let mut order = std::array::from_fn(|i| i);
-        order.shuffle(rng);
         let start = rng.random_range(0..self.orientations.len());
         for offset in 0..self.orientations.len() {
             let orientation = self.orientations[(start + offset) % self.orientations.len()];
@@ -98,7 +108,13 @@ impl PlacementConstraints {
             for token in bits(retained) {
                 domains[token] &= positions[token];
             }
-            if let Some(assignment) = match_slots_gap_free(&domains, &[0; SLOT_COUNT], &order, &self.vertical) {
+            for _ in 0..8 {
+                order.shuffle(rng);
+                if let Some(assignment) = match_slots_gap_free(&domains, &[0; SLOT_COUNT], &order, &self.vertical) {
+                    return Some(to_genome(assignment));
+                }
+            }
+            if let Some(assignment) = match_slots_gap_free(&domains, &[0; SLOT_COUNT], &std::array::from_fn(|i| i), &self.vertical) {
                 return Some(to_genome(assignment));
             }
         }
