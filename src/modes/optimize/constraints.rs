@@ -17,6 +17,7 @@ pub struct PlacementConstraints {
     pub(super) groups: Vec<u32>,
     pub(super) orientations: Vec<u16>,
     pub(super) units: Vec<u32>,
+    pub(super) vertical: Vec<[char; 2]>,
 }
 
 impl PlacementConstraints {
@@ -67,6 +68,7 @@ impl PlacementConstraints {
             groups,
             orientations: Vec::new(),
             units,
+            vertical: opt.vertical.clone(),
         };
         constraints.collect_orientations(0, 0, domains);
         if constraints.orientations.is_empty() {
@@ -112,6 +114,7 @@ impl PlacementConstraints {
                 .groups
                 .iter()
                 .all(|&group| group & left == 0 || group & left == group)
+            && self.vertical.iter().all(|&[a, b]| !same_column_on_hands(genome, a, b))
             && genome
                 .chunks_exact(5)
                 .all(|segment| {
@@ -139,7 +142,7 @@ impl PlacementConstraints {
     /// Enumerate only hand combinations that admit a complete slot matching.
     fn collect_orientations(&mut self, index: usize, orientation: u16, domains: [u32; SLOT_COUNT]) {
         let order = std::array::from_fn(|i| i);
-        if match_slots_gap_free(&domains, &[0; SLOT_COUNT], &order).is_none() {
+        if match_slots_gap_free(&domains, &[0; SLOT_COUNT], &order, &self.vertical).is_none() {
             return;
         }
         let Some(&group) = self.groups.get(index) else {
@@ -195,6 +198,39 @@ fn connected_groups(pairs: &[[char; 2]]) -> Vec<u32> {
     }
     groups.sort_unstable();
     groups
+}
+
+fn same_column_on_hands(genome: &[char], a: char, b: char) -> bool {
+    let a_index = letter_index(a).unwrap();
+    let b_index = letter_index(b).unwrap();
+    let left = genome.iter().enumerate().take(15);
+    let right = genome.iter().enumerate().skip(15).take(15);
+    let left_positions = left.filter_map(|(slot, &ch)| {
+        let token = letter_index(ch)?;
+        if token == a_index || token == b_index {
+            Some((slot, token))
+        } else {
+            None
+        }
+    });
+    let right_positions = right.filter_map(|(slot, &ch)| {
+        let token = letter_index(ch)?;
+        if token == a_index || token == b_index {
+            Some((slot, token))
+        } else {
+            None
+        }
+    });
+    let left_match = left_positions
+        .filter(|(_, token)| *token == a_index || *token == b_index)
+        .collect::<Vec<_>>();
+    let right_match = right_positions
+        .filter(|(_, token)| *token == a_index || *token == b_index)
+        .collect::<Vec<_>>();
+
+    let left_has_same_column = left_match.len() == 2 && left_match[0].0 % 5 == left_match[1].0 % 5;
+    let right_has_same_column = right_match.len() == 2 && (right_match[0].0 - 15) % 5 == (right_match[1].0 - 15) % 5;
+    left_has_same_column || right_has_same_column
 }
 
 #[cfg(test)]
@@ -257,6 +293,16 @@ mod tests {
         assert_eq!(genome[0], 'a');
         assert!(genome[1..5].iter().all(|&ch| ch == EMPTY_SLOT));
         assert!(constraints.is_genome_valid(&genome));
+    }
+
+    #[test]
+    fn vertical_pairs_are_rejected_on_same_column() {
+        let opt: OptimizationConfig = serde_json::from_str(r#"{"vertical":["nd"]}"#).unwrap();
+        let constraints = opt.compile().unwrap();
+        let mut genome: Vec<_> = ('a'..='z').chain([EMPTY_SLOT; 4]).collect();
+        genome.swap(3, 8);
+        genome.swap(8, 13);
+        assert!(!constraints.is_genome_valid(&genome));
     }
 
     #[test]

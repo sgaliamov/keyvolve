@@ -31,6 +31,7 @@ optimization:
     e: [6, 7, 8]
     x: [4, 14]
   sameSide: ['th', 'er']
+  vertical: ['nd']
   left: [s]
   right: [o]
 ```
@@ -43,6 +44,7 @@ optimization:
 | `left`     | none    | Letters restricted to slots `0`-`14`. Not mirrored.                                                                           |
 | `right`    | none    | Letters restricted to slots `15`-`29`. Not mirrored.                                                                          |
 | `sameSide` | none    | Two-letter strings. Both letters of each pair sit on one hand.                                                                |
+| `vertical` | none    | Two-letter strings. The pair may not share a column on either hand; entries are written for the left hand and mirrored to the right. |
 
 Without an `allowed` entry, a letter or empty may go anywhere the other rules permit.
 
@@ -57,7 +59,10 @@ Without an `allowed` entry, a letter or empty may go anywhere the other rules pe
 4. `sameSide`: each pair picks a hand independently. Pairs sharing a letter merge into one
    group (`th` + `st` → `t`, `h`, `s` on one hand). A frozen letter fixes the hand of its
    group.
-5. No gaps in the middle of a row segment. Empties may only sit at the ends of a segment,
+5. `vertical`: a listed pair may not sit in the same column on either hand. Entries are
+   defined for the left hand and mirrored automatically to the right. For example, `nd` cannot
+   be in slots `8` and `13` on the left, or their mirrored slots on the right.
+6. No gaps in the middle of a row segment. Empties may only sit at the ends of a segment,
    never between two letters (see [Row gaps](#row-gaps)).
 
 A letter listed in both `left` and `right` has no legal slot unless frozen.
@@ -92,7 +97,7 @@ Rules are checked before the GA starts. The run stops with an error when:
 | Slot outside `0`-`14` in `allowed` (any key, `_` included)       | `allowed slot N must be in 0..14`                               |
 | Two frozen letters on one slot                                   | `multiple frozen keys use slot N`                               |
 | Key other than `a`-`z` in `frozen`, `left`, `right`, or other than `a`-`z`/`_` in `allowed` | `... must be a lowercase letter a-z ...` |
-| `sameSide` entry not exactly two distinct letters `a`-`z`        | `same-side pair must contain exactly two distinct ...`          |
+| `sameSide` or `vertical` entry not exactly two distinct letters `a`-`z` | `same-side pair ...` / `vertical pair ...`                 |
 | A letter or empty has no legal slot                              | `optimization leaves no legal slots for 'x'`                    |
 | Rules allow no complete layout (e.g. too many letters per hand)  | `optimization constraints have no complete layout: ...`         |
 

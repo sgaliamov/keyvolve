@@ -140,6 +140,10 @@ optimization:
   # Disjoint pairs choose independently; overlapping pairs form one group.
   sameSide: ['th', 'er']
 
+  # Optional: Character pairs that may not align vertically in the same column on a hand.
+  # Entries are defined for the left hand; the right hand mirrors the rule automatically.
+  vertical: ['nd', 'be', 'th', 'er', 'he', 'is', 'ng']
+
   # Optional: Characters restricted to the left hand (unless frozen elsewhere).
   # left: [x, c, v, z, s, a]
 

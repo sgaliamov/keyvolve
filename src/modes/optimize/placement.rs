@@ -15,7 +15,7 @@ impl PlacementConstraints {
         let domains = self.oriented_domains(orientation);
         let mut order = std::array::from_fn(|i| i);
         order.shuffle(rng);
-        let assignment = match_slots_gap_free(&domains, &[0; SLOT_COUNT], &order)
+        let assignment = match_slots_gap_free(&domains, &[0; SLOT_COUNT], &order, &self.vertical)
             .expect("compiled hand combination must have a complete matching");
         to_genome(assignment)
     }
@@ -40,7 +40,7 @@ impl PlacementConstraints {
             .expect("compiled constraints have a feasible hand combination");
         let mut order = std::array::from_fn(|i| i);
         order.shuffle(rng);
-        let assignment = match_slots_gap_free(&self.oriented_domains(orientation), &preferred, &order)
+        let assignment = match_slots_gap_free(&self.oriented_domains(orientation), &preferred, &order, &self.vertical)
             .expect("preferences cannot invalidate a feasible matching");
         to_genome(assignment)
     }
@@ -98,7 +98,7 @@ impl PlacementConstraints {
             for token in bits(retained) {
                 domains[token] &= positions[token];
             }
-            if let Some(assignment) = match_slots_gap_free(&domains, &[0; SLOT_COUNT], &order) {
+            if let Some(assignment) = match_slots_gap_free(&domains, &[0; SLOT_COUNT], &order, &self.vertical) {
                 return Some(to_genome(assignment));
             }
         }
@@ -136,6 +136,7 @@ pub fn match_slots_gap_free(
     domains: &[u32; SLOT_COUNT],
     preferred: &[u32; SLOT_COUNT],
     order: &[usize; SLOT_COUNT],
+    vertical: &[[char; 2]],
 ) -> Option<[usize; SLOT_COUNT]> {
     for reverse in [false, true] {
         let mut order = *order;
@@ -144,7 +145,7 @@ pub fn match_slots_gap_free(
         }
         for _ in 0..SLOT_COUNT {
             if let Some(found) = match_slots(domains, preferred, &order) {
-                if has_no_row_gaps(found) {
+                if has_no_row_gaps(found) && has_no_vertical_pairs(found, vertical) {
                     return Some(found);
                 }
             }
@@ -245,6 +246,27 @@ fn has_no_row_gaps(assignment: [usize; SLOT_COUNT]) -> bool {
             if last - first + 1 != positions.len() {
                 return false;
             }
+        }
+    }
+    true
+}
+
+fn has_no_vertical_pairs(assignment: [usize; SLOT_COUNT], pairs: &[[char; 2]]) -> bool {
+    for &[a, b] in pairs {
+        let a_token = letter_index(a).unwrap();
+        let b_token = letter_index(b).unwrap();
+        let a_slot = assignment.iter().position(|&token| token == a_token);
+        let b_slot = assignment.iter().position(|&token| token == b_token);
+        let Some(a_slot) = a_slot else {
+            continue;
+        };
+        let Some(b_slot) = b_slot else {
+            continue;
+        };
+        let same_left = a_slot < 15 && b_slot < 15 && a_slot % 5 == b_slot % 5;
+        let same_right = a_slot >= 15 && b_slot >= 15 && (a_slot - 15) % 5 == (b_slot - 15) % 5;
+        if same_left || same_right {
+            return false;
         }
     }
     true

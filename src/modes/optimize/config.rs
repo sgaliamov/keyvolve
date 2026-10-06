@@ -45,6 +45,11 @@ pub struct OptimizationConfig {
     #[serde(default, deserialize_with = "de_same_side_pairs")]
     pub same_side: Vec<[char; 2]>,
 
+    /// Letter pairs that may not share a column when stacked vertically on the same hand.
+    /// Format: `["nd", "mb"]`. Entries describe the left hand; the mirrored right hand is checked too.
+    #[serde(default, deserialize_with = "de_same_side_pairs")]
+    pub vertical: Vec<[char; 2]>,
+
     /// Number of independent mutants produced per parent per generation. Default: 10.
     #[serde(default = "default_mutation_count")]
     pub mutation_count: usize,
@@ -109,6 +114,12 @@ impl OptimizationConfig {
             miette::ensure!(
                 a.is_ascii_lowercase() && b.is_ascii_lowercase() && a != b,
                 "same-side pair {a:?}, {b:?} must contain two distinct lowercase letters a-z"
+            );
+        }
+        for &[a, b] in &self.vertical {
+            miette::ensure!(
+                a.is_ascii_lowercase() && b.is_ascii_lowercase() && a != b,
+                "vertical pair {a:?}, {b:?} must contain two distinct lowercase letters a-z"
             );
         }
         Ok(())
