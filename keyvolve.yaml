@@ -266,7 +266,7 @@ evaluate:
     # - data/layouts.known.csv
     # - data/layouts.all.csv
   # Output CSV for scored layouts. Omit to rewrite each input file in place.
-  # output: data/layouts.all.csv
+  output: data/layouts.csv
   # Number of best layouts printed to stdout.
   print: 5
   # Orientation used when saving layouts; left mirrors twin layouts.

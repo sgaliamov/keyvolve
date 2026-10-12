@@ -10,8 +10,8 @@ use crate::{
 };
 use cliffa::cli::AppHandle;
 use miette::{Context, Result};
-use std::path::Path;
-use tracing::{info, trace};
+use std::path::{Path, PathBuf};
+use tracing::{info, trace, warn};
 
 /// Entry point called by the CLI builder after argument parsing.
 pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
@@ -41,14 +41,7 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
                     let eval = cfg.evaluate;
                     let keyboard = Keyboard::load(&eval.keyboard)?;
                     let evaluator = build_evaluator(&keyboard, &eval.corpus_stats, evaluator_cfg)?;
-                    if eval.input.is_empty() {
-                        return Err(miette::miette!("evaluate.input requires at least one CSV"));
-                    }
-                    let batches = eval
-                        .input
-                        .iter()
-                        .map(|path| Ok((path.clone(), Layout::load(path)?)))
-                        .collect::<Result<Vec<_>>>()?;
+                    let batches = load_evaluate_batches(&eval)?;
                     let total = batches
                         .iter()
                         .map(|(_, layouts)| layouts.len())
@@ -137,6 +130,39 @@ fn build_evaluator(
     Ok(LayoutEvaluator::from_counts(keyboard, counts, config))
 }
 
+fn load_evaluate_batches(eval: &evaluate::EvaluateConfig) -> Result<Vec<(PathBuf, Vec<Layout>)>> {
+    if eval.input.is_empty() {
+        return Err(miette::miette!("evaluate.input requires at least one CSV"));
+    }
+
+    let mut batches = Vec::new();
+    for path in &eval.input {
+        if should_skip_missing_output_seed(path, eval.output.as_deref()) {
+            warn!(
+                file = %path.display(),
+                "Skipping missing evaluate.input entry because it matches evaluate.output"
+            );
+            continue;
+        }
+
+        let layouts = Layout::load(path)
+            .wrap_err_with(|| format!("Failed to load evaluate.input CSV: {}", path.display()))?;
+        batches.push((path.clone(), layouts));
+    }
+
+    if batches.is_empty() {
+        return Err(miette::miette!(
+            "evaluate.input requires at least one existing CSV after skipping missing evaluate.output bootstrap paths"
+        ));
+    }
+
+    Ok(batches)
+}
+
+fn should_skip_missing_output_seed(path: &Path, output: Option<&Path>) -> bool {
+    output == Some(path) && !path.exists()
+}
+
 /// Convert a `Layout` into a 30-slot genome; empty slots filled with `EMPTY_SLOT`.
 pub fn layout_to_genome(layout: Layout) -> Vec<char> {
     let mut slots = vec![EMPTY_SLOT; 30];
@@ -144,4 +170,78 @@ pub fn layout_to_genome(layout: Layout) -> Vec<char> {
         slots[pos as usize] = c;
     }
     slots
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::modes::evaluate::EvaluateConfig;
+    use std::{
+        fs,
+        time::{SystemTime, UNIX_EPOCH},
+    };
+
+    #[test]
+    fn load_evaluate_batches_skips_missing_output_bootstrap_file() {
+        let dir = temp_test_dir("skip-missing-output-bootstrap");
+        let output = dir.join("layouts.csv");
+        let input = dir.join("layouts.seed.csv");
+        write_layout_csv(&input);
+
+        let eval = EvaluateConfig {
+            input: vec![output.clone(), input.clone()],
+            output: Some(output.clone()),
+            ..EvaluateConfig::default()
+        };
+
+        let batches = load_evaluate_batches(&eval).unwrap();
+
+        assert_eq!(batches.len(), 1);
+        assert_eq!(batches[0].0, input);
+        assert_eq!(batches[0].1.len(), 1);
+
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn load_evaluate_batches_errors_when_only_missing_output_bootstrap_exists() {
+        let dir = temp_test_dir("error-only-missing-output-bootstrap");
+        let output = dir.join("layouts.csv");
+        let eval = EvaluateConfig {
+            input: vec![output.clone()],
+            output: Some(output),
+            ..EvaluateConfig::default()
+        };
+
+        let err = match load_evaluate_batches(&eval) {
+            Ok(_) => panic!("expected missing bootstrap output path to fail"),
+            Err(err) => err,
+        };
+
+        assert!(
+            err.to_string()
+                .contains("evaluate.input requires at least one existing CSV")
+        );
+
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    fn write_layout_csv(path: &Path) {
+        fs::write(
+            path,
+            "keys_1,keys_2,keys_3,keys_4,keys_5,keys_6,name\nabcde,fghij,klmno,pqrst,uvwxy,z____,seed\n",
+        )
+        .unwrap();
+    }
+
+    fn temp_test_dir(label: &str) -> PathBuf {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let dir =
+            std::env::temp_dir().join(format!("keyvolve-{label}-{}-{nonce}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
 }
