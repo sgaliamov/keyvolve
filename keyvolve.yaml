@@ -122,7 +122,7 @@ optimization:
   # These positions may be empty, not must be empty; blocked slots are also eligible.
   # Empties never sit between two letters of the same 5-key row. Full rules: docs/placement-rules.md
   allowed:
-    # '_': [0, 1, 10, 11]
+    '_': [0, 1, 4, 10, 11, 13, 14]
     e: [6, 7, 8]
     t: [2, 6, 7, 8]
     a: [2, 6, 7, 8]
@@ -131,8 +131,8 @@ optimization:
     n: [1, 2, 6, 7, 8]
     r: [1, 2, 3, 5, 6, 7, 8, 9]
     s: [1, 2, 3, 5, 6, 7, 8, 9]
-    # j: [4, 14]
-    x: [4, 14]
+    j: [4, 10, 11, 14]
+    x: [4, 10, 11, 14]
     z: [4, 14]
     q: [4, 14]
 
@@ -255,9 +255,9 @@ evaluate:
   # One or more layout CSVs to score.
   input:
     - data/layouts.csv
-    # - data/layouts.1.csv
-    # - data/layouts.2.csv
-    # - data/layouts.3.csv
+    - data/layouts.1.csv
+    - data/layouts.2.csv
+    - data/layouts.3.csv
     # - data/layouts.4.csv
     # - data/layouts.5.csv
     # - data/layouts.6.csv
