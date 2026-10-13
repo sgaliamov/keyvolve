@@ -142,7 +142,7 @@ optimization:
 
   # Optional: Character pairs that may not align vertically in the same column on a hand.
   # Entries are defined for the left hand; the right hand mirrors the rule automatically.
-  vertical: ['ng', 'nd']
+  vertical: ['ng', 'nd', 'iw']
 
   # Optional: Characters restricted to the left hand (unless frozen elsewhere).
   # left: [x, c, v, z, s, a]
@@ -255,9 +255,9 @@ evaluate:
   # One or more layout CSVs to score.
   input:
     - data/layouts.csv
-    - data/layouts.1.csv
-    - data/layouts.2.csv
-    - data/layouts.3.csv
+    # - data/layouts.1.csv
+    # - data/layouts.2.csv
+    # - data/layouts.3.csv
     # - data/layouts.4.csv
     # - data/layouts.5.csv
     # - data/layouts.6.csv
@@ -266,7 +266,7 @@ evaluate:
     # - data/layouts.known.csv
     # - data/layouts.all.csv
   # Output CSV for scored layouts. Omit to rewrite each input file in place.
-  output: data/layouts.csv
+  # output: data/layouts.csv
   # Number of best layouts printed to stdout.
   print: 5
   # Orientation used when saving layouts; left mirrors twin layouts.
