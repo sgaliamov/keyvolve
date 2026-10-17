@@ -101,19 +101,19 @@ optimization:
   # Mutants produced per parent each generation.
   mutationCount: 10
   # Max home-row groups kept in final ranked output.
-  maxGroups: 2
+  maxGroups: 5
   # Number of layouts kept per home-row group in final ranked output.
-  itemsPerGroup: 10
+  itemsPerGroup: 1
 
   # Optional: Slot indices that must remain empty (blocked), unless a letter is frozen there.
   # blocked: [0]
   # blocked: [0, 10, 19, 29]
 
   # Optional: Characters pinned to specific slot indices; pins override allowed/left/right/blocked.
-  frozen:
-    h: 2
-    t: 6
-    e: 8
+  # frozen:
+  #   h: 2
+  #   t: 6
+  #   e: 8
 
   # Optional: Allowed slot indices for specific characters (white-list constraints).
   # Use only slots 0-14 here; each one also adds its mirrored right-hand position.
@@ -123,16 +123,18 @@ optimization:
   # Empties never sit between two letters of the same 5-key row. Full rules: docs/placement-rules.md
   allowed:
   #   # '_': [0, 1, 4, 10, 11, 13, 14]
-  #   e: [6, 7, 8]
-  #   t: [2, 6, 7, 8]
+    e: [6, 7, 8]
+    t: [2, 6, 7, 8]
     a: [2, 6, 7, 8]
     i: [2, 6, 7, 8]
     o: [2, 6, 7, 8]
     n: [1, 2, 6, 7, 8]
-    r: [1, 2, 3, 5, 6, 7, 8, 9]
-    s: [1, 2, 3, 5, 6, 7, 8, 9]
-  #   # m: [1, 3, 5, 9, 11, 12, 13]
-  #   # g: [1, 3, 5, 9, 11, 12, 13]
+    r: [1, 2, 3, 6, 7, 8, 9]
+    s: [1, 2, 3, 6, 7, 8, 9]
+    h: [1, 2, 3, 6, 7, 8, 9, 13]
+    m: [1, 3, 4, 5, 9, 11, 12, 13, 14]
+    g: [1, 3, 4, 5, 9, 11, 12, 13, 14]
+    p: [1, 3, 4, 5, 9, 11, 12, 13, 14]
     j: [0, 4, 10, 11, 12, 14]
     x: [0, 4, 10, 11, 12, 14]
     z: [0, 4, 10, 11, 12, 14]
@@ -233,7 +235,7 @@ ga:
   # Individuals per pool.
   populationSize: 256
   # Generations without improvement before stopping.
-  stagnationCount: 128
+  stagnationCount: 100
   # Number of island pools evolved in parallel.
   pools: 256
   # Randomly generated individuals ratio per generation.
