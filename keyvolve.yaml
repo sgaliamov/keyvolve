@@ -95,15 +95,15 @@ optimization:
   corpusStats: data/stats/stats.json
 
   # Seed layout CSVs to load before GA starts; null means none.
-  # input: data/layouts.csv
+  input: data/layouts.csv
   # Layout CSV written after optimization.
   output: data/layouts.csv
   # Mutants produced per parent each generation.
   mutationCount: 10
   # Max home-row groups kept in final ranked output.
-  maxGroups: 5
+  maxGroups: 2
   # Number of layouts kept per home-row group in final ranked output.
-  itemsPerGroup: 1
+  itemsPerGroup: 10
 
   # Optional: Slot indices that must remain empty (blocked), unless a letter is frozen there.
   # blocked: [0]
