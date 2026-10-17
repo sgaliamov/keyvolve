@@ -42,6 +42,10 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
                     let keyboard = Keyboard::load(&eval.keyboard)?;
                     let evaluator = build_evaluator(&keyboard, &eval.corpus_stats, evaluator_cfg)?;
                     let batches = load_evaluate_batches(&eval)?;
+                    if batches.is_empty() {
+                        info!("No evaluate.input CSV files found; skipping evaluation");
+                        return Ok(());
+                    }
                     let total = batches
                         .iter()
                         .map(|(_, layouts)| layouts.len())
@@ -144,6 +148,10 @@ fn load_evaluate_batches(eval: &evaluate::EvaluateConfig) -> Result<Vec<(PathBuf
             );
             continue;
         }
+        if !path.exists() {
+            warn!(file = %path.display(), "Skipping missing evaluate.input CSV");
+            continue;
+        }
 
         let layouts = Layout::load(path)
             .wrap_err_with(|| format!("Failed to load evaluate.input CSV: {}", path.display()))?;
@@ -151,9 +159,7 @@ fn load_evaluate_batches(eval: &evaluate::EvaluateConfig) -> Result<Vec<(PathBuf
     }
 
     if batches.is_empty() {
-        return Err(miette::miette!(
-            "evaluate.input requires at least one existing CSV after skipping missing evaluate.output bootstrap paths"
-        ));
+        warn!("No evaluate.input CSV files found; nothing to score");
     }
 
     Ok(batches)
@@ -204,24 +210,41 @@ mod tests {
     }
 
     #[test]
-    fn load_evaluate_batches_errors_when_only_missing_output_bootstrap_exists() {
-        let dir = temp_test_dir("error-only-missing-output-bootstrap");
-        let output = dir.join("layouts.csv");
+    fn load_evaluate_batches_skips_missing_input_csvs() {
+        let dir = temp_test_dir("skip-missing-input-csvs");
+        let missing = dir.join("missing.csv");
+        let input = dir.join("present.csv");
+        write_layout_csv(&input);
+
         let eval = EvaluateConfig {
-            input: vec![output.clone()],
+            input: vec![missing.clone(), input.clone()],
+            output: None,
+            ..EvaluateConfig::default()
+        };
+
+        let batches = load_evaluate_batches(&eval).unwrap();
+
+        assert_eq!(batches.len(), 1);
+        assert_eq!(batches[0].0, input);
+        assert_eq!(batches[0].1.len(), 1);
+
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn load_evaluate_batches_returns_empty_when_only_missing_files_exist() {
+        let dir = temp_test_dir("empty-only-missing-files");
+        let output = dir.join("layouts.csv");
+        let missing = dir.join("missing.csv");
+        let eval = EvaluateConfig {
+            input: vec![output.clone(), missing.clone()],
             output: Some(output),
             ..EvaluateConfig::default()
         };
 
-        let err = match load_evaluate_batches(&eval) {
-            Ok(_) => panic!("expected missing bootstrap output path to fail"),
-            Err(err) => err,
-        };
+        let batches = load_evaluate_batches(&eval).unwrap();
 
-        assert!(
-            err.to_string()
-                .contains("evaluate.input requires at least one existing CSV")
-        );
+        assert!(batches.is_empty());
 
         fs::remove_dir_all(dir).unwrap();
     }

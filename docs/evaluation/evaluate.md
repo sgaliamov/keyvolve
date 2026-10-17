@@ -31,7 +31,7 @@ evaluate:
 | --- | ------- | ------- |
 | `keyboard` | - (required) | Keyboard JSON from [rank](../modes/rank.md). |
 | `corpusStats` | - (required) | Stats JSON from [stats](../modes/stats.md). |
-| `input` | - (required) | Layout CSVs to score. At least one. |
+| `input` | - (required) | Layout CSVs to score. Missing files are skipped; if all inputs are missing, the run exits without scoring. |
 | `output` | unset | Combined result CSV, overwritten. Parent folder must exist. Unset → each `input` file is rewritten in place. |
 | `print` | `10` | Best layouts printed to stdout. `0` → none. |
 | `eSide` | `left` | Orientation of saved layouts: `left`, `right` or `any`. See [Orientation](#orientation). |
@@ -72,6 +72,7 @@ Any invalid row stops the run before scoring; no file is written.
 | Letter repeated | `duplicate layout key` |
 | Letter missing, uppercase, or extra | `layout must contain all 26 keys, got N \| missing: ...` |
 | `input` empty | `evaluate.input requires at least one CSV` |
+| Missing input file | skipped, no error |
 
 ## Flow
 
