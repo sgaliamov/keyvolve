@@ -170,13 +170,13 @@ evaluator:
   # Left/right effort asymmetry.
   effortsImbalance: { type: max, value: 5, weight: 0.75 }
 
-  # Left/right same-hand bigram count asymmetry.
+  # Left/right press-count asymmetry.
   handsImbalance: { type: max, value: 5, weight: 0.5 }
 
-  # Row-switch cost / same-hand bigram count.
+  # Same-finger row-switch cost / all presses (adjacent row = 1, top <-> bottom = 2).
   # rowSwitchRatio: { type: max, value: 8, weight: 1 }
 
-  # Hand-switches / same-hand bigram count.
+  # Hand switches / all presses.
   handSwitchRatio: { type: max, value: 37, weight: 3 }
 
   # Same-finger skipgram share: same finger reactivated after one intervening key.
@@ -230,7 +230,8 @@ evaluator:
 
 # Genetic Algorithm parameters.
 ga:
-  # Mutation probability applied per genome element.
+  # Share of each pool's best individuals used as mutation parents per generation.
+  # Each parent produces optimization.mutationCount mutants.
   mutationRatio: 0.6
   # Individuals per pool.
   populationSize: 256
@@ -240,13 +241,13 @@ ga:
   pools: 256
   # Randomly generated individuals ratio per generation.
   randomRatio: 0.25
-  # Mutation steps applied to seeded layouts.
+  # Unique mutants created from each seed layout before seeding pools. 0 keeps seeds unchanged.
   seedMutation: 10
-  # Binary dump file for GA state snapshots.
+  # Binary dump file written on abort and loaded by the next run to resume.
   dump: data/dump.bin
-  # Probability of writing a dump snapshot.
+  # Top share of each pool saved to the dump (at least 1 per pool).
   dumpRatio: 0.8
-  # Keep or delete dump files after runs.
+  # true: a finished run overwrites the dump with the final state instead of deleting it.
   keepDump: false
 
 # Evaluation mode parameters.
