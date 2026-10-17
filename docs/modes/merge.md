@@ -37,9 +37,6 @@ merge:
   result into itself.
 - No matching files → an empty output file, replacing any previous output.
 
-Known bug: merge currently scans only direct children of `input`, skipping files in
-subfolders. Tracked in [TASKS.md](../../TASKS.md#bugs).
-
 ## Cleaning rules
 
 1. `A`–`Z` are lowercased; `a`–`z` are kept.

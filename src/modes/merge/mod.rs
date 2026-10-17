@@ -33,6 +33,48 @@ impl Drop for TempDirGuard {
     }
 }
 
+fn collect_input_paths(input: &Path, output_path: &Path, paths: &mut Vec<PathBuf>) -> Result<()> {
+    let mut pending_dirs = vec![input.to_path_buf()];
+
+    while let Some(dir) = pending_dirs.pop() {
+        let entries = fs::read_dir(&dir)
+            .into_diagnostic()
+            .wrap_err_with(|| format!("Failed to read input folder {}", dir.display()))?;
+
+        for entry in entries {
+            let entry = entry.into_diagnostic()?;
+            let path = entry.path();
+
+            if path.is_dir() {
+                pending_dirs.push(path);
+                continue;
+            }
+
+            if !path.is_file() {
+                continue;
+            }
+
+            let ext = match path.extension().and_then(|s| s.to_str()) {
+                Some(ext) => ext,
+                None => continue,
+            };
+
+            if !ext.eq_ignore_ascii_case("txt") {
+                continue;
+            }
+
+            let canonical = path.canonicalize().unwrap_or_else(|_| path.clone());
+            if canonical == *output_path {
+                continue;
+            }
+
+            paths.push(path);
+        }
+    }
+
+    Ok(())
+}
+
 /// Merge all `.txt` files in a folder into one file.
 /// Non-`a-z` chars (after lowercasing) become spaces; consecutive spaces on a line collapse to one.
 /// Files are processed in parallel; results are written in sorted filename order.
@@ -48,15 +90,9 @@ pub fn merge(cfg: MergeConfig, app: AppHandle) -> Result<()> {
         .wrap_err("Merge mode requires `merge.output` path")?;
     let output_path = output.canonicalize().unwrap_or_else(|_| output.clone());
 
-    // Collect sorted .txt paths.
-    let mut paths: Vec<PathBuf> = fs::read_dir(&input)
-        .into_diagnostic()
-        .wrap_err("Failed to read input folder")?
-        .filter_map(|e| e.ok())
-        .map(|e| e.path())
-        .filter(|p| p.extension().and_then(|s| s.to_str()) == Some("txt"))
-        .filter(|path| path.canonicalize().unwrap_or_else(|_| path.clone()) != output_path)
-        .collect();
+    // Collect sorted .txt paths, including files nested under input.
+    let mut paths = Vec::new();
+    collect_input_paths(&input, &output_path, &mut paths)?;
     paths.sort();
 
     tracing::info!(folder = %input.display(), count = paths.len(), "Merging files");
@@ -344,6 +380,32 @@ mod tests {
         .unwrap();
 
         assert_eq!(words, vec!["hello", "world", "don", "t", "a", "i"]);
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn collect_input_paths_checks_nested_txt_files_case_insensitive() {
+        let dir = std::env::temp_dir().join("keyvolve-merge-test-nested");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(dir.join("nested")).unwrap();
+
+        let top = dir.join("top.txt");
+        let nested = dir.join("nested/child.TXT");
+        let skipped_md = dir.join("nested/skip.md");
+        let skipped_bin = dir.join("nested/nope.bin");
+        fs::write(&top, "alpha\n").unwrap();
+        fs::write(&nested, "beta\n").unwrap();
+        fs::write(&skipped_md, "gamma\n").unwrap();
+        fs::write(&skipped_bin, "delta\n").unwrap();
+
+        let mut paths = Vec::new();
+        collect_input_paths(&dir, &dir.join("ignored.txt"), &mut paths).unwrap();
+
+        assert_eq!(paths.len(), 2);
+        paths.sort();
+        assert_eq!(paths[0], top);
+        assert_eq!(paths[1], nested);
 
         let _ = fs::remove_dir_all(&dir);
     }
