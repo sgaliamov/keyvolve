@@ -91,19 +91,13 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
                     }
                 }
                 Mode::Optimize => {
-                    let opt = cfg.optimization;
-                    let keyboard = Keyboard::load(&opt.keyboard)?;
-                    let evaluator = build_evaluator(&keyboard, &opt.corpus_stats, evaluator_cfg)?;
-                    let mut ga = cfg.ga;
-                    ga.ranges = vec![vec![(EMPTY_SLOT, 'z'); 30]];
-                    let mut seed: Vec<_> = vec![];
-                    if let Some(layouts_path) = opt.input.clone() {
-                        let loaded = Layout::load(&layouts_path)?;
-                        info!("Loaded {} seed layouts from file", loaded.len());
-                        seed.extend(loaded.into_iter().map(layout_to_genome));
-                    }
-                    ga.seed = seed;
-                    optimize::optimize(evaluator, ga, opt, app)?;
+                   let opt = cfg.optimization;
+                   let keyboard = Keyboard::load(&opt.keyboard)?;
+                   let evaluator = build_evaluator(&keyboard, &opt.corpus_stats, evaluator_cfg)?;
+                   let mut ga = cfg.ga;
+                   ga.ranges = vec![vec![(EMPTY_SLOT, 'z'); 30]];
+                   ga.seed = load_optimization_seed(opt.input.as_deref())?;
+                   optimize::optimize(evaluator, ga, opt, app)?;
                 }
                 Mode::Synthesise | Mode::Merge | Mode::Frequencies | Mode::Rank | Mode::Stats => {
                     unreachable!()
@@ -167,6 +161,20 @@ fn load_evaluate_batches(eval: &evaluate::EvaluateConfig) -> Result<Vec<(PathBuf
 
 fn should_skip_missing_output_seed(path: &Path, output: Option<&Path>) -> bool {
     output == Some(path) && !path.exists()
+}
+
+fn load_optimization_seed(path: Option<&Path>) -> Result<Vec<Vec<char>>> {
+    let Some(path) = path else {
+        return Ok(Vec::new());
+    };
+    if !path.exists() {
+        warn!(file = %path.display(), "Skipping missing optimization input CSV");
+        return Ok(Vec::new());
+    }
+
+    let loaded = Layout::load(path)?;
+    info!("Loaded {} seed layouts from file", loaded.len());
+    Ok(loaded.into_iter().map(layout_to_genome).collect())
 }
 
 /// Convert a `Layout` into a 30-slot genome; empty slots filled with `EMPTY_SLOT`.
@@ -246,6 +254,17 @@ mod tests {
 
         assert!(batches.is_empty());
 
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn load_optimization_seed_skips_missing_file() {
+        let dir = temp_test_dir("skip-missing-opt-seed");
+        let missing = dir.join("missing.csv");
+
+        let seed = load_optimization_seed(Some(missing.as_path())).unwrap();
+
+        assert!(seed.is_empty());
         fs::remove_dir_all(dir).unwrap();
     }
 

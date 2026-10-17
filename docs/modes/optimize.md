@@ -41,7 +41,7 @@ optimization:
 | --- | --- |
 | `keyboard` | Keyboard effort table used to score variants. |
 | `corpusStats` | Cached corpus stats used by the GA evaluator. |
-| `input` | Seed layout CSVs. Invalid rows are repaired under the current placement rules. |
+| `input` | Seed layout CSVs. Missing files are skipped; invalid rows are repaired under the current placement rules. |
 | `output` | Final CSV written after the run. |
 | `mutationCount` | Mutants created per parent each generation. Default: `10`. |
 | `maxGroups` | Max home-row groups kept in the final output. Default: `10`. |
