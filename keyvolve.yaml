@@ -135,10 +135,10 @@ optimization:
     m: [1, 3, 4, 5, 9, 11, 12, 13, 14]
     g: [1, 3, 4, 5, 9, 11, 12, 13, 14]
     p: [1, 3, 4, 5, 9, 11, 12, 13, 14]
-    j: [0, 4, 10, 11, 12, 14]
-    x: [0, 4, 10, 11, 12, 14]
-    z: [0, 4, 10, 11, 12, 14]
-    q: [0, 4, 10, 11, 12, 14]
+    j: [0, 4, 10, 11, 14]
+    x: [0, 4, 10, 11, 14]
+    z: [0, 4, 10, 11, 14]
+    q: [0, 4, 10, 11, 14]
 
   # Optional: Character pairs that must stay on the same hand (left-left or right-right).
   # Disjoint pairs choose independently; overlapping pairs form one group.
