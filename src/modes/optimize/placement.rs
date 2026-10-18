@@ -44,15 +44,24 @@ impl PlacementConstraints {
                     .count()
             })
             .expect("compiled constraints have a feasible hand combination");
+        let domains = self.oriented_domains(orientation);
         let mut order = std::array::from_fn(|i| i);
         for _ in 0..8 {
             order.shuffle(rng);
-            if let Some(assignment) = match_slots_gap_free(&self.oriented_domains(orientation), &preferred, &order, &self.vertical) {
+            if let Some(assignment) = match_slots_gap_free(&domains, &preferred, &order, &self.vertical) {
                 return to_genome(assignment);
             }
         }
-        let assignment = match_slots_gap_free(&self.oriented_domains(orientation), &preferred, &order, &self.vertical)
-            .expect("preferences cannot invalidate a feasible matching");
+        let assignment = match_slots_gap_free(&domains, &[0; SLOT_COUNT], &order, &self.vertical)
+            .or_else(|| {
+                match_slots_gap_free(
+                    &domains,
+                    &[0; SLOT_COUNT],
+                    &std::array::from_fn(|i| i),
+                    &self.vertical,
+                )
+            })
+            .expect("compiled constraints have a feasible hand combination");
         to_genome(assignment)
     }
 
