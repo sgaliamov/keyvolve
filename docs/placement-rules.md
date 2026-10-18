@@ -107,8 +107,7 @@ Exactly 4 slots end up empty, so:
 - With `allowed._` set, `allowed._` + `blocked` minus frozen slots must give at least 4
   slots.
 
-Known bug: `allowed._` currently accepts slots `15`-`29` (used as-is, not mirrored).
-Tracked in [TASKS.md](../TASKS.md#bugs).
+`allowed._` uses the same half-range as letters: slots `0`-`14`, mirrored to the other hand.
 
 ## Generation and mutation
 

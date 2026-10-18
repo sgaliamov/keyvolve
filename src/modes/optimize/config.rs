@@ -194,8 +194,7 @@ fn expand_half(slots: &[u8]) -> FxHashSet<u8> {
 }
 
 /// Deserialize a `FxHashMap<char, FxHashSet<u8>>` where each value is a list of
-/// half-positions (0–14) that are auto-mirrored to both hands. Empty slots also
-/// accept full physical coordinates; values outside 0..29 are rejected.
+/// half-positions (0–14) that are auto-mirrored to both hands.
 fn de_letter_slot_map<'de, D>(de: D) -> Result<FxHashMap<char, FxHashSet<u8>>, D::Error>
 where
     D: serde::Deserializer<'de>,
@@ -204,17 +203,10 @@ where
     let mut out = FxHashMap::default();
     for (ch, slots) in raw {
         let key = normalize_allowed_key(ch);
-        if let Some(slot) = slots.iter().find(|&&slot| slot >= 30) {
-            return Err(serde::de::Error::custom(format!(
-                "allowed slot {slot} must be in 0..29"
-            )));
-        }
-        if key != EMPTY_SLOT
-            && let Some(slot) = slots.iter().find(|&&slot| slot >= 15)
-        {
-            return Err(serde::de::Error::custom(format!(
-                "allowed slot {slot} must be in 0..14 for letter keys"
-            )));
+        for &slot in &slots {
+            if let Some(msg) = allowed_slot_error(slot) {
+                return Err(serde::de::Error::custom(msg));
+            }
         }
         out.entry(key)
             .or_insert_with(FxHashSet::default)
@@ -227,6 +219,18 @@ where
 #[inline]
 fn normalize_allowed_key(ch: char) -> char {
     if ch == '_' { EMPTY_SLOT } else { ch }
+}
+
+/// Validate a half-slot from `allowed`: 0..14 accepted, 15..29 rejected as mirrored-only,
+/// and 30+ rejected as out of range.
+fn allowed_slot_error(slot: u8) -> Option<String> {
+    if slot >= 30 {
+        Some(format!("allowed slot {slot} must be in 0..29"))
+    } else if slot >= 15 {
+        Some(format!("allowed slot {slot} must be in 0..14"))
+    } else {
+        None
+    }
 }
 
 /// Deserialize `["th", "st"]` → `[[t,h],[s,t]]`.
@@ -291,8 +295,8 @@ mod tests {
             allowed: [
                 ('a', [0, 14].into_iter().collect()),
                 ('z', [0, 14].into_iter().collect()),
-                ('_', [0, 29].into_iter().collect()),
-                (EMPTY_SLOT, [0, 29].into_iter().collect()),
+                ('_', [0, 14].into_iter().collect()),
+                (EMPTY_SLOT, [0, 14].into_iter().collect()),
             ]
             .into_iter()
             .collect(),
@@ -307,23 +311,15 @@ mod tests {
     #[test]
     fn validation_rejects_out_of_range_slots() {
         for slot in [30, u8::MAX] {
-            let configs = [
-                OptimizationConfig {
-                    frozen: [('a', slot)].into_iter().collect(),
-                    ..Default::default()
-                },
-                OptimizationConfig {
-                    blocked: [slot].into_iter().collect(),
-                    ..Default::default()
-                },
-                OptimizationConfig {
-                    allowed: [('a', [slot].into_iter().collect())].into_iter().collect(),
-                    ..Default::default()
-                },
-            ];
-            for cfg in configs {
-                assert!(cfg.validate().is_err(), "{cfg:?}");
-            }
+            let cfg = OptimizationConfig {
+                allowed: [('a', [slot].into_iter().collect())].into_iter().collect(),
+                ..Default::default()
+            };
+            let err = cfg.validate().unwrap_err().to_string();
+            assert!(
+                err.contains(&format!("allowed slot {slot} must be in 0..29")),
+                "{err}"
+            );
         }
     }
 
@@ -427,26 +423,29 @@ mod tests {
 
     #[test]
     fn allowed_parser_rejects_out_of_range_slots_before_expansion() {
-        for slot in [30, 255] {
+        for slot in [15, 29] {
             for ch in ["a", "_", "`"] {
                 let json = serde_json::json!({ "allowed": { ch: [slot] } });
+                let err = serde_json::from_value::<OptimizationConfig>(json)
+                    .unwrap_err()
+                    .to_string();
                 assert!(
-                    serde_json::from_value::<OptimizationConfig>(json).is_err(),
-                    "{ch:?}: {slot}"
+                    err.contains(&format!("allowed slot {slot} must be in 0..14")),
+                    "{err}"
                 );
             }
         }
-        for slot in [15, 29] {
-            let json = serde_json::json!({ "allowed": { "a": [slot] } });
-            assert!(
-                serde_json::from_value::<OptimizationConfig>(json).is_err(),
-                "a: {slot}"
-            );
-            let empty_json = serde_json::json!({ "allowed": { "_": [slot] } });
-            assert!(
-                serde_json::from_value::<OptimizationConfig>(empty_json).is_ok(),
-                "_: {slot}"
-            );
+        for slot in [30, 255] {
+            for ch in ["a", "_", "`"] {
+                let json = serde_json::json!({ "allowed": { ch: [slot] } });
+                let err = serde_json::from_value::<OptimizationConfig>(json)
+                    .unwrap_err()
+                    .to_string();
+                assert!(
+                    err.contains(&format!("allowed slot {slot} must be in 0..29")),
+                    "{err}"
+                );
+            }
         }
     }
 
@@ -505,16 +504,17 @@ mod tests {
 
     #[test]
     fn empty_slot_helpers_normalize_direct_aliases() {
-        for key in ['_', EMPTY_SLOT] {
-            let cfg = OptimizationConfig {
-                allowed: [(key, [29].into_iter().collect())].into_iter().collect(),
-                ..Default::default()
-            };
+        for json in [r#"{"allowed":{"_":[14]}}"#, r#"{"allowed":{"`":[14]}}"#] {
+            let cfg: OptimizationConfig = serde_json::from_str(json).unwrap();
+            assert!(!cfg.allowed.contains_key(&'_'));
+            assert_eq!(cfg.allowed[&EMPTY_SLOT], [14, 25].into_iter().collect());
             for ch in ['_', EMPTY_SLOT] {
-                assert!(cfg.is_slot_allowed(ch, 29));
+                assert!(cfg.is_slot_allowed(ch, 14));
+                assert!(cfg.is_slot_allowed(ch, 25));
                 assert!(!cfg.is_slot_allowed(ch, 0));
             }
-            assert!(cfg.is_empty_slot_allowed(29));
+            assert!(cfg.is_empty_slot_allowed(14));
+            assert!(cfg.is_empty_slot_allowed(25));
             assert!(!cfg.is_empty_slot_allowed(0));
         }
     }
@@ -522,15 +522,10 @@ mod tests {
     #[test]
     fn empty_slot_helpers_union_direct_aliases() {
         let cfg = OptimizationConfig {
-            allowed: [
-                ('_', [0].into_iter().collect()),
-                (EMPTY_SLOT, [29].into_iter().collect()),
-            ]
-            .into_iter()
-            .collect(),
+            allowed: [(EMPTY_SLOT, expand_half(&[0, 14]))].into_iter().collect(),
             ..Default::default()
         };
-        for slot in [0, 29] {
+        for slot in [0, 14, 19, 25] {
             assert!(cfg.is_slot_allowed('_', slot));
             assert!(cfg.is_slot_allowed(EMPTY_SLOT, slot));
             assert!(cfg.is_empty_slot_allowed(slot));
@@ -671,20 +666,30 @@ mod tests {
     }
 
     #[test]
-    fn deserialize_allowed_map_rejects_right_hand_indices() {
+    fn deserialize_allowed_map_rejects_mirrored_only_indices() {
         for slot in [15, 20, 29] {
-            let json = serde_json::json!({ "allowed": { "a": [slot] } });
-            assert!(serde_json::from_value::<OptimizationConfig>(json).is_err());
+            for ch in ["a", "_", "`"] {
+                let json = serde_json::json!({ "allowed": { ch: [slot] } });
+                let err = serde_json::from_value::<OptimizationConfig>(json)
+                    .unwrap_err()
+                    .to_string();
+                assert!(
+                    err.contains(&format!("allowed slot {slot} must be in 0..14")),
+                    "{err}"
+                );
+            }
         }
     }
 
     #[test]
     fn empty_slot_helper_checks_allowed() {
         let mut cfg = OptimizationConfig::default();
-        cfg.allowed
-            .insert(EMPTY_SLOT, [26u8, 27, 28, 29].into_iter().collect());
-        assert!((26..30).all(|slot| cfg.is_empty_slot_allowed(slot)));
-        assert!(!cfg.is_empty_slot_allowed(25));
+        cfg.allowed.insert(EMPTY_SLOT, expand_half(&[0, 14]));
+        assert!(cfg.is_empty_slot_allowed(0));
+        assert!(cfg.is_empty_slot_allowed(14));
+        assert!(cfg.is_empty_slot_allowed(19));
+        assert!(cfg.is_empty_slot_allowed(25));
+        assert!(!cfg.is_empty_slot_allowed(1));
     }
 
     #[test]

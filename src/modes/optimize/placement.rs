@@ -406,7 +406,7 @@ mod tests {
     #[test]
     fn mutation_moves_empties_without_breaking_their_allowed_domain() {
         let constraints =
-            constraints(r#"{"allowed":{"_":[0,1,10,11,18,19,28,29]},"blocked":[29]}"#);
+            constraints(r#"{"allowed":{"_":[0,1,10,11]},"blocked":[29]}"#);
         let mut rng = StdRng::seed_from_u64(42);
         let mut g = constraints.generate(&mut rng);
         let mut patterns = FxHashSet::default();
@@ -475,7 +475,7 @@ mod tests {
     #[test]
     fn current_configuration_survives_repeated_generation_and_mutation() {
         let constraints = constraints(
-            r#"{"blocked":[29],"allowed":{"e":[6,7,8],"_":[0,1,10,11,18,19,28,29],"h":[1,2,3,6,7,8,9,12,13]},"sameSide":["er","th"]}"#,
+            r#"{"blocked":[29],"allowed":{"e":[6,7,8],"_":[0,1,10,11],"h":[1,2,3,6,7,8,9,12,13]},"sameSide":["er","th"]}"#,
         );
         let mut rng = StdRng::seed_from_u64(42);
         for _ in 0..100 {

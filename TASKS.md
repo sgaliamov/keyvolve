@@ -14,10 +14,11 @@
 - [x] Merge extension filter is case-sensitive; accept `.txt` case-insensitively — [doc](docs/modes/merge.md#input-selection).
 - [x] Stats `average_word_length` counts UTF-8 bytes; count characters - [doc](docs/modes/stats.md#what-is-counted).
 - [x] Stats ignores Ctrl+C; stop reading and leave `output` untouched - [doc](docs/modes/stats.md#interruption).
-- [ ] `allowed._` accepts slots 15-29; reject them like letter keys (0-14 only, mirrored) - [doc](docs/placement-rules.md#configuration).
-- [ ] `allowed` slots ≥30 report `must be in 0..29`; any slot outside 0-14 must report `allowed slot N must be in 0..14` for every key, `_` included - [doc](docs/placement-rules.md#startup-checks).
+- [x] `allowed._` accepts slots 15-29; reject them like letter keys (0-14 only, mirrored) - [doc](docs/placement-rules.md#configuration).
+- [x] `allowed` slots ≥30 report `must be in 0..29`; any slot outside 0-14 must report `allowed slot N must be in 0..14` for every key, `_` included - [doc](docs/placement-rules.md#startup-checks).
 - [ ] `signed_imbalance_percent` is not mirror-symmetric (`L = 2R` → +100, `R = 2L` → -50); swapping hands must flip only the sign, so mirror twins score identically - [doc](docs/evaluation/penalty.md#metric-catalog).
 - [ ] Evaluate with `output` set overwrites `output` with partial results on Ctrl+C; an interrupted run must write nothing - [doc](docs/evaluation/evaluate.md#interruption).
 - [ ] Review the console output format in `evaluate` and ensure each printed row is readable and the penalty breakdown is still useful - [doc](docs/evaluation/evaluate.md#console).
 - [ ] Rename to `keyvolve` to `ikeya`.
 - [ ] Downloadable releases and pipe.
+- [ ] clean not used modes
