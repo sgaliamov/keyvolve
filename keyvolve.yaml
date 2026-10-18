@@ -146,7 +146,7 @@ optimization:
 
   # Optional: Character pairs that may not align vertically in the same column on a hand.
   # Entries are defined for the left hand; the right hand mirrors the rule automatically.
-  vertical: ['ng', 'nd', 'iw']
+  # vertical: ['iw']
 
   # Optional: Characters restricted to the left hand (unless frozen elsewhere).
   # left: [x, c, v, z, s, a]
@@ -275,7 +275,7 @@ evaluate:
   # Number of best layouts printed to stdout.
   print: 5
   # Orientation used when saving layouts; left mirrors twin layouts.
-  eSide: any
+  eSide: left
 
 # ============================================================================
 # MODE: Operation mode for this run

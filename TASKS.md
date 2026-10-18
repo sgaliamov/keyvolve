@@ -4,7 +4,7 @@
 
 - [x] Forbid gaps inside row segments: empties only at segment ends (`g_jv_` invalid); reject configs where a gap is unavoidable - [doc](docs/placement-rules.md#row-gaps).
 - [ ] Rank flat CSV: drop the report stem from the name; write `bigrams.<ext>` in the `report` folder instead of `<report stem>.bigrams.<ext>` - [doc](docs/modes/rank.md#output).
-- [ ] Stats mode should write separate CSV reports for first-letter and aggregated bigram distributions so people can inspect them without JSON - [doc](docs/modes/stats.md#output).
+- [ ] Stats mode should write human-readable CSV reports next to the JSON so people can inspect the corpus without JSON: letters, ordered bigrams (`th` ≠ `ht`) and first letters. Replaces the stale `data/stats/merged.letters.csv` and `merged.bigrams.csv` (leftovers of the old `synthesise`: orig/synth columns, unordered pairs) - [doc](docs/modes/stats.md#output).
 - [x] Remove `stats.minFrequency`; all bigrams and first letters must be counted, without threshold filtering - [doc](docs/modes/stats.md#configuration).
 
 ## Bugs
