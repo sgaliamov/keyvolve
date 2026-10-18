@@ -23,7 +23,7 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
             merge::merge(cfg.merge, app)?;
         }
         Mode::Stats => {
-            stats::stats(cfg.stats)?;
+            stats::stats(cfg.stats, app)?;
         }
         Mode::Synthesise => {
             synthesise::synthesise(cfg.synthesise)?;

@@ -129,9 +129,6 @@ rebuilding stats, re-run `evaluate` on those CSVs before comparing them with new
 Ctrl+C stops reading. `output` is written only after the whole input is counted, so an
 interrupted run leaves a previous `output` intact.
 
-Known bug: stats mode currently ignores Ctrl+C and runs to completion. Tracked in
-[TASKS.md](../../TASKS.md#bugs).
-
 ## Next steps
 
 Set `corpusStats` in `evaluate` and `optimization` to `stats.output`, then run
