@@ -114,17 +114,18 @@ impl PlacementConstraints {
                 .groups
                 .iter()
                 .all(|&group| group & left == 0 || group & left == group)
-            && self.vertical.iter().all(|&[a, b]| !same_column_on_hands(genome, a, b))
-            && genome
-                .chunks_exact(5)
-                .all(|segment| {
-                    let positions: Vec<_> = segment
-                        .iter()
-                        .enumerate()
-                        .filter_map(|(idx, &ch)| (ch != EMPTY_SLOT).then_some(idx))
-                        .collect();
-                    positions.windows(2).all(|pair| pair[1] == pair[0] + 1)
-                })
+            && self
+                .vertical
+                .iter()
+                .all(|&[a, b]| !same_column_on_hands(genome, a, b))
+            && genome.chunks_exact(5).all(|segment| {
+                let positions: Vec<_> = segment
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(idx, &ch)| (ch != EMPTY_SLOT).then_some(idx))
+                    .collect();
+                positions.windows(2).all(|pair| pair[1] == pair[0] + 1)
+            })
     }
 
     /// Restrict each connected group's letter domains to its selected hand.
@@ -229,7 +230,8 @@ fn same_column_on_hands(genome: &[char], a: char, b: char) -> bool {
         .collect::<Vec<_>>();
 
     let left_has_same_column = left_match.len() == 2 && left_match[0].0 % 5 == left_match[1].0 % 5;
-    let right_has_same_column = right_match.len() == 2 && (right_match[0].0 - 15) % 5 == (right_match[1].0 - 15) % 5;
+    let right_has_same_column =
+        right_match.len() == 2 && (right_match[0].0 - 15) % 5 == (right_match[1].0 - 15) % 5;
     left_has_same_column || right_has_same_column
 }
 

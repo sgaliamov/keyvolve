@@ -91,13 +91,13 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
                     }
                 }
                 Mode::Optimize => {
-                   let opt = cfg.optimization;
-                   let keyboard = Keyboard::load(&opt.keyboard)?;
-                   let evaluator = build_evaluator(&keyboard, &opt.corpus_stats, evaluator_cfg)?;
-                   let mut ga = cfg.ga;
-                   ga.ranges = vec![vec![(EMPTY_SLOT, 'z'); 30]];
-                   ga.seed = load_optimization_seed(opt.input.as_deref())?;
-                   optimize::optimize(evaluator, ga, opt, app)?;
+                    let opt = cfg.optimization;
+                    let keyboard = Keyboard::load(&opt.keyboard)?;
+                    let evaluator = build_evaluator(&keyboard, &opt.corpus_stats, evaluator_cfg)?;
+                    let mut ga = cfg.ga;
+                    ga.ranges = vec![vec![(EMPTY_SLOT, 'z'); 30]];
+                    ga.seed = load_optimization_seed(opt.input.as_deref())?;
+                    optimize::optimize(evaluator, ga, opt, app)?;
                 }
                 Mode::Synthesise | Mode::Merge | Mode::Frequencies | Mode::Rank | Mode::Stats => {
                     unreachable!()

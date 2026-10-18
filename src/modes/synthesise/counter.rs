@@ -223,7 +223,7 @@ impl CorpusStatsCounter {
         }
 
         self.total_words += 1;
-        self.total_word_len += word.len() as u64;
+        self.total_word_len += word.chars().count() as u64;
 
         let mut chars = word.chars();
         if let Some(first) = chars.next() {
@@ -316,6 +316,14 @@ mod tests {
         assert_eq!(stats.bigrams[&['a', 'c']], 0.5);
         assert_eq!(stats.first_letters[&'a'], 1.0);
         assert_eq!(stats.average_word_length, 2.0);
+    }
+
+    #[test]
+    fn average_word_length_counts_characters() {
+        let words = vec!["é".to_owned(), "漢字".to_owned()];
+        let stats = calculate_stats(&words);
+
+        assert_eq!(stats.average_word_length, 1.5);
     }
 
     #[test]

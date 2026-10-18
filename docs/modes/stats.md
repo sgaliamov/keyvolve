@@ -79,10 +79,6 @@ Example input `the tea a`:
 | `average_word_length` | 7/3 ≈ 2.33                         |
 | `word_count`          | 3                                  |
 
-Known bug: `average_word_length` currently counts UTF-8 bytes, not characters, so it is
-inflated when words contain non-ASCII characters. ASCII input (merge output) is unaffected.
-Tracked in [TASKS.md](../../TASKS.md#bugs).
-
 ## Frequency filtering
 
 After counting:

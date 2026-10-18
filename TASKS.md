@@ -12,7 +12,7 @@
 - [x] Merge drops single-letter words; preserve them so letter and first-letter stats include them — [doc](docs/modes/merge.md#cleaning-rules).
 - [x] Merge skips subfolders; scan the input folder recursively for matching files — [doc](docs/modes/merge.md#input-selection).
 - [x] Merge extension filter is case-sensitive; accept `.txt` case-insensitively — [doc](docs/modes/merge.md#input-selection).
-- [ ] Stats `average_word_length` counts UTF-8 bytes; count characters - [doc](docs/modes/stats.md#what-is-counted).
+- [x] Stats `average_word_length` counts UTF-8 bytes; count characters - [doc](docs/modes/stats.md#what-is-counted).
 - [ ] Stats ignores Ctrl+C; stop reading and leave `output` untouched - [doc](docs/modes/stats.md#interruption).
 - [ ] `allowed._` accepts slots 15-29; reject them like letter keys (0-14 only, mirrored) - [doc](docs/placement-rules.md#configuration).
 - [ ] `allowed` slots ≥30 report `must be in 0..29`; any slot outside 0-14 must report `allowed slot N must be in 0..14` for every key, `_` included - [doc](docs/placement-rules.md#startup-checks).
