@@ -396,7 +396,7 @@ mod tests {
 
     #[test]
     fn generation_and_mutation_keep_each_independent_pair_on_one_hand() {
-        let constraints = constraints(r#"{"sameSide":["th","re"]}"#);
+        let constraints = constraints(r#"{"pairs":["th","re"]}"#);
         let mut rng = StdRng::seed_from_u64(12);
         let mut orientations = FxHashSet::default();
         for _ in 0..100 {
@@ -425,7 +425,7 @@ mod tests {
 
     #[test]
     fn mutation_can_switch_independent_group_hands() {
-        let constraints = constraints(r#"{"sameSide":["ab","cd"]}"#);
+        let constraints = constraints(r#"{"pairs":["ab","cd"]}"#);
         let mut rng = StdRng::seed_from_u64(51);
         let mut g = alphabet();
         let mut orientations = FxHashSet::default();
@@ -440,7 +440,7 @@ mod tests {
     #[test]
     fn overlapping_pairs_and_frozen_anchors_survive_mutation_and_repair() {
         let constraints = constraints(
-            r#"{"sameSide":["ab","cd","bc","ba","th"],"frozen":{"a":0,"t":19},"allowed":{"c":[1,2]}}"#,
+            r#"{"pairs":["ab","cd","bc","ba","th"],"frozen":{"a":0,"t":19},"allowed":{"c":[1,2]}}"#,
         );
         let mut rng = StdRng::seed_from_u64(14);
         let mut g = constraints.repair(&alphabet(), &mut rng);
@@ -480,7 +480,7 @@ mod tests {
     #[test]
     fn repair_handles_split_pairs_forbidden_empties_and_malformed_genomes() {
         let constraints =
-            constraints(r#"{"sameSide":["th","st"],"allowed":{"_":[0,10]},"frozen":{"t":5}}"#);
+            constraints(r#"{"pairs":["th","st"],"allowed":{"_": [0,10]},"frozen":{"t":5}}"#);
         let mut rng = StdRng::seed_from_u64(9);
         for input in [
             alphabet().to_vec(),
@@ -528,7 +528,7 @@ mod tests {
     #[test]
     fn current_configuration_survives_repeated_generation_and_mutation() {
         let constraints = constraints(
-            r#"{"blocked":[29],"allowed":{"e":[6,7,8],"_":[0,1,10,11],"h":[1,2,3,6,7,8,9,12,13]},"sameSide":["er","th"]}"#,
+            r#"{"blocked":[29],"allowed":{"e":[6,7,8],"_": [0,1,10,11],"h":[1,2,3,6,7,8,9,12,13]},"pairs":["er","th"]}"#,
         );
         let mut rng = StdRng::seed_from_u64(42);
         for _ in 0..100 {

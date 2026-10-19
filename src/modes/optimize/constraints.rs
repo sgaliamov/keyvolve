@@ -51,7 +51,7 @@ impl PlacementConstraints {
             }
         }
 
-        let groups = connected_groups(&opt.same_side);
+        let groups = connected_groups(&opt.pairs);
         let frozen = opt
             .frozen
             .keys()
@@ -76,7 +76,7 @@ impl PlacementConstraints {
         if constraints.orientations.is_empty() {
             return Err(miette!(
                 "optimization constraints have no complete layout: check frozen pins, blocked/allowed slots, \
-                 hand restrictions, sameSide groups and vertical pairs; all 26 letters and four empties need distinct slots"
+                 hand restrictions, pairs groups and vertical pairs; all 26 letters and four empties need distinct slots"
             ));
         }
         Ok(constraints)
@@ -295,8 +295,8 @@ mod tests {
         for json in [
             r#"{"blocked":[0,1,2,3,4]}"#,
             r#"{"allowed":{"_":[14]}}"#,
-            r#"{"frozen":{"t":0,"h":15},"sameSide":["th"]}"#,
-            r#"{"left":["t"],"right":["h"],"sameSide":["th"]}"#,
+            r#"{"frozen":{"t":0,"h":15},"pairs":["th"]}"#,
+            r#"{"left":["t"],"right":["h"],"pairs":["th"]}"#,
             r#"{"allowed":{"a":[0],"b":[0],"c":[0]}}"#,
             r#"{"left":["a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p"]}"#,
         ] {
@@ -336,7 +336,7 @@ mod tests {
     #[test]
     fn same_side_and_vertical_constraints_still_generate_valid_layouts() {
         let opt: OptimizationConfig = serde_json::from_str(
-            r#"{"sameSide":["th","er"],"vertical":["nd","be","th","er","he","is","ng"]}"#,
+            r#"{"pairs":["th","er"],"vertical":["nd","be","th","er","he","is","ng"]}"#,
         )
         .unwrap();
         let constraints = opt.compile().unwrap();
@@ -348,7 +348,7 @@ mod tests {
     #[test]
     fn overlapping_pairs_merge_but_disjoint_pairs_remain_independent() {
         let opt: OptimizationConfig =
-            serde_json::from_str(r#"{"sameSide":["ab","cd","bc","ba","th"]}"#).unwrap();
+            serde_json::from_str(r#"{"pairs":["ab","cd","bc","ba","th"]}"#).unwrap();
         let constraints = opt.compile().unwrap();
         assert_eq!(constraints.groups.len(), 2);
         assert!(constraints.groups.contains(&0b1111));
@@ -358,7 +358,7 @@ mod tests {
     #[test]
     fn maximal_pair_count_prunes_infeasible_hand_capacities() {
         let opt = OptimizationConfig {
-            same_side: (0..LETTER_COUNT)
+            pairs: (0..LETTER_COUNT)
                 .step_by(2)
                 .map(|i| [letter(i), letter(i + 1)])
                 .collect(),

@@ -141,13 +141,9 @@ optimization:
     z: [0, 4, 10, 11, 14]
     q: [0, 4, 10, 11, 14]
 
-  # Optional: Character pairs that may not be pressed by the same finger.
-  # Entries are defined for one hand and mirrored automatically to the other hand.
-  pairs: ['th', 'er']
-
-  # Optional: Character pairs that must stay on the same hand (left-left or right-right).
+  # Optional: Character pairs that stay on one hand and may not be pressed by the same finger.
   # Disjoint pairs choose independently; overlapping pairs form one group.
-  # sameSide: ['th', 'er']
+  pairs: ['th', 'er']
 
   # Optional: Character pairs that may not align vertically in the same column on a hand.
   # Entries are defined for the left hand; the right hand mirrors the rule automatically.

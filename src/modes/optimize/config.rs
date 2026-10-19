@@ -40,15 +40,11 @@ pub struct OptimizationConfig {
     #[serde(default)]
     pub right: FxHashSet<char>,
 
-    /// Pairs that must not share the same finger when pressed.
+    /// Pairs that stay on one hand and may not be pressed by the same finger.
+    /// Disjoint pairs choose independently; overlapping pairs form one group.
     /// Format: `["th", "st"]`.
     #[serde(default, deserialize_with = "de_same_side_pairs")]
     pub pairs: Vec<[char; 2]>,
-
-    /// Each pair shares a hand; disjoint pairs choose independently, overlaps form groups.
-    /// Format: `["th", "st"]`.
-    #[serde(default, deserialize_with = "de_same_side_pairs")]
-    pub same_side: Vec<[char; 2]>,
 
     /// Letter pairs that may not share a column when stacked vertically on the same hand.
     /// Format: `["nd", "mb"]`. Entries describe the left hand; the mirrored right hand is checked too.
@@ -119,12 +115,6 @@ impl OptimizationConfig {
             miette::ensure!(
                 a.is_ascii_lowercase() && b.is_ascii_lowercase() && a != b,
                 "pair {a:?}, {b:?} must contain two distinct lowercase letters a-z"
-            );
-        }
-        for &[a, b] in &self.same_side {
-            miette::ensure!(
-                a.is_ascii_lowercase() && b.is_ascii_lowercase() && a != b,
-                "same-side pair {a:?}, {b:?} must contain two distinct lowercase letters a-z"
             );
         }
         for &[a, b] in &self.vertical {
@@ -285,7 +275,7 @@ mod tests {
 
     #[test]
     fn pair_parser_rejects_extra_characters() {
-        assert!(serde_json::from_str::<OptimizationConfig>(r#"{"sameSide":["the"]}"#).is_err());
+        assert!(serde_json::from_str::<OptimizationConfig>(r#"{"pairs":["the"]}"#).is_err());
     }
 
     #[test]
@@ -313,7 +303,7 @@ mod tests {
             .collect(),
             left: ['a'].into_iter().collect(),
             right: ['z'].into_iter().collect(),
-            same_side: vec![['a', 'z']],
+            pairs: vec![['a', 'z']],
             ..Default::default()
         };
         assert!(cfg.validate().is_ok());
@@ -398,7 +388,7 @@ mod tests {
     fn validation_rejects_malformed_same_side_pairs() {
         for pair in [['a', 'a'], ['A', 'b'], ['a', '_'], ['a', 'é'], ['`', 'a']] {
             let cfg = OptimizationConfig {
-                same_side: vec![pair],
+                pairs: vec![pair],
                 ..Default::default()
             };
             assert!(cfg.validate().is_err(), "{pair:?}");
@@ -408,8 +398,8 @@ mod tests {
     #[test]
     fn duplicate_and_reversed_pairs_are_valid() {
         let cfg: OptimizationConfig =
-            serde_json::from_str(r#"{"sameSide":["th","ht","th"]}"#).unwrap();
-        assert_eq!(cfg.same_side, vec![['t', 'h'], ['h', 't'], ['t', 'h']]);
+            serde_json::from_str(r#"{"pairs":["th","ht","th"]}"#).unwrap();
+        assert_eq!(cfg.pairs, vec![['t', 'h'], ['h', 't'], ['t', 'h']]);
         assert!(cfg.validate().is_ok());
     }
 
@@ -423,7 +413,7 @@ mod tests {
     #[test]
     fn pair_parser_rejects_malformed_pairs() {
         for pair in ["", "t", "tt", "Th", "té", "_h", "`h", "th "] {
-            let json = serde_json::json!({ "sameSide": [pair] });
+            let json = serde_json::json!({ "pairs": [pair] });
             assert!(
                 serde_json::from_value::<OptimizationConfig>(json).is_err(),
                 "{pair:?}"
@@ -434,7 +424,7 @@ mod tests {
             serde_json::json!(["t", "h"]),
             serde_json::json!(7),
         ] {
-            let json = serde_json::json!({ "sameSide": [value] });
+            let json = serde_json::json!({ "pairs": [value] });
             assert!(serde_json::from_value::<OptimizationConfig>(json).is_err());
         }
     }
@@ -711,10 +701,10 @@ mod tests {
     }
 
     #[test]
-    fn deserialize_same_side() {
-        let json = r#"{"sameSide": ["th", "st"]}"#;
+    fn deserialize_pairs() {
+        let json = r#"{"pairs": ["th", "st"]}"#;
         let cfg: OptimizationConfig = serde_json::from_str(json).unwrap();
-        assert_eq!(cfg.same_side, vec![['t', 'h'], ['s', 't']]);
+        assert_eq!(cfg.pairs, vec![['t', 'h'], ['s', 't']]);
     }
 
     #[test]

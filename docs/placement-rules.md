@@ -43,8 +43,7 @@ optimization:
 | `allowed`  | none    | `{ key: [slots] }`, slots `0`-`14`. Each slot also allows its mirror. Key `_` (or `` ` ``) sets where empties may go.         |
 | `left`     | none    | Letters restricted to slots `0`-`14`. Not mirrored.                                                                           |
 | `right`    | none    | Letters restricted to slots `15`-`29`. Not mirrored.                                                                          |
-| `pairs`    | none    | Two-letter strings. The pair may not be pressed by the same finger on either hand.                                             |
-| `sameSide` | none    | Two-letter strings. Both letters of each pair sit on one hand.                                                                |
+| `pairs`    | none    | Two-letter strings. Each pair must stay on one hand and may not be pressed by the same finger on either hand.                |
 | `vertical` | none    | Two-letter strings. The pair may not share a column on either hand; entries are written for the left hand and mirrored to the right. |
 
 Without an `allowed` entry, a letter or empty may go anywhere the other rules permit.
@@ -57,12 +56,10 @@ Without an `allowed` entry, a letter or empty may go anywhere the other rules pe
    `left`/`right` hand.
 3. With `allowed._` set, empties go only to `allowed._` or `blocked` slots. `allowed._`
    permits, it does not force: a listed slot may hold a letter.
-4. `pairs`: each pair may not be pressed by the same finger on either hand. This is a
-   hard adjacency rule, independent of `sameSide` hand grouping.
-5. `sameSide`: each pair picks a hand independently. Pairs sharing a letter merge into one
-   group (`th` + `st` → `t`, `h`, `s` on one hand). A frozen letter fixes the hand of its
-   group.
-6. `vertical`: a listed pair may not sit in the same column on either hand. Entries are
+4. `pairs`: each pair stays on one hand and may not be pressed by the same finger on
+   either hand. Pairs sharing a letter merge into one group (`th` + `st` → `t`, `h`, `s`
+   on one hand). A frozen letter fixes the hand of its group.
+5. `vertical`: a listed pair may not sit in the same column on either hand. Entries are
    defined for the left hand and mirrored automatically to the right. For example, `nd` cannot
    be in slots `8` and `13` on the left, or their mirrored slots on the right.
 6. No gaps in the middle of a row segment. Empties may only sit at the ends of a segment,
