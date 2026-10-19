@@ -18,6 +18,7 @@ pub struct PlacementConstraints {
     pub(super) orientations: Vec<u16>,
     pub(super) units: Vec<u32>,
     pub(super) vertical: Vec<[char; 2]>,
+    pub(super) pairs: Vec<[char; 2]>,
 }
 
 impl PlacementConstraints {
@@ -69,6 +70,7 @@ impl PlacementConstraints {
             orientations: Vec::new(),
             units,
             vertical: opt.vertical.clone(),
+            pairs: opt.pairs.clone(),
         };
         constraints.collect_orientations(0, 0, domains);
         if constraints.orientations.is_empty() {
@@ -118,6 +120,10 @@ impl PlacementConstraints {
                 .vertical
                 .iter()
                 .all(|&[a, b]| !same_column_on_hands(genome, a, b))
+            && self
+                .pairs
+                .iter()
+                .all(|&[a, b]| !same_finger_on_hands(genome, a, b))
             && genome.chunks_exact(5).all(|segment| {
                 let positions: Vec<_> = segment
                     .iter()
@@ -143,7 +149,7 @@ impl PlacementConstraints {
     /// Enumerate only hand combinations that admit a complete slot matching.
     fn collect_orientations(&mut self, index: usize, orientation: u16, domains: [u32; SLOT_COUNT]) {
         let order = std::array::from_fn(|i| i);
-        if match_slots_gap_free(&domains, &[0; SLOT_COUNT], &order, &self.vertical).is_none() {
+        if match_slots_gap_free(&domains, &[0; SLOT_COUNT], &order, &self.vertical, &self.pairs).is_none() {
             return;
         }
         let Some(&group) = self.groups.get(index) else {
@@ -233,6 +239,26 @@ fn same_column_on_hands(genome: &[char], a: char, b: char) -> bool {
     let right_has_same_column =
         right_match.len() == 2 && (right_match[0].0 - 15) % 5 == (right_match[1].0 - 15) % 5;
     left_has_same_column || right_has_same_column
+}
+
+fn same_finger_on_hands(genome: &[char], a: char, b: char) -> bool {
+    let a_index = letter_index(a).unwrap();
+    let b_index = letter_index(b).unwrap();
+    let left = genome.iter().enumerate().take(15);
+    let right = genome.iter().enumerate().skip(15).take(15);
+    let left_slots = left.filter_map(|(slot, &ch)| {
+        let token = letter_index(ch)?;
+        (token == a_index || token == b_index).then_some(slot)
+    });
+    let right_slots = right.filter_map(|(slot, &ch)| {
+        let token = letter_index(ch)?;
+        (token == a_index || token == b_index).then_some(slot)
+    });
+    let left_pair = left_slots.collect::<Vec<_>>();
+    let right_pair = right_slots.collect::<Vec<_>>();
+    let same_left = left_pair.len() == 2 && left_pair[0] % 5 == left_pair[1] % 5;
+    let same_right = right_pair.len() == 2 && (right_pair[0] - 15) % 5 == (right_pair[1] - 15) % 5;
+    same_left || same_right
 }
 
 #[cfg(test)]

@@ -16,12 +16,12 @@ impl PlacementConstraints {
         let mut order = std::array::from_fn(|i| i);
         for _ in 0..8 {
             order.shuffle(rng);
-            if let Some(assignment) = match_slots_gap_free(&domains, &[0; SLOT_COUNT], &order, &self.vertical) {
+            if let Some(assignment) = match_slots_gap_free(&domains, &[0; SLOT_COUNT], &order, &self.vertical, &self.pairs) {
                 return to_genome(assignment);
             }
         }
         let order = std::array::from_fn(|i| i);
-        let assignment = match_slots_gap_free(&domains, &[0; SLOT_COUNT], &order, &self.vertical)
+        let assignment = match_slots_gap_free(&domains, &[0; SLOT_COUNT], &order, &self.vertical, &self.pairs)
             .expect("selected hand combination must admit a complete matching");
         to_genome(assignment)
     }
@@ -48,17 +48,18 @@ impl PlacementConstraints {
         let mut order = std::array::from_fn(|i| i);
         for _ in 0..8 {
             order.shuffle(rng);
-            if let Some(assignment) = match_slots_gap_free(&domains, &preferred, &order, &self.vertical) {
+            if let Some(assignment) = match_slots_gap_free(&domains, &preferred, &order, &self.vertical, &self.pairs) {
                 return to_genome(assignment);
             }
         }
-        let assignment = match_slots_gap_free(&domains, &[0; SLOT_COUNT], &order, &self.vertical)
+        let assignment = match_slots_gap_free(&domains, &[0; SLOT_COUNT], &order, &self.vertical, &self.pairs)
             .or_else(|| {
                 match_slots_gap_free(
                     &domains,
                     &[0; SLOT_COUNT],
                     &std::array::from_fn(|i| i),
                     &self.vertical,
+                    &self.pairs,
                 )
             })
             .expect("compiled constraints have a feasible hand combination");
@@ -119,11 +120,11 @@ impl PlacementConstraints {
             }
             for _ in 0..8 {
                 order.shuffle(rng);
-                if let Some(assignment) = match_slots_gap_free(&domains, &[0; SLOT_COUNT], &order, &self.vertical) {
+                if let Some(assignment) = match_slots_gap_free(&domains, &[0; SLOT_COUNT], &order, &self.vertical, &self.pairs) {
                     return Some(to_genome(assignment));
                 }
             }
-            if let Some(assignment) = match_slots_gap_free(&domains, &[0; SLOT_COUNT], &std::array::from_fn(|i| i), &self.vertical) {
+            if let Some(assignment) = match_slots_gap_free(&domains, &[0; SLOT_COUNT], &std::array::from_fn(|i| i), &self.vertical, &self.pairs) {
                 return Some(to_genome(assignment));
             }
         }
@@ -162,6 +163,7 @@ pub fn match_slots_gap_free(
     preferred: &[u32; SLOT_COUNT],
     order: &[usize; SLOT_COUNT],
     vertical: &[[char; 2]],
+    pairs: &[[char; 2]],
 ) -> Option<[usize; SLOT_COUNT]> {
     for reverse in [false, true] {
         let mut order = *order;
@@ -170,7 +172,7 @@ pub fn match_slots_gap_free(
         }
         for _ in 0..SLOT_COUNT {
             if let Some(found) = match_slots(domains, preferred, &order) {
-                if has_no_row_gaps(found) && has_no_vertical_pairs(found, vertical) {
+            if has_no_row_gaps(found) && has_no_vertical_pairs(found, vertical) && has_no_same_finger_pairs(found, pairs) {
                     return Some(found);
                 }
             }
@@ -297,6 +299,35 @@ fn has_no_vertical_pairs(assignment: [usize; SLOT_COUNT], pairs: &[[char; 2]]) -
     true
 }
 
+fn has_no_same_finger_pairs(assignment: [usize; SLOT_COUNT], pairs: &[[char; 2]]) -> bool {
+    for &[a, b] in pairs {
+        let a_token = letter_index(a).unwrap();
+        let b_token = letter_index(b).unwrap();
+        let a_slot = assignment.iter().position(|&token| token == a_token);
+        let b_slot = assignment.iter().position(|&token| token == b_token);
+        let Some(a_slot) = a_slot else {
+            continue;
+        };
+        let Some(b_slot) = b_slot else {
+            continue;
+        };
+        let same_hand = (a_slot < 15) == (b_slot < 15);
+        let same_finger = same_hand && logical_finger(a_slot as u8) == logical_finger(b_slot as u8);
+        if same_finger {
+            return false;
+        }
+    }
+    true
+}
+
+fn logical_finger(slot: u8) -> usize {
+    if slot < 15 {
+        (slot % 5) as usize
+    } else {
+        (4 - (slot % 5)) as usize
+    }
+}
+
 /// Collect only recognizable position hints, accepting underscore at input boundaries.
 fn position_hints(genome: &[char]) -> [u32; SLOT_COUNT] {
     let mut hints = [0; SLOT_COUNT];
@@ -377,6 +408,19 @@ mod tests {
             }
         }
         assert_eq!(orientations.len(), 4);
+    }
+
+    #[test]
+    fn same_finger_pairs_are_rejected_in_generated_layouts() {
+        let constraints = constraints(r#"{"pairs":["ab"]}"#);
+        let mut rng = StdRng::seed_from_u64(9);
+        for _ in 0..100 {
+            let g = constraints.generate(&mut rng);
+            assert!(constraints.is_genome_valid(&g));
+            let a = slot(&g, 'a');
+            let b = slot(&g, 'b');
+            assert!(!((a < 15) == (b < 15) && (a % 5 == b % 5)));
+        }
     }
 
     #[test]

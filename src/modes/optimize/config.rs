@@ -40,6 +40,11 @@ pub struct OptimizationConfig {
     #[serde(default)]
     pub right: FxHashSet<char>,
 
+    /// Pairs that must not share the same finger when pressed.
+    /// Format: `["th", "st"]`.
+    #[serde(default, deserialize_with = "de_same_side_pairs")]
+    pub pairs: Vec<[char; 2]>,
+
     /// Each pair shares a hand; disjoint pairs choose independently, overlaps form groups.
     /// Format: `["th", "st"]`.
     #[serde(default, deserialize_with = "de_same_side_pairs")]
@@ -109,6 +114,12 @@ impl OptimizationConfig {
                     "{side} key {ch:?} must be a lowercase letter a-z"
                 );
             }
+        }
+        for &[a, b] in &self.pairs {
+            miette::ensure!(
+                a.is_ascii_lowercase() && b.is_ascii_lowercase() && a != b,
+                "pair {a:?}, {b:?} must contain two distinct lowercase letters a-z"
+            );
         }
         for &[a, b] in &self.same_side {
             miette::ensure!(
@@ -399,6 +410,13 @@ mod tests {
         let cfg: OptimizationConfig =
             serde_json::from_str(r#"{"sameSide":["th","ht","th"]}"#).unwrap();
         assert_eq!(cfg.same_side, vec![['t', 'h'], ['h', 't'], ['t', 'h']]);
+        assert!(cfg.validate().is_ok());
+    }
+
+    #[test]
+    fn pairs_field_accepts_same_finger_constraints() {
+        let cfg: OptimizationConfig = serde_json::from_str(r#"{"pairs":["th","st"]}"#).unwrap();
+        assert_eq!(cfg.pairs, vec![['t', 'h'], ['s', 't']]);
         assert!(cfg.validate().is_ok());
     }
 
