@@ -16,13 +16,25 @@ impl PlacementConstraints {
         let mut order = std::array::from_fn(|i| i);
         for _ in 0..8 {
             order.shuffle(rng);
-            if let Some(assignment) = match_slots_gap_free(&domains, &[0; SLOT_COUNT], &order, &self.vertical, &self.pairs) {
+            if let Some(assignment) = match_slots_gap_free(
+                &domains,
+                &[0; SLOT_COUNT],
+                &order,
+                &self.vertical,
+                &self.pairs,
+            ) {
                 return to_genome(assignment);
             }
         }
         let order = std::array::from_fn(|i| i);
-        let assignment = match_slots_gap_free(&domains, &[0; SLOT_COUNT], &order, &self.vertical, &self.pairs)
-            .expect("selected hand combination must admit a complete matching");
+        let assignment = match_slots_gap_free(
+            &domains,
+            &[0; SLOT_COUNT],
+            &order,
+            &self.vertical,
+            &self.pairs,
+        )
+        .expect("selected hand combination must admit a complete matching");
         to_genome(assignment)
     }
 
@@ -48,21 +60,29 @@ impl PlacementConstraints {
         let mut order = std::array::from_fn(|i| i);
         for _ in 0..8 {
             order.shuffle(rng);
-            if let Some(assignment) = match_slots_gap_free(&domains, &preferred, &order, &self.vertical, &self.pairs) {
+            if let Some(assignment) =
+                match_slots_gap_free(&domains, &preferred, &order, &self.vertical, &self.pairs)
+            {
                 return to_genome(assignment);
             }
         }
-        let assignment = match_slots_gap_free(&domains, &[0; SLOT_COUNT], &order, &self.vertical, &self.pairs)
-            .or_else(|| {
-                match_slots_gap_free(
-                    &domains,
-                    &[0; SLOT_COUNT],
-                    &std::array::from_fn(|i| i),
-                    &self.vertical,
-                    &self.pairs,
-                )
-            })
-            .expect("compiled constraints have a feasible hand combination");
+        let assignment = match_slots_gap_free(
+            &domains,
+            &[0; SLOT_COUNT],
+            &order,
+            &self.vertical,
+            &self.pairs,
+        )
+        .or_else(|| {
+            match_slots_gap_free(
+                &domains,
+                &[0; SLOT_COUNT],
+                &std::array::from_fn(|i| i),
+                &self.vertical,
+                &self.pairs,
+            )
+        })
+        .expect("compiled constraints have a feasible hand combination");
         to_genome(assignment)
     }
 
@@ -120,11 +140,23 @@ impl PlacementConstraints {
             }
             for _ in 0..8 {
                 order.shuffle(rng);
-                if let Some(assignment) = match_slots_gap_free(&domains, &[0; SLOT_COUNT], &order, &self.vertical, &self.pairs) {
+                if let Some(assignment) = match_slots_gap_free(
+                    &domains,
+                    &[0; SLOT_COUNT],
+                    &order,
+                    &self.vertical,
+                    &self.pairs,
+                ) {
                     return Some(to_genome(assignment));
                 }
             }
-            if let Some(assignment) = match_slots_gap_free(&domains, &[0; SLOT_COUNT], &std::array::from_fn(|i| i), &self.vertical, &self.pairs) {
+            if let Some(assignment) = match_slots_gap_free(
+                &domains,
+                &[0; SLOT_COUNT],
+                &std::array::from_fn(|i| i),
+                &self.vertical,
+                &self.pairs,
+            ) {
                 return Some(to_genome(assignment));
             }
         }
@@ -171,10 +203,12 @@ pub fn match_slots_gap_free(
             order.reverse();
         }
         for _ in 0..SLOT_COUNT {
-            if let Some(found) = match_slots(domains, preferred, &order) {
-            if has_no_row_gaps(found) && has_no_vertical_pairs(found, vertical) && has_no_same_finger_pairs(found, pairs) {
-                    return Some(found);
-                }
+            if let Some(found) = match_slots(domains, preferred, &order)
+                && has_no_row_gaps(found)
+                && has_no_vertical_pairs(found, vertical)
+                && has_no_same_finger_pairs(found, pairs)
+            {
+                return Some(found);
             }
             order.rotate_left(1);
         }
@@ -255,8 +289,8 @@ fn has_no_row_gaps(assignment: [usize; SLOT_COUNT]) -> bool {
     for segment in 0..6 {
         let start = (segment % 3) * 5 + (segment / 3) * 15;
         let mut positions = Vec::new();
-        for slot in start..(start + 5) {
-            if assignment[slot] < LETTER_COUNT {
+        for (slot, &token) in assignment.iter().enumerate().skip(start).take(5) {
+            if token < LETTER_COUNT {
                 positions.push(slot - start);
             }
         }
@@ -321,11 +355,12 @@ fn has_no_same_finger_pairs(assignment: [usize; SLOT_COUNT], pairs: &[[char; 2]]
 }
 
 fn logical_finger(slot: u8) -> usize {
-    if slot < 15 {
+    let column = if slot < 15 {
         (slot % 5) as usize
     } else {
         (4 - (slot % 5)) as usize
-    }
+    };
+    column.min(3)
 }
 
 /// Collect only recognizable position hints, accepting underscore at input boundaries.
@@ -390,7 +425,8 @@ mod tests {
         let mut opt = OptimizationConfig::default();
         opt.frozen.insert('a', 0);
         opt.frozen.insert('b', 4);
-        opt.allowed.insert(EMPTY_SLOT, [1, 2, 3].into_iter().collect());
+        opt.allowed
+            .insert(EMPTY_SLOT, [1, 2, 3].into_iter().collect());
         assert!(opt.compile().is_err());
     }
 
@@ -458,8 +494,7 @@ mod tests {
 
     #[test]
     fn mutation_moves_empties_without_breaking_their_allowed_domain() {
-        let constraints =
-            constraints(r#"{"allowed":{"_":[0,1,10,11]},"blocked":[29]}"#);
+        let constraints = constraints(r#"{"allowed":{"_":[0,1,10,11]},"blocked":[29]}"#);
         let mut rng = StdRng::seed_from_u64(42);
         let mut g = constraints.generate(&mut rng);
         let mut patterns = FxHashSet::default();

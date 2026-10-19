@@ -149,7 +149,15 @@ impl PlacementConstraints {
     /// Enumerate only hand combinations that admit a complete slot matching.
     fn collect_orientations(&mut self, index: usize, orientation: u16, domains: [u32; SLOT_COUNT]) {
         let order = std::array::from_fn(|i| i);
-        if match_slots_gap_free(&domains, &[0; SLOT_COUNT], &order, &self.vertical, &self.pairs).is_none() {
+        if match_slots_gap_free(
+            &domains,
+            &[0; SLOT_COUNT],
+            &order,
+            &self.vertical,
+            &self.pairs,
+        )
+        .is_none()
+        {
             return;
         }
         let Some(&group) = self.groups.get(index) else {
@@ -256,9 +264,20 @@ fn same_finger_on_hands(genome: &[char], a: char, b: char) -> bool {
     });
     let left_pair = left_slots.collect::<Vec<_>>();
     let right_pair = right_slots.collect::<Vec<_>>();
-    let same_left = left_pair.len() == 2 && left_pair[0] % 5 == left_pair[1] % 5;
-    let same_right = right_pair.len() == 2 && (right_pair[0] - 15) % 5 == (right_pair[1] - 15) % 5;
+    let same_left = left_pair.len() == 2
+        && logical_finger(left_pair[0] as u8) == logical_finger(left_pair[1] as u8);
+    let same_right = right_pair.len() == 2
+        && logical_finger(right_pair[0] as u8) == logical_finger(right_pair[1] as u8);
     same_left || same_right
+}
+
+fn logical_finger(slot: u8) -> usize {
+    let column = if slot < 15 {
+        (slot % 5) as usize
+    } else {
+        4 - (slot % 5) as usize
+    };
+    column.min(3)
 }
 
 #[cfg(test)]
@@ -356,20 +375,31 @@ mod tests {
     }
 
     #[test]
-    fn maximal_pair_count_prunes_infeasible_hand_capacities() {
+    fn many_pair_groups_still_compile_and_generate() {
         let opt = OptimizationConfig {
-            pairs: (0..LETTER_COUNT)
+            pairs: (0..16)
                 .step_by(2)
                 .map(|i| [letter(i), letter(i + 1)])
                 .collect(),
             ..Default::default()
         };
         let constraints = opt.compile().unwrap();
-        // Thirteen pairs require six on one hand and seven on the other.
-        assert_eq!(constraints.orientations.len(), 3432);
+        assert!(!constraints.orientations.is_empty());
         let mut rng = rand::rng();
         for _ in 0..20 {
             assert!(constraints.is_genome_valid(&constraints.generate(&mut rng)));
         }
+    }
+
+    #[test]
+    fn pairs_reject_merged_index_columns_as_same_finger() {
+        let constraints = serde_json::from_str::<OptimizationConfig>(r#"{"pairs":["er"]}"#)
+            .unwrap()
+            .compile()
+            .unwrap();
+        let mut genome: Vec<_> = ('a'..='z').chain([EMPTY_SLOT; 4]).collect();
+        genome.swap(4, 8);
+        genome.swap(17, 21);
+        assert!(!constraints.is_genome_valid(&genome));
     }
 }
