@@ -95,7 +95,7 @@ optimization:
   corpusStats: data/stats/stats.json
 
   # Seed layout CSVs to load before GA starts; null means none.
-  # input: data/layouts.csv
+  input: data/layouts.csv
   # Layout CSV written after optimization.
   output: data/layouts.csv
   # Mutants produced per parent each generation.
@@ -103,7 +103,7 @@ optimization:
   # Max home-row groups kept in final ranked output.
   maxGroups: 5
   # Number of layouts kept per home-row group in final ranked output.
-  itemsPerGroup: 1
+  itemsPerGroup: 5
 
   # Optional: Slot indices that must remain empty (blocked), unless a letter is frozen there.
   # blocked: [0]
@@ -261,16 +261,16 @@ evaluate:
   # One or more layout CSVs to score.
   input:
     - data/layouts.csv
-    # - data/layouts.1.csv
-    # - data/layouts.2.csv
-    # - data/layouts.3.csv
-    # - data/layouts.4.csv
-    # - data/layouts.5.csv
-    # - data/layouts.6.csv
-    # - data/layouts.7.csv
+    - data/layouts.1.csv
+    - data/layouts.2.csv
+    - data/layouts.3.csv
+    - data/layouts.4.csv
+    - data/layouts.5.csv
+    - data/layouts.6.csv
+    - data/layouts.7.csv
     # - data/layouts.8.csv
-    # - data/layouts.known.csv
-    # - data/layouts.all.csv
+    - data/layouts.known.csv
+    - data/layouts.all.csv
   # Output CSV for scored layouts. Omit to rewrite each input file in place.
   # output: data/layouts.csv
   # Number of best layouts printed to stdout.
