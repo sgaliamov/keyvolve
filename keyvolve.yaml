@@ -103,7 +103,7 @@ optimization:
   # Max home-row groups kept in final ranked output.
   maxGroups: 5
   # Number of layouts kept per home-row group in final ranked output.
-  itemsPerGroup: 1
+  itemsPerGroup: 5
 
   # Optional: Slot indices that must remain empty (blocked), unless a letter is frozen there.
   # blocked: [0]
