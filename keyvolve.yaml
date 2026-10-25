@@ -95,7 +95,7 @@ optimization:
   corpusStats: data/stats/stats.json
 
   # Seed layout CSVs to load before GA starts; null means none.
-  input: data/layouts.csv
+  # input: data/layouts.csv
   # Layout CSV written after optimization.
   output: data/layouts.csv
   # Mutants produced per parent each generation.
@@ -103,7 +103,7 @@ optimization:
   # Max home-row groups kept in final ranked output.
   maxGroups: 5
   # Number of layouts kept per home-row group in final ranked output.
-  itemsPerGroup: 5
+  itemsPerGroup: 1
 
   # Optional: Slot indices that must remain empty (blocked), unless a letter is frozen there.
   # blocked: [0]
@@ -124,17 +124,18 @@ optimization:
   allowed:
   #   # '_': [0, 1, 4, 10, 11, 13, 14]
     e: [6, 7, 8]
-    t: [2, 6, 7, 8]
-    a: [2, 6, 7, 8]
-    i: [2, 6, 7, 8]
-    o: [2, 6, 7, 8]
-    n: [1, 2, 6, 7, 8]
-    r: [1, 2, 3, 6, 7, 8, 9]
-    s: [1, 2, 3, 6, 7, 8, 9]
-    h: [1, 2, 3, 6, 7, 8, 9, 13]
-    m: [1, 3, 4, 5, 9, 11, 12, 13, 14]
-    g: [1, 3, 4, 5, 9, 11, 12, 13, 14]
-    p: [1, 3, 4, 5, 9, 11, 12, 13, 14]
+    # t: [2, 6, 7, 8]
+    # a: [2, 6, 7, 8]
+    # i: [2, 6, 7, 8]
+    # o: [2, 6, 7, 8]
+    # n: [1, 2, 6, 7, 8]
+    # r: [1, 2, 3, 6, 7, 8, 9]
+    # s: [1, 2, 3, 6, 7, 8, 9]
+    # h: [1, 2, 3, 6, 7, 8, 9, 13]
+    # m: [1, 3, 4, 5, 9, 11, 12, 13, 14]
+    # g: [1, 3, 4, 5, 9, 11, 12, 13, 14]
+    # p: [1, 3, 4, 5, 9, 11, 12, 13, 14]
+    # v: [0, 1, 3, 4, 5, 9, 11, 12, 13, 14]
     k: [0, 4, 10, 11, 14]
     j: [0, 4, 10, 11, 14]
     x: [0, 4, 10, 11, 14]
@@ -147,7 +148,36 @@ optimization:
 
   # Optional: Character pairs that may not align vertically in the same column on a hand.
   # Entries are defined for the left hand; the right hand mirrors the rule automatically.
-  vertical: ['dn', 'gn', 'ir']
+  vertical:
+    - er
+    - ht
+    - in
+    - eh
+    - an
+    - it
+    - no
+    - es
+    - or
+    - en
+    - at
+    - de
+    - ar
+    - al
+    - is
+    - et
+    - st
+    - fo
+    - ot
+    - el
+    - dn
+    - as
+    - il
+    - em
+    - ir
+    - gn
+    - ce
+    - ev
+    - am
 
   # Optional: Characters restricted to the left hand (unless frozen elsewhere).
   # left: [x, c, v, z, s, a]
