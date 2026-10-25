@@ -306,7 +306,7 @@ evaluate:
   # Number of best layouts printed to stdout.
   print: 5
   # Orientation used when saving layouts; left mirrors twin layouts.
-  eSide: left
+  eSide: any
 
 # ============================================================================
 # MODE: Operation mode for this run
