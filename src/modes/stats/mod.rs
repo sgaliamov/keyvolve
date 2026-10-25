@@ -2,6 +2,7 @@ pub mod config;
 
 use crate::modes::synthesise::{
     CachedSourceStats, CorpusStatsCounter, filter_stats_frequencies, write_stats_cache,
+    write_stats_csv_reports,
 };
 use cliffa::cli::AppHandle;
 pub use config::*;
@@ -57,6 +58,7 @@ pub fn stats(cfg: BuildStatsConfig, app: AppHandle) -> Result<()> {
     filter_stats_frequencies(&mut stats, 0.0, cfg.min_trigram_frequency);
     let cached = CachedSourceStats { stats, word_count };
     write_stats_cache(&output, &cached)?;
+    write_stats_csv_reports(&output, &cached)?;
 
     tracing::info!(
         input = %input.display(),

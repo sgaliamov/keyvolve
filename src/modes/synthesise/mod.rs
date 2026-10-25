@@ -8,7 +8,7 @@ use miette::{Context, IntoDiagnostic, Result};
 use rand::{RngExt, SeedableRng, rngs::StdRng};
 pub use shared::{
     CachedSourceStats, filter_stats_frequencies, read_stats_cache, score_with_filter,
-    write_stats_cache,
+    write_stats_cache, write_stats_csv_reports,
 };
 use shared::{report_path, write_corpus, write_report};
 use std::{

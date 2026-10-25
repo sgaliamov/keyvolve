@@ -110,6 +110,19 @@ Pretty-printed JSON. Each map is sorted by share, most frequent first.
 }
 ```
 
+Stats mode also writes human-readable CSV reports next to the JSON with the same base name:
+
+- `<output stem>.letters.csv` — letter frequencies, one row per letter
+- `<output stem>.bigrams.csv` — ordered bigrams, so `th` and `ht` stay distinct
+- `<output stem>.bigrams.aggregated.csv` — aggregated bigram counts, where `th` and `ht`
+  are merged into one total
+- `<output stem>.first-letters.csv` — first-letter frequencies, one row per letter
+
+Each CSV has `key,share,count` columns. `share` is the normalized share from the JSON and
+`count` is the estimated raw count for that metric (`word_count × average_word_length`,
+`word_count × (average_word_length - 1)`, etc.). These files are meant for quick inspection in
+Excel or a text editor without opening the JSON.
+
 | Field                               | Used by `evaluate` / `optimize`                                    |
 | ----------------------------------- | ------------------------------------------------------------------ |
 | `letters`                           | No. Informational only.                                            |
