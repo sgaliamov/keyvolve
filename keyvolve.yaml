@@ -41,8 +41,8 @@ synthesise:
 stats:
   # Source text file used to build the cached corpus stats.
   input: data/samples/merged.txt
-  # Output JSON cache used by evaluate/optimize.
-  output: data/stats/stats.json
+  # Output folder: stats.json (used by evaluate/optimize) + CSV reports.
+  output: data/stats
 
   minTrigramFrequency: 0.00001
 

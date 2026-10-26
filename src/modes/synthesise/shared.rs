@@ -51,7 +51,7 @@ fn write_csv_rows(path: &Path, header: &str, rows: &[(String, f64, f64)]) -> Res
         .wrap_err("Failed to create stats CSV report")?;
     writeln!(out, "{header}").into_diagnostic()?;
     for (key, share, count) in rows {
-        writeln!(out, "{key},{share:.12},{count:.0}").into_diagnostic()?;
+        writeln!(out, "{key},{:.6}%,{count:.0}", share * 100.0).into_diagnostic()?;
     }
     Ok(())
 }
@@ -68,16 +68,28 @@ fn make_distribution_rows<K: Copy + Eq + std::hash::Hash + std::fmt::Display>(
     rows
 }
 
-fn make_bigram_rows(bigrams: &FxHashMap<[char; 2], f64>, total_count: f64) -> Vec<(String, f64, f64)> {
+fn make_bigram_rows(
+    bigrams: &FxHashMap<[char; 2], f64>,
+    total_count: f64,
+) -> Vec<(String, f64, f64)> {
     let mut rows = bigrams
         .iter()
-        .map(|(pair, share)| (pair.iter().collect::<String>(), *share, *share * total_count))
+        .map(|(pair, share)| {
+            (
+                pair.iter().collect::<String>(),
+                *share,
+                *share * total_count,
+            )
+        })
         .collect::<Vec<_>>();
     rows.sort_by(|a, b| b.1.total_cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
     rows
 }
 
-fn make_aggregated_bigram_rows(bigrams: &FxHashMap<[char; 2], f64>, total_count: f64) -> Vec<(String, f64, f64)> {
+fn make_aggregated_bigram_rows(
+    bigrams: &FxHashMap<[char; 2], f64>,
+    total_count: f64,
+) -> Vec<(String, f64, f64)> {
     let mut aggregated = FxHashMap::<String, f64>::default();
     for (pair, share) in bigrams {
         let mut chars = [pair[0], pair[1]];
@@ -93,40 +105,29 @@ fn make_aggregated_bigram_rows(bigrams: &FxHashMap<[char; 2], f64>, total_count:
     rows
 }
 
-/// Write human-readable CSV reports next to the JSON cache.
-pub fn write_stats_csv_reports(path: &Path, data: &CachedSourceStats) -> Result<()> {
-    let dir = path.parent().unwrap_or_else(|| Path::new("."));
-    let stem = path
-        .file_stem()
-        .map(|n| n.to_string_lossy().into_owned())
-        .unwrap_or_else(|| "stats".to_string());
-
+/// Write human-readable CSV reports into `dir`.
+pub fn write_stats_csv_reports(dir: &Path, data: &CachedSourceStats) -> Result<()> {
     let letters_total = data.word_count as f64 * data.stats.average_word_length.max(0.0);
     let bigrams_total = data.word_count as f64 * (data.stats.average_word_length - 1.0).max(0.0);
     let first_letters_total = data.word_count as f64;
 
-    let letters_path = dir.join(format!("{stem}.letters.csv"));
-    let bigrams_path = dir.join(format!("{stem}.bigrams.csv"));
-    let aggregated_path = dir.join(format!("{stem}.bigrams.aggregated.csv"));
-    let first_letters_path = dir.join(format!("{stem}.first-letters.csv"));
-
     write_csv_rows(
-        &letters_path,
+        &dir.join("letters.csv"),
         "letter,share,count",
         &make_distribution_rows(&data.stats.letters, letters_total),
     )?;
     write_csv_rows(
-        &bigrams_path,
+        &dir.join("bigrams.csv"),
         "bigram,share,count",
         &make_bigram_rows(&data.stats.bigrams, bigrams_total),
     )?;
     write_csv_rows(
-        &aggregated_path,
+        &dir.join("bigrams.aggregated.csv"),
         "pair,share,count",
         &make_aggregated_bigram_rows(&data.stats.bigrams, bigrams_total),
     )?;
     write_csv_rows(
-        &first_letters_path,
+        &dir.join("first-letters.csv"),
         "first_letter,share,count",
         &make_distribution_rows(&data.stats.first_letters, first_letters_total),
     )?;
@@ -257,8 +258,7 @@ mod tests {
 
     #[test]
     fn write_stats_csv_reports_writes_textual_reports() {
-        let dir = std::env::temp_dir();
-        let path = dir.join("keyvolve-stats-csv.json");
+        let dir = std::env::temp_dir().join(format!("keyvolve-stats-csv-{}", std::process::id()));
         let data = CachedSourceStats {
             stats: CorpusStats {
                 letters: FxHashMap::from_iter([('e', 0.6), ('t', 0.4)]),
@@ -270,27 +270,23 @@ mod tests {
             word_count: 4,
         };
 
-        write_stats_csv_reports(&path, &data).unwrap();
+        write_stats_csv_reports(&dir, &data).unwrap();
 
-        let letters = fs::read_to_string(dir.join("keyvolve-stats-csv.letters.csv")).unwrap();
+        let letters = fs::read_to_string(dir.join("letters.csv")).unwrap();
         assert!(letters.contains("letter,share,count\n"));
-        assert!(letters.contains("e,0.6"));
+        assert!(letters.contains("e,60.000000%,5\n"));
 
-        let bigrams = fs::read_to_string(dir.join("keyvolve-stats-csv.bigrams.csv")).unwrap();
-        assert!(bigrams.contains("th,0.750000000000,3"));
-        assert!(bigrams.contains("ht,0.250000000000,1"));
+        let bigrams = fs::read_to_string(dir.join("bigrams.csv")).unwrap();
+        assert!(bigrams.contains("th,75.000000%,3\n"));
+        assert!(bigrams.contains("ht,25.000000%,1\n"));
 
-        let aggregated = fs::read_to_string(dir.join("keyvolve-stats-csv.bigrams.aggregated.csv")).unwrap();
-        assert!(aggregated.contains("ht,1.000000000000,4"));
+        let aggregated = fs::read_to_string(dir.join("bigrams.aggregated.csv")).unwrap();
+        assert!(aggregated.contains("ht,100.000000%,4\n"));
 
-        let first_letters = fs::read_to_string(dir.join("keyvolve-stats-csv.first-letters.csv")).unwrap();
-        assert!(first_letters.contains("t,0.750000000000,3"));
+        let first_letters = fs::read_to_string(dir.join("first-letters.csv")).unwrap();
+        assert!(first_letters.contains("t,75.000000%,3\n"));
 
-        let _ = fs::remove_file(&path);
-        let _ = fs::remove_file(dir.join("keyvolve-stats-csv.letters.csv"));
-        let _ = fs::remove_file(dir.join("keyvolve-stats-csv.bigrams.csv"));
-        let _ = fs::remove_file(dir.join("keyvolve-stats-csv.bigrams.aggregated.csv"));
-        let _ = fs::remove_file(dir.join("keyvolve-stats-csv.first-letters.csv"));
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]

@@ -8,7 +8,7 @@ pub struct BuildStatsConfig {
     /// source text file to scan
     pub input: Option<PathBuf>,
 
-    /// cached corpus stats JSON output path
+    /// output folder for `stats.json` and CSV reports
     pub output: Option<PathBuf>,
 
     /// minimum accepted relative frequency for trigrams

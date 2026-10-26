@@ -6,13 +6,16 @@ use crate::modes::synthesise::{
 };
 use cliffa::cli::AppHandle;
 pub use config::*;
-use miette::{Context, IntoDiagnostic, Result};
+use miette::{Context, IntoDiagnostic, Result, miette};
 use std::{
     fs,
     io::{BufRead, BufReader},
 };
 
-/// Build cached corpus stats from a source text file and write them to JSON.
+/// Stats JSON file name inside the `stats.output` folder.
+pub const STATS_FILE: &str = "stats.json";
+
+/// Build corpus stats from a source text file and write JSON + CSV reports into the output folder.
 pub fn stats(cfg: BuildStatsConfig, app: AppHandle) -> Result<()> {
     let input = cfg
         .input
@@ -20,6 +23,12 @@ pub fn stats(cfg: BuildStatsConfig, app: AppHandle) -> Result<()> {
     let output = cfg
         .output
         .wrap_err("Stats mode requires `stats.output` path")?;
+    if output.is_file() {
+        return Err(miette!(
+            "`stats.output` must be a folder, found file: {}",
+            output.display()
+        ));
+    }
 
     if app.should_finish() {
         tracing::info!(input = %input.display(), "Stats interrupted before reading input");
@@ -57,7 +66,7 @@ pub fn stats(cfg: BuildStatsConfig, app: AppHandle) -> Result<()> {
     let mut stats = counter.finish();
     filter_stats_frequencies(&mut stats, 0.0, cfg.min_trigram_frequency);
     let cached = CachedSourceStats { stats, word_count };
-    write_stats_cache(&output, &cached)?;
+    write_stats_cache(&output.join(STATS_FILE), &cached)?;
     write_stats_csv_reports(&output, &cached)?;
 
     tracing::info!(
@@ -77,17 +86,23 @@ mod tests {
         time::{SystemTime, UNIX_EPOCH},
     };
 
-    #[test]
-    fn interrupt_before_write_keeps_existing_output() -> Result<()> {
-        let unique = SystemTime::now()
+    fn unique() -> u128 {
+        SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
-            .as_nanos();
+            .as_nanos()
+    }
+
+    #[test]
+    fn interrupt_before_write_keeps_existing_output() -> Result<()> {
+        let unique = unique();
         let input = std::env::temp_dir().join(format!("keyvolve-stats-input-{unique}.txt"));
-        let output = std::env::temp_dir().join(format!("keyvolve-stats-output-{unique}.json"));
+        let output = std::env::temp_dir().join(format!("keyvolve-stats-output-{unique}"));
+        let json = output.join(STATS_FILE);
 
         fs::write(&input, "hello world\nalpha beta\n").unwrap();
-        fs::write(&output, "{\"keep\":\"old\"}").unwrap();
+        fs::create_dir_all(&output).unwrap();
+        fs::write(&json, "{\"keep\":\"old\"}").unwrap();
 
         let app = AppHandle::new();
         app.finish();
@@ -100,10 +115,60 @@ mod tests {
 
         stats(cfg, app)?;
 
-        assert_eq!(fs::read_to_string(&output).unwrap(), "{\"keep\":\"old\"}");
+        assert_eq!(fs::read_to_string(&json).unwrap(), "{\"keep\":\"old\"}");
+
+        let _ = fs::remove_file(input);
+        let _ = fs::remove_dir_all(output);
+        Ok(())
+    }
+
+    #[test]
+    fn writes_all_files_into_output_folder() -> Result<()> {
+        let unique = unique();
+        let input = std::env::temp_dir().join(format!("keyvolve-stats-input-{unique}.txt"));
+        let output = std::env::temp_dir().join(format!("keyvolve-stats-folder-{unique}"));
+        fs::write(&input, "the tea a\n").unwrap();
+
+        let cfg = BuildStatsConfig {
+            input: Some(input.clone()),
+            output: Some(output.clone()),
+            min_trigram_frequency: 0.0,
+        };
+        stats(cfg, AppHandle::new())?;
+
+        for name in [
+            STATS_FILE,
+            "letters.csv",
+            "bigrams.csv",
+            "bigrams.aggregated.csv",
+            "first-letters.csv",
+        ] {
+            assert!(output.join(name).is_file(), "missing {name}");
+        }
+
+        let _ = fs::remove_file(input);
+        let _ = fs::remove_dir_all(output);
+        Ok(())
+    }
+
+    #[test]
+    fn output_file_path_is_rejected() {
+        let unique = unique();
+        let input = std::env::temp_dir().join(format!("keyvolve-stats-input-{unique}.txt"));
+        let output = std::env::temp_dir().join(format!("keyvolve-stats-file-{unique}.json"));
+        fs::write(&input, "the\n").unwrap();
+        fs::write(&output, "{}").unwrap();
+
+        let cfg = BuildStatsConfig {
+            input: Some(input.clone()),
+            output: Some(output.clone()),
+            min_trigram_frequency: 0.0,
+        };
+        let err = stats(cfg, AppHandle::new()).unwrap_err();
+        assert!(err.to_string().contains("must be a folder"));
+        assert_eq!(fs::read_to_string(&output).unwrap(), "{}");
 
         let _ = fs::remove_file(input);
         let _ = fs::remove_file(output);
-        Ok(())
     }
 }

@@ -1,8 +1,8 @@
 # Stats mode - how it works
 
 Stats mode scans a corpus text file once and writes its letter, bigram, trigram and
-first-letter frequencies to a JSON file. `evaluate` and `optimize` score layouts against
-this file (`corpusStats`), not against the text itself.
+first-letter frequencies to `stats.json` in the output folder. `evaluate` and `optimize`
+score layouts against this file (`corpusStats`), not against the text itself.
 
 ## Running
 
@@ -17,17 +17,18 @@ For configuration overrides and precedence, see the [CLI documentation](../../cl
 ```yaml
 stats:
   input: data/samples/merged.txt
-  output: data/stats/stats.json
+  output: data/stats
   minTrigramFrequency: 0.00001
 ```
 
-| Key                   | Default      | Meaning                                                                   |
-| --------------------- | ------------ | ------------------------------------------------------------------------- |
-| `input`               | - (required) | Corpus text file, usually [`merge.output`](merge.md).                     |
-| `output`              | - (required) | Stats JSON. Overwritten if it exists; missing parent folders are created. |
-| `minTrigramFrequency` | `0.0001`     | Drop trigrams rarer than this share. `0` keeps all.                       |
+| Key                   | Default      | Meaning                                                                                       |
+| --------------------- | ------------ | --------------------------------------------------------------------------------------------- |
+| `input`               | - (required) | Corpus text file, usually [`merge.output`](merge.md).                                         |
+| `output`              | - (required) | Output folder. Created if missing; existing files with the same names are overwritten.        |
+| `minTrigramFrequency` | `0.0001`     | Drop trigrams rarer than this share. `0` keeps all.                                           |
 
-Missing `input` or `output` → run fails with an error naming the key.
+Missing `input` or `output` → run fails with an error naming the key. `output` pointing at
+an existing file → run fails before reading input.
 
 ## Input
 
@@ -95,7 +96,18 @@ A threshold `≤ 0` disables trigram filtering.
 
 ## Output
 
-Pretty-printed JSON. Each map is sorted by share, most frequent first.
+All files go into the `output` folder:
+
+| File                     | Content                                                            |
+| ------------------------ | ------------------------------------------------------------------ |
+| `stats.json`             | Stats used by `evaluate` / `optimize`.                             |
+| `letters.csv`            | Letter frequencies, one row per letter.                            |
+| `bigrams.csv`            | Ordered bigrams, so `th` and `ht` stay distinct.                   |
+| `bigrams.aggregated.csv` | Aggregated bigrams, where `th` and `ht` are merged into one total. |
+| `first-letters.csv`      | First-letter frequencies, one row per letter.                      |
+
+`stats.json` is pretty-printed JSON. Each map is sorted by share, most frequent first.
+Shares are fractions (`0`-`1`).
 
 ```json
 {
@@ -110,18 +122,11 @@ Pretty-printed JSON. Each map is sorted by share, most frequent first.
 }
 ```
 
-Stats mode also writes human-readable CSV reports next to the JSON with the same base name:
-
-- `<output stem>.letters.csv` — letter frequencies, one row per letter
-- `<output stem>.bigrams.csv` — ordered bigrams, so `th` and `ht` stay distinct
-- `<output stem>.bigrams.aggregated.csv` — aggregated bigram counts, where `th` and `ht`
-  are merged into one total
-- `<output stem>.first-letters.csv` — first-letter frequencies, one row per letter
-
-Each CSV has `key,share,count` columns. `share` is the normalized share from the JSON and
+Each CSV has `key,share,count` columns, sorted by share, most frequent first. `share` is the
+JSON share as a percentage with 6 decimals (`11.970000%`), so Excel reads it as a percent.
 `count` is the estimated raw count for that metric (`word_count × average_word_length`,
-`word_count × (average_word_length - 1)`, etc.). These files are meant for quick inspection in
-Excel or a text editor without opening the JSON.
+`word_count × (average_word_length - 1)`, etc.). These files are meant for quick inspection
+in Excel or a text editor without opening the JSON.
 
 | Field                               | Used by `evaluate` / `optimize`                                    |
 | ----------------------------------- | ------------------------------------------------------------------ |
@@ -131,19 +136,19 @@ Excel or a text editor without opening the JSON.
 | `first_letters`                     | Yes, scaled to counts by `word_count`.                             |
 | `average_word_length`, `word_count` | Yes, for the scaling above.                                        |
 
-Point `evaluate.corpusStats` and `optimization.corpusStats` at `output`. A missing file
-stops those modes with `Missing corpus stats file: <path>`.
+Point `evaluate.corpusStats` and `optimization.corpusStats` at `<output>/stats.json`. A
+missing file stops those modes with `Missing corpus stats file: <path>`.
 
 Fitness values already stored in layout CSVs were computed with the old stats. After
 rebuilding stats, re-run `evaluate` on those CSVs before comparing them with new results.
 
 ## Interruption
 
-Ctrl+C stops reading. `output` is written only after the whole input is counted, so an
-interrupted run leaves a previous `output` intact.
+Ctrl+C stops reading. Files are written only after the whole input is counted, so an
+interrupted run leaves previous files in `output` intact.
 
 ## Next steps
 
-Set `corpusStats` in `evaluate` and `optimization` to `stats.output`, then run
+Set `corpusStats` in `evaluate` and `optimization` to `<stats.output>/stats.json`, then run
 `keyvolve -m evaluate` ([evaluate.md](../evaluation/evaluate.md)) or `keyvolve -m optimize`.
 See [readme.md](../../readme.md) for the mode list.
