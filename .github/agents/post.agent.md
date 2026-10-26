@@ -16,6 +16,7 @@ Help write `docs/post.md`: a step-by-step guide to using keyvolve, not an implem
 - QMK content is outside the tool; explain directly. Conclusion: no universally perfect layout, disclose bias, invite readers to tune their own.
 - Verify tool behavior against relevant docs and code. Never invent examples, results, or supporting evidence.
 - Edit only the requested post content, not code or functional docs.
+- Never use the long dash (—) for a dash. Use a plain hyphen-minus (-) with spaces around it.
 
 References:
 - `readme.md`: modes, fitness, CLI flow.
