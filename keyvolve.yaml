@@ -103,7 +103,7 @@ optimization:
   # Max home-row groups kept in final ranked output.
   maxGroups: 5
   # Number of layouts kept per home-row group in final ranked output.
-  itemsPerGroup: 5
+  itemsPerGroup: 3
 
   # Optional: Slot indices that must remain empty (blocked), unless a letter is frozen there.
   # blocked: [0]
@@ -123,12 +123,12 @@ optimization:
   # Empties never sit between two letters of the same 5-key row. Full rules: docs/placement-rules.md
   allowed:
   #   # '_': [0, 1, 4, 10, 11, 13, 14]
-    e: [6, 7, 8]
-    t: [2, 6, 7, 8]
+    # e: [6, 7, 8]
+    # t: [2, 6, 7, 8]
     a: [2, 6, 7, 8]
     i: [2, 6, 7, 8]
     o: [2, 6, 7, 8]
-    n: [2, 6, 7, 8]
+    # n: [2, 6, 7, 8]
     # r: [1, 2, 3, 6, 7, 8, 9]
     # s: [1, 2, 3, 6, 7, 8, 9]
     # h: [1, 2, 3, 6, 7, 8, 9, 13]
