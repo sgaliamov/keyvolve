@@ -481,7 +481,7 @@ impl ScoreResult {
     }
 
     /// Home row left/right balance as signed percent: asymmetry in home row effort between hands.
-    /// Range: (-∞, ∞). 0% = balanced. Positive = right-lean, negative = left-lean.
+    /// Range: (-∞, ∞). 0% = balanced. Positive = left-lean, negative = right-lean.
     pub fn home_row_balance(&self) -> f64 {
         crate::math::signed_imbalance_percent(self.left_row_effort[1], self.right_row_effort[1])
     }
@@ -776,15 +776,14 @@ impl ScoreResult {
 
     // Imbalances: percent deviation from parity (0% = balanced).
 
-    /// Hand imbalance as a percent: how far the left/right same-hand count ratio
-    /// strays from parity. Range: [0.0, ∞). 0% = balanced, >0% = left-skewed,
+    /// Hand imbalance as a signed percent: how far the larger/smaller press-count ratio
+    /// strays from parity. Range: (-∞, ∞). 0% = balanced, >0% = left-skewed,
     /// <0% = right-skewed.
     pub fn hands_imbalance(&self) -> f64 {
         crate::math::signed_imbalance_percent(self.left_count as f64, self.right_count as f64)
     }
 
-    /// Same-finger row-switch cost imbalance as a percent: how far the left/right row-switch
-    /// cost ratio strays from parity. Range: [0.0, ∞). 0% = balanced, asymmetric by sign.
+    /// Signed row-switch cost imbalance. Range: (-∞, ∞). Positive = left-heavy.
     pub fn row_switch_imbalance(&self) -> f64 {
         crate::math::signed_imbalance_percent(
             self.left_row_switch_cost as f64,
@@ -792,14 +791,12 @@ impl ScoreResult {
         )
     }
 
-    /// Same-hand bigram imbalance as a percent: how far the left/right roll count
-    /// ratio strays from parity. Range: [0.0, ∞). 0% = balanced, asymmetric by sign.
+    /// Signed same-hand bigram count imbalance. Range: (-∞, ∞). Positive = left-heavy.
     pub fn roll_imbalance(&self) -> f64 {
         crate::math::signed_imbalance_percent(self.left_rolls as f64, self.right_rolls as f64)
     }
 
-    /// Effort imbalance as a percent: how far the left/right effort ratio
-    /// strays from parity. Range: [0.0, ∞). 0% = balanced, asymmetric by sign.
+    /// Signed effort imbalance. Range: (-∞, ∞). Positive = left-heavy.
     pub fn efforts_imbalance(&self) -> f64 {
         crate::math::signed_imbalance_percent(self.left_effort, self.right_effort)
     }
@@ -819,7 +816,7 @@ impl ScoreResult {
         crate::math::streak(self.right_count, self.right_rolls)
     }
 
-    /// Streak imbalance as a percent: how far the left/right streak length ratio
+    /// Streak imbalance as a signed percent: how far the larger/smaller streak length ratio
     /// strays from parity. Range: (-∞, ∞). 0% = balanced, >0% = left-lean (longer left runs),
     /// <0% = right-lean (longer right runs).
     pub fn streak_imbalance(&self) -> f64 {
@@ -1357,7 +1354,7 @@ mod tests {
 
     #[test]
     fn directional_symbols_show_which_hand_is_heavier() {
-        // Left-heavy: left_rolls > right_rolls → negative value → ← symbol.
+        // Left-heavy: left_rolls > right_rolls → positive value → ← symbol.
         let left_heavy = ScoreResult {
             left_rolls: 9,
             right_rolls: 3,
@@ -1372,8 +1369,8 @@ mod tests {
             right_rolls: 8,
             ..Default::default()
         };
-        // 2/8 - 1 = -0.75 → -75% (right-heavy, negative because left < right).
-        assert!((right_heavy.roll_imbalance() - (-75.0)).abs() < 1e-9);
+        // -(8/2 - 1) = -3 → -300% (right-heavy, negative because left < right).
+        assert!((right_heavy.roll_imbalance() - (-300.0)).abs() < 1e-9);
 
         // Balanced: left_rolls == right_rolls → 0.0 → · symbol.
         let balanced = ScoreResult {

@@ -88,11 +88,10 @@ section. After changing any of them, re-score saved layouts with [evaluate](eval
 ## Mirror symmetry
 
 The keyboard JSON defines left-hand pairs; right-hand pairs are their mirrors. A layout and
-its hand-swapped mirror get the same fitness and the same metrics with left and right
-swapped.
-
-Known bug: metrics using `signed_imbalance_percent` break this, so mirror twins can score
-differently. Tracked in [TASKS.md](../../TASKS.md#bugs).
+its hand-swapped mirror get the same effort and the same metrics with left and right
+swapped. Signed imbalances reverse sign, not magnitude. Fitness is equal when signed
+imbalance goals are `max` limits or zero-centered `target` goals; a nonzero signed target
+intentionally favors one hand. See [penalty](penalty.md#metric-catalog).
 
 ## Failure modes
 

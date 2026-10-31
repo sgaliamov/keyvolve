@@ -75,8 +75,9 @@ Tuning loop:
 `P` = all presses, `effort` = total effort ([scoring.md](scoring.md#presses-and-effort)).
 `ratio(a, b) = a / b`, `0` if `b = 0`. Counters: [scoring.md](scoring.md#counters).
 
-Two imbalance forms. Positive = left heavier. Swapping hands flips the sign only, so a layout
-and its mirror cost the same.
+Two imbalance forms. Positive = left heavier. Swapping hands flips the sign only. With
+`max` limits or zero-centered `target` goals, a layout and its mirror cost the same.
+A nonzero signed `target` intentionally favors one hand.
 
 ```text
 signed_imbalance_percent(L, R) = ±(max(L, R) / min(L, R) − 1) · 100   + if L > R, − if R > L
@@ -87,9 +88,9 @@ balance(L, R)                  = (L − R) / (L + R) · 100             L + R = 
 `signed_imbalance_percent`: `L = 2R` → `+100`, `R = 2L` → `−100`. The one-side-zero case is a
 guardrail for broken layouts, not the limit (true limit is `±∞`).
 
-Known bug: `signed_imbalance_percent` is currently `(L / R − 1) · 100`, so `R = 2L` gives
-`−50`: left-heavy skew costs more than equal right-heavy skew, and mirror twins score
-differently. Tracked in [TASKS.md](../../TASKS.md#bugs).
+These values feed both reports and the fitness penalty in `evaluate` and `optimize`.
+Re-score saved layouts with [evaluate](evaluate.md) if their CSVs were generated using the
+old asymmetric `(L / R − 1) · 100` formula; their metrics and fitness may be stale.
 
 ### Hand imbalances
 

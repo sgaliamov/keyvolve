@@ -231,6 +231,52 @@ mod tests {
     use super::*;
     use serde_json::json;
 
+    /// Mirrored layouts retain fitness with sign-neutral targets on every affected metric.
+    #[test]
+    fn mirrored_layouts_have_equal_imbalance_penalties_and_fitness() {
+        let layout = crate::models::Layout {
+            keys: FxHashMap::from_iter([('a', 0), ('b', 5), ('c', 19), ('d', 24)]),
+            name: String::new(),
+        };
+        for target in [Target::max(100.0, 1.0), Target::target(0.0, 1.0)] {
+            let config = LayoutEvaluatorConfig {
+                sharpness: 2.0,
+                targets: Targets {
+                    efforts_imbalance: Some(target),
+                    hands_imbalance: Some(target),
+                    roll_imbalance: Some(target),
+                    row_switch_imbalance: Some(target),
+                    streak_imbalance: Some(target),
+                    home_row_balance: Some(target),
+                    ..Default::default()
+                },
+                ..test_config()
+            };
+            let evaluator = LayoutEvaluator::new(
+                &row_switch_test_keyboard(),
+                ["abb", "abb", "a", "cd"].map(str::to_owned).to_vec(),
+                config,
+            );
+            let score = evaluator.score_corpus(&layout.keys);
+            let mirrored = evaluator.score_corpus(&layout.mirrored().keys);
+            assert_eq!(score.effort, mirrored.effort);
+            assert!(score.fitness.is_finite() && score.fitness > 0.0);
+            assert_eq!(score.fitness, mirrored.fitness);
+            assert!(penalty(&config, &score) > 1.0);
+            assert_eq!(penalty(&config, &score), penalty(&config, &mirrored));
+            assert_eq!(score.row_balances(), mirrored.row_balances().map(|v| -v));
+
+            let terms = score.breakdown(&config);
+            assert_eq!(terms.len(), 6);
+            for (term, mirrored_term) in terms.iter().zip(mirrored.breakdown(&config)) {
+                assert_eq!(term.name, mirrored_term.name);
+                assert_ne!(term.value, 0.0, "{} must exercise skew", term.name);
+                assert_eq!(term.value, -mirrored_term.value, "{}", term.name);
+                assert_eq!(term.cost, mirrored_term.cost, "{}", term.name);
+            }
+        }
+    }
+
     #[test]
     fn score_word_returns_zero_score_for_empty_input() {
         let evaluator = LayoutEvaluator::new(&test_keyboard(), vec![], test_config());
