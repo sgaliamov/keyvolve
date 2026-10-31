@@ -9,6 +9,42 @@ Scores candidate layouts against a bigram-weighted corpus, then evolves them tow
 **Fitness = fitnessScale / (effort × penalty)** (higher = better). The penalty is a
 dimensionless multiplier built from corpus metrics — see below.
 
+## Quick start
+
+Install Rust and Cargo, then run these PowerShell commands from the repository root:
+
+```powershell
+.\scripts\run.ps1 -m optimize
+.\scripts\run.ps1 -m evaluate --evaluate.eSide left
+```
+
+The first command searches for layouts using the settings in `keyvolve.yaml`; the second scores and displays the saved layouts. The script builds a release version before running. The supplied keyboard effort data reflects the author's keyboard and preferences.
+
+To repeat the search ten times instead, use:
+
+```powershell
+.\scripts\run.ps1 -r 10 -m optimize
+.\scripts\run.ps1 -m evaluate --evaluate.eSide left
+```
+
+Repeated runs provide more results to compare: similar scores or layouts across runs can suggest the search is stable, while different results may reveal other promising regions. This does not prove a global optimum or guarantee that the search has escaped local optima. With the current configuration, completed optimization runs append to `data/layouts.csv`; evaluation reads that file and rewrites it in place. Back it up first if you want to preserve its current contents.
+
+`--evaluate.eSide left` normalizes layouts so that `e` is on the left hand and removes duplicate layouts, including mirrored pairs. Use `right` instead if you prefer `e` on the right hand. Mirroring a layout can violate asymmetric placement constraints; evaluation does not check those constraints.
+
+## PowerShell scripts
+
+Run scripts from the repository root:
+
+| Command | Purpose |
+| --- | --- |
+| `.\scripts\run.ps1 -m optimize` | Build and run in release mode. Pass other mode and configuration options through to the application. |
+| `.\scripts\run.ps1 -r 10 -m optimize` | Run the command ten times sequentially. |
+| `.\scripts\run.ps1 -d -m optimize` | Build and run in debug mode with full backtraces and one Rayon thread. |
+| `.\scripts\test.ps1` | Run workspace documentation and target tests offline; dependencies must already be available locally. |
+| `.\scripts\lint.ps1` | Apply Cargo and Clippy fixes, run Clippy, and format code. This modifies files. |
+| `.\scripts\update.ps1` | Update the Rust toolchain and Cargo dependencies. Add `-u` to run `cargo upgrade` as well; it requires `cargo-edit`. |
+| `.\scripts\submodules.ps1` | Initialize submodules recursively and update them from their configured remote branches. |
+
 ## Key particularities
 
 ### Layout representation
