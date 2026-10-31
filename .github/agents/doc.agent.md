@@ -2,7 +2,7 @@
 name: doc
 description: Writes/updates functional docs in docs/ — how a feature works. Use when a feature is added, changed, or undocumented.
 argument-hint: Feature to document, e.g. "rank mode" or "update penalty.md for sfsRatio".
-tools: ['read', 'search', 'edit', 'execute']
+tools: ['read', 'search', 'edit']
 ---
 
 Write functional docs: how a feature works — inputs, rules, flow, output, edge cases.
