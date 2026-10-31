@@ -402,10 +402,10 @@ mod tests {
         let mut paths = Vec::new();
         collect_input_paths(&dir, &dir.join("ignored.txt"), &mut paths).unwrap();
 
-        assert_eq!(paths.len(), 2);
         paths.sort();
-        assert_eq!(paths[0], top);
-        assert_eq!(paths[1], nested);
+        let mut expected = vec![top, nested];
+        expected.sort();
+        assert_eq!(paths, expected);
 
         let _ = fs::remove_dir_all(&dir);
     }
