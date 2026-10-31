@@ -187,20 +187,21 @@ Metric definitions: [penalty.md](penalty.md#metric-catalog). Counters: [scoring.
 ### Console
 
 Before the list, the penalty breakdown of the best layout is logged (only when at least one
-target is set). Then each printed layout shows its slots, `[pool 0]` (always `0` in
-evaluate) and a summary:
+target is set). It keeps the metric names, goals, deviations, costs, shares and pressures
+needed for [tuning](penalty.md#breakdown-table-and-tuning).
 
-| Symbol | Metric |
-| ------ | ------ |
-| `φ` | fitness |
-| `↕` / `⇄` | `row_switch_ratio` / `hand_switch_ratio` |
-| `⟳Δ` / `Δ` / `εΔ` | `roll_imbalance` / `hands_imbalance` / `efforts_imbalance` |
-| `↕↔` / `→Δ` | `row_switch_imbalance` / `streak_imbalance` |
-| `→` / `ε` | `mean_streak` / `effort` |
-| `cL` / `cR` | column effort shares per hand, physical order |
-| `sΔ` | per-finger row-switch balance: pinky, ring, middle, index |
-| `rT` / `rH` / `rB` | top / home / bottom row effort: left, right, total |
-| `bal` | top / home / bottom row left-right imbalance |
+Each printed layout uses one line: six key groups and a compact score summary,
+separated by ` | `. No blank lines between layouts. The format is the same for every `eSide`:
+
+```text
+_mub_,lreop,wfydx,_htc_,kinas,qgvzj | fitness: 5378.6900 | effort: 10000.00
+```
+
+- `fitness`: final score including penalties; higher is better.
+- `effort`: raw effort before penalties; lower is better.
+
+Pool numbers, symbolic labels and per-finger/per-row arrays are omitted from the console
+summary. All detailed metrics remain in [CSV](#csv); scoring and CSV formatting are unchanged.
 
 ## Interruption
 

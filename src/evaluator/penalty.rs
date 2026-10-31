@@ -106,6 +106,7 @@ pub fn penalty(config: &LayoutEvaluatorConfig, r: &ScoreResult) -> f64 {
 
 /// Render breakdown rows as an aligned table with a share-of-penalty column.
 pub fn table(terms: &[TermReport]) -> String {
+    let name_width = terms.iter().map(|t| t.name.len() + 2).fold(22, usize::max);
     let total: f64 = terms.iter().map(|t| t.cost).sum();
     let share = |cost: f64| {
         if total > 0.0 {
@@ -116,7 +117,7 @@ pub fn table(terms: &[TermReport]) -> String {
     };
 
     let header = format!(
-        "{:<22}{:>9}{:>9}{:>8}{:>12}{:>8}{:>12}",
+        "{:<name_width$}{:>9}{:>9}{:>8}{:>12}{:>8}{:>12}",
         "metric", "value", "goal", "dev", "cost", "share", "pressure"
     );
 
@@ -124,7 +125,7 @@ pub fn table(terms: &[TermReport]) -> String {
         .iter()
         .map(|t| {
             format!(
-                "{:<22}{:>9.2}{:>9.2}{:>8.2}{:>12.4}{:>7.1}%{:>12.4}",
+                "{:<name_width$}{:>9.2}{:>9.2}{:>8.2}{:>12.4}{:>7.1}%{:>12.4}",
                 t.name,
                 t.value,
                 t.goal,
@@ -578,10 +579,11 @@ mod tests {
         assert!(term(15.0).pressure > term(20.0).pressure);
     }
 
-    /// The table renders one aligned row per term plus a header.
+    /// Long metric names do not shift the numeric columns relative to shorter names.
     #[test]
     fn table_renders_header_and_rows() {
-        let terms = skewed().breakdown(&targets_config());
+        let mut terms = skewed().breakdown(&targets_config());
+        terms[0].name = "right_middle_row_switch_ratio";
         let rendered = table(&terms);
         let lines: Vec<_> = rendered.lines().collect();
 
@@ -589,6 +591,13 @@ mod tests {
         assert!(lines[0].starts_with("metric"));
         assert!(lines[1].starts_with(terms[0].name));
         assert!(lines[1].contains('%'));
+        let value_end = lines[0].find("value").unwrap() + "value".len();
+        for (line, term) in lines[1..].iter().zip(&terms) {
+            assert_eq!(
+                &line[value_end - 9..value_end],
+                format!("{:>9.2}", term.value)
+            );
+        }
     }
 
     /// Finger row-switch balance knobs use the same max-limit algebra as other balance caps.

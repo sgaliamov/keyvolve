@@ -678,16 +678,6 @@ impl ScoreResult {
         }
     }
 
-    /// Same-finger row-switch balances in pinky → index order.
-    pub fn finger_row_switch_balances(&self) -> [f64; 4] {
-        [
-            self.pinky_row_switch_balance(),
-            self.ring_row_switch_balance(),
-            self.middle_row_switch_balance(),
-            self.index_row_switch_balance(),
-        ]
-    }
-
     /// Difference between mirrored left/right column effort ratios, in percentage points.
     fn mirrored_column_balance_deltas(&self) -> [f64; 5] {
         let left = self.left_column_effort_ratios();
@@ -700,34 +690,6 @@ impl ScoreResult {
         let left = self.left_finger_row_switch_ratios();
         let right = self.right_finger_row_switch_ratios();
         core::array::from_fn(|i| (left[i] - right[i]) * 100.0)
-    }
-
-    /// Format a 5-column ratio list for display.
-    fn format_ratio_list(values: [f64; 5]) -> String {
-        values
-            .into_iter()
-            .map(|value| format!("{:05.2}%", value * 100.0))
-            .collect::<Vec<_>>()
-            .join(", ")
-    }
-
-    /// Format a row triplet as left/right/total effort ratios.
-    fn format_row_triplet(value: (f64, f64, f64)) -> String {
-        format!(
-            "{:05.2}%, {:05.2}%, {:05.2}%",
-            value.0 * 100.0,
-            value.1 * 100.0,
-            value.2 * 100.0,
-        )
-    }
-
-    /// Format row balances in top → bottom order.
-    fn format_balance_list(values: [f64; 3]) -> String {
-        values
-            .into_iter()
-            .map(|value| format!("{value:+06.2}%"))
-            .collect::<Vec<_>>()
-            .join(", ")
     }
 
     /// Share of hand switches among all bigram transitions. Range: [0.0, 1.0],
@@ -1078,46 +1040,12 @@ impl ScoreResult {
 }
 
 impl std::fmt::Display for ScoreResult {
+    /// Compact console summary; detailed metrics remain in CSV and penalty breakdowns.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(
-            f,
-            "φ {:.4} | ↕ {:05.2}% | ⇄ {:05.2}% | ⟳Δ {:+06.2}% | Δ {:+06.2}% | εΔ {:+06.2}% | ↕↔ {:+06.2}% | →Δ {:+06.2}% | → {:.2} | ε {:.2}",
-            self.fitness,
-            self.row_switch_ratio() * 100.0,
-            self.hand_switch_ratio() * 100.0,
-            self.roll_imbalance(),
-            self.hands_imbalance(),
-            self.efforts_imbalance(),
-            self.row_switch_imbalance(),
-            self.streak_imbalance(),
-            self.mean_streak(),
-            self.effort,
-        )?;
-        // cR shown in physical order (index-outer → pinky) to match keyboard geometry.
-        let mut right_columns = self.right_column_effort_ratios();
-        right_columns.reverse();
-        writeln!(
-            f,
-            "cL [{}] | cR [{}]",
-            Self::format_ratio_list(self.left_column_effort_ratios()),
-            Self::format_ratio_list(right_columns),
-        )?;
-        writeln!(
-            f,
-            "sΔ [{}]",
-            Self::format_imbalance_array(&self.finger_row_switch_balances()),
-        )?;
-        writeln!(
-            f,
-            "rT [{}] | rH [{}] | rB [{}]",
-            Self::format_row_triplet(self.row_effort_ratios()[0]),
-            Self::format_row_triplet(self.row_effort_ratios()[1]),
-            Self::format_row_triplet(self.row_effort_ratios()[2]),
-        )?;
         write!(
             f,
-            "bal [{}]",
-            Self::format_balance_list(self.row_balances()),
+            "fitness: {:.4} | effort: {:.2}",
+            self.fitness, self.effort,
         )
     }
 }
@@ -1318,12 +1246,6 @@ mod tests {
         assert!((skewed.middle_row_switch_balance() - (-33.33333333)).abs() < 1e-6);
         // index: (2-8)/(2+8)*100 = -60.0%
         assert!((skewed.index_row_switch_balance() - (-60.0)).abs() < 1e-6);
-        assert!(
-            (skewed.finger_row_switch_balances()[0] - 33.33333333).abs() < 1e-6
-                && (skewed.finger_row_switch_balances()[1] - (-33.33333333)).abs() < 1e-6
-                && (skewed.finger_row_switch_balances()[2] - (-33.33333333)).abs() < 1e-6
-                && (skewed.finger_row_switch_balances()[3] - (-60.0)).abs() < 1e-6
-        );
     }
 
     #[test]

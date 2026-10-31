@@ -54,13 +54,12 @@ fn write_canonical(
     let mut seen = FxHashSet::default();
     layouts
         .iter()
-        .filter_map(|(layout, score, pool)| {
+        .filter_map(|(layout, score, _)| {
             let (layout, score) = to_side(layout, score, side);
-            seen.insert(layout.to_string())
-                .then_some((layout, score, *pool))
+            seen.insert(layout.to_string()).then_some((layout, score))
         })
         .take(to_print)
-        .for_each(|(layout, score, pool)| println!("\n{layout} [pool {pool:>2}]\n{score}"));
+        .for_each(|(layout, score)| println!("{}", console_row(&layout, &score)));
 
     let Some(path) = output_path else {
         return Ok(());
@@ -85,8 +84,8 @@ fn write_plain(
     output_path: Option<&Path>,
     overwrite: bool,
 ) -> Result<()> {
-    for (layout, score, pool) in layouts.iter().take(to_print) {
-        println!("[pool {pool:>2}] {layout} | {score}");
+    for (layout, score, _) in layouts.iter().take(to_print) {
+        println!("{}", console_row(layout, score));
     }
 
     let Some(path) = output_path else {
@@ -123,6 +122,11 @@ fn write_plain(
 
     info!("Results written to {}", path.display());
     Ok(())
+}
+
+/// Layout and essential scores, shared by plain and canonical console output.
+fn console_row(layout: &Layout, score: &ScoreResult) -> String {
+    format!("{layout} | {score}")
 }
 
 /// Orient `layout`/`score` so `e` sits on `side`. Mirrors both when `e` is on the
@@ -229,6 +233,16 @@ mod tests {
 
         let csv_line = format!("_mub_,lreop,wfydx,_htc_,kinas,qgvzj,, {}", score.to_csv());
         (Layout::new(&csv_line), score)
+    }
+
+    #[test]
+    fn console_row_omits_name_and_keeps_core_scores() {
+        let (mut layout, score) = e_left();
+        layout.name = "example".to_owned();
+        assert_eq!(
+            console_row(&layout, &score),
+            "_mub_,lreop,wfydx,_htc_,kinas,qgvzj | fitness: 5378.6900 | effort: 10000.00"
+        );
     }
 
     #[test]

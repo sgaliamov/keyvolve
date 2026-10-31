@@ -104,6 +104,10 @@ keys_1,...,keys_6,name,fitness,row_switch_ratio,...
 Rows are sorted by fitness within each home-row group, and the best group champions are kept in the
 final output. The run also logs a penalty breakdown for the top layout before saving.
 
+Final console results use the same [compact summary](../evaluation/evaluate.md#console) as
+`evaluate`: key groups, fitness and raw effort. Pool numbers and detailed metric
+arrays are not printed; all metric columns remain in the CSV. GA progress output is unchanged.
+
 ## Interruption
 
 `Ctrl+C` or shutdown stops the run. The optimizer does not save any CSV when the app reports
