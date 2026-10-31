@@ -20,10 +20,13 @@
     "unplace",
     "unplacing",
     "биграмм",
+    "биграмма",
+    "биграммы",
     "кастомная",
     "кверти",
     "мейнстримную",
-    "нейро"
+    "нейро",
+    "триграммы"
   ],
   "chat.useAgentsMdFile": true,
   "chat.useNestedAgentsMdFiles": true,
