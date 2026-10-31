@@ -182,6 +182,20 @@ impl RankConfig {
                 "rank.forceCheckPair must be in XX-YY format (letters only), e.g. AF-VE"
             ));
         }
+        let report = self.report_path();
+        let bigrams = self.bigrams_path();
+        if report == bigrams
+            || cfg!(windows)
+                && report
+                    .file_name()
+                    .and_then(|name| name.to_str())
+                    .zip(bigrams.file_name().and_then(|name| name.to_str()))
+                    .is_some_and(|(report, bigrams)| report.eq_ignore_ascii_case(bigrams))
+        {
+            return Err(miette::miette!(
+                "rank.report must differ from the flat bigrams report path"
+            ));
+        }
         Ok(())
     }
 
@@ -209,15 +223,10 @@ impl RankConfig {
     /// Resolved flat per-bigram CSV path, derived from the report path.
     pub fn bigrams_path(&self) -> PathBuf {
         let report = self.report_path();
-        let stem = report
-            .file_stem()
-            .and_then(|s| s.to_str())
-            .filter(|s| !s.is_empty())
-            .unwrap_or("report");
         let extension = report.extension().and_then(|s| s.to_str());
         let file_name = match extension {
-            Some(ext) if !ext.is_empty() => format!("{stem}.bigrams.{ext}"),
-            _ => format!("{stem}.bigrams"),
+            Some(ext) if !ext.is_empty() => format!("bigrams.{ext}"),
+            _ => "bigrams".to_owned(),
         };
         report.with_file_name(file_name)
     }
@@ -309,14 +318,49 @@ mod tests {
     }
 
     #[test]
-    fn derives_bigrams_path_from_report_path() {
+    fn flat_bigrams_path_uses_fixed_name_in_report_folder() {
         let cfg = RankConfig {
-            report: Some(PathBuf::from("data/rank/report.csv")),
+            report: Some(PathBuf::from("data/rank/custom-report.csv")),
             ..Default::default()
         };
-        assert_eq!(
-            cfg.bigrams_path(),
-            PathBuf::from("data/rank/report.bigrams.csv")
-        );
+        assert_eq!(cfg.bigrams_path(), PathBuf::from("data/rank/bigrams.csv"));
+
+        let cfg = RankConfig {
+            report: Some(PathBuf::from("data/rank/custom-report")),
+            ..Default::default()
+        };
+        assert_eq!(cfg.bigrams_path(), PathBuf::from("data/rank/bigrams"));
+    }
+
+    #[test]
+    fn rejects_report_that_would_be_overwritten_by_bigrams() {
+        for cfg in [
+            RankConfig {
+                report: Some(PathBuf::from("data/rank/bigrams.csv")),
+                ..Default::default()
+            },
+            RankConfig {
+                report: Some(PathBuf::from("data/rank/bigrams")),
+                ..Default::default()
+            },
+            RankConfig {
+                output: Some(PathBuf::from("data/rank/bigrams.json")),
+                ..Default::default()
+            },
+        ] {
+            assert!(
+                cfg.validate()
+                    .unwrap_err()
+                    .to_string()
+                    .contains("rank.report")
+            );
+        }
+        if cfg!(windows) {
+            let cfg = RankConfig {
+                report: Some(PathBuf::from("data/rank/Bigrams.CSV")),
+                ..Default::default()
+            };
+            assert!(cfg.validate().is_err());
+        }
     }
 }

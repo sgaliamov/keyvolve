@@ -171,6 +171,10 @@ The stats also print the Spearman correlation between rating and key distance (s
 | `report`                      | Block CSV: one 3×5 grid per starting key with efforts, ratings, deviations and match counts.                  |
 | `bigrams.<ext>`               | Flat CSV in the `report` folder, with the `report` extension. One row per bigram, sorted by rating.           |
 
+If the report has no extension, the flat file is named `bigrams`. Rank rejects a `report`
+path that would be the same as the flat file, including the default report derived from
+`output`. On Windows, this check ignores ASCII filename case.
+
 Flat CSV columns:
 
 | Column                                                                                   | Meaning                                                                                             |
