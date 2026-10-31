@@ -205,12 +205,13 @@ summary. All detailed metrics remain in [CSV](#csv); scoring and CSV formatting 
 
 ## Interruption
 
-Ctrl+C stops scoring. Nothing is written; every `input` file and `output` keep their
-previous content. Without `output`, the run logs
-`Evaluation interrupted before all files were scored; skipped rewriting input files`.
+Ctrl+C during scoring or output staging leaves every `input` file and `output` unchanged.
+Temporary files are removed. Console output already printed cannot be retracted.
 
-Known bug: with `output` set, an interrupted run currently overwrites `output` with the
-partially scored layouts. Tracked in [TASKS.md](../../TASKS.md#bugs).
+After staging, a final cancellation check marks the commit boundary. Ctrl+C after that
+check does not stop replacement. Without `output`, all input files are staged before
+commit, but replacement is not transactional: a write error during commit can leave some
+files updated and others unchanged.
 
 ## Next steps
 

@@ -1,12 +1,10 @@
 use crate::modes::{
-    evaluate, frequencies, log_breakdown, merge, optimize, rank, stats, synthesise,
-    synthesise::read_stats_cache,
+    evaluate, frequencies, merge, optimize, rank, stats, synthesise, synthesise::read_stats_cache,
 };
 use crate::{
     Config, Mode,
     evaluator::{CorpusCounts, EMPTY_SLOT, LayoutEvaluator, LayoutEvaluatorConfig},
     models::{Keyboard, Layout},
-    output::write_layouts,
 };
 use cliffa::cli::AppHandle;
 use miette::{Context, Result};
@@ -59,35 +57,7 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
                             .collect::<Vec<_>>();
                         evaluate::evaluate(evaluator, layouts, &eval, app)?
                     } else {
-                        let mut all_scored = Vec::with_capacity(total);
-                        let mut per_file = Vec::new();
-                        let mut interrupted = false;
-                        for (path, layouts) in batches {
-                            let expected = layouts.len();
-                            let scored = evaluate::score_layouts(&evaluator, layouts, app.clone());
-                            if app.should_finish() && scored.len() != expected {
-                                interrupted = true;
-                                break;
-                            }
-                            all_scored.extend(scored.iter().cloned());
-                            per_file.push((path, scored));
-                        }
-                        if interrupted {
-                            info!(
-                                "Evaluation interrupted before all files were scored; skipped rewriting input files"
-                            );
-                            return Ok(());
-                        }
-                        evaluate::sort_scored(&mut all_scored);
-
-                        if let Some((layout, score, _)) = all_scored.first() {
-                            log_breakdown(&evaluator, layout, score);
-                        }
-                        write_layouts(&all_scored, eval.print, None, true, eval.e_side)?;
-
-                        for (path, scored) in per_file {
-                            write_layouts(&scored, 0, Some(path.as_path()), true, eval.e_side)?;
-                        }
+                        evaluate::evaluate_in_place(evaluator, batches, &eval, app)?;
                     }
                 }
                 Mode::Optimize => {
