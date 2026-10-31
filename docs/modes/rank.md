@@ -8,7 +8,7 @@ pairs are mirrors and are not asked separately.
 ## Running
 
 ```sh
-keyvolve -m rank
+ikeya -m rank
 ```
 
 For configuration overrides and precedence, see the [CLI documentation](../../cliffa/README.md).

@@ -136,7 +136,7 @@ zwcvb gm___
 Сохранив все исходные файлы в папку `./data/samples` можно запустить команду:
 
 ```bash
-keyvolve -m merge --merge.shuffle
+ikeya -m merge --merge.shuffle
 ```
 
 Это объединит все исходные файлы в один файл удалив из них всё кроме слов, что позволит уменьшить объем данных для обработки.
@@ -170,7 +170,7 @@ keyvolve -m merge --merge.shuffle
 Поэтому мы сначала собираем статистику по корпусу с целью её последующего использования:
 
 ```bash
-keyvolve -m stats --stats.input ./data/samples/merged.txt --stats.output ./data/stats.csv
+ikeya -m stats --stats.input ./data/samples/merged.txt --stats.output ./data/stats.csv
 ```
 
 Причина, по которой мы не собираем статистику напрямую во время merge, заключается в разделении этапов и возможности таргетированного запуска утилиты.
@@ -198,7 +198,7 @@ keyvolve -m stats --stats.input ./data/samples/merged.txt --stats.output ./data/
 - язык: корпус английский; русский живет на qwerty-слое → отсылка к разделу про QMK
 - что на входе и выходе каждого шага (корпус, `stats.json`, `keyboard.json`, `layouts.csv`)
 - ГА одним абзацем: популяция, оценка, мутации, повтор; почему статистика вместо прогона всего текста
-- как запускать: один `keyvolve.yaml`, режим через `mode` или `-m`, переопределения флагами/env → [cliffa/README.md](../cliffa/README.md)
+- как запускать: один `ikeya.yaml`, режим через `mode` или `-m`, переопределения флагами/env → [cliffa/README.md](../cliffa/README.md)
 
 [TODO: почему ГА. В черновике «помимо других способов» - какие способы пробовал и почему отказался?]
 [TODO: рамки 30 клавиш - это ограничение инструмента или осознанный выбор? Что сказать читателю с 3×6 или стаггером?]
@@ -265,7 +265,7 @@ keyvolve -m stats --stats.input ./data/samples/merged.txt --stats.output ./data/
 Делается это методом Bradley–Terry.
 
 ```bash
-keyvolve -m rank
+ikeya -m rank
 ```
 
 Мы попарно сравниваем два нажатия чтоб понять какое из них удобнее.

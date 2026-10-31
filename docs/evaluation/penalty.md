@@ -1,7 +1,7 @@
 # Penalty - how it works
 
 The penalty multiplies raw effort by how far a layout misses the metric targets set in the
-`evaluator` section of [keyvolve.yaml](../../keyvolve.yaml). Shared by `evaluate` and
+`evaluator` section of [ikeya.yaml](../../ikeya.yaml). Shared by `evaluate` and
 `optimize`; fitness and effort: [scoring.md](scoring.md#fitness).
 
 ```text

@@ -579,7 +579,7 @@ mod tests {
         let cfg = RankConfig::default();
         let tiers = tiers(&state, &cfg);
 
-        let dir = std::env::temp_dir().join("keyvolve-rank-out-test");
+        let dir = std::env::temp_dir().join("ikeya-rank-out-test");
         std::fs::create_dir_all(&dir).unwrap();
         let json = dir.join("generated/json/keyboard.json");
         write_keyboard_json(&json, &state, &tiers).unwrap();
@@ -739,7 +739,7 @@ mod tests {
         let cfg = RankConfig::default();
         let tiers = tiers(&state, &cfg);
 
-        let dir = std::env::temp_dir().join("keyvolve-rank-bigram-export-test");
+        let dir = std::env::temp_dir().join("ikeya-rank-bigram-export-test");
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("keyboard.bigrams.csv");
         write_bigrams_csv(&path, &state, &tiers).unwrap();

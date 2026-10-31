@@ -8,11 +8,11 @@ and the same penalty targets in [penalty.md](../evaluation/penalty.md), includin
 ## Running
 
 ```sh
-keyvolve -m optimize
+ikeya -m optimize
 ```
 
 `optimization` holds the optimizer-specific settings. The shared scoring knobs live in the
-`evaluator` section of [keyvolve.yaml](../../keyvolve.yaml).
+`evaluator` section of [ikeya.yaml](../../ikeya.yaml).
 
 ## Configuration
 

@@ -258,7 +258,7 @@ mod tests {
 
     #[test]
     fn write_stats_csv_reports_writes_textual_reports() {
-        let dir = std::env::temp_dir().join(format!("keyvolve-stats-csv-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("ikeya-stats-csv-{}", std::process::id()));
         let data = CachedSourceStats {
             stats: CorpusStats {
                 letters: FxHashMap::from_iter([('e', 0.6), ('t', 0.4)]),

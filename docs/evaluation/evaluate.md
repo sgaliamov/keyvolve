@@ -7,7 +7,7 @@ keyboard JSON, corpus stats or `evaluator` targets.
 ## Running
 
 ```sh
-keyvolve -m evaluate
+ikeya -m evaluate
 ```
 
 `evaluate` is the default mode when `mode` is unset. For configuration overrides and

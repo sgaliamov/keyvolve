@@ -43,7 +43,7 @@
 Далее отдельным шагом мы сгенерируем статистику:
 
 ```bash
-keyvolve -m stats
+ikeya -m stats
 ```
 
 **[КОНЕЦ ПОМЕТКИ]**
@@ -88,7 +88,7 @@ keyvolve -m stats
 Делается это методом Bradley–Terry.
 
 ```bash
-keyvolve -m rank
+ikeya -m rank
 ```
 
 Мы попарно сравниваем два нажатия чтоб понять какое из них удобнее.
@@ -151,7 +151,7 @@ keyvolve -m rank
 - [On the One Hand or on the Other: Trade-Off in Timing Precision in Bimanual Musical Scale Playing](https://pmc.ncbi.nlm.nih.gov/articles/PMC6737297)
 - [Speed invariance of independent control of finger movements in pianists](https://pmc.ncbi.nlm.nih.gov/articles/PMC3545004)
 
-(TODO: SFS/redirects — как работает ranking (pairwise, Bradley-Terry), почему SFS через него не откалибровать и как эмулируется через `sfsRatio`, почему redirects отдельно делать не нужно (уже в парах). Детали: [trigram-metrics.md](/c:/Users/Admin/projects/keyvolve/docs/trigram-metrics.md).)
+(TODO: SFS/redirects — как работает ranking (pairwise, Bradley-Terry), почему SFS через него не откалибровать и как эмулируется через `sfsRatio`, почему redirects отдельно делать не нужно (уже в парах). Детали: [trigram-metrics.md](/c:/Users/Admin/projects/ikeya/docs/trigram-metrics.md).)
 
 Мы конечно же не пианисты, но мы также нажимаем на клавиши.
 Согласитесь же что очень удобно что на кверти Е и Р оказались рядом.
@@ -207,7 +207,7 @@ _xqyj	vdfw_
 
 **[УЖЕ ПОКРЫТО: «Ограничения размещения»]**
 
-See placement rules: [placement-rules.md](C:/Users/Admin/projects/keyvolve/docs/placement-rules.md).
+See placement rules: [placement-rules.md](C:/Users/Admin/projects/ikeya/docs/placement-rules.md).
 
 **[КОНЕЦ ПОМЕТКИ]**
 
@@ -282,7 +282,7 @@ But perfection is not about the performance. It's the journey itself.
 
 Направление: снизить порог входа. Не обязательно повторять весь путь — часть можно взять готовой.
 
-- как получить и запустить `keyvolve`
+- как получить и запустить `ikeya`
 - что уже лежит в репозитории и что можно пропустить: `data/stats/stats.json` (вместо 20 ГБ корпуса), `data/keyboard.json` и `data/rank-session.json` (вместо ~4000 вопросов), `data/layouts.known.csv` (известные раскладки)
 - минимальный путь: взять мои `stats.json` и `keyboard.json`, крутить только метрики и ограничения (ссылки на соответствующие разделы поста)
 - оговорка: мой `keyboard.json` — про мою клавиатуру и мои ощущения

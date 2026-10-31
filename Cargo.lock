@@ -353,6 +353,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "ikeya"
+version = "0.2.0"
+dependencies = [
+ "cliffa",
+ "darwin",
+ "itertools",
+ "miette",
+ "rand 0.10.2",
+ "rayon",
+ "regex",
+ "rustc-hash",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tracing",
+]
+
+[[package]]
 name = "indexmap"
 version = "2.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -392,24 +410,6 @@ dependencies = [
  "cfg-if",
  "futures-util",
  "wasm-bindgen",
-]
-
-[[package]]
-name = "keyvolve"
-version = "0.2.0"
-dependencies = [
- "cliffa",
- "darwin",
- "itertools",
- "miette",
- "rand 0.10.2",
- "rayon",
- "regex",
- "rustc-hash",
- "serde",
- "serde_json",
- "thiserror",
- "tracing",
 ]
 
 [[package]]

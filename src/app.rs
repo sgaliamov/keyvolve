@@ -282,7 +282,7 @@ mod tests {
             .unwrap()
             .as_nanos();
         let dir =
-            std::env::temp_dir().join(format!("keyvolve-{label}-{}-{nonce}", std::process::id()));
+            std::env::temp_dir().join(format!("ikeya-{label}-{}-{nonce}", std::process::id()));
         fs::create_dir_all(&dir).unwrap();
         dir
     }

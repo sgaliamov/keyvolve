@@ -1,4 +1,4 @@
-# keyvolve
+# ikeya
 
 Keyboard layout optimizer. Evolves 30-slot layouts using an island-model genetic algorithm.
 
@@ -18,7 +18,7 @@ Install Rust and Cargo, then run these PowerShell commands from the repository r
 .\scripts\run.ps1 -m evaluate --evaluate.eSide left
 ```
 
-The first command searches for layouts using the settings in `keyvolve.yaml`; the second scores and displays the saved layouts. The script builds a release version before running. The supplied keyboard effort data reflects the author's keyboard and preferences.
+The first command searches for layouts using the settings in `ikeya.yaml`; the second scores and displays the saved layouts. The script builds a release version before running. The supplied keyboard effort data reflects the author's keyboard and preferences.
 
 To repeat the search ten times instead, use:
 
@@ -140,7 +140,7 @@ cargo test -q scan_live_session_for_cycles -- --ignored --nocapture
 - `data/keyboard.json` — effort groups, bigram pair costs, penalty coefficients.
 - `data/layouts.csv` — semicolon-layout + fitness; header on first line.
 - `data/synthesised` — fake-word corpus used during optimization.
-- `keyvolve.yaml` — top-level config (mode, GA params, constraints; mode configs own their paths).
+- `ikeya.yaml` — top-level config (mode, GA params, constraints; mode configs own their paths).
 
 ## Crates
 - **`darwin/`** — generic GA engine, no domain knowledge.

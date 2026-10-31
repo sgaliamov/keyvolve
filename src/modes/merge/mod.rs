@@ -365,7 +365,7 @@ mod tests {
 
     #[test]
     fn process_file_keeps_single_letter_words() {
-        let dir = std::env::temp_dir().join("keyvolve-merge-test");
+        let dir = std::env::temp_dir().join("ikeya-merge-test");
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         let path = dir.join("sample.txt");
@@ -386,7 +386,7 @@ mod tests {
 
     #[test]
     fn collect_input_paths_checks_nested_txt_files_case_insensitive() {
-        let dir = std::env::temp_dir().join("keyvolve-merge-test-nested");
+        let dir = std::env::temp_dir().join("ikeya-merge-test-nested");
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(dir.join("nested")).unwrap();
 

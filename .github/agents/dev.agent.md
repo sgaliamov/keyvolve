@@ -1,6 +1,6 @@
 ---
 name: dev
-description: Implements features and fixes bugs in Rust. Use for coding tasks across keyvolve, darwin, and cliffa.
+description: Implements features and fixes bugs in Rust. Use for coding tasks across ikeya, darwin, and cliffa.
 argument-hint: Feature, bug, or TASKS.md entry to implement.
 tools: ['read', 'search', 'edit', 'execute']
 ---

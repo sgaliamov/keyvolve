@@ -497,7 +497,7 @@ mod tests {
     fn session_roundtrip() {
         let mut state = RankState::new();
         state.answer(0, 1, 1.0).unwrap();
-        let dir = std::env::temp_dir().join("keyvolve-rank-roundtrip-test");
+        let dir = std::env::temp_dir().join("ikeya-rank-roundtrip-test");
         std::fs::remove_dir_all(&dir).ok();
         let path = dir.join("session.json");
         state.save(&path).unwrap();
@@ -520,7 +520,7 @@ mod tests {
         let object = json.as_object_mut().unwrap();
         object.remove("version");
         object.remove("pending");
-        let dir = std::env::temp_dir().join("keyvolve-rank-migration-test");
+        let dir = std::env::temp_dir().join("ikeya-rank-migration-test");
         std::fs::remove_dir_all(&dir).ok();
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("session.json");
@@ -539,7 +539,7 @@ mod tests {
         let mut json = serde_json::to_value(&state).unwrap();
         json.as_object_mut().unwrap().remove("pending");
         json["version"] = serde_json::json!(2);
-        let dir = std::env::temp_dir().join("keyvolve-rank-invalid-v2-test");
+        let dir = std::env::temp_dir().join("ikeya-rank-invalid-v2-test");
         std::fs::remove_dir_all(&dir).ok();
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("session.json");
@@ -551,7 +551,7 @@ mod tests {
 
     #[test]
     fn corrupt_primary_recovers_rolling_backup() {
-        let dir = std::env::temp_dir().join("keyvolve-rank-recovery-test");
+        let dir = std::env::temp_dir().join("ikeya-rank-recovery-test");
         std::fs::remove_dir_all(&dir).ok();
         let path = dir.join("session.json");
         let mut state = RankState::new();
@@ -568,7 +568,7 @@ mod tests {
 
     #[test]
     fn missing_primary_recovers_synced_temporary_file() {
-        let dir = std::env::temp_dir().join("keyvolve-rank-temp-recovery-test");
+        let dir = std::env::temp_dir().join("ikeya-rank-temp-recovery-test");
         std::fs::remove_dir_all(&dir).ok();
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("session.json");
@@ -585,7 +585,7 @@ mod tests {
 
     #[test]
     fn missing_primary_with_invalid_recovery_refuses_to_start_over() {
-        let dir = std::env::temp_dir().join("keyvolve-rank-invalid-recovery-test");
+        let dir = std::env::temp_dir().join("ikeya-rank-invalid-recovery-test");
         std::fs::remove_dir_all(&dir).ok();
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("session.json");

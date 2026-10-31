@@ -1,4 +1,4 @@
-# Project: keyvolve
+# Project: ikeya
 
 Keyboard layout optimizer. Uses `darwin` (island-model GA, local crate) to evolve 30-slot layouts.
 
@@ -28,7 +28,7 @@ Keyboard layout optimizer. Uses `darwin` (island-model GA, local crate) to evolv
 - `keyboard.json` — effort groups + bigram pair costs + penalty coefficients.
 - `layouts.csv` — `keys_1`..`keys_6` (groups of 5, `_` = empty), `name`, `fitness`, metric columns; header on first line.
 - `data/synthesised` — fake-word corpus used during optimization.
-- Config entry point: `keyvolve.yaml` → deserialized into `Config`.
+- Config entry point: `ikeya.yaml` → deserialized into `Config`.
 
 ## Repository rules
 

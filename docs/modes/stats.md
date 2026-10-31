@@ -7,7 +7,7 @@ score layouts against this file (`corpusStats`), not against the text itself.
 ## Running
 
 ```sh
-keyvolve -m stats
+ikeya -m stats
 ```
 
 For configuration overrides and precedence, see the [CLI documentation](../../cliffa/README.md).
@@ -150,5 +150,5 @@ interrupted run leaves previous files in `output` intact.
 ## Next steps
 
 Set `corpusStats` in `evaluate` and `optimization` to `<stats.output>/stats.json`, then run
-`keyvolve -m evaluate` ([evaluate.md](../evaluation/evaluate.md)) or `keyvolve -m optimize`.
+`ikeya -m evaluate` ([evaluate.md](../evaluation/evaluate.md)) or `ikeya -m optimize`.
 See [readme.md](../../readme.md) for the mode list.

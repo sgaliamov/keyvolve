@@ -172,7 +172,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        path.push(format!("keyvolve-sample-words-{stamp}.txt"));
+        path.push(format!("ikeya-sample-words-{stamp}.txt"));
         fs::write(&path, contents).unwrap();
         path
     }

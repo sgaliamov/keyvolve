@@ -66,7 +66,7 @@ function Invoke-SequentialRun {
             # Set `BelowNormal` after the application started to be able to stop it with Ctrl+C.
             Start-Job -ScriptBlock {
                 while ($true) {
-                    $process = Get-Process -Name "keyvolve" -ErrorAction SilentlyContinue
+                    $process = Get-Process -Name "ikeya" -ErrorAction SilentlyContinue
                     if ($process) {
                         $process.PriorityClass = "BelowNormal"
                         break

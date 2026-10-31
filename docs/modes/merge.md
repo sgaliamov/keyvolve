@@ -7,7 +7,7 @@ words, one per line, optionally shuffled. The result is the source text for `sta
 ## Running
 
 ```sh
-keyvolve -m merge
+ikeya -m merge
 ```
 
 For configuration overrides and precedence, see the [CLI documentation](../../cliffa/README.md).
@@ -96,5 +96,5 @@ Stopping the run (Ctrl+C) is handled per phase:
 ## Next steps
 
 Point `stats.input` (and optionally `synthesise.text`) at `merge.output`, then run
-`keyvolve -m stats` ([stats.md](stats.md)). See [readme.md](../../readme.md) for the mode
+`ikeya -m stats` ([stats.md](stats.md)). See [readme.md](../../readme.md) for the mode
 list.

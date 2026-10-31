@@ -292,7 +292,7 @@ mod tests {
 
     #[test]
     fn count_file_combines_shifted_and_unshifted() {
-        let dir = std::env::temp_dir().join("keyvolve-freq-test");
+        let dir = std::env::temp_dir().join("ikeya-freq-test");
         fs::create_dir_all(&dir).unwrap();
         let path = dir.join("sample.txt");
         fs::write(&path, "Aa! 1:;").unwrap();

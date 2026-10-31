@@ -96,8 +96,8 @@ mod tests {
     #[test]
     fn interrupt_before_write_keeps_existing_output() -> Result<()> {
         let unique = unique();
-        let input = std::env::temp_dir().join(format!("keyvolve-stats-input-{unique}.txt"));
-        let output = std::env::temp_dir().join(format!("keyvolve-stats-output-{unique}"));
+        let input = std::env::temp_dir().join(format!("ikeya-stats-input-{unique}.txt"));
+        let output = std::env::temp_dir().join(format!("ikeya-stats-output-{unique}"));
         let json = output.join(STATS_FILE);
 
         fs::write(&input, "hello world\nalpha beta\n").unwrap();
@@ -125,8 +125,8 @@ mod tests {
     #[test]
     fn writes_all_files_into_output_folder() -> Result<()> {
         let unique = unique();
-        let input = std::env::temp_dir().join(format!("keyvolve-stats-input-{unique}.txt"));
-        let output = std::env::temp_dir().join(format!("keyvolve-stats-folder-{unique}"));
+        let input = std::env::temp_dir().join(format!("ikeya-stats-input-{unique}.txt"));
+        let output = std::env::temp_dir().join(format!("ikeya-stats-folder-{unique}"));
         fs::write(&input, "the tea a\n").unwrap();
 
         let cfg = BuildStatsConfig {
@@ -154,8 +154,8 @@ mod tests {
     #[test]
     fn output_file_path_is_rejected() {
         let unique = unique();
-        let input = std::env::temp_dir().join(format!("keyvolve-stats-input-{unique}.txt"));
-        let output = std::env::temp_dir().join(format!("keyvolve-stats-file-{unique}.json"));
+        let input = std::env::temp_dir().join(format!("ikeya-stats-input-{unique}.txt"));
+        let output = std::env::temp_dir().join(format!("ikeya-stats-file-{unique}.json"));
         fs::write(&input, "the\n").unwrap();
         fs::write(&output, "{}").unwrap();
 

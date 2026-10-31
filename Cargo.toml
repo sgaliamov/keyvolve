@@ -1,6 +1,6 @@
 [package]
 edition = "2024"
-name = "keyvolve"
+name = "ikeya"
 version = "0.2.0"
 
 [dependencies]
