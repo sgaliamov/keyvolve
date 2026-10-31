@@ -191,7 +191,6 @@ keyvolve -m stats --stats.input ./data/samples/merged.txt --stats.output ./data/
 
 - практичное: диск ×2, временная папка, Ctrl+C
 
-[TODO: почему у меня `minTrigramFrequency: 0.00001`, а не дефолт `0.0001`.]
 [TODO: что показали мои `frequencies` и какие решения из этого последовали.]
 [TODO: `synthesise` - упомянуть одной строкой или не упоминать вовсе.]
 [TODO: читаемые CSV рядом со `stats.json` (буквы, упорядоченные биграммы, первые буквы) - в TASKS.md. Когда появятся, описать здесь, зачем они: посмотреть свой корпус глазами. Старые `merged.letters.csv` и `merged.bigrams.csv` удалить.]

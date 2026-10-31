@@ -114,7 +114,7 @@ Details: [docs/modes/merge.md](docs/modes/merge.md).
 ### `stats`
 - `stats.input` — corpus text file, usually `merge.output`.
 - `stats.output` — output folder; writes `stats.json` + CSV reports. Set `evaluate.corpusStats` / `optimization.corpusStats` to `<output>/stats.json`.
-- `stats.minTrigramFrequency` — drop rarer trigrams. Default: `0.0001`.
+- `stats.minTrigramFrequency` — drop rarer trigrams. Default: `0.00001`.
 
 Details: [docs/modes/stats.md](docs/modes/stats.md).
 

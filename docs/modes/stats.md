@@ -25,7 +25,7 @@ stats:
 | --------------------- | ------------ | --------------------------------------------------------------------------------------------- |
 | `input`               | - (required) | Corpus text file, usually [`merge.output`](merge.md).                                         |
 | `output`              | - (required) | Output folder. Created if missing; existing files with the same names are overwritten.        |
-| `minTrigramFrequency` | `0.0001`     | Drop trigrams rarer than this share. `0` keeps all.                                           |
+| `minTrigramFrequency` | `0.00001`    | Drop trigrams rarer than this share. `0` keeps all.                                           |
 
 Missing `input` or `output` → run fails with an error naming the key. `output` pointing at
 an existing file → run fails before reading input.

@@ -27,5 +27,5 @@ impl Default for BuildStatsConfig {
 }
 
 fn default_min_trigram_frequency() -> f64 {
-    0.0001
+    0.00001
 }
