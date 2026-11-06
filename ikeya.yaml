@@ -91,17 +91,22 @@ rank:
 optimization:
   # Keyboard effort table + pair costs used by scoring and layout fitness.
   keyboard: data/keyboard.json
+
   # Cached corpus stats JSON; required for evaluate/optimize.
   corpusStats: data/stats/stats.json
 
   # Seed layout CSVs to load before GA starts; null means none.
   # input: data/layouts.csv
+
   # Layout CSV written after optimization.
   output: data/layouts.csv
+
   # Mutants produced per parent each generation.
   mutationCount: 10
+
   # Max home-row groups kept in final ranked output.
   maxGroups: 5
+
   # Number of layouts kept per home-row group in final ranked output.
   itemsPerGroup: 3
 
@@ -122,7 +127,7 @@ optimization:
   # These positions may be empty, not must be empty; blocked slots are also eligible.
   # Empties never sit between two letters of the same 5-key row. Full rules: docs/placement-rules.md
   allowed:
-  #   # '_': [0, 1, 4, 10, 11, 13, 14]
+    # '_': [0, 1, 4, 10, 11, 13, 14]
     # e: [6, 7, 8]
     # t: [2, 6, 7, 8]
     a: [2, 6, 7, 8]
