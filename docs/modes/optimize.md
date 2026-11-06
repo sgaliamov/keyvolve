@@ -106,7 +106,8 @@ final output. The run also logs a penalty breakdown for the top layout before sa
 
 Final console results use the same [compact summary](../evaluation/evaluate.md#console) as
 `evaluate`: key groups, fitness and raw effort. Pool numbers and detailed metric
-arrays are not printed; all metric columns remain in the CSV. GA progress output is unchanged.
+arrays are not printed; all metric columns remain in the CSV. Each GA progress update occupies one
+line, showing the generation, best layout, score, and minimum pool diversity (`δ`).
 
 ## Interruption
 

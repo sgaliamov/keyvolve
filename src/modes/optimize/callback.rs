@@ -48,26 +48,10 @@ fn format_progress_line(prefix: String, score: String, suffix: String) -> String
         return format!("{prefix}{suffix}");
     }
 
-    let indent = "     ".to_string();
-    let mut out = String::new();
-
-    out.push_str(&prefix);
-    out.push('\n');
-
-    let mut lines = score.lines();
-    if let Some(first) = lines.next() {
-        out.push_str(&indent);
-        out.push_str(first);
-        out.push_str(&suffix);
-    }
-
-    for line in lines {
-        out.push('\n');
-        out.push_str(&indent);
-        out.push_str(line);
-    }
-
-    out
+    format!(
+        "{prefix} | {}{suffix}",
+        score.lines().collect::<Vec<_>>().join(" | ")
+    )
 }
 
 #[cfg(test)]
@@ -75,17 +59,38 @@ mod tests {
     use super::format_progress_line;
 
     #[test]
-    fn formats_multiline_progress_with_alignment() {
+    fn formats_multiline_score_on_one_line() {
         let out = format_progress_line(
-            "  7: alpha | ".to_string(),
+            "  7: alpha".to_string(),
             "first\nsecond\nthird".to_string(),
             " | δ: 1.2345".to_string(),
         );
 
-        let lines: Vec<_> = out.lines().collect();
-        assert_eq!(lines[0], "  7: alpha | ");
-        assert_eq!(lines[1], "     first | δ: 1.2345");
-        assert_eq!(lines[2], "     second");
-        assert_eq!(lines[3], "     third");
+        assert_eq!(out, "  7: alpha | first | second | third | δ: 1.2345");
+    }
+
+    #[test]
+    fn formats_single_line_score() {
+        let out = format_progress_line(
+            "  7: alpha".to_string(),
+            "fitness: 1.0000 | effort: 2.00".to_string(),
+            " | δ: 1.2345".to_string(),
+        );
+
+        assert_eq!(
+            out,
+            "  7: alpha | fitness: 1.0000 | effort: 2.00 | δ: 1.2345"
+        );
+    }
+
+    #[test]
+    fn formats_missing_score() {
+        let out = format_progress_line(
+            "  7: alpha".to_string(),
+            String::new(),
+            " | δ: 1.2345".to_string(),
+        );
+
+        assert_eq!(out, "  7: alpha | δ: 1.2345");
     }
 }
