@@ -25,6 +25,7 @@ evaluate:
   # output: data/layouts.all.csv
   print: 5
   eSide: any
+  filterInvalid: false
 ```
 
 | Key | Default | Meaning |
@@ -35,6 +36,7 @@ evaluate:
 | `output` | unset | Combined result CSV, overwritten. Parent folder must exist. Unset → each `input` file is rewritten in place. |
 | `print` | `10` | Best layouts printed to stdout. `0` → none. |
 | `eSide` | `left` | Orientation of saved layouts: `left`, `right` or `any`. See [Orientation](#orientation). |
+| `filterInvalid` | `false` | Remove layouts violating current `optimization` placement constraints before scoring. See [Placement filtering](#placement-filtering). |
 
 Scoring rules and targets: [scoring.md](scoring.md), [penalty.md](penalty.md). The
 `evaluator` section is shared with `optimize`.
@@ -60,9 +62,9 @@ qwert,asdfg,zxcvb,yuiop,hjkl_,nm___,qwerty
 - Spaces around groups are trimmed.
 - Identical rows within one file → first kept.
 
-[Placement rules](../placement-rules.md) do not apply: any complete layout is scored.
+By default, [placement rules](../placement-rules.md) do not apply: any complete layout is scored.
 
-Any invalid row stops the run before scoring; no file is written.
+Any malformed layout row stops the run before scoring; no file is written.
 
 | Problem | Error |
 | ------- | ----- |
@@ -74,11 +76,34 @@ Any invalid row stops the run before scoring; no file is written.
 | `input` empty | `evaluate.input requires at least one CSV` |
 | Missing input file | skipped, no error |
 
+## Placement filtering
+
+Enable with `evaluate.filterInvalid: true` or `--evaluate.filterInvalid true`.
+The current `optimization` placement rules are compiled once before loading inputs;
+contradictory rules stop the run before any file is written. With the flag disabled,
+placement constraints are neither compiled nor checked.
+
+Every loaded layout is checked in its original orientation against all rules: `frozen`,
+`blocked`, `allowed` (including empties), `left`, `right`, `pairs`, `vertical`, and the
+implicit no-gap rule. Rejected layouts are removed, not repaired. Removed and retained
+counts are logged per input file. Malformed CSV rows still stop the run; they are not
+filtered out.
+
+**Warning: without `output`, filtering deletes rejected rows from the input files during
+in-place rewrite. Back up your inputs first.** With `output`, only the combined result
+is filtered; input files remain unchanged. A file with zero survivors is written as a
+header-only CSV.
+
+Filtering does not change `eSide`: retained layouts may still be mirrored when printed
+or saved, even if that mirrored orientation violates asymmetric constraints. Use
+`eSide: any` to preserve the validated orientation.
+
 ## Flow
 
 With `output` set:
 
 1. Load the keyboard JSON, corpus stats and every `input` file.
+   When `filterInvalid` is enabled, compile placement rules first and filter loaded layouts before scoring.
 2. Score all layouts.
 3. Sort by fitness, best first.
 4. Log the [penalty breakdown](penalty.md#breakdown-table-and-tuning) of the best layout.

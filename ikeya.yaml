@@ -310,6 +310,9 @@ evaluate:
   print: 5
   # Orientation used when saving layouts; left mirrors twin layouts.
   eSide: any
+  # Remove layouts violating current optimization placement rules in their original orientation.
+  # WARNING: without output, invalid rows are deleted from input files. Back them up first.
+  filterInvalid: false
 
 # ============================================================================
 # MODE: Operation mode for this run

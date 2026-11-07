@@ -37,9 +37,13 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
             match mode {
                 Mode::Evaluate => {
                     let eval = cfg.evaluate;
+                    let constraints = eval
+                        .filter_invalid
+                        .then(|| cfg.optimization.compile())
+                        .transpose()?;
                     let keyboard = Keyboard::load(&eval.keyboard)?;
                     let evaluator = build_evaluator(&keyboard, &eval.corpus_stats, evaluator_cfg)?;
-                    let batches = load_evaluate_batches(&eval)?;
+                    let mut batches = load_evaluate_batches(&eval)?;
                     if batches.is_empty() {
                         info!("No evaluate.input CSV files found; skipping evaluation");
                         return Ok(());
@@ -49,6 +53,10 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
                         .map(|(_, layouts)| layouts.len())
                         .sum::<usize>();
                     info!("Loaded {} layouts", total);
+
+                    if let Some(constraints) = constraints {
+                        filter_evaluate_batches(&mut batches, &constraints);
+                    }
 
                     if eval.output.is_some() {
                         let layouts = batches
@@ -77,6 +85,23 @@ pub fn run(config: Option<Config>, app: AppHandle) -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Remove invalid original layouts while preserving their source files, including empty batches.
+fn filter_evaluate_batches(
+    batches: &mut [(PathBuf, Vec<Layout>)],
+    constraints: &optimize::PlacementConstraints,
+) {
+    for (path, layouts) in batches {
+        let total = layouts.len();
+        layouts.retain(|layout| constraints.is_genome_valid(&layout_to_genome(layout.clone())));
+        info!(
+            file = %path.display(),
+            removed = total - layouts.len(),
+            retained = layouts.len(),
+            "Filtered layouts under current placement constraints"
+        );
+    }
 }
 
 /// Build evaluator from keyboard and cached stats.
@@ -160,6 +185,9 @@ pub fn layout_to_genome(layout: Layout) -> Vec<char> {
 mod tests {
     use super::*;
     use crate::modes::evaluate::EvaluateConfig;
+    use crate::modes::optimize::OptimizationConfig;
+    use crate::modes::synthesise::{CachedSourceStats, CorpusStatsCounter, write_stats_cache};
+    use crate::output::Side;
     use std::{
         fs,
         time::{SystemTime, UNIX_EPOCH},
@@ -236,6 +264,186 @@ mod tests {
 
         assert!(seed.is_empty());
         fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn evaluation_filter_uses_all_placement_rules_without_repairing_layouts() {
+        let valid = Layout::new("abcde,fghij,klmno,pqrst,uvwxy,z____,valid");
+        for (rules, swap) in [
+            (r#"{"frozen":{"a":0}}"#, (0, 1)),
+            (r#"{"blocked":[29]}"#, (25, 29)),
+            (r#"{"allowed":{"e":[4]}}"#, (4, 9)),
+            (r#"{"allowed":{"_":[10,11,12,13,14]}}"#, (24, 26)),
+            (r#"{"left":["a"]}"#, (0, 15)),
+            (r#"{"right":["p"]}"#, (0, 15)),
+            (r#"{"pairs":["ab","bc"]}"#, (2, 17)),
+            (r#"{"pairs":["ab"]}"#, (1, 5)),
+            (r#"{"vertical":["ag"]}"#, (6, 10)),
+            (r#"{"vertical":["pv"]}"#, (20, 21)),
+            (r#"{}"#, (1, 26)),
+            (
+                r#"{"frozen":{"a":0},"blocked":[0],"right":["a"],"allowed":{"a":[14]}}"#,
+                (0, 1),
+            ),
+        ] {
+            let opt: OptimizationConfig = serde_json::from_str(rules).unwrap();
+            let constraints = opt.compile().unwrap();
+            let mut genome = layout_to_genome(valid.clone());
+            let original = Layout::from_keys(&genome);
+            assert!(constraints.is_genome_valid(&genome), "{rules}");
+            genome.swap(swap.0, swap.1);
+            let invalid = Layout::from_keys(&genome);
+            let path = PathBuf::from("input.csv");
+            let mut batches = vec![(path.clone(), vec![original.clone(), invalid])];
+
+            filter_evaluate_batches(&mut batches, &constraints);
+
+            assert_eq!(batches[0].0, path);
+            assert_eq!(batches[0].1.len(), 1, "{rules}");
+            assert_eq!(batches[0].1[0].keys, original.keys, "{rules}");
+            assert_eq!(batches[0].1[0].name, original.name, "{rules}");
+        }
+    }
+
+    #[test]
+    fn evaluation_filter_writes_combined_or_per_file_results_including_empty_csvs() {
+        for combined in [false, true] {
+            for survivors in [false, true] {
+                let dir = tempfile::tempdir().unwrap();
+                let mut cfg = evaluation_config(dir.path());
+                let first = dir.path().join("first.csv");
+                let second = dir.path().join("second.csv");
+                let output = dir.path().join("output.csv");
+                let valid = Layout::new("abcde,fghij,klmno,pqrst,uvwxy,z____,valid");
+                let invalid = valid.mirrored();
+                let rejected = format!("{invalid},rejected\n");
+                let first_content = if survivors {
+                    format!("{valid},valid\n{rejected}")
+                } else {
+                    rejected.clone()
+                };
+                fs::write(&first, &first_content).unwrap();
+                fs::write(&second, &rejected).unwrap();
+                cfg.evaluate.input = vec![first.clone(), second.clone()];
+                cfg.evaluate.output = combined.then_some(output.clone());
+                cfg.evaluate.filter_invalid = true;
+                cfg.optimization.frozen.insert('a', 0);
+
+                run(Some(cfg), AppHandle::new()).unwrap();
+
+                let result = if combined {
+                    assert_eq!(fs::read_to_string(&first).unwrap(), first_content);
+                    assert_eq!(fs::read_to_string(&second).unwrap(), rejected);
+                    output
+                } else {
+                    assert_header_only(&second);
+                    first
+                };
+                let rows = Layout::load(&result).unwrap();
+                assert_eq!(rows.len(), usize::from(survivors));
+                if survivors {
+                    assert_eq!(rows[0].keys, valid.keys);
+                    assert_eq!(rows[0].name, "valid");
+                    assert!(fs::read_to_string(result).unwrap().contains(",fitness,"));
+                } else {
+                    assert_header_only(&result);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn evaluation_filter_checks_original_orientation_independently_of_save_side() {
+        for side in [Side::Any, Side::Left, Side::Right] {
+            let dir = tempfile::tempdir().unwrap();
+            let mut cfg = evaluation_config(dir.path());
+            let input = dir.path().join("input.csv");
+            let output = dir.path().join("output.csv");
+            let left = Layout::new("abcde,fghij,klmno,pqrst,uvwxy,z____,left");
+            let right = left.mirrored();
+            fs::write(&input, format!("{left},rejected\n{right},retained\n")).unwrap();
+            cfg.evaluate.input = vec![input];
+            cfg.evaluate.output = Some(output.clone());
+            cfg.evaluate.filter_invalid = true;
+            cfg.evaluate.e_side = side;
+            cfg.optimization.right.insert('e');
+            let constraints = cfg.optimization.compile().unwrap();
+
+            run(Some(cfg), AppHandle::new()).unwrap();
+
+            let rows = Layout::load(output).unwrap();
+            assert_eq!(rows.len(), 1);
+            assert_eq!(rows[0].name, "retained");
+            let expected = if side == Side::Left { &left } else { &right };
+            assert_eq!(rows[0].keys, expected.keys);
+            assert_eq!(
+                constraints.is_genome_valid(&layout_to_genome(rows[0].clone())),
+                side != Side::Left
+            );
+        }
+    }
+
+    #[test]
+    fn contradictory_evaluation_constraints_fail_before_writes_only_when_enabled() {
+        for enabled in [false, true] {
+            for combined in [false, true] {
+                let dir = tempfile::tempdir().unwrap();
+                let mut cfg = evaluation_config(dir.path());
+                let input = dir.path().join("input.csv");
+                let output = dir.path().join("output.csv");
+                // Complete, but violates the implicit no-gap rule.
+                let original = "a_cde,fghij,klmno,pqrst,uvwxy,zb___,gap\n";
+                fs::write(&input, original).unwrap();
+                fs::write(&output, "original output").unwrap();
+                cfg.evaluate.input = vec![input.clone()];
+                cfg.evaluate.output = combined.then_some(output.clone());
+                cfg.evaluate.filter_invalid = enabled;
+                cfg.optimization.left.insert('a');
+                cfg.optimization.right.insert('a');
+
+                let result = run(Some(cfg), AppHandle::new());
+
+                if enabled {
+                    assert!(result.unwrap_err().to_string().contains("no legal slots"));
+                    assert_eq!(fs::read_to_string(&input).unwrap(), original);
+                    assert_eq!(fs::read_to_string(&output).unwrap(), "original output");
+                } else {
+                    result.unwrap();
+                    let rows = Layout::load(if combined { &output } else { &input }).unwrap();
+                    assert_eq!(rows.len(), 1);
+                    assert_eq!(rows[0].keys, Layout::new(original).keys);
+                }
+            }
+        }
+    }
+
+    /// Build evaluation settings with a tiny cached corpus and no save normalization.
+    fn evaluation_config(dir: &Path) -> Config {
+        let mut counter = CorpusStatsCounter::default();
+        counter.add_word("hello");
+        let stats_path = dir.join("stats.json");
+        write_stats_cache(
+            &stats_path,
+            &CachedSourceStats {
+                stats: counter.finish(),
+                word_count: 1,
+            },
+        )
+        .unwrap();
+        let mut cfg: Config = serde_json::from_str(r#"{"ga":{}}"#).unwrap();
+        cfg.evaluate.keyboard = "data/keyboard.json".into();
+        cfg.evaluate.corpus_stats = stats_path;
+        cfg.evaluate.print = 0;
+        cfg.evaluate.e_side = Side::Any;
+        cfg
+    }
+
+    /// Assert an empty result still has the scored CSV header.
+    fn assert_header_only(path: &Path) {
+        let csv = fs::read_to_string(path).unwrap();
+        assert!(csv.starts_with("keys_1,"));
+        assert!(csv.contains(",fitness,"));
+        assert_eq!(csv.lines().count(), 1);
     }
 
     fn write_layout_csv(path: &Path) {

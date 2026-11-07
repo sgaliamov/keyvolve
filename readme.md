@@ -29,7 +29,7 @@ To repeat the search ten times instead, use:
 
 Repeated runs provide more results to compare: similar scores or layouts across runs can suggest the search is stable, while different results may reveal other promising regions. This does not prove a global optimum or guarantee that the search has escaped local optima. With the current configuration, completed optimization runs append to `data/layouts.csv`; evaluation reads that file and rewrites it in place. Back it up first if you want to preserve its current contents.
 
-`--evaluate.eSide left` normalizes layouts so that `e` is on the left hand and removes duplicate layouts, including mirrored pairs. Use `right` instead if you prefer `e` on the right hand. Mirroring a layout can violate asymmetric placement constraints; evaluation does not check those constraints.
+`--evaluate.eSide left` normalizes layouts so that `e` is on the left hand and removes duplicate layouts, including mirrored pairs. Use `right` instead if you prefer `e` on the right hand. Mirroring a layout can violate asymmetric placement constraints; optional `evaluate.filterInvalid` checks only the original orientation, not the mirrored output.
 
 ## PowerShell scripts
 
@@ -99,6 +99,7 @@ Details: [docs/modes/optimize.md](docs/modes/optimize.md). Placement:
 - `evaluate.output` — combined scored CSV. Omitted → each input file rewritten in place.
 - `evaluate.print` — number of best layouts printed to stdout. Default: `10`.
 - `evaluate.eSide` — hand `e` is mirrored to on save: `left` (default), `right`, `any`.
+- `evaluate.filterInvalid` - remove rows violating current optimization placement rules before scoring. Default: `false`. Without `output`, rejected rows are deleted from input files; back them up first.
 
 Details: [docs/evaluation/evaluate.md](docs/evaluation/evaluate.md). Scoring:
 [docs/evaluation/scoring.md](docs/evaluation/scoring.md), [docs/evaluation/penalty.md](docs/evaluation/penalty.md).

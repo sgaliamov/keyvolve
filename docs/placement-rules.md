@@ -1,7 +1,8 @@
 # Placement rules - how they work
 
 Placement rules restrict where `optimize` may put each letter and the 4 empty slots. Every
-layout the optimizer generates, mutates, scores or saves obeys them. `evaluate` ignores them.
+layout the optimizer generates, mutates, scores or saves obeys them. `evaluate` ignores them
+unless [evaluate.filterInvalid](evaluation/evaluate.md#placement-filtering) is enabled.
 
 ## Slot map
 
