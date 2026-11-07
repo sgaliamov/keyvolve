@@ -33,6 +33,7 @@ Keyboard layout optimizer. Uses `darwin` (island-model GA, local crate) to evolv
 ## Repository rules
 
 Do not commit code unless I request explicitly.
+Follow the shared local memory conventions in `AGENTS.md`.
 
 ## Response style
 
