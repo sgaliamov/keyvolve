@@ -19,12 +19,12 @@ Every metric is opt-in. No metric has a built-in default; unset → no penalty t
 metricName: { type: max|target, value: <number>, weight: <number>, tolerance: <number> }
 ```
 
-| Field | Meaning |
-| ----- | ------- |
-| `type` | `max`: lower is better, `value` = ceiling. `target`: closer is better, `value` = goal point. |
-| `value` | Ceiling or goal, in the percent units the CSV prints. |
-| `weight` | Priority. Default `1`. |
-| `tolerance` | `target` only: accepted miss in percentage points. Default `5`. |
+| Field       | Meaning                                                                                      |
+| ----------- | -------------------------------------------------------------------------------------------- |
+| `type`      | `max`: lower is better, `value` = ceiling. `target`: closer is better, `value` = goal point. |
+| `value`     | Ceiling or goal, in the percent units the CSV prints.                                        |
+| `weight`    | Priority. Default `1`.                                                                       |
+| `tolerance` | `target` only: accepted miss in percentage points. Default `5`.                              |
 
 ```text
 max:    deviation = |value| / target.value        norm = target.value
@@ -42,10 +42,10 @@ Config-wide exponent `evaluator.sharpness`. Default `4`.
 
 | deviation | cost (weight 1, sharpness 4) |
 | --------- | ---------------------------- |
-| 0.5 | 0.0625 |
-| 1.0 | 1.0 |
-| 1.5 | 5.06 |
-| 2.0 | 16.0 |
+| 0.5       | 0.0625                       |
+| 1.0       | 1.0                          |
+| 1.5       | 5.06                         |
+| 2.0       | 16.0                         |
 
 Higher → forgiving under the edge, brutal over it. `1.0` → linear.
 
@@ -94,32 +94,32 @@ old asymmetric `(L / R − 1) · 100` formula; their metrics and fitness may be 
 
 ### Hand imbalances
 
-| Config field | Formula |
-| ------------ | ------- |
-| `effortsImbalance` | `signed_imbalance_percent(left_effort, right_effort)` |
-| `handsImbalance` | `signed_imbalance_percent(left_count, right_count)` |
-| `rollImbalance` | `signed_imbalance_percent(left_rolls, right_rolls)` |
+| Config field         | Formula                                                                 |
+| -------------------- | ----------------------------------------------------------------------- |
+| `effortsImbalance`   | `signed_imbalance_percent(left_effort, right_effort)`                   |
+| `handsImbalance`     | `signed_imbalance_percent(left_count, right_count)`                     |
+| `rollImbalance`      | `signed_imbalance_percent(left_rolls, right_rolls)`                     |
 | `rowSwitchImbalance` | `signed_imbalance_percent(left_row_switch_cost, right_row_switch_cost)` |
-| `streakImbalance` | `signed_imbalance_percent(left_streak, right_streak)` |
+| `streakImbalance`    | `signed_imbalance_percent(left_streak, right_streak)`                   |
 
 `streak(count, rolls) = count / (count − rolls)`, `0` if `count <= rolls`.
 
 ### Press patterns
 
-| Config field | Formula |
-| ------------ | ------- |
-| `rowSwitchRatio` | `100 × (left_row_switch_cost + right_row_switch_cost) / P` |
-| `handSwitchRatio` | `100 × hand_switches / P` |
-| `sfsRatio` | `100 × sfs_count / P` - see [trigram-metrics.md](trigram-metrics.md) |
+| Config field              | Formula                                                                             |
+| ------------------------- | ----------------------------------------------------------------------------------- |
+| `rowSwitchRatio`          | `100 × (left_row_switch_cost + right_row_switch_cost) / P`                          |
+| `handSwitchRatio`         | `100 × hand_switches / P`                                                           |
+| `sfsRatio`                | `100 × sfs_count / P` - see [trigram-metrics.md](trigram-metrics.md)                |
 | `directionalOutwardRatio` | `100 × outward_count / (inward_count + outward_count)` - `0%` all inward, `50%` tie |
 
 ### Rows
 
-| Config field | Formula |
-| ------------ | ------- |
-| `topRowRatio` | `100 × (left_row_effort[top] + right_row_effort[top]) / effort` |
-| `homeRowRatio` | `100 × (left_row_effort[home] + right_row_effort[home]) / effort` |
-| `bottomRowRatio` | `100 × (left_row_effort[bottom] + right_row_effort[bottom]) / effort` |
+| Config field     | Formula                                                                   |
+| ---------------- | ------------------------------------------------------------------------- |
+| `topRowRatio`    | `100 × (left_row_effort[top] + right_row_effort[top]) / effort`           |
+| `homeRowRatio`   | `100 × (left_row_effort[home] + right_row_effort[home]) / effort`         |
+| `bottomRowRatio` | `100 × (left_row_effort[bottom] + right_row_effort[bottom]) / effort`     |
 | `homeRowBalance` | `signed_imbalance_percent(left_row_effort[home], right_row_effort[home])` |
 
 Row ratios sum to `100%`; use `type: target` with goals that also sum to `100`.
@@ -129,11 +129,11 @@ Row ratios sum to `100%`; use `type: target` with goals that also sum to `100`.
 One target per finger, applied to each hand separately (breakdown shows `left_*` and `right_*`
 rows). Denominator is total effort of both hands.
 
-| Config field | Formula (per hand) |
-| ------------ | ------------------ |
-| `pinkyRatio` | `100 × column_effort[pinky] / effort` |
-| `ringRatio` | `100 × column_effort[ring] / effort` |
-| `middleRatio` | `100 × column_effort[middle] / effort` |
+| Config field      | Formula (per hand)                          |
+| ----------------- | ------------------------------------------- |
+| `pinkyRatio`      | `100 × column_effort[pinky] / effort`       |
+| `ringRatio`       | `100 × column_effort[ring] / effort`        |
+| `middleRatio`     | `100 × column_effort[middle] / effort`      |
 | `indexInnerRatio` | `100 × column_effort[index-inner] / effort` |
 | `indexOuterRatio` | `100 × column_effort[index-outer] / effort` |
 
@@ -145,12 +145,12 @@ rows). Denominator is total effort of both hands.
 Index inner + outer merged into one `index` finger ([fingers](scoring.md#fingers)). Per-hand
 ratios, one shared target.
 
-| Config field | Formula (per hand) |
-| ------------ | ------------------ |
-| `pinkyRowSwitchRatio` | `100 × finger_row_switch_cost[pinky] / finger_press_count[pinky]` |
-| `ringRowSwitchRatio` | same, ring |
-| `middleRowSwitchRatio` | same, middle |
-| `indexRowSwitchRatio` | same, index |
+| Config field           | Formula (per hand)                                                |
+| ---------------------- | ----------------------------------------------------------------- |
+| `pinkyRowSwitchRatio`  | `100 × finger_row_switch_cost[pinky] / finger_press_count[pinky]` |
+| `ringRowSwitchRatio`   | same, ring                                                        |
+| `middleRowSwitchRatio` | same, middle                                                      |
+| `indexRowSwitchRatio`  | same, index                                                       |
 
 `pinkyRowSwitchBalance`, `ringRowSwitchBalance`, `middleRowSwitchBalance`,
 `indexRowSwitchBalance` = `balance(left_finger_row_switch_cost[f], right_finger_row_switch_cost[f])`.
