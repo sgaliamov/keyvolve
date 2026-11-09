@@ -142,10 +142,10 @@ optimization:
     # p: [1, 3, 4, 5, 9, 11, 12, 13, 14]
     # v: [0, 1, 3, 4, 5, 9, 11, 12, 13, 14]
     # k: [0, 4, 10, 11, 14]
-    j: [0, 4, 10, 11, 14]
-    x: [0, 4, 10, 11, 14]
-    z: [0, 4, 10, 11, 14]
-    q: [0, 4, 10, 11, 14]
+    # j: [0, 4, 10, 11, 14]
+    # x: [0, 4, 10, 11, 14]
+    # z: [0, 4, 10, 11, 14]
+    # q: [0, 4, 10, 11, 14]
 
   # Optional: Character pairs on horizontally adjacent keys, on one hand, using different fingers.
   pairs: ['th', 'er']
@@ -183,7 +183,7 @@ optimization:
     # - ev
 
   # Optional: Characters restricted to the left hand (unless frozen elsewhere).
-  right: [t, h]
+  # right: [t, h]
 
   # Optional: Characters restricted to the right hand (unless frozen elsewhere).
   left: [e, r]
@@ -305,8 +305,8 @@ evaluate:
     # - data/layouts.9.csv
     # - data/layouts.10.csv
     # - data/layouts.11.csv
-    - data/layouts.known.csv
-    - data/layouts.free.csv
+    # - data/layouts.known.csv
+    # - data/layouts.free.csv
     # - data/layouts.all.csv
   # Output CSV for scored layouts. Omit to rewrite each input file in place.
   # output: data/layouts.all.csv
