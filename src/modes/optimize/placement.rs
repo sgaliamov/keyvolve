@@ -1,7 +1,7 @@
 use crate::evaluator::EMPTY_SLOT;
 use crate::modes::optimize::{
-    ALL_LETTERS, ALL_SLOTS, LETTER_COUNT, PlacementConstraints, SLOT_COUNT, bits, coupled_slots,
-    letter, letter_index,
+    ALL_LETTERS, ALL_SLOTS, HANDS, LETTER_COUNT, PlacementConstraints, SLOT_COUNT, bits,
+    coupled_slots, letter, letter_index,
 };
 use rand::{Rng, RngExt, seq::SliceRandom};
 
@@ -208,6 +208,9 @@ fn match_coupled_slots(
     vertical: &[[char; 2]],
     pairs: &[[char; 2]],
 ) -> Option<[usize; SLOT_COUNT]> {
+    if !pairs_fit_hands(domains, pairs) || fixed_vertical_conflict(domains, vertical) {
+        return None;
+    }
     if let Some((&[a, b], remaining)) = pairs.split_first() {
         let a = letter_index(a).unwrap();
         let b = letter_index(b).unwrap();
@@ -257,6 +260,38 @@ fn match_coupled_slots(
         }
     }
     None
+}
+
+/// Reject more disjoint coupled pairs than a hand's three rows can hold.
+fn pairs_fit_hands(domains: &[u32; SLOT_COUNT], pairs: &[[char; 2]]) -> bool {
+    HANDS.into_iter().all(|hand| {
+        let mut used = 0u32;
+        let mut count = 0;
+        for &[a, b] in pairs {
+            let a = letter_index(a).unwrap();
+            let b = letter_index(b).unwrap();
+            let tokens = (1 << a) | (1 << b);
+            if used & tokens == 0 && (domains[a] | domains[b]) & !hand == 0 {
+                used |= tokens;
+                count += 1;
+            }
+        }
+        count <= 6
+    })
+}
+
+/// Reject fixed vertical pairs that already occupy the same hand and column.
+fn fixed_vertical_conflict(domains: &[u32; SLOT_COUNT], pairs: &[[char; 2]]) -> bool {
+    pairs.iter().any(|&[a, b]| {
+        let a = domains[letter_index(a).unwrap()];
+        let b = domains[letter_index(b).unwrap()];
+        if a.count_ones() != 1 || b.count_ones() != 1 {
+            return false;
+        }
+        let a = a.trailing_zeros();
+        let b = b.trailing_zeros();
+        a / 15 == b / 15 && a % 5 == b % 5
+    })
 }
 
 /// Stack-only matching state; masks avoid rescanning occupied slots on relocation.
@@ -585,6 +620,21 @@ mod tests {
                 assert!(constraints.is_genome_valid(&g));
                 g = constraints.mutate(&g, &mut rng);
             }
+        }
+    }
+
+    #[test]
+    fn coupled_pairs_work_with_restricted_letters_and_vertical_rules() {
+        let constraints = constraints(
+            r#"{"allowed":{"e":[6,7,8],"t":[2,6,7,8],"a":[2,6,7,8],"i":[2,6,7,8],"o":[2,6,7,8],"n":[2,6,7,8],"j":[0,4,10,11,14],"x":[0,4,10,11,14],"z":[0,4,10,11,14],"q":[0,4,10,11,14]},"pairs":["th","er"],"vertical":["er","ht","in","eh","an","it","no","es","or","en","at"],"left":["e","r"]}"#,
+        );
+        let mut rng = StdRng::seed_from_u64(23);
+        let mut genome = constraints.generate(&mut rng);
+        for _ in 0..100 {
+            assert!(constraints.is_genome_valid(&genome));
+            assert!(coupled_slots(slot(&genome, 't'), slot(&genome, 'h')));
+            assert!(coupled_slots(slot(&genome, 'e'), slot(&genome, 'r')));
+            genome = constraints.mutate(&genome, &mut rng);
         }
     }
 
