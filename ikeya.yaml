@@ -108,7 +108,7 @@ optimization:
   maxGroups: 3
 
   # Number of layouts kept per home-row group in final ranked output.
-  itemsPerGroup: 5
+  itemsPerGroup: 10
 
   # Optional: Slot indices that must remain empty (blocked), unless a letter is frozen there.
   # blocked: [0]
@@ -128,26 +128,26 @@ optimization:
   # Empties never sit between two letters of the same 5-key row. Full rules: docs/placement-rules.md
   allowed:
     # '_': [0, 1, 4, 10, 11, 13, 14]
-    # e: [6, 7, 8]
-    # t: [2, 6, 7, 8]
-    # a: [2, 6, 7, 8]
-    # i: [2, 6, 7, 8]
-    # o: [2, 6, 7, 8]
-    # n: [2, 6, 7, 8]
-    # r: [1, 2, 3, 6, 7, 8, 9]
-    # s: [1, 2, 3, 6, 7, 8, 9]
+    e: [6, 7, 8]
+    t: [2, 6, 7, 8]
+    a: [2, 6, 7, 8]
+    i: [2, 6, 7, 8]
+    o: [2, 6, 7, 8]
+    n: [2, 6, 7, 8]
+    r: [1, 2, 3, 6, 7, 8, 9]
+    s: [1, 2, 3, 6, 7, 8, 9]
     # h: [1, 2, 3, 6, 7, 8, 9, 13]
     # m: [1, 3, 4, 5, 9, 11, 12, 13, 14]
     # g: [1, 3, 4, 5, 9, 11, 12, 13, 14]
     # p: [1, 3, 4, 5, 9, 11, 12, 13, 14]
     # v: [0, 1, 3, 4, 5, 9, 11, 12, 13, 14]
-    k: [0, 4, 10, 11, 14]
+    # k: [0, 4, 10, 11, 14]
     j: [0, 4, 10, 11, 14]
     x: [0, 4, 10, 11, 14]
     z: [0, 4, 10, 11, 14]
     q: [0, 4, 10, 11, 14]
 
-  # Optional: Character pairs that stay on one hand and may not be pressed by the same finger.
+  # Optional: Character pairs on horizontally adjacent keys, on one hand, using different fingers.
   pairs: ['th', 'er']
 
   # Optional: Character pairs that may not align vertically in the same column on a hand.
@@ -164,29 +164,29 @@ optimization:
     - or
     - en
     - at
-    - de
-    - ar
-    - al
-    - is
-    - et
-    - st
-    - fo
-    - ot
-    - el
-    - dn
-    - as
-    - il
-    - em
-    - ir
-    - gn
-    - ce
-    - ev
+    # - de
+    # - ar
+    # - al
+    # - is
+    # - et
+    # - st
+    # - fo
+    # - ot
+    # - el
+    # - dn
+    # - as
+    # - il
+    # - em
+    # - ir
+    # - gn
+    # - ce
+    # - ev
 
   # Optional: Characters restricted to the left hand (unless frozen elsewhere).
-  left: [t, h]
+  right: [t, h]
 
   # Optional: Characters restricted to the right hand (unless frozen elsewhere).
-  right: [e, r]
+  left: [e, r]
 
 # Targets for the optimization and evaluation processes.
 evaluator:
@@ -211,7 +211,7 @@ evaluator:
   # rowSwitchRatio: { type: max, value: 8, weight: 1 }
 
   # Hand switches / all presses.
-  handSwitchRatio: { type: max, value: 37, weight: 3 }
+  handSwitchRatio: { type: max, value: 40, weight: 10 }
 
   # Same-finger skipgram share: same finger reactivated after one intervening key.
   sfsRatio: { type: max, value: 6, weight: 1 }
@@ -294,19 +294,20 @@ evaluate:
   # One or more layout CSVs to score.
   input:
     - data/layouts.csv
-    - data/layouts.1.csv
-    - data/layouts.2.csv
-    - data/layouts.3.csv
-    - data/layouts.4.csv
-    - data/layouts.5.csv
-    - data/layouts.6.csv
-    - data/layouts.7.csv
-    - data/layouts.8.csv
-    - data/layouts.9.csv
-    - data/layouts.10.csv
-    - data/layouts.11.csv
-    # - data/layouts.known.csv
+    # - data/layouts.1.csv
+    # - data/layouts.2.csv
+    # - data/layouts.3.csv
+    # - data/layouts.4.csv
+    # - data/layouts.5.csv
+    # - data/layouts.6.csv
+    # - data/layouts.7.csv
+    # - data/layouts.8.csv
+    # - data/layouts.9.csv
+    # - data/layouts.10.csv
+    # - data/layouts.11.csv
+    - data/layouts.known.csv
     - data/layouts.free.csv
+    # - data/layouts.all.csv
   # Output CSV for scored layouts. Omit to rewrite each input file in place.
   # output: data/layouts.all.csv
   # Number of best layouts printed to stdout.
