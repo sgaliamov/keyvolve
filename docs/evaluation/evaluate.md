@@ -28,15 +28,15 @@ evaluate:
   filterInvalid: false
 ```
 
-| Key | Default | Meaning |
-| --- | ------- | ------- |
-| `keyboard` | - (required) | Keyboard JSON from [rank](../modes/rank.md). |
-| `corpusStats` | - (required) | Stats JSON from [stats](../modes/stats.md). |
-| `input` | - (required) | Layout CSVs to score. Missing files are skipped; if all inputs are missing, the run exits without scoring. |
-| `output` | unset | Combined result CSV, overwritten. Parent folder must exist. Unset → each `input` file is rewritten in place. |
-| `print` | `10` | Best layouts printed to stdout. `0` → none. |
-| `eSide` | `left` | Orientation of saved layouts: `left`, `right` or `any`. See [Orientation](#orientation). |
-| `filterInvalid` | `false` | Remove layouts violating current `optimization` placement constraints before scoring. See [Placement filtering](#placement-filtering). |
+| Key             | Default      | Meaning                                                                                                                                |
+| --------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `keyboard`      | - (required) | Keyboard JSON from [rank](../modes/rank.md).                                                                                           |
+| `corpusStats`   | - (required) | Stats JSON from [stats](../modes/stats.md).                                                                                            |
+| `input`         | - (required) | Layout CSVs to score. Missing files are skipped; if all inputs are missing, the run exits without scoring.                             |
+| `output`        | unset        | Combined result CSV, overwritten. Parent folder must exist. Unset → each `input` file is rewritten in place.                           |
+| `print`         | `10`         | Best layouts printed to stdout. `0` → none.                                                                                            |
+| `eSide`         | `left`       | Orientation of saved layouts: `left`, `right` or `any`. See [Orientation](#orientation).                                               |
+| `filterInvalid` | `false`      | Remove layouts violating current `optimization` placement constraints before scoring. See [Placement filtering](#placement-filtering). |
 
 Scoring rules and targets: [scoring.md](scoring.md), [penalty.md](penalty.md). The
 `evaluator` section is shared with `optimize`.
@@ -66,15 +66,15 @@ By default, [placement rules](../placement-rules.md) do not apply: any complete 
 
 Any malformed layout row stops the run before scoring; no file is written.
 
-| Problem | Error |
-| ------- | ----- |
-| Fewer than 6 groups | `layout row needs 6 key groups, got N` |
-| Group not 5 slots | `layout group N must have 5 slots, got M` |
-| Symbol other than a letter or `_` | `invalid layout key` |
-| Letter repeated | `duplicate layout key` |
+| Problem                             | Error                                                    |
+| ----------------------------------- | -------------------------------------------------------- |
+| Fewer than 6 groups                 | `layout row needs 6 key groups, got N`                   |
+| Group not 5 slots                   | `layout group N must have 5 slots, got M`                |
+| Symbol other than a letter or `_`   | `invalid layout key`                                     |
+| Letter repeated                     | `duplicate layout key`                                   |
 | Letter missing, uppercase, or extra | `layout must contain all 26 keys, got N \| missing: ...` |
-| `input` empty | `evaluate.input requires at least one CSV` |
-| Missing input file | skipped, no error |
+| `input` empty                       | `evaluate.input requires at least one CSV`               |
+| Missing input file                  | skipped, no error                                        |
 
 ## Placement filtering
 
@@ -118,11 +118,11 @@ columns are dropped and score columns are regenerated. Keep a copy if the origin
 
 ## Orientation
 
-| `eSide` | Effect on printed and saved rows |
-| ------- | -------------------------------- |
-| `left` | Layouts with `e` on the right hand are mirrored so `e` is on the left. Mirror twins collapse to one row. |
-| `right` | Same, with `e` on the right. |
-| `any` | Layouts kept as given. Mirror twins stay as separate rows. |
+| `eSide` | Effect on printed and saved rows                                                                         |
+| ------- | -------------------------------------------------------------------------------------------------------- |
+| `left`  | Layouts with `e` on the right hand are mirrored so `e` is on the left. Mirror twins collapse to one row. |
+| `right` | Same, with `e` on the right.                                                                             |
+| `any`   | Layouts kept as given. Mirror twins stay as separate rows.                                               |
 
 Mirroring swaps hands only; each letter keeps its finger and row. Scores are hand-symmetric
 ([scoring.md](scoring.md#mirror-symmetry)), so a twin's score columns only swap left/right
@@ -142,70 +142,70 @@ Header plus one row per layout, best first:
 keys_1,...,keys_6,name,fitness,row_switch_ratio,...
 ```
 
-| Column kind | Format |
-| ----------- | ------ |
-| `fitness` | Higher = better. |
-| `effort`, `left_effort`, `right_effort` | Raw effort sums. |
-| `*_ratio` | Percent, `05.20%`. |
-| `*_imbalance`, `*_balance` | Absolute percent plus side: `←` left heavier, `→` right heavier, `·` even. |
-| `*_count`, `hand_switches`, `*_rolls`, `*_row_switch_cost` | Raw counts. |
+| Column kind                                                 | Format                                                                                        |
+| ----------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `fitness`                                                   | Higher = better.                                                                              |
+| `effort`, `left_effort`, `right_effort`                     | Raw effort sums.                                                                              |
+| `*_ratio`                                                   | Percent, `05.20%`.                                                                            |
+| `*_imbalance`, `*_balance`                                  | Absolute percent plus side: `←` left heavier, `→` right heavier, `·` even.                    |
+| `*_count`, `hand_switches`, `*_rolls`, `*_row_switch_cost`  | Raw counts.                                                                                   |
 | Grouped (`left_column_effort_ratio`, `column_balance`, ...) | One value per finger, separated by ` │ `. Right hand in physical order (index-outer → pinky). |
 
 `keys_1`..`keys_6` and `name` are layout metadata before the score columns.
 
-| Name | Description |
-| ---- | ----------- |
-| `fitness` | Higher is better; final score after effort and penalty. |
-| `row_switch_ratio` | Share of same-finger moves that change rows. |
-| `row_switch_imbalance` | Left/right skew in same-finger row-switch cost. |
-| `hand_switch_ratio` | Share of transitions that switch hands. |
-| `hands_imbalance` | Left/right count skew between same-hand bigrams. |
-| `sfs_ratio` | Share of same-finger skipgrams in the corpus. |
-| `inward_ratio` | Share of same-hand motions moving toward the center of the hand. |
-| `outward_ratio` | Share of same-hand motions moving away from the center of the hand. |
-| `directional_outward_ratio` | Outward share among directional rolls; `0%` all inward, `50%` tie. |
-| `effort` | Raw keyboard effort before penalty. |
-| `efforts_imbalance` | Left/right skew in total effort. |
-| `roll_imbalance` | Left/right skew in same-hand roll count. |
-| `mean_streak` | Average run length across both hands. |
-| `streak_imbalance` | Left/right skew in average run length. |
-| `left_streak` | Average streak length on the left. |
-| `right_streak` | Average streak length on the right. |
-| `left_column_effort_ratio` | Left-hand column effort shares in finger order: pinky, ring, middle, index-inner, index-outer. |
-| `right_column_effort_ratio` | Right-hand column effort shares in physical display order: index-outer, index-inner, middle, ring, pinky. |
-| `left_column_press_ratio` | Left-hand column press shares. |
-| `right_column_press_ratio` | Right-hand column press shares, display order reversed to match physical layout. |
-| `column_balance` | Left/right column-balance deltas for the grouped finger columns. |
-| `left_finger_row_switch_ratio` | Left-hand row-switch share by finger, pinky → index. |
-| `right_finger_row_switch_ratio` | Right-hand row-switch share by finger, in physical display order. |
-| `finger_row_switch_balance` | Left/right row-switch balance by finger. |
-| `top_row_effort_ratio` | Share of effort on the top row. |
-| `home_row_effort_ratio` | Share of effort on the home row. |
-| `bottom_row_effort_ratio` | Share of effort on the bottom row. |
-| `row_balance` | Left/right imbalance for top, home and bottom rows. |
-| `left_effort_ratio` | Left-hand effort share of total effort. |
-| `right_effort_ratio` | Right-hand effort share of total effort. |
-| `left_count_ratio` | Left-hand press share of total presses. |
-| `right_count_ratio` | Right-hand press share of total presses. |
-| `left_effort` | Total raw effort on the left hand. |
-| `right_effort` | Total raw effort on the right hand. |
-| `left_count` | Same-hand bigram count on the left. |
-| `right_count` | Same-hand bigram count on the right. |
-| `hand_switches` | Number of transitions that cross hands. |
-| `left_row_switch_cost` | Weighted same-finger row-switch cost on the left. |
-| `right_row_switch_cost` | Weighted same-finger row-switch cost on the right. |
-| `left_rolls` | Same-hand rolls on the left. |
-| `right_rolls` | Same-hand rolls on the right. |
-| `inward_count` | Same-hand directional moves toward the center. |
-| `outward_count` | Same-hand directional moves away from the center. |
-| `sfs_count` | Number of same-finger skipgrams in the corpus. |
-| `home_row_balance` | Left/right effort imbalance on the home row. |
-| `left_pinky_ratio` / `left_ring_ratio` / `left_middle_ratio` / `left_index_inner_ratio` / `left_index_outer_ratio` | Left-hand per-finger effort share. |
-| `right_pinky_ratio` / `right_ring_ratio` / `right_middle_ratio` / `right_index_inner_ratio` / `right_index_outer_ratio` | Right-hand per-finger effort share. |
-| `left_pinky_row_switch_ratio` / `left_ring_row_switch_ratio` / `left_middle_row_switch_ratio` / `left_index_row_switch_ratio` | Left-hand per-finger row-switch share. |
-| `right_pinky_row_switch_ratio` / `right_ring_row_switch_ratio` / `right_middle_row_switch_ratio` / `right_index_row_switch_ratio` | Right-hand per-finger row-switch share. |
-| `pinky_balance` / `ring_balance` / `middle_balance` / `index_inner_balance` / `index_outer_balance` | Left/right effort balance for each finger. |
-| `pinky_row_switch_balance` / `ring_row_switch_balance` / `middle_row_switch_balance` / `index_row_switch_balance` | Left/right row-switch balance for each finger. |
+| Name                                                                                                                              | Description                                                                                               |
+| --------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `fitness`                                                                                                                         | Higher is better; final score after effort and penalty.                                                   |
+| `row_switch_ratio`                                                                                                                | Share of same-finger moves that change rows.                                                              |
+| `row_switch_imbalance`                                                                                                            | Left/right skew in same-finger row-switch cost.                                                           |
+| `hand_switch_ratio`                                                                                                               | Share of transitions that switch hands.                                                                   |
+| `hands_imbalance`                                                                                                                 | Left/right count skew between same-hand bigrams.                                                          |
+| `sfs_ratio`                                                                                                                       | Share of same-finger skipgrams in the corpus.                                                             |
+| `inward_ratio`                                                                                                                    | Share of same-hand motions moving toward the center of the hand.                                          |
+| `outward_ratio`                                                                                                                   | Share of same-hand motions moving away from the center of the hand.                                       |
+| `directional_outward_ratio`                                                                                                       | Outward share among directional rolls; `0%` all inward, `50%` tie.                                        |
+| `effort`                                                                                                                          | Raw keyboard effort before penalty.                                                                       |
+| `efforts_imbalance`                                                                                                               | Left/right skew in total effort.                                                                          |
+| `roll_imbalance`                                                                                                                  | Left/right skew in same-hand roll count.                                                                  |
+| `mean_streak`                                                                                                                     | Average run length across both hands.                                                                     |
+| `streak_imbalance`                                                                                                                | Left/right skew in average run length.                                                                    |
+| `left_streak`                                                                                                                     | Average streak length on the left.                                                                        |
+| `right_streak`                                                                                                                    | Average streak length on the right.                                                                       |
+| `left_column_effort_ratio`                                                                                                        | Left-hand column effort shares in finger order: pinky, ring, middle, index-inner, index-outer.            |
+| `right_column_effort_ratio`                                                                                                       | Right-hand column effort shares in physical display order: index-outer, index-inner, middle, ring, pinky. |
+| `left_column_press_ratio`                                                                                                         | Left-hand column press shares.                                                                            |
+| `right_column_press_ratio`                                                                                                        | Right-hand column press shares, display order reversed to match physical layout.                          |
+| `column_balance`                                                                                                                  | Left/right column-balance deltas for the grouped finger columns.                                          |
+| `left_finger_row_switch_ratio`                                                                                                    | Left-hand row-switch share by finger, pinky → index.                                                      |
+| `right_finger_row_switch_ratio`                                                                                                   | Right-hand row-switch share by finger, in physical display order.                                         |
+| `finger_row_switch_balance`                                                                                                       | Left/right row-switch balance by finger.                                                                  |
+| `top_row_effort_ratio`                                                                                                            | Share of effort on the top row.                                                                           |
+| `home_row_effort_ratio`                                                                                                           | Share of effort on the home row.                                                                          |
+| `bottom_row_effort_ratio`                                                                                                         | Share of effort on the bottom row.                                                                        |
+| `row_balance`                                                                                                                     | Left/right imbalance for top, home and bottom rows.                                                       |
+| `left_effort_ratio`                                                                                                               | Left-hand effort share of total effort.                                                                   |
+| `right_effort_ratio`                                                                                                              | Right-hand effort share of total effort.                                                                  |
+| `left_count_ratio`                                                                                                                | Left-hand press share of total presses.                                                                   |
+| `right_count_ratio`                                                                                                               | Right-hand press share of total presses.                                                                  |
+| `left_effort`                                                                                                                     | Total raw effort on the left hand.                                                                        |
+| `right_effort`                                                                                                                    | Total raw effort on the right hand.                                                                       |
+| `left_count`                                                                                                                      | Same-hand bigram count on the left.                                                                       |
+| `right_count`                                                                                                                     | Same-hand bigram count on the right.                                                                      |
+| `hand_switches`                                                                                                                   | Number of transitions that cross hands.                                                                   |
+| `left_row_switch_cost`                                                                                                            | Weighted same-finger row-switch cost on the left.                                                         |
+| `right_row_switch_cost`                                                                                                           | Weighted same-finger row-switch cost on the right.                                                        |
+| `left_rolls`                                                                                                                      | Same-hand rolls on the left.                                                                              |
+| `right_rolls`                                                                                                                     | Same-hand rolls on the right.                                                                             |
+| `inward_count`                                                                                                                    | Same-hand directional moves toward the center.                                                            |
+| `outward_count`                                                                                                                   | Same-hand directional moves away from the center.                                                         |
+| `sfs_count`                                                                                                                       | Number of same-finger skipgrams in the corpus.                                                            |
+| `home_row_balance`                                                                                                                | Left/right effort imbalance on the home row.                                                              |
+| `left_pinky_ratio` / `left_ring_ratio` / `left_middle_ratio` / `left_index_inner_ratio` / `left_index_outer_ratio`                | Left-hand per-finger effort share.                                                                        |
+| `right_pinky_ratio` / `right_ring_ratio` / `right_middle_ratio` / `right_index_inner_ratio` / `right_index_outer_ratio`           | Right-hand per-finger effort share.                                                                       |
+| `left_pinky_row_switch_ratio` / `left_ring_row_switch_ratio` / `left_middle_row_switch_ratio` / `left_index_row_switch_ratio`     | Left-hand per-finger row-switch share.                                                                    |
+| `right_pinky_row_switch_ratio` / `right_ring_row_switch_ratio` / `right_middle_row_switch_ratio` / `right_index_row_switch_ratio` | Right-hand per-finger row-switch share.                                                                   |
+| `pinky_balance` / `ring_balance` / `middle_balance` / `index_inner_balance` / `index_outer_balance`                               | Left/right effort balance for each finger.                                                                |
+| `pinky_row_switch_balance` / `ring_row_switch_balance` / `middle_row_switch_balance` / `index_row_switch_balance`                 | Left/right row-switch balance for each finger.                                                            |
 
 Metric definitions: [penalty.md](penalty.md#metric-catalog). Counters: [scoring.md](scoring.md#counters).
 

@@ -46,6 +46,20 @@ Adapt to the task:
 - **Edit:** make only the approved changes and review their impact on the surrounding text.
 - **Review:** assess the whole text for logical consistency, structure, repetition, clarity, and factual accuracy. Provide actionable feedback without editing until approved.
 
+### Incremental section writing
+
+When developing an article section, use this workflow by default:
+
+1. Read the existing section, relevant outline notes, surrounding text, and technical sources. Verify claims before proposing prose.
+2. Propose a short narrative plan. Separate the article's story from reference material; keep detailed commands, options, and feature lists in documentation and link to it.
+3. Draft only the first small fragment in the conversation. Never write the whole section at once unless explicitly requested.
+4. Discuss that fragment and revise the proposal after feedback. Do not edit the article until the author explicitly approves it. A short approval such as "да" applies to the immediately preceding proposal, not to the entire plan.
+5. Apply only the approved fragment, then review it in context for repetition, transitions, terminology, and technical accuracy.
+6. Remove outline notes and TODOs whose content has been incorporated into the approved text. Preserve unresolved notes and unrelated draft sections. This cleanup is part of the approved fragment; do not discard unresolved ideas silently.
+7. Move to the next plan item only after the current fragment is finalized. Keep progress messages short and avoid repeating the whole section.
+
+Preserve the author's narrative and personal experience. Do not turn the article into a feature manual or add defensive caveats, apologies, or generic closing invitations. Include limitations when they are technically necessary and relevant to the passage.
+
 ### Style preferences
 
 - Prefer clear, direct language over unnecessarily sophisticated vocabulary.
