@@ -44,7 +44,7 @@ optimization:
 | `allowed`  | none    | `{ key: [slots] }`, slots `0`-`14`. Each slot also allows its mirror. Key `_` (or `` ` ``) sets where empties may go.         |
 | `left`     | none    | Letters restricted to slots `0`-`14`. Not mirrored.                                                                           |
 | `right`    | none    | Letters restricted to slots `15`-`29`. Not mirrored.                                                                          |
-| `pairs`    | none    | Two-letter strings. Each pair must stay on one hand and may not be pressed by the same finger on either hand.                |
+| `pairs`    | none    | Two-letter strings. Each pair must occupy horizontally adjacent keys on one hand, pressed by different fingers. |
 | `vertical` | none    | Two-letter strings. The pair may not share a column on either hand; entries are written for the left hand and mirrored to the right. |
 
 Without an `allowed` entry, a letter or empty may go anywhere the other rules permit.
@@ -57,9 +57,11 @@ Without an `allowed` entry, a letter or empty may go anywhere the other rules pe
    `left`/`right` hand.
 3. With `allowed._` set, empties go only to `allowed._` or `blocked` slots. `allowed._`
    permits, it does not force: a listed slot may hold a letter.
-4. `pairs`: each pair stays on one hand and may not be pressed by the same finger on
-   either hand. Pairs sharing a letter merge into one group (`th` + `st` → `t`, `h`, `s`
-   on one hand). A frozen letter fixes the hand of its group.
+4. `pairs`: each pair occupies neighboring columns in the same row segment, in either order,
+  and uses different fingers. The two index-finger columns are not a valid pair, even though
+  they are adjacent. Pairs sharing a letter form a connected chain (`th` + `st` puts `t`
+  between `s` and `h`). A frozen letter fixes the hand of its group. Overlapping pairs that
+  cannot fit these rules cause a startup error.
 5. `vertical`: a listed pair may not sit in the same column on either hand. Entries are
    defined for the left hand and mirrored automatically to the right. For example, `nd` cannot
    be in slots `8` and `13` on the left, or their mirrored slots on the right.
@@ -98,7 +100,7 @@ Rules are checked before the GA starts. The run stops with an error when:
 | Slot outside `0`-`14` in `allowed` (any key, `_` included)       | `allowed slot N must be in 0..14`                               |
 | Two frozen letters on one slot                                   | `multiple frozen keys use slot N`                               |
 | Key other than `a`-`z` in `frozen`, `left`, `right`, or other than `a`-`z`/`_` in `allowed` | `... must be a lowercase letter a-z ...` |
-| `sameSide` or `vertical` entry not exactly two distinct letters `a`-`z` | `same-side pair ...` / `vertical pair ...`                 |
+| `pairs` or `vertical` entry not exactly two distinct letters `a`-`z` | `same-side pair ...`                                   |
 | A letter or empty has no legal slot                              | `optimization leaves no legal slots for 'x'`                    |
 | Rules allow no complete layout (e.g. too many letters per hand)  | `optimization constraints have no complete layout: ...`         |
 
@@ -113,7 +115,7 @@ Exactly 4 slots end up empty, so:
 ## Generation and mutation
 
 - New layouts are random, always complete and valid.
-- A mutant moves several letters at once. `sameSide` groups move as a whole and may switch
+- A mutant moves several letters at once. `pairs` groups move as a whole and may switch
   hands. Empties move too. Frozen letters never move.
 - A mutant may equal its parent when no other valid placement exists, e.g. when all letters
   are frozen.
@@ -124,7 +126,7 @@ Layouts loaded from `ga.dump` or `optimization.input` are checked against the cu
 
 - Valid layouts are used unchanged.
 - Invalid ones (rules changed, wrong length, missing, duplicate or unknown symbols) are
-  repaired: letters keep their old slot where legal, the rest are re-placed. `sameSide`
+  repaired: letters keep their old slot where legal, the rest are re-placed. `pairs`
   groups take the hands that keep most letters in place.
 - Repairs log `Repaired imported layouts under current placement constraints` with the count.
 

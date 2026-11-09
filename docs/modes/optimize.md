@@ -32,7 +32,7 @@ optimization:
   allowed:
     e: [6, 7, 8]
     _: [0, 1, 10, 11]
-  sameSide: ['th', 'er']
+  pairs: ['th', 'er']
   left: [s]
   right: [o]
 ```
@@ -49,7 +49,7 @@ optimization:
 | `frozen` | `{ char: slot }` pins a letter to a physical slot. |
 | `blocked` | Slots unavailable for letter placement. Empty slots may still use them. |
 | `allowed` | Per-letter legal slot list. Half-positions are mirrored to the opposite hand. `_` means empty slots. |
-| `sameSide` | Pairs that must stay on the same hand. Overlapping pairs merge into one group. |
+| `pairs` | Pairs on horizontally adjacent keys of one hand, using different fingers. Overlapping pairs form a chain. |
 | `left` / `right` | Letters forced to the left or right hand. |
 
 See [placement-rules.md](../placement-rules.md) for the exact slot geometry and empty-slot rules.
@@ -62,7 +62,7 @@ layouts. A complete genome must:
 - contain all 26 letters exactly once;
 - contain exactly 4 empty slots;
 - keep frozen characters pinned;
-- respect `blocked`, `allowed`, `left`, `right`, and `sameSide`;
+- respect `blocked`, `allowed`, `left`, `right`, `pairs`, and `vertical`;
 - avoid duplicate slots or invalid characters.
 
 The validation is stricter than [evaluate.md](../evaluation/evaluate.md): optimize never scores a partial or

@@ -40,7 +40,7 @@ pub struct OptimizationConfig {
     #[serde(default)]
     pub right: FxHashSet<char>,
 
-    /// Pairs that stay on one hand and may not be pressed by the same finger.
+    /// Pairs that occupy adjacent keys in one row, using different fingers.
     /// Disjoint pairs choose independently; overlapping pairs form one group.
     /// Format: `["th", "st"]`.
     #[serde(default, deserialize_with = "de_same_side_pairs")]

@@ -120,11 +120,12 @@ impl PlacementConstraints {
                 .vertical
                 .iter()
                 .all(|&[a, b]| !same_column_on_hands(genome, a, b))
-            && self
-                .pairs
-                .iter()
-                .all(|&[a, b]| !same_finger_on_hands(genome, a, b))
-            && genome.chunks_exact(5).all(|segment| {
+            && self.pairs.iter().all(|&[a, b]| {
+                let a = genome.iter().position(|&ch| ch == a).unwrap();
+                let b = genome.iter().position(|&ch| ch == b).unwrap();
+                coupled_slots(a, b)
+            })
+            && genome.as_chunks::<5>().0.iter().all(|segment| {
                 let positions: Vec<_> = segment
                     .iter()
                     .enumerate()
@@ -249,34 +250,14 @@ fn same_column_on_hands(genome: &[char], a: char, b: char) -> bool {
     left_has_same_column || right_has_same_column
 }
 
-fn same_finger_on_hands(genome: &[char], a: char, b: char) -> bool {
-    let a_index = letter_index(a).unwrap();
-    let b_index = letter_index(b).unwrap();
-    let left = genome.iter().enumerate().take(15);
-    let right = genome.iter().enumerate().skip(15).take(15);
-    let left_slots = left.filter_map(|(slot, &ch)| {
-        let token = letter_index(ch)?;
-        (token == a_index || token == b_index).then_some(slot)
-    });
-    let right_slots = right.filter_map(|(slot, &ch)| {
-        let token = letter_index(ch)?;
-        (token == a_index || token == b_index).then_some(slot)
-    });
-    let left_pair = left_slots.collect::<Vec<_>>();
-    let right_pair = right_slots.collect::<Vec<_>>();
-    let same_left = left_pair.len() == 2
-        && logical_finger(left_pair[0] as u8) == logical_finger(left_pair[1] as u8);
-    let same_right = right_pair.len() == 2
-        && logical_finger(right_pair[0] as u8) == logical_finger(right_pair[1] as u8);
-    same_left || same_right
+/// Check horizontal neighbors on one hand, excluding the two index-finger columns.
+pub fn coupled_slots(a: usize, b: usize) -> bool {
+    a / 5 == b / 5 && a.abs_diff(b) == 1 && logical_finger(a) != logical_finger(b)
 }
 
-fn logical_finger(slot: u8) -> usize {
-    let column = if slot < 15 {
-        (slot % 5) as usize
-    } else {
-        4 - (slot % 5) as usize
-    };
+/// Map a physical slot to its finger within a hand.
+fn logical_finger(slot: usize) -> usize {
+    let column = if slot < 15 { slot % 5 } else { 4 - slot % 5 };
     column.min(3)
 }
 
@@ -315,6 +296,9 @@ mod tests {
             r#"{"blocked":[0,1,2,3,4]}"#,
             r#"{"allowed":{"_":[14]}}"#,
             r#"{"frozen":{"t":0,"h":15},"pairs":["th"]}"#,
+            r#"{"frozen":{"t":0,"h":2},"pairs":["th"]}"#,
+            r#"{"frozen":{"t":3,"h":4},"pairs":["th"]}"#,
+            r#"{"pairs":["ab","bc","ca"]}"#,
             r#"{"left":["t"],"right":["h"],"pairs":["th"]}"#,
             r#"{"allowed":{"a":[0],"b":[0],"c":[0]}}"#,
             r#"{"left":["a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p"]}"#,
@@ -392,14 +376,20 @@ mod tests {
     }
 
     #[test]
-    fn pairs_reject_merged_index_columns_as_same_finger() {
+    fn pairs_require_horizontal_neighbors_on_different_fingers() {
         let constraints = serde_json::from_str::<OptimizationConfig>(r#"{"pairs":["er"]}"#)
             .unwrap()
             .compile()
             .unwrap();
         let mut genome: Vec<_> = ('a'..='z').chain([EMPTY_SLOT; 4]).collect();
-        genome.swap(4, 8);
-        genome.swap(17, 21);
+        genome.swap(17, 5);
         assert!(!constraints.is_genome_valid(&genome));
+        genome.swap(5, 3);
+        assert!(!constraints.is_genome_valid(&genome));
+        genome.swap(3, 8);
+        assert!(!constraints.is_genome_valid(&genome));
+        genome.swap(8, 2);
+        genome.swap(4, 1);
+        assert!(constraints.is_genome_valid(&genome));
     }
 }

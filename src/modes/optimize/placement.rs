@@ -1,7 +1,7 @@
 use crate::evaluator::EMPTY_SLOT;
 use crate::modes::optimize::{
-    ALL_LETTERS, ALL_SLOTS, LETTER_COUNT, PlacementConstraints, SLOT_COUNT, bits, letter,
-    letter_index,
+    ALL_LETTERS, ALL_SLOTS, LETTER_COUNT, PlacementConstraints, SLOT_COUNT, bits, coupled_slots,
+    letter, letter_index,
 };
 use rand::{Rng, RngExt, seq::SliceRandom};
 
@@ -197,6 +197,50 @@ pub fn match_slots_gap_free(
     vertical: &[[char; 2]],
     pairs: &[[char; 2]],
 ) -> Option<[usize; SLOT_COUNT]> {
+    match_coupled_slots(domains, preferred, order, vertical, pairs)
+}
+
+/// Assign coupled pairs together before matching the remaining independent tokens.
+fn match_coupled_slots(
+    domains: &[u32; SLOT_COUNT],
+    preferred: &[u32; SLOT_COUNT],
+    order: &[usize; SLOT_COUNT],
+    vertical: &[[char; 2]],
+    pairs: &[[char; 2]],
+) -> Option<[usize; SLOT_COUNT]> {
+    if let Some((&[a, b], remaining)) = pairs.split_first() {
+        let a = letter_index(a).unwrap();
+        let b = letter_index(b).unwrap();
+        for a_preferred in [true, false] {
+            for &a_slot in order {
+                if domains[a] & (1 << a_slot) == 0
+                    || (preferred[a] & (1 << a_slot) != 0) != a_preferred
+                {
+                    continue;
+                }
+                for b_preferred in [true, false] {
+                    for &b_slot in order {
+                        if domains[b] & (1 << b_slot) == 0
+                            || (preferred[b] & (1 << b_slot) != 0) != b_preferred
+                            || !coupled_slots(a_slot, b_slot)
+                        {
+                            continue;
+                        }
+                        let mut next = *domains;
+                        next[a] = 1 << a_slot;
+                        next[b] = 1 << b_slot;
+                        if match_slots(&next, preferred, order).is_some()
+                            && let Some(found) =
+                                match_coupled_slots(&next, preferred, order, vertical, remaining)
+                        {
+                            return Some(found);
+                        }
+                    }
+                }
+            }
+        }
+        return None;
+    }
     for reverse in [false, true] {
         let mut order = *order;
         if reverse {
@@ -206,7 +250,6 @@ pub fn match_slots_gap_free(
             if let Some(found) = match_slots(domains, preferred, &order)
                 && has_no_row_gaps(found)
                 && has_no_vertical_pairs(found, vertical)
-                && has_no_same_finger_pairs(found, pairs)
             {
                 return Some(found);
             }
@@ -333,36 +376,6 @@ fn has_no_vertical_pairs(assignment: [usize; SLOT_COUNT], pairs: &[[char; 2]]) -
     true
 }
 
-fn has_no_same_finger_pairs(assignment: [usize; SLOT_COUNT], pairs: &[[char; 2]]) -> bool {
-    for &[a, b] in pairs {
-        let a_token = letter_index(a).unwrap();
-        let b_token = letter_index(b).unwrap();
-        let a_slot = assignment.iter().position(|&token| token == a_token);
-        let b_slot = assignment.iter().position(|&token| token == b_token);
-        let Some(a_slot) = a_slot else {
-            continue;
-        };
-        let Some(b_slot) = b_slot else {
-            continue;
-        };
-        let same_hand = (a_slot < 15) == (b_slot < 15);
-        let same_finger = same_hand && logical_finger(a_slot as u8) == logical_finger(b_slot as u8);
-        if same_finger {
-            return false;
-        }
-    }
-    true
-}
-
-fn logical_finger(slot: u8) -> usize {
-    let column = if slot < 15 {
-        (slot % 5) as usize
-    } else {
-        (4 - (slot % 5)) as usize
-    };
-    column.min(3)
-}
-
 /// Collect only recognizable position hints, accepting underscore at input boundaries.
 fn position_hints(genome: &[char]) -> [u32; SLOT_COUNT] {
     let mut hints = [0; SLOT_COUNT];
@@ -447,7 +460,7 @@ mod tests {
     }
 
     #[test]
-    fn same_finger_pairs_are_rejected_in_generated_layouts() {
+    fn generated_pairs_are_horizontal_neighbors_on_different_fingers() {
         let constraints = constraints(r#"{"pairs":["ab"]}"#);
         let mut rng = StdRng::seed_from_u64(9);
         for _ in 0..100 {
@@ -455,7 +468,7 @@ mod tests {
             assert!(constraints.is_genome_valid(&g));
             let a = slot(&g, 'a');
             let b = slot(&g, 'b');
-            assert!(!((a < 15) == (b < 15) && (a % 5 == b % 5)));
+            assert!(coupled_slots(a, b));
         }
     }
 
@@ -515,7 +528,7 @@ mod tests {
     #[test]
     fn repair_handles_split_pairs_forbidden_empties_and_malformed_genomes() {
         let constraints =
-            constraints(r#"{"pairs":["th","st"],"allowed":{"_": [0,10]},"frozen":{"t":5}}"#);
+            constraints(r#"{"pairs":["th","st"],"allowed":{"_": [0,10]},"frozen":{"t":6}}"#);
         let mut rng = StdRng::seed_from_u64(9);
         for input in [
             alphabet().to_vec(),
@@ -527,7 +540,7 @@ mod tests {
         ] {
             let g = constraints.repair(&input, &mut rng);
             assert!(constraints.is_genome_valid(&g));
-            assert_eq!(g[5], 't');
+            assert_eq!(g[6], 't');
         }
     }
 
